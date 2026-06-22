@@ -7,6 +7,7 @@ build/
 .cache/
 data/cache/
 output/
+output/autodream/
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/

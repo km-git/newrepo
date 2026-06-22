@@ -131,6 +131,11 @@ def test_executive_schema_always_actionable():
       "divergences": [],
       "github_tools_used": ["github.com/drstevendev/ElliottWaveAnalyzer"],
     },
+    "step8_outcomes": {
+      "honest_summary": {"primary_style": "swing", "primary_status": "monitor", "truth": "test"},
+      "setups": {},
+      "autodream": {"by_style": {}, "history_entries": 0},
+    },
     "trade_setup": {
       "action": "scale_long",
       "entry_zone": [1.4, 1.6],

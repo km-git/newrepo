@@ -121,6 +121,7 @@ class ElliottWaveOutput(BaseModel):
   step4_harmonic_overlap: List[HarmonicPattern]
   step5_execution_validation: ExecutionValidation
   step6_wave_consensus: WaveConsensus
+  step8_outcomes: Dict[str, Any] = Field(default_factory=dict)
   trade_setup: TradeSetup
   executive_decision: ExecutiveDecision
   honesty_audit: Dict[str, Any]

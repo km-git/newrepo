@@ -10,6 +10,8 @@ from typing import Any, Dict, List
 
 from engine.batch import run_batch, save_batch_json
 from engine.report import save_detailed_csv, save_detailed_markdown
+from engine.outcome_report import save_outcomes_csv
+from engine.autodream import build_monitor_queue, save_monitor_queue
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
@@ -72,6 +74,7 @@ def run_top_crypto_batch(
   json_path = out / f"top{n}_analysis_{ts}.json"
   summary_path = out / f"top{n}_summary_{ts}.csv"
   detailed_path = out / f"top{n}_detailed_{ts}.csv"
+  outcomes_path = out / f"top{n}_outcomes_{ts}.csv"
   markdown_path = out / f"top{n}_report_{ts}.md"
 
   pairs = fetch_top_pairs(n=n, quote=quote)
@@ -83,6 +86,9 @@ def run_top_crypto_batch(
   save_batch_summary_csv(results, str(summary_path))
   save_detailed_csv(results, str(detailed_path))
   save_detailed_markdown(results, str(markdown_path), title=f"Top {n} Crypto EW Analysis")
+  save_outcomes_csv(results, str(outcomes_path))
+  monitor_q = build_monitor_queue(results)
+  save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}
@@ -103,7 +109,9 @@ def run_top_crypto_batch(
     "json": str(json_path),
     "summary_csv": str(summary_path),
     "detailed_csv": str(detailed_path),
+    "outcomes_csv": str(outcomes_path),
     "report_md": str(markdown_path),
+    "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
@@ -114,7 +122,9 @@ def run_top_crypto_batch(
   print(f"  JSON:    {json_path}")
   print(f"  Summary:  {summary_path}")
   print(f"  Detailed: {detailed_path}")
+  print(f"  Outcomes: {outcomes_path}")
   print(f"  Report:   {markdown_path}")
+  print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta

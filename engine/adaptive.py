@@ -21,6 +21,8 @@ from core.impulse import validate_impulse
 from core.mc import ew_aware_monte_carlo
 from core.monowaves import adaptive_skip_for_df, compute_skip, extract_monowaves_cached
 from engine.executive import executive_decide
+from engine.autodream import enrich_outcomes_with_autodream, record_outcome
+from engine.outcomes import build_outcomes
 from engine.wave_detail import analyze_all_timeframes
 from fetchers import fetch
 
@@ -259,6 +261,26 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
   stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
 
+  # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
+  outcomes = build_outcomes(
+    symbol=symbol,
+    data=data,
+    adaptive=adaptive,
+    wave_structure=wave_structure,
+    direction=executive.get("direction", exec_direction),
+    kz_low=kz_low,
+    kz_high=kz_high,
+    harmonic_overlaps=harmonic_overlaps,
+    in_zone=in_zone,
+    consensus=consensus,
+    c_targets=c_targets,
+    executive=executive,
+  )
+  outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
+  record_outcome(symbol, outcomes, current_price, status)
+  hs = outcomes["honest_summary"]
+  print(f"[step8] outcomes: {hs['truth']}")
+
   reasoning = (
     f"EXECUTIVE CALL [{executive['verdict']}]: {executive['playbook']} "
     f"{symbol} @ {current_price:.2f}, {executive['direction']} bias, "
@@ -267,7 +289,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     f"harmonics={len(harmonic_overlaps)}, 15m_valid={execution_passes}. "
     f"EW consensus={consensus['consensus_direction']} ({consensus['agreement_pct']}% agree, "
     f"score={consensus['consensus_score']}). "
-    f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))}"
+    f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))} | "
+    f"Outcomes: {hs['truth']}"
   )
 
   tool_log = dedup_tool_calls(build_tool_calls_log(stages))
@@ -303,6 +326,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "violations_sample": violations_sample,
     },
     "step6_wave_consensus": consensus,
+    "step8_outcomes": outcomes,
     "trade_setup": trade,
     "executive_decision": executive,
     "honesty_audit": {

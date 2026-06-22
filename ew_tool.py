@@ -23,6 +23,7 @@ def main() -> None:
   parser.add_argument("--top", type=int, default=None, help="Run top N crypto USDT pairs (e.g. 50)")
   parser.add_argument("--quote", default="USDT", help="Quote for --top (default USDT)")
   parser.add_argument("--output-dir", default="output", help="Output dir for --top batch")
+  parser.add_argument("--outcomes-only", action="store_true", help="Print step8 outcomes JSON only")
   parser.add_argument("--cache-stats", action="store_true", help="Print cache stats after run")
   parser.add_argument("--clear-cache", action="store_true", help="Clear cache before run")
   args = parser.parse_args()
@@ -77,6 +78,8 @@ def main() -> None:
     if args.save:
       with open(args.save, "w") as f:
         json.dump(payload, f, indent=2, default=str)
+    elif args.outcomes_only:
+      print(json.dumps(payload.get("step8_outcomes", {}), indent=2, default=str))
     else:
       print(json.dumps(payload, indent=2, default=str))
 
