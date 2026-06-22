@@ -67,6 +67,8 @@ class TradeSetup(BaseModel):
 
 
 class ExecutiveDecision(BaseModel):
+  model_config = ConfigDict(extra="allow")
+
   verdict: str  # GO | CONDITIONAL_GO | STANDBY_ORDERS | STAGED_GO
   conviction: str
   direction: str
@@ -121,6 +123,9 @@ class ElliottWaveOutput(BaseModel):
   step4_harmonic_overlap: List[HarmonicPattern]
   step5_execution_validation: ExecutionValidation
   step6_wave_consensus: WaveConsensus
+  step6b_cycle_confluence: Dict[str, Any] = Field(default_factory=dict)
+  step6c_expert_direction: Dict[str, Any] = Field(default_factory=dict)
+  step6d_sentinel_analysis: Dict[str, Any] = Field(default_factory=dict)
   step2_ew_coverage: Dict[str, Any] = Field(default_factory=dict)
   step1_htf_weekly: Optional[Dict[str, Any]] = None
   step9_market_confluence: Dict[str, Any] = Field(default_factory=dict)
