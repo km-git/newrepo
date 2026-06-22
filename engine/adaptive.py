@@ -15,12 +15,13 @@ from cache.disk_cache import get_cache
 from core.atr import compute_atr14, median_daily_range
 from core.consensus import build_consensus
 from core.correction import detect_abc, detect_diagonal
-from core.fib_zone import compute_prior_decline_fibs, compute_tight_kill_zone
-from core.harmonic import detect_harmonics
+from core.fib_zone import compute_c_targets, compute_prior_decline_fibs, compute_tight_kill_zone
+from core.harmonic import collect_actionable_harmonics, scan_harmonics
 from core.impulse import validate_impulse
 from core.mc import ew_aware_monte_carlo
 from core.monowaves import adaptive_skip_for_df, compute_skip, extract_monowaves_cached
 from engine.executive import executive_decide
+from engine.wave_detail import analyze_all_timeframes
 from fetchers import fetch
 
 
@@ -150,27 +151,34 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     print(f"[step2] {tf}: skip={skip} monowaves={len(mws)} ATR={atr:.2f}")
   stages.append(("adaptive_pivots", {"tfs": tfs}, {tf: {"skip": adaptive[tf]["skip"], "count": len(adaptive[tf]["monowaves"])} for tf in adaptive}))
 
-  # STEP 3: Kill zone
+  # STEP 2b: Per-timeframe wave structure
+  wave_structure = analyze_all_timeframes(adaptive, data, tfs)
+  print("[step2b] wave structures: " + ", ".join(f"{tf}={wave_structure[tf].get('structure', 'n/a')}" for tf in wave_structure))
+
+  # STEP 3: Kill zone (direction-aware C targets, price-proximate cluster)
   wave_a = htf_class["wave_A"]
-  wave_a_mag = abs(wave_a["end"] - wave_a["start"])
   b_end = htf_class["wave_B_end"]
-  c_target_100 = b_end + wave_a_mag
-  c_target_161 = b_end + wave_a_mag * 1.618
+  c_targets = compute_c_targets(wave_a, b_end, htf_class.get("bias", "neutral"), htf_class.get("state", "choppy"))
+  c_target_100 = c_targets["c_target_100"]
+  c_target_161 = c_targets["c_target_161"]
 
   prior_fibs = compute_prior_decline_fibs(data["1d"])
   current_price = float(data["1d"]["Close"].iloc[-1])
-  kz_low, kz_high = compute_tight_kill_zone(c_target_100, c_target_161, prior_fibs, current_price)
+  kz_low, kz_high, kz_meta = compute_tight_kill_zone(
+    c_target_100, c_target_161, prior_fibs, current_price
+  )
   width_pct = (kz_high - kz_low) / current_price * 100
-  print(f"[step3] kill_zone=[{kz_low:.2f}, {kz_high:.2f}] width={width_pct:.2f}%")
-  stages.append(("kill_zone", {"symbol": symbol}, {"low": kz_low, "high": kz_high, "width_pct": width_pct}))
+  print(f"[step3] kill_zone=[{kz_low:.2f}, {kz_high:.2f}] width={width_pct:.2f}% cluster={kz_meta.get('cluster')}")
+  stages.append(("kill_zone", {"symbol": symbol}, {"low": kz_low, "high": kz_high, "width_pct": width_pct, "c_targets": c_targets}))
 
-  # STEP 4: Harmonic overlay
-  harmonic_overlaps: List[dict] = []
+  # STEP 4: Harmonic scan all execution TFs
+  harmonic_scans: dict = {}
   for tf in ["4h", "1h", "15m"]:
     if tf in data:
-      harmonic_overlaps.extend(detect_harmonics(data[tf], tf, (kz_low, kz_high), symbol))
-  print(f"[step4] harmonic overlaps: {len(harmonic_overlaps)}")
-  stages.append(("harmonics", {"tfs": ["4h", "1h", "15m"]}, {"count": len(harmonic_overlaps)}))
+      harmonic_scans[tf] = scan_harmonics(data[tf], tf, symbol, current_price, (kz_low, kz_high))
+  harmonic_overlaps = collect_actionable_harmonics(list(harmonic_scans.values()))
+  print(f"[step4] harmonics: {sum(s['count'] for s in harmonic_scans.values())} total, {len(harmonic_overlaps)} actionable")
+  stages.append(("harmonics", {"tfs": list(harmonic_scans.keys())}, {"total": sum(s["count"] for s in harmonic_scans.values()), "actionable": len(harmonic_overlaps)}))
 
   # STEP 5: Execution validation
   in_zone = kz_low <= current_price <= kz_high
@@ -182,6 +190,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
 
   if "15m" in adaptive:
     mws_15m = adaptive["15m"]["monowaves"]
+    best_val = None
     for start in range(len(mws_15m) - 4):
       candidate = mws_15m[start : start + 5]
       val = validate_impulse(candidate)
@@ -189,14 +198,13 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
         bull_count += 1
       if val["direction"] == "BEAR":
         bear_count += 1
-      if val["passes"] and val["direction"] == "BULL":
+      if val["passes"]:
         execution_passes = True
-        exec_direction = "BULL"
+        exec_direction = val["direction"]
+        best_val = val
         break
-      if val["passes"] and val["direction"] == "BEAR":
-        execution_passes = True
-        exec_direction = "BEAR"
-        break
+      if best_val is None and val["direction"] not in ("AMBIGUOUS", "n/a"):
+        best_val = val
       if val["violations"]:
         violations_sample.append(val["violations"][0])
     violations_sample = list(dict.fromkeys(violations_sample))[:5]
@@ -273,16 +281,23 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       tf: {"skip": adaptive[tf]["skip"], "monowave_count": len(adaptive[tf]["monowaves"]), "atr_14": adaptive[tf]["atr_14"]}
       for tf in adaptive
     },
+    "step2_wave_structure": wave_structure,
+    "step3_c_targets": c_targets,
     "step3_kill_zone": {
       "price_low": kz_low,
       "price_high": kz_high,
       "width_pct": width_pct,
       "constituent_fibs": prior_fibs,
+      "cluster_meta": kz_meta,
+      "c_target_100": c_target_100,
+      "c_target_161": c_target_161,
     },
+    "step4_harmonic_scan": harmonic_scans,
     "step4_harmonic_overlap": harmonic_overlaps,
     "step5_execution_validation": {
       "in_zone": in_zone,
       "passes": execution_passes,
+      "exec_direction": exec_direction,
       "bull_impulse_count": bull_count,
       "bear_impulse_count": bear_count,
       "violations_sample": violations_sample,

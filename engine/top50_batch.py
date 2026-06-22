@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from engine.batch import run_batch, save_batch_json
+from engine.report import save_detailed_csv, save_detailed_markdown
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
@@ -70,6 +71,8 @@ def run_top_crypto_batch(
   pairs_csv = out / f"top{n}_{quote.lower()}_{ts}.csv"
   json_path = out / f"top{n}_analysis_{ts}.json"
   summary_path = out / f"top{n}_summary_{ts}.csv"
+  detailed_path = out / f"top{n}_detailed_{ts}.csv"
+  markdown_path = out / f"top{n}_report_{ts}.md"
 
   pairs = fetch_top_pairs(n=n, quote=quote)
   write_pairs_csv(pairs, str(pairs_csv))
@@ -78,6 +81,8 @@ def run_top_crypto_batch(
   results = run_batch(str(pairs_csv), tfs, is_crypto=True)
   save_batch_json(results, str(json_path))
   save_batch_summary_csv(results, str(summary_path))
+  save_detailed_csv(results, str(detailed_path))
+  save_detailed_markdown(results, str(markdown_path), title=f"Top {n} Crypto EW Analysis")
 
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}
@@ -97,6 +102,8 @@ def run_top_crypto_batch(
     "by_verdict": by_verdict,
     "json": str(json_path),
     "summary_csv": str(summary_path),
+    "detailed_csv": str(detailed_path),
+    "report_md": str(markdown_path),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
@@ -105,7 +112,9 @@ def run_top_crypto_batch(
 
   print(f"\n[batch] DONE — {len(results)} instruments")
   print(f"  JSON:    {json_path}")
-  print(f"  Summary: {summary_path}")
+  print(f"  Summary:  {summary_path}")
+  print(f"  Detailed: {detailed_path}")
+  print(f"  Report:   {markdown_path}")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta

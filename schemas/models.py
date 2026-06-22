@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HarmonicPattern(BaseModel):
+  model_config = ConfigDict(extra="allow")
+
   tf: str
   pattern: str
   prz_low: float
   prz_high: float
-  ratios: Dict[str, float]
-  bullish: bool
+  ratios: Dict[str, float] = Field(default_factory=dict)
+  bullish: bool = True
 
 
 class WaveDetail(BaseModel):
@@ -37,11 +39,15 @@ class KillZone(BaseModel):
   price_high: float
   width_pct: float
   constituent_fibs: Dict[str, float] = Field(default_factory=dict)
+  cluster_meta: Dict[str, Any] = Field(default_factory=dict)
+  c_target_100: Optional[float] = None
+  c_target_161: Optional[float] = None
 
 
 class ExecutionValidation(BaseModel):
   in_zone: bool
   passes: bool
+  exec_direction: Optional[str] = None
   bull_impulse_count: int = 0
   bear_impulse_count: int = 0
   violations_sample: List[str] = Field(default_factory=list)
@@ -108,7 +114,10 @@ class ElliottWaveOutput(BaseModel):
   status: str
   step1_htf_bias: HTFBias
   step2_adaptive_pivots: Dict[str, Dict[str, Any]]
+  step2_wave_structure: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+  step3_c_targets: Dict[str, Any] = Field(default_factory=dict)
   step3_kill_zone: KillZone
+  step4_harmonic_scan: Dict[str, Any] = Field(default_factory=dict)
   step4_harmonic_overlap: List[HarmonicPattern]
   step5_execution_validation: ExecutionValidation
   step6_wave_consensus: WaveConsensus

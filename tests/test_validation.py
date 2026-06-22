@@ -85,10 +85,11 @@ def test_adaptive_skip():
 
 
 def test_tight_kill_zone_cluster():
-  low, high = compute_tight_kill_zone(75000, 75519, {"fib_0.236": 74944}, 74000, max_width_pct=2.0)
+  low, high, meta = compute_tight_kill_zone(75000, 75519, {"fib_0.236": 74944}, 74000, max_width_pct=2.0)
   width_pct = (high - low) / 74000 * 100
   assert width_pct <= 5.0
   assert low < high
+  assert meta.get("cluster") or meta.get("anchor")
 
 
 def test_executive_schema_always_actionable():
@@ -108,6 +109,9 @@ def test_executive_schema_always_actionable():
     "step3_kill_zone": {"price_low": 1.0, "price_high": 2.0, "width_pct": 1.0},
     "step4_harmonic_overlap": [],
     "step5_execution_validation": {"in_zone": False, "passes": False},
+    "step2_wave_structure": {"1d": {"tf": "1d", "structure": "abc_correction", "direction": "BULL", "impulse_valid": False, "violations": [], "wave_sizes": {}, "waves_last5": []}},
+    "step3_c_targets": {"c_target_100": 100.0, "c_direction": "up"},
+    "step4_harmonic_scan": {},
     "step6_wave_consensus": {
       "consensus_direction": "BULL",
       "consensus_score": 0.55,
