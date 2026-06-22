@@ -20,6 +20,9 @@ def main() -> None:
   parser.add_argument("--crypto", action="store_true", help="Use ccxt instead of yfinance")
   parser.add_argument("--save", default=None, help="Path to save JSON output")
   parser.add_argument("--batch", default=None, help="Path to CSV with symbols for batch run")
+  parser.add_argument("--top", type=int, default=None, help="Run top N crypto USDT pairs (e.g. 50)")
+  parser.add_argument("--quote", default="USDT", help="Quote for --top (default USDT)")
+  parser.add_argument("--output-dir", default="output", help="Output dir for --top batch")
   parser.add_argument("--cache-stats", action="store_true", help="Print cache stats after run")
   parser.add_argument("--clear-cache", action="store_true", help="Clear cache before run")
   args = parser.parse_args()
@@ -37,13 +40,30 @@ def main() -> None:
   tfs = [t.strip() for t in args.tfs.split(",")]
   t0 = time.time()
 
-  if args.batch:
-    results = run_batch(args.batch, tfs, args.crypto)
-    output = json.dumps(results, indent=2, default=str)
-    if args.save:
-      save_batch_json(results, args.save)
+  if args.batch or args.top:
+    if args.top:
+      from engine.top50_batch import run_top_crypto_batch
+
+      meta = run_top_crypto_batch(
+        n=args.top,
+        tfs=tfs,
+        output_dir=args.output_dir,
+        quote=args.quote,
+      )
+      if args.save:
+        import shutil
+        shutil.copy(meta["json"], args.save)
+      elapsed = time.time() - t0
+      print(f"\n[done] top {args.top} batch in {elapsed:.0f}s", file=sys.stderr)
+      if args.cache_stats:
+        from cache.disk_cache import get_cache
+        print(f"[cache] {get_cache().stats()}", file=sys.stderr)
     else:
-      print(output)
+      results = run_batch(args.batch, tfs, args.crypto)
+      if args.save:
+        save_batch_json(results, args.save)
+      else:
+        print(json.dumps(results, indent=2, default=str))
   else:
     if not args.symbol:
       parser.error("--symbol is required unless --batch is used")
