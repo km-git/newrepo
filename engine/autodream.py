@@ -193,15 +193,21 @@ def build_monitor_queue(results: List[dict]) -> List[dict]:
     oc = r.get("step8_outcomes", {})
     for style, setup in oc.get("setups", {}).items():
       if setup.get("status") in ("executable", "monitor"):
+        zone = setup.get("entry", {}).get("zone")
         queue.append({
+          "id": f"{r['symbol']}:{style}",
           "symbol": r["symbol"],
           "style": style,
           "status": setup["status"],
           "direction": setup.get("direction"),
           "entry": setup.get("entry", {}).get("anchor"),
+          "entry_zone": zone,
           "stop": setup.get("stop_loss", {}).get("price"),
           "tp1": setup["targets"][0]["price"] if setup.get("targets") else None,
           "check": setup.get("monitor", {}).get("check_interval"),
+          "upgrade_if": setup.get("monitor", {}).get("upgrade_if", []),
+          "invalidate_if": setup.get("monitor", {}).get("invalidate_if", []),
+          "last_scan": None,
         })
   return queue
 
