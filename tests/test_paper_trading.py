@@ -82,6 +82,8 @@ def test_honesty_verdict_caution():
   assert honesty_verdict(0.35, 10, "probe") == "caution"
   assert honesty_verdict(0.60, 10, "full") == "validated"
   assert honesty_verdict(None, 1, "probe") == "insufficient_data"
+  assert honesty_verdict(0.70, 20, "probe", oos_win_rate=0.30, oos_trades=10) == "caution"
+  assert honesty_verdict(0.70, 20, "full", oos_win_rate=0.60, oos_trades=10, wf_degradation=0.25) == "caution"
 
 
 def test_apply_honesty_boosts_readiness():

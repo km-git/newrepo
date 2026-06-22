@@ -77,7 +77,7 @@ def analyze_historical(
 
   if setup and setup.get("stop_loss") and setup.get("targets"):
     setup = {**setup, "style": style}
-    result = backtest_setup_on_bars(data_df, setup, lookback_bars=lookback_bars)
+    result = backtest_setup_on_bars(data_df, setup, lookback_bars=lookback_bars, full_validation=True)
   else:
     result = _fallback_style_backtest(data_df, style, lookback_bars, setup)
 
@@ -115,7 +115,7 @@ def _fallback_style_backtest(
   """Style-config ATR geometry using setup direction when present."""
   from core.atr import compute_atr14
   from engine.outcomes import STYLE_CONFIG
-  from engine.paper_trading import simulate_forward
+  from engine.trade_simulation import simulate_forward
 
   cfg = STYLE_CONFIG.get(style, STYLE_CONFIG["swing"])
   direction = (setup or {}).get("direction", "LONG")
@@ -234,9 +234,15 @@ def enrich_outcomes_with_autodream(
     setup["historical_edge"] = ad.get("win_rate")
     setup["hist_trades"] = ad.get("simulated_trades")
     setup["hist_avg_pnl_r"] = ad.get("avg_pnl_r")
+    setup["oos_win_rate"] = ad.get("oos_win_rate")
+    setup["oos_trades"] = ad.get("oos_trades")
+    setup["wf_degradation"] = ad.get("wf_degradation")
+    setup["stress_win_rate"] = ad.get("stress_win_rate")
+    setup["mc_win_rate_p5"] = ad.get("mc_win_rate_p5")
+    setup["validation_summary"] = ad.get("validation_summary")
     setup["confidence_note"] = (
-      f"autodream adj {adj:+.2f} · win_rate={ad.get('win_rate')} · "
-      f"method={ad.get('method', 'setup_faithful')}"
+      f"autodream adj {adj:+.2f} · IS={ad.get('win_rate')} · "
+      f"OOS={ad.get('oos_win_rate')} · {ad.get('validation_summary', ad.get('method', ''))}"
     )
 
   outcomes["autodream"] = {
@@ -245,7 +251,7 @@ def enrich_outcomes_with_autodream(
     "history_path": str(HISTORY_PATH),
     "paper_metrics_path": str(PAPER_METRICS_PATH),
     "improvement_loop": (
-      "Pipeline → setup-faithful hist → paper batch → honesty verdict → monitor upgrades"
+      "Walk-forward OOS + holdout + MC + stress → paper batch → honesty → monitor"
     ),
   }
   outcomes = apply_honesty_adjustments(outcomes)

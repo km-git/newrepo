@@ -179,7 +179,8 @@ COMPLETE_SETUP_COLUMNS = [
   "1w_structure", "1d_structure", "4h_structure", "1h_structure", "15m_structure",
   "wave_structure", "wave_valid", "harmonic", "indicator_signals", "honest_reason",
   "hist_win_rate", "hist_trades", "hist_avg_pnl_r",
-  "paper_outcome", "paper_pnl_r", "autodream_verdict", "autodream_lesson",
+  "oos_win_rate", "oos_trades", "wf_degradation", "stress_win_rate", "mc_win_rate_p5",
+  "validation_summary", "paper_outcome", "paper_pnl_r", "autodream_verdict", "autodream_lesson",
 ]
 
 
