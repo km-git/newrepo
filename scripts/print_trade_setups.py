@@ -20,23 +20,27 @@ def _load_rows(path: Path, status: str | None) -> list[dict]:
 
 
 def _print_table(rows: list[dict], limit: int) -> None:
-  cols = ["symbol", "style", "status", "direction", "entry", "stop_loss", "tp1", "tp2", "rr_tp2"]
-  header = f"{'Symbol':<12} {'Style':<10} {'Status':<12} {'Dir':<6} {'Entry':<12} {'Stop':<12} {'TP1':<12} {'RR':<6}"
+  cols = ["symbol", "style", "status", "execution_tier", "readiness_score", "direction",
+          "entry", "stop_loss", "tp1", "rr_tp2", "1d_structure", "consensus", "honest_reason"]
+  header = f"{'Symbol':<12} {'Style':<10} {'Status':<14} {'Tier':<6} {'Rd':>3} {'Dir':<5} {'Entry':<10} {'1d EW':<20} {'Reason':<30}"
   print(header)
   print("-" * len(header))
   for r in rows[:limit]:
+    reason = str(r.get("honest_reason", ""))[:28]
     print(
-      f"{r.get('symbol', ''):<12} {r.get('style', ''):<10} {r.get('status', ''):<12} "
-      f"{r.get('direction', ''):<6} {str(r.get('entry', '')):<12} {str(r.get('stop_loss', '')):<12} "
-      f"{str(r.get('tp1', '')):<12} {str(r.get('rr_tp2', '')):<6}"
+      f"{r.get('symbol', ''):<12} {r.get('style', ''):<10} {r.get('status', ''):<14} "
+      f"{str(r.get('execution_tier', '')):<6} {int(float(r.get('readiness_score') or 0)):>3} "
+      f"{r.get('direction', ''):<5} {str(r.get('entry', ''))[:10]:<10} "
+      f"{str(r.get('1d_structure', ''))[:20]:<20} {reason}"
     )
   print(f"\n({min(limit, len(rows))} of {len(rows)} rows)")
 
 
 def main() -> None:
   p = argparse.ArgumentParser(description="Print trade setups to terminal")
-  p.add_argument("--csv", default="output/latest_setups.csv")
-  p.add_argument("--status", choices=["executable", "monitor", "not_actionable"])
+  p.add_argument("--csv", default="output/latest_setups_complete.csv")
+  p.add_argument("--status", choices=["executable", "monitor", "not_actionable"],
+                 help="Filter by status (default: show ALL)")
   p.add_argument("--limit", type=int, default=40)
   p.add_argument("--regenerate", action="store_true", help="Rebuild from latest analysis JSON")
   args = p.parse_args()
@@ -54,7 +58,7 @@ def main() -> None:
     results = json.loads(jsons[0].read_text())
     prefix = str(out / jsons[0].stem.replace("_analysis", "_full"))
     export_all_reports(results, prefix, title=f"Trade Setups — {len(results)} pairs")
-    csv_path = Path("output/latest_setups.csv")
+    csv_path = Path("output/latest_setups_complete.csv")
     if not csv_path.exists():
       csv_path = Path(prefix.replace("_full_", "_setups_") + ".csv")
 
@@ -63,7 +67,10 @@ def main() -> None:
     sys.exit(1)
 
   rows = _load_rows(csv_path, args.status)
-  print(f"Trade setups from {csv_path.resolve()}\n")
+  from collections import Counter
+  counts = Counter(r.get("status") for r in _load_rows(csv_path, None))
+  print(f"Trade setups from {csv_path.resolve()}")
+  print(f"Counts: {dict(counts)} — showing {len(rows)} rows\n")
   _print_table(rows, args.limit)
   md = Path("reports/TRADE_SETUPS.md")
   if md.exists():

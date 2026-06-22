@@ -95,24 +95,36 @@ def build_full_row(result: dict) -> dict:
 
 
 def build_setup_rows(result: dict) -> List[dict]:
-  """One row per symbol × style with key confluences attached (filter-friendly)."""
+  """One row per symbol × style — ALL statuses with full confluence columns."""
   if result.get("status") == "incomplete":
     return [{"symbol": result.get("symbol"), "style": "—", "status": "error", "error": result.get("error")}]
 
   detail = build_detailed_row(result)
-  confluence = {
-    k: detail.get(k)
-    for k in (
-      "price", "htf_state", "htf_bias", "kill_zone_low", "kill_zone_high",
-      "in_kill_zone", "harmonics_all", "harmonics_in_zone", "verdict", "action",
-      "consensus", "agreement_pct", "15m_valid",
-      "1d_structure", "4h_structure", "1h_structure", "15m_structure",
-    )
-  }
+  ws = result.get("step2_wave_structure", {})
+  ew = result.get("step2_ew_coverage", {})
+  mkt = result.get("step9_market_confluence", {})
+  ex = result.get("executive_decision", {})
+
+  confluence = {k: detail.get(k) for k in detail if k != "symbol"}
+  confluence.update({
+    "ew_coverage_pct": ew.get("coverage_pct"),
+    "ew_all_tfs": ew.get("all_tfs_present"),
+    "rsi_stack_bias": (mkt.get("multi_tf_rsi") or {}).get("bias"),
+    "btc_correlation": (mkt.get("btc_correlation") or {}).get("correlation"),
+    "market_boost": mkt.get("confluence_boost"),
+    "market_signals": "; ".join(mkt.get("confluence_signals", [])[:2]),
+    "executive_verdict": ex.get("verdict"),
+    "executive_direction": ex.get("direction"),
+    "structural_gaps": "; ".join(ex.get("structural_gaps", [])[:2]),
+  })
+  for tf in ("1w", "1d", "4h", "1h", "15m"):
+    w = ws.get(tf, {})
+    confluence[f"{tf}_ew_status"] = w.get("status", "")
+    confluence[f"{tf}_ew_complete"] = "Y" if w.get("ew_complete") else "N"
 
   rows = []
   for style_row in build_outcome_row(result):
-    rows.append({**confluence, **style_row})
+    rows.append({"symbol": result["symbol"], **confluence, **style_row})
   return rows
 
 
@@ -138,16 +150,51 @@ def save_full_csv(results: List[dict], path: str) -> None:
     w.writerows(rows)
 
 
-def save_setups_csv(results: List[dict], path: str) -> None:
+# Column order for complete setups export (executable + non-executable)
+COMPLETE_SETUP_COLUMNS = [
+  "symbol", "price", "style", "status", "execution_tier", "readiness_score", "primary",
+  "direction", "timeframe", "horizon", "entry", "entry_zone_low", "entry_zone_high",
+  "dca_10pct", "dca_20pct", "dca_30pct", "dca_40pct", "stop_loss", "tp1", "tp2", "tp3", "rr_tp2",
+  "htf_state", "htf_bias", "kill_zone_low", "kill_zone_high", "in_kill_zone", "zone_dist_pct",
+  "harmonics_in_zone", "harmonics_all", "verdict", "executive_verdict", "consensus", "agreement_pct",
+  "15m_valid", "ew_coverage_pct", "rsi_stack_bias", "btc_correlation", "market_boost",
+  "1w_structure", "1d_structure", "4h_structure", "1h_structure", "15m_structure",
+  "wave_structure", "wave_valid", "harmonic", "indicator_signals", "honest_reason",
+  "hist_win_rate", "autodream_lesson",
+]
+
+
+def _ordered_columns(rows: List[dict]) -> List[str]:
+  seen: set[str] = set()
+  out: list[str] = []
+  for c in COMPLETE_SETUP_COLUMNS:
+    if any(c in row for row in rows):
+      out.append(c)
+      seen.add(c)
+  for row in rows:
+    for k in row:
+      if k not in seen:
+        out.append(k)
+        seen.add(k)
+  return out
+
+
+def save_complete_setups_csv(results: List[dict], path: str) -> None:
+  """All setups — executable, monitor, and not_actionable — full confluence columns."""
   rows: List[dict] = []
   for r in results:
     rows.extend(build_setup_rows(r))
   if not rows:
     return
+  cols = _ordered_columns(rows)
   with open(path, "w", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=_collect_keys(rows), extrasaction="ignore")
+    w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
     w.writeheader()
     w.writerows(rows)
+
+
+def save_setups_csv(results: List[dict], path: str) -> None:
+  save_complete_setups_csv(results, path)
 
 
 def save_full_html(results: List[dict], path: str, title: str = "Full Analysis") -> None:
@@ -221,86 +268,159 @@ def save_full_html(results: List[dict], path: str, title: str = "Full Analysis")
   Path(path).write_text(doc)
 
 
+def save_setups_html(results: List[dict], path: str, title: str = "All Trade Setups") -> None:
+  """HTML table — every setup row, color-coded by status (exec / monitor / skip)."""
+  rows: List[dict] = []
+  for r in results:
+    rows.extend(build_setup_rows(r))
+  if not rows:
+    Path(path).write_text(f"<html><body><h1>{html.escape(title)}</h1><p>No data</p></body></html>")
+    return
+
+  cols = _ordered_columns(rows)
+
+  def cell(v: Any) -> str:
+    if v is None:
+      return ""
+    s = str(v)
+    return html.escape(s[:100] + ("…" if len(s) > 100 else ""))
+
+  def row_class(status: str) -> str:
+    if status == "executable":
+      return ' class="exec"'
+    if status == "monitor":
+      return ' class="mon"'
+    if status == "not_actionable":
+      return ' class="skip"'
+    return ""
+
+  thead = "".join(f"<th>{html.escape(c)}</th>" for c in cols)
+  body = []
+  for r in sorted(rows, key=lambda x: (
+    {"executable": 0, "monitor": 1, "not_actionable": 2}.get(x.get("status", ""), 3),
+    x.get("symbol", ""),
+    x.get("style", ""),
+  )):
+    cells = "".join(f"<td>{cell(r.get(c))}</td>" for c in cols)
+    body.append(f"<tr{row_class(r.get('status', ''))}>{cells}</tr>")
+
+  n_exec = sum(1 for r in rows if r.get("status") == "executable")
+  n_mon = sum(1 for r in rows if r.get("status") == "monitor")
+  n_skip = sum(1 for r in rows if r.get("status") == "not_actionable")
+
+  doc = f"""<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8"/>
+<title>{html.escape(title)}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; margin: 1rem; }}
+  h1 {{ font-size: 1.25rem; }}
+  .legend span {{ margin-right: 1rem; padding: 2px 8px; border-radius: 3px; }}
+  .legend .exec {{ background: #e8f5e9; }}
+  .legend .mon {{ background: #fff8e1; }}
+  .legend .skip {{ background: #ffebee; }}
+  .wrap {{ overflow-x: auto; max-width: 100%; border: 1px solid #ccc; margin-top: 1rem; }}
+  table {{ border-collapse: collapse; font-size: 10px; white-space: nowrap; }}
+  th, td {{ border: 1px solid #ddd; padding: 3px 5px; text-align: left; }}
+  th {{ background: #1a1a2e; color: #eee; position: sticky; top: 0; z-index: 1; }}
+  tr.exec {{ background: #e8f5e9; }}
+  tr.mon {{ background: #fff8e1; }}
+  tr.skip {{ background: #fce4ec; color: #555; }}
+</style>
+</head><body>
+<h1>{html.escape(title)}</h1>
+<p class="legend">
+  <span class="exec">executable: {n_exec}</span>
+  <span class="mon">monitor: {n_mon}</span>
+  <span class="skip">not_actionable: {n_skip}</span>
+  · {len(rows)} total rows
+</p>
+<div class="wrap"><table>
+<thead><tr>{thead}</tr></thead>
+<tbody>{"".join(body)}</tbody>
+</table></div>
+</body></html>"""
+  Path(path).write_text(doc)
+
+
 def save_trade_setups_markdown(
   results: List[dict],
   path: str,
   title: str = "Trade Setups",
 ) -> None:
-  """Human-readable trade setups table — visible in repo at reports/TRADE_SETUPS.md."""
+  """ALL setups (executable + monitor + not_actionable) with confluence columns."""
   rows: List[dict] = []
   for r in results:
     rows.extend(build_setup_rows(r))
 
-  active = [r for r in rows if r.get("status") in ("executable", "monitor")]
-  all_rows = active if active else [r for r in rows if r.get("status") != "error"]
+  all_rows = [r for r in rows if r.get("status") != "error"]
+  n_exec = sum(1 for r in all_rows if r.get("status") == "executable")
+  n_mon = sum(1 for r in all_rows if r.get("status") == "monitor")
+  n_skip = sum(1 for r in all_rows if r.get("status") == "not_actionable")
 
   ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-  lines = [
-    f"# {title}",
-    "",
-    f"Updated: **{ts}** · {len(results)} pairs · {len(all_rows)} setup rows",
-    "",
-    "> Full interactive table: `output/latest_analysis.html` (after batch run)",
-    "> CSV: `output/latest_setups.csv`",
-    "",
-    "## Trade setups (scalp / day / swing / long-term)",
-    "",
-    "| Symbol | Price | Style | Status | Tier | Ready | Dir | Entry | Stop | TP1 | TP2 | RR | Signals | Reason |",
-    "|--------|-------|-------|--------|------|-------|-----|-------|------|-----|-----|-----|---------|--------|",
-  ]
 
-  def _cell(v: Any, n: int = 40) -> str:
+  def _cell(v: Any, n: int = 35) -> str:
     if v is None:
       return ""
     s = str(v).replace("|", "/")
     return s[:n] + ("…" if len(s) > n else "")
 
-  for r in sorted(all_rows, key=lambda x: (x.get("symbol", ""), x.get("style", ""))):
-    signals = r.get("indicator_signals") or ""
-    if isinstance(signals, str) and not signals:
-      signals = r.get("harmonic", "")
-    lines.append(
-      f"| {r.get('symbol', '')} | {r.get('price', '')} | {r.get('style', '')} | "
-      f"{r.get('status', '')} | {r.get('execution_tier', '')} | {r.get('readiness_score', '')} | "
-      f"{r.get('direction', '')} | {r.get('entry', '')} | "
-      f"{r.get('stop_loss', '')} | {r.get('tp1', '')} | {r.get('tp2', '')} | "
-      f"{r.get('rr_tp2', '')} | {_cell(signals, 25)} | "
-      f"{_cell(r.get('honest_reason', ''), 50)} |"
-    )
+  md_cols = [
+    "symbol", "price", "style", "status", "execution_tier", "readiness_score",
+    "direction", "entry", "stop_loss", "tp1", "rr_tp2",
+    "1w_structure", "1d_structure", "4h_structure", "1h_structure", "15m_structure",
+    "harmonics_in_zone", "consensus", "in_kill_zone", "verdict", "honest_reason",
+  ]
 
-  lines.extend(["", "## Primary setup per pair", ""])
-  lines.append("| Symbol | Price | Primary | Status | Dir | Verdict | Outcome summary |")
-  lines.append("|--------|-------|---------|--------|-----|---------|-----------------|")
+  lines = [
+    f"# {title}",
+    "",
+    f"Updated: **{ts}** · {len(results)} pairs · **{len(all_rows)} setup rows**",
+    "",
+    f"| Status | Count |",
+    f"|--------|-------|",
+    f"| executable | {n_exec} |",
+    f"| monitor | {n_mon} |",
+    f"| not_actionable | {n_skip} |",
+    "",
+    "> CSV (all columns): `output/latest_setups_complete.csv`",
+    "> HTML: `output/latest_setups.html` · Wide per-pair: `output/latest_analysis.html`",
+    "",
+    "## All trade setups — executable AND non-executable",
+    "",
+    "| " + " | ".join(md_cols) + " |",
+    "| " + " | ".join(["---"] * len(md_cols)) + " |",
+  ]
 
-  for r in results:
-    if r.get("status") == "incomplete":
-      continue
-    oc = r.get("step8_outcomes", {})
-    hs = oc.get("honest_summary", {})
-    price = r.get("step1_htf_bias", {}).get("wave_C_current", "")
-    ex = r.get("executive_decision", {})
-    lines.append(
-      f"| {r.get('symbol', '')} | {price} | {hs.get('primary_style', '')} | "
-      f"{hs.get('primary_status', '')} | {hs.get('primary_direction', '')} | "
-      f"{ex.get('verdict', '')} | {_cell(hs.get('truth', ''), 60)} |"
-    )
+  for r in sorted(all_rows, key=lambda x: (
+    {"executable": 0, "monitor": 1, "not_actionable": 2}.get(x.get("status", ""), 3),
+    x.get("symbol", ""),
+    x.get("style", ""),
+  )):
+    lines.append("| " + " | ".join(_cell(r.get(c), 28) for c in md_cols) + " |")
 
   Path(path).parent.mkdir(parents=True, exist_ok=True)
   Path(path).write_text("\n".join(lines) + "\n")
 
 
 def export_all_reports(results: List[dict], prefix: str, title: str) -> dict:
-  """Write full CSV, setups CSV, HTML, and reports/TRADE_SETUPS.md."""
+  """Write full CSV, complete setups CSV, HTML tables, and reports/TRADE_SETUPS.md."""
+  setups_prefix = prefix.replace("_full_", "_setups_")
   paths = {
     "full_csv": f"{prefix}.csv",
-    "setups_csv": f"{prefix.replace('_full_', '_setups_')}.csv",
+    "setups_csv": f"{setups_prefix}.csv",
+    "setups_complete_csv": "output/latest_setups_complete.csv",
     "full_html": f"{prefix}.html",
+    "setups_html": "output/latest_setups.html",
     "setups_md": "reports/TRADE_SETUPS.md",
   }
   save_full_csv(results, paths["full_csv"])
-  save_setups_csv(results, paths["setups_csv"])
+  save_complete_setups_csv(results, paths["setups_csv"])
+  save_complete_setups_csv(results, paths["setups_complete_csv"])
   save_full_html(results, paths["full_html"], title=title)
-  save_trade_setups_markdown(results, paths["setups_md"], title=title.replace("— Full Analysis", "— Trade Setups"))
+  save_setups_html(results, paths["setups_html"], title=f"{title} — All Setups")
+  save_trade_setups_markdown(results, paths["setups_md"], title=title.replace("— Full Analysis", "— All Trade Setups"))
   return paths
 
 

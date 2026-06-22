@@ -133,6 +133,8 @@ def run_top_crypto_batch(
   print(f"  FULL:     {full_exports['full_csv']}")
   print(f"  HTML:     {full_exports['full_html']}")
   print(f"  Setups:   {full_exports['setups_csv']}")
+  print(f"  Complete: {full_exports.get('setups_complete_csv', 'output/latest_setups_complete.csv')}")
+  print(f"  Setups HTML:{full_exports.get('setups_html', 'output/latest_setups.html')}")
   print(f"  Setups MD:{full_exports.get('setups_md', 'reports/TRADE_SETUPS.md')}")
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
