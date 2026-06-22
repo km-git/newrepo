@@ -73,6 +73,7 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
     "full_html": str(out / "latest_analysis.html"),
     "full_csv": str(out / "latest_analysis.csv"),
     "setups_csv": str(out / "latest_setups.csv"),
+    "setups_md": "reports/TRADE_SETUPS.md",
   }
 
   src_html = meta.get("full_html")
@@ -86,6 +87,11 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
   if src_setups and Path(src_setups).exists():
     shutil.copy2(src_setups, stable["setups_csv"])
 
+  # setups markdown written by export_all_reports; ensure reports path exists in doc
+  setups_md = Path("reports/TRADE_SETUPS.md")
+  if setups_md.exists():
+    stable["setups_md"] = str(setups_md.resolve())
+
   paths_doc = {
     "updated": _iso(_utcnow()),
     "batch_timestamp": meta.get("timestamp_utc"),
@@ -93,6 +99,7 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
     "full_html": stable["full_html"],
     "full_csv": stable["full_csv"],
     "setups_csv": stable["setups_csv"],
+    "setups_md": stable.get("setups_md"),
     "outcomes_csv": meta.get("outcomes_csv"),
     "detailed_csv": meta.get("detailed_csv"),
     "json": meta.get("json"),

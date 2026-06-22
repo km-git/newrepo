@@ -8,6 +8,10 @@ build/
 data/cache/
 output/
 output/autodream/
+!reports/
+reports/*
+!reports/README.md
+!reports/TRADE_SETUPS.md
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/

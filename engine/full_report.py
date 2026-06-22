@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import html
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -213,16 +214,82 @@ def save_full_html(results: List[dict], path: str, title: str = "Full Analysis")
   Path(path).write_text(doc)
 
 
+def save_trade_setups_markdown(
+  results: List[dict],
+  path: str,
+  title: str = "Trade Setups",
+) -> None:
+  """Human-readable trade setups table — visible in repo at reports/TRADE_SETUPS.md."""
+  rows: List[dict] = []
+  for r in results:
+    rows.extend(build_setup_rows(r))
+
+  active = [r for r in rows if r.get("status") in ("executable", "monitor")]
+  all_rows = active if active else [r for r in rows if r.get("status") != "error"]
+
+  ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+  lines = [
+    f"# {title}",
+    "",
+    f"Updated: **{ts}** · {len(results)} pairs · {len(all_rows)} setup rows",
+    "",
+    "> Full interactive table: `output/latest_analysis.html` (after batch run)",
+    "> CSV: `output/latest_setups.csv`",
+    "",
+    "## Trade setups (scalp / day / swing / long-term)",
+    "",
+    "| Symbol | Price | Style | Status | Dir | Entry | Stop | TP1 | TP2 | RR | Harmonic | Reason |",
+    "|--------|-------|-------|--------|-----|-------|------|-----|-----|-----|----------|--------|",
+  ]
+
+  def _cell(v: Any, n: int = 40) -> str:
+    if v is None:
+      return ""
+    s = str(v).replace("|", "/")
+    return s[:n] + ("…" if len(s) > n else "")
+
+  for r in sorted(all_rows, key=lambda x: (x.get("symbol", ""), x.get("style", ""))):
+    lines.append(
+      f"| {r.get('symbol', '')} | {r.get('price', '')} | {r.get('style', '')} | "
+      f"{r.get('status', '')} | {r.get('direction', '')} | {r.get('entry', '')} | "
+      f"{r.get('stop_loss', '')} | {r.get('tp1', '')} | {r.get('tp2', '')} | "
+      f"{r.get('rr_tp2', '')} | {_cell(r.get('harmonic', ''), 20)} | "
+      f"{_cell(r.get('honest_reason', ''), 50)} |"
+    )
+
+  lines.extend(["", "## Primary setup per pair", ""])
+  lines.append("| Symbol | Price | Primary | Status | Dir | Verdict | Outcome summary |")
+  lines.append("|--------|-------|---------|--------|-----|---------|-----------------|")
+
+  for r in results:
+    if r.get("status") == "incomplete":
+      continue
+    oc = r.get("step8_outcomes", {})
+    hs = oc.get("honest_summary", {})
+    price = r.get("step1_htf_bias", {}).get("wave_C_current", "")
+    ex = r.get("executive_decision", {})
+    lines.append(
+      f"| {r.get('symbol', '')} | {price} | {hs.get('primary_style', '')} | "
+      f"{hs.get('primary_status', '')} | {hs.get('primary_direction', '')} | "
+      f"{ex.get('verdict', '')} | {_cell(hs.get('truth', ''), 60)} |"
+    )
+
+  Path(path).parent.mkdir(parents=True, exist_ok=True)
+  Path(path).write_text("\n".join(lines) + "\n")
+
+
 def export_all_reports(results: List[dict], prefix: str, title: str) -> dict:
-  """Write full CSV, setups CSV, and HTML. prefix like output/top50_full_20260622."""
+  """Write full CSV, setups CSV, HTML, and reports/TRADE_SETUPS.md."""
   paths = {
     "full_csv": f"{prefix}.csv",
     "setups_csv": f"{prefix.replace('_full_', '_setups_')}.csv",
     "full_html": f"{prefix}.html",
+    "setups_md": "reports/TRADE_SETUPS.md",
   }
   save_full_csv(results, paths["full_csv"])
   save_setups_csv(results, paths["setups_csv"])
   save_full_html(results, paths["full_html"], title=title)
+  save_trade_setups_markdown(results, paths["setups_md"], title=title.replace("— Full Analysis", "— Trade Setups"))
   return paths
 
 
@@ -232,7 +299,7 @@ def regenerate_from_json(json_path: str, output_dir: str = "output") -> dict:
   stem = Path(json_path).stem.replace("_analysis", "_full")
   prefix = str(Path(output_dir) / stem)
   n = len(results)
-  paths = export_all_reports(results, prefix, title=f"Full Analysis — {n} pairs")
+  paths = export_all_reports(results, prefix, title=f"Top {n} Crypto — Trade Setups")
   paths["source_json"] = json_path
   paths["pairs"] = n
   paths["has_step8"] = sum(1 for r in results if r.get("step8_outcomes")) 

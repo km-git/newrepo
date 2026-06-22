@@ -57,6 +57,9 @@ def main() -> None:
     print(f"  FULL (all confluences + 4 setups/pair): {full.resolve()}")
   if html:
     print(f"  HTML (browser view):                   {html.resolve()}")
+  md = Path("reports/TRADE_SETUPS.md")
+  if md.exists():
+    print(f"  TRADE SETUPS (in repo):                {md.resolve()}")
   if setups:
     print(f"  SETUPS (one row per pair×style):       {setups.resolve()}")
   if detailed:

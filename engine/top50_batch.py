@@ -115,6 +115,7 @@ def run_top_crypto_batch(
     "outcomes_csv": str(outcomes_path),
     "full_csv": full_exports["full_csv"],
     "setups_csv": full_exports["setups_csv"],
+    "setups_md": full_exports.get("setups_md"),
     "full_html": full_exports["full_html"],
     "report_md": str(markdown_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
@@ -132,6 +133,7 @@ def run_top_crypto_batch(
   print(f"  FULL:     {full_exports['full_csv']}")
   print(f"  HTML:     {full_exports['full_html']}")
   print(f"  Setups:   {full_exports['setups_csv']}")
+  print(f"  Setups MD:{full_exports.get('setups_md', 'reports/TRADE_SETUPS.md')}")
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
   print(f"  Status:  {by_status}")
