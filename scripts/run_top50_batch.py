@@ -6,6 +6,10 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from pathlib import Path
+
+# Allow running as script from repo root
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from engine.top50_batch import DEFAULT_TFS, run_top_crypto_batch
 

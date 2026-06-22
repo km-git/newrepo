@@ -6,6 +6,7 @@ dist/
 build/
 .cache/
 data/cache/
+output/
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/
