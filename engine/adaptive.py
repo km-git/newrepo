@@ -13,6 +13,7 @@ from cache import build_tool_calls_log, compact_summary
 from cache.dedup import dedup_tool_calls
 from cache.disk_cache import get_cache
 from core.atr import compute_atr14, median_daily_range
+from core.consensus import build_consensus
 from core.correction import detect_abc, detect_diagonal
 from core.fib_zone import compute_prior_decline_fibs, compute_tight_kill_zone
 from core.harmonic import detect_harmonics
@@ -222,7 +223,11 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       print("[cache] HIT monte_carlo")
     print(f"[mc] empirical_probability={mc_result['empirical_probability']}")
 
-  # STEP 6: Executive decision — expert trader always finds a path
+  # STEP 6: Multi-engine EW consensus (GitHub tools + internal)
+  consensus = build_consensus(data, adaptive, symbol, timeframes=["1d", "4h", "15m"])
+  stages.append(("wave_consensus", {"symbol": symbol}, compact_summary(consensus)))
+
+  # STEP 7: Executive decision — expert trader always finds a path
   decision = executive_decide(
     symbol=symbol,
     data=data,
@@ -238,11 +243,12 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     bear_count=bear_count,
     violations_sample=violations_sample,
     mc_result=mc_result,
+    consensus=consensus,
   )
   status = decision["status"]
   trade = decision["trade_setup"]
   executive = decision["executive_decision"]
-  print(f"[step6] executive verdict={executive['verdict']} status={status} action={trade['action']}")
+  print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
   stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
 
   reasoning = (
@@ -251,6 +257,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     f"conviction={executive['conviction']}, size={executive['position_size_pct']}%. "
     f"HTF={htf_class['state']}, zone_dist={_distance_pct(current_price, kz_low, kz_high):.1f}%, "
     f"harmonics={len(harmonic_overlaps)}, 15m_valid={execution_passes}. "
+    f"EW consensus={consensus['consensus_direction']} ({consensus['agreement_pct']}% agree, "
+    f"score={consensus['consensus_score']}). "
     f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))}"
   )
 
@@ -279,6 +287,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "bear_impulse_count": bear_count,
       "violations_sample": violations_sample,
     },
+    "step6_wave_consensus": consensus,
     "trade_setup": trade,
     "executive_decision": executive,
     "honesty_audit": {
@@ -288,7 +297,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "executive_mode": True,
       "always_actionable": True,
       "structural_gaps_disclosed": executive.get("structural_gaps", []),
-      "computational_provenance": "engine/executive.py, core/impulse.py, core/harmonic.py",
+      "computational_provenance": "core/consensus.py, engine/executive.py, github EW tools",
     },
     "tool_calls_log": tool_log,
     "reasoning_trace": reasoning,

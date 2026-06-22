@@ -114,6 +114,41 @@ def _staged_legs(
   return legs
 
 
+def _apply_consensus(
+  direction: str,
+  confidence: float,
+  consensus: Optional[dict],
+  execution_passes: bool,
+  structural_gaps: List[str],
+) -> tuple[str, float, str]:
+  """Blend executive direction/confidence with multi-engine EW consensus."""
+  if not consensus:
+    return direction, confidence, "none"
+
+  c_dir = consensus.get("consensus_direction", "NEUTRAL")
+  boost = consensus.get("confidence_boost", 0.0)
+  agreement = consensus.get("agreement_pct", 0)
+  note_parts = [f"{consensus.get('engines_valid', 0)}/{consensus.get('engines_run', 0)} engines valid"]
+
+  if c_dir in ("BULL", "BEAR"):
+    if not execution_passes:
+      direction = c_dir
+      note_parts.append(f"direction from consensus ({agreement}% agree)")
+    elif direction != c_dir and consensus.get("consensus_score", 0) >= 0.55:
+      structural_gaps.append(f"engine split: execution={direction} vs consensus={c_dir}")
+      note_parts.append("partial divergence")
+    else:
+      note_parts.append("execution aligns with consensus")
+
+  if agreement >= 70:
+    boost += 0.05
+  if consensus.get("conviction") == "high":
+    boost += 0.03
+
+  confidence = min(0.85, confidence + boost)
+  return direction, confidence, "; ".join(note_parts)
+
+
 def executive_decide(
   symbol: str,
   data: Dict[str, pd.DataFrame],
@@ -129,6 +164,7 @@ def executive_decide(
   bear_count: int,
   violations_sample: List[str],
   mc_result: Optional[dict] = None,
+  consensus: Optional[dict] = None,
 ) -> dict:
   """
   Expert trader decision maker. Never returns no_trade — always a playbook.
@@ -156,27 +192,41 @@ def executive_decide(
     structural_gaps.append("no harmonic PRZ overlap yet")
   if violations_sample:
     structural_gaps.append(f"wave violations: {violations_sample[0]}")
+  if consensus and consensus.get("divergences"):
+    structural_gaps.extend(consensus["divergences"][:2])
+
+  consensus_note = ""
+  exec_consensus = consensus or {}
 
   # --- Tier 1: Full confluence — execute now ---
   if in_zone and execution_passes:
     confidence = min(0.85, 0.70 + mc_prob * 0.15 + (0.05 if harmonic_overlaps else 0))
+    direction, confidence, consensus_note = _apply_consensus(
+      direction, confidence, consensus, execution_passes, structural_gaps
+    )
+    levels = _build_levels(direction, kz_low, kz_high, atr_15m, current)
     action = f"execute_{levels['action_base']}"
+    conviction = "high" if exec_consensus.get("conviction") in ("high", "medium") else "high"
     return {
       "status": "execute",
       "trade_setup": {
         "action": action,
         **{k: levels[k] for k in ("entry_zone", "stop_loss", "take_profit_1", "take_profit_2", "risk_reward")},
         "confidence": round(confidence, 2),
-        "reason": f"Full confluence: HTF {htf_class['state']}, 15m {direction} impulse validated, in kill zone",
+        "reason": (
+          f"Full confluence: HTF {htf_class['state']}, 15m {direction} impulse, in zone. "
+          f"EW consensus {exec_consensus.get('agreement_pct', 0)}% ({consensus_note})"
+        ),
         "instruction": "Execute full position at market or limit inside entry zone. Trail stop after TP1.",
       },
       "executive_decision": {
         "verdict": "GO",
-        "conviction": "high",
+        "conviction": conviction,
         "direction": direction,
         "position_size_pct": 100,
         "playbook": "Enter now. Manage risk with defined stop. Scale out at TP1/TP2.",
         "structural_gaps": [],
+        "consensus_summary": exec_consensus,
         "contingencies": [
           {"if": "15m closes below stop", "then": "exit full position, reassess HTF structure"},
           {"if": "TP1 hit", "then": "move stop to breakeven, trail remainder"},
@@ -186,8 +236,11 @@ def executive_decide(
 
   # --- Tier 2: In zone but impulse not validated — conditional execute ---
   if in_zone and not execution_passes:
-    fib_levels = _build_levels(direction, fib_low, fib_high, atr_15m, current)
     confidence = min(0.72, 0.50 + mc_prob * 0.12)
+    direction, confidence, consensus_note = _apply_consensus(
+      direction, confidence, consensus, execution_passes, structural_gaps
+    )
+    levels = _build_levels(direction, kz_low, kz_high, atr_15m, current)
     return {
       "status": "conditional_execute",
       "trade_setup": {
@@ -198,7 +251,9 @@ def executive_decide(
         "take_profit_2": levels["take_profit_2"],
         "risk_reward": levels["risk_reward"],
         "confidence": round(confidence, 2),
-        "reason": f"In kill zone; awaiting 15m {direction} impulse confirmation — deploy 50% now",
+        "reason": (
+          f"In kill zone; 15m {direction} pending — 50% probe. Consensus: {consensus_note}"
+        ),
         "instruction": "Place 50% size limit inside zone. Add remaining 50% on 15m impulse close confirming direction.",
         "trigger_zone": levels["entry_zone"],
       },
@@ -209,6 +264,7 @@ def executive_decide(
         "position_size_pct": 50,
         "playbook": "Price is at the zone. Probe with half size; add on micro-structure confirmation.",
         "structural_gaps": structural_gaps,
+        "consensus_summary": exec_consensus,
         "contingencies": [
           {"if": f"15m forms valid {direction} impulse", "then": "add to full size"},
           {"if": "R1/R2/R3 fails again on next sweep", "then": "hold probe only, tighten stop to 0.5 ATR"},
@@ -221,29 +277,35 @@ def executive_decide(
   if harmonic_overlaps and not in_zone:
     best = harmonic_overlaps[0]
     prz = [best["prz_low"], best["prz_high"]]
-    h_levels = _build_levels(direction, prz[0], prz[1], atr_15m, current)
     confidence = min(0.68, 0.48 + len(harmonic_overlaps) * 0.05)
+    direction, confidence, consensus_note = _apply_consensus(
+      direction, confidence, consensus, execution_passes, structural_gaps
+    )
+    h_levels = _build_levels(direction, prz[0], prz[1], atr_15m, current)
     return {
       "status": "active_monitor",
       "trade_setup": {
-        "action": f"prepare_{levels['action_base']}",
+        "action": f"prepare_{h_levels['action_base']}",
         "entry_zone": prz,
         "stop_loss": h_levels["stop_loss"],
         "take_profit_1": h_levels["take_profit_1"],
         "take_profit_2": h_levels["take_profit_2"],
         "risk_reward": h_levels["risk_reward"],
         "confidence": round(confidence, 2),
-        "reason": f"{best['pattern']} harmonic on {best['tf']} — PRZ active, price en route",
+        "reason": (
+          f"{best['pattern']} on {best['tf']} — PRZ en route. EW consensus: {consensus_note}"
+        ),
         "trigger_zone": prz,
         "instruction": f"Place GTC limit orders in PRZ [{prz[0]:.0f}-{prz[1]:.0f}]. Cancel if 1D close invalidates {htf_class['bias']} bias.",
       },
       "executive_decision": {
         "verdict": "STANDBY_ORDERS",
-        "conviction": "medium",
+        "conviction": exec_consensus.get("conviction", "medium"),
         "direction": direction,
         "position_size_pct": 75,
         "playbook": f"Harmonic {best['pattern']} defines the entry. Set orders; let price come to you.",
         "structural_gaps": structural_gaps,
+        "consensus_summary": exec_consensus,
         "contingencies": [
           {"if": "price enters PRZ with 15m rejection wick", "then": "execute 75% size"},
           {"if": "price blows through PRZ without reaction", "then": "cancel limits, switch to staged fib plan"},
@@ -253,13 +315,17 @@ def executive_decide(
 
   # --- Tier 4: No ideal setup — staged entry using fib + kill zone pathway ---
   staged = _staged_legs(direction, current, kz_low, kz_high, fib_low, fib_high, atr_15m)
-  primary = _build_levels(direction, fib_low, fib_high, atr_15m, current)
   confidence = min(0.62, 0.38 + mc_prob * 0.15 + (0.08 if htf_class["state"] != "choppy" else 0))
+  direction, confidence, consensus_note = _apply_consensus(
+    direction, confidence, consensus, execution_passes, structural_gaps
+  )
+  primary = _build_levels(direction, fib_low, fib_high, atr_15m, current)
+  staged = _staged_legs(direction, current, kz_low, kz_high, fib_low, fib_high, atr_15m)
 
   return {
     "status": "staged_entry",
     "trade_setup": {
-      "action": f"scale_{levels['action_base']}",
+      "action": f"scale_{primary['action_base']}",
       "entry_zone": primary["entry_zone"],
       "stop_loss": primary["stop_loss"],
       "take_profit_1": primary["take_profit_1"],
@@ -267,8 +333,9 @@ def executive_decide(
       "risk_reward": primary["risk_reward"],
       "confidence": round(confidence, 2),
       "reason": (
-        f"HTF {htf_class['state']} → {direction} bias via {fib_source}. "
-        f"Scale in across {len(staged)} levels toward kill zone [{kz_low:.0f}-{kz_high:.0f}]"
+        f"HTF {htf_class['state']} → {direction} via {fib_source}. "
+        f"EW consensus {exec_consensus.get('agreement_pct', 0)}% ({consensus_note}). "
+        f"Scale {len(staged)} legs toward [{kz_low:.0f}-{kz_high:.0f}]"
       ),
       "trigger_zone": [round(kz_low, 2), round(kz_high, 2)],
       "instruction": (
@@ -278,16 +345,17 @@ def executive_decide(
     },
     "executive_decision": {
       "verdict": "STAGED_GO",
-      "conviction": "moderate",
+      "conviction": exec_consensus.get("conviction", "moderate"),
       "direction": direction,
       "position_size_pct": 100,
       "position_model": "scale_in",
       "scale_legs": staged,
       "playbook": (
-        f"Expert override: no perfect confluence, but {direction} edge from HTF structure + fib pathway. "
-        f"Execute systematically — probe near {current:.0f}, accumulate at fib, target kill zone."
+        f"Expert path: {direction} edge from HTF + fib + {exec_consensus.get('engines_valid', 0)} EW engines. "
+        f"Probe near {current:.0f}, accumulate at fib, target kill zone."
       ),
       "structural_gaps": structural_gaps,
+      "consensus_summary": exec_consensus,
       "contingencies": [
         {"if": "leg 1 fills and price reverses 1 ATR against", "then": "pause legs 2-3, reassess"},
         {"if": "harmonic pattern emerges", "then": "consolidate entries into PRZ"},
@@ -297,7 +365,7 @@ def executive_decide(
       "alternative_path": {
         "momentum_breakout": {
           "trigger": round(current + atr_1d * 0.5, 2) if direction == "BULL" else round(current - atr_1d * 0.5, 2),
-          "action": f"chase_{levels['action_base']}_on_break",
+          "action": f"chase_{primary['action_base']}_on_break",
           "size_pct": 30,
           "note": "If price rejects fibs and breaks 1D range, chase with reduced size",
         },

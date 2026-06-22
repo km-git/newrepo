@@ -46,6 +46,19 @@ ew_tool.py                 # CLI entry point
 └── tests/                 # R1/R2/R3 unit tests
 ```
 
+## Multi-Engine EW Consensus (Step 6)
+
+Aggregates signals from GitHub Elliott Wave libraries for additional confidence:
+
+| Engine | Source | Role |
+|--------|--------|------|
+| `internal_1d/4h/15m` | `core/impulse.py` | Strict R1/R2/R3 per timeframe |
+| `ewa_impulse` | [ElliottWaveAnalyzer](https://github.com/drstevendev/ElliottWaveAnalyzer) | Impulse + leading diagonal scan |
+| `ewa_correction` | ElliottWaveAnalyzer | ABC correction from swing high |
+| `taew_fib` | [python-taew](https://github.com/DrEdwardPCB/python-taew) | Wave 2–5 Fibonacci validation |
+
+Output `step6_wave_consensus` includes `consensus_direction`, `agreement_pct`, per-engine votes, and divergences. Executive confidence is boosted when engines agree.
+
 ## Output Status (Executive Mode)
 
 The agent behaves as an expert trader and **always produces an actionable plan**. Structural gaps are disclosed but never block a decision.

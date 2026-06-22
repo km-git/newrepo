@@ -20,6 +20,8 @@ clone_if_missing "https://github.com/DrEdwardPCB/python-taew.git" "$ROOT/libs/py
 
 pip install -e "$ROOT/libs/python-taew" -e "$ROOT/libs/pyharmonics"
 pip install -r "$ROOT/requirements.txt"
+# ElliottWaveAnalyzer runtime deps
+pip install numba plotly kaleido 2>/dev/null || pip install numba
 
 python3 -c "from taew import wave2_fibonacci_check; print('taew OK')"
 python3 -c "from pyharmonics.technicals import OHLCTechnicals; print('pyharmonics OK')"

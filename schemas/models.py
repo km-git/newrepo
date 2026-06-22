@@ -71,6 +71,29 @@ class ExecutiveDecision(BaseModel):
   position_model: Optional[str] = None
   scale_legs: Optional[List[Dict[str, Any]]] = None
   alternative_path: Optional[Dict[str, Any]] = None
+  consensus_summary: Optional[Dict[str, Any]] = None
+
+
+class EngineVote(BaseModel):
+  engine: str
+  source: str
+  direction: str
+  valid: bool
+  confidence: float
+  detail: str
+
+
+class WaveConsensus(BaseModel):
+  consensus_direction: str
+  consensus_score: float
+  agreement_pct: float
+  conviction: str
+  confidence_boost: float
+  engines_run: int
+  engines_valid: int
+  votes: List[EngineVote]
+  divergences: List[str] = Field(default_factory=list)
+  github_tools_used: List[str] = Field(default_factory=list)
 
 
 class ToolCall(BaseModel):
@@ -88,6 +111,7 @@ class ElliottWaveOutput(BaseModel):
   step3_kill_zone: KillZone
   step4_harmonic_overlap: List[HarmonicPattern]
   step5_execution_validation: ExecutionValidation
+  step6_wave_consensus: WaveConsensus
   trade_setup: TradeSetup
   executive_decision: ExecutiveDecision
   honesty_audit: Dict[str, Any]
