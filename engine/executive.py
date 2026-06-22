@@ -165,6 +165,8 @@ def executive_decide(
   violations_sample: List[str],
   mc_result: Optional[dict] = None,
   consensus: Optional[dict] = None,
+  expert_direction: Optional[dict] = None,
+  cycle_confluence: Optional[dict] = None,
 ) -> dict:
   """
   Expert trader decision maker. Never returns no_trade — always a playbook.
@@ -174,9 +176,23 @@ def executive_decide(
   atr_15m = compute_atr14(data["15m"]) if "15m" in data else compute_atr14(data["1d"])
   atr_1d = compute_atr14(data["1d"])
 
-  direction = exec_direction if execution_passes else _bias_to_direction(
-    htf_class.get("bias", "neutral"), bull_count, bear_count
-  )
+  # Expert EW + Hurst + sentinel stack — always resolves clear BULL/BEAR
+  expert = expert_direction or {}
+  if expert.get("direction") in ("BULL", "BEAR"):
+    direction = expert["direction"]
+    expert_conf = expert.get("confidence", 0.5)
+  elif execution_passes:
+    direction = exec_direction
+    expert_conf = 0.0
+  else:
+    direction = _bias_to_direction(
+      htf_class.get("bias", "neutral"), bull_count, bear_count
+    )
+    expert_conf = 0.0
+
+  if execution_passes and exec_direction in ("BULL", "BEAR") and exec_direction != direction:
+    # 15m impulse disagrees with expert stack — note but keep expert bias
+    pass
 
   fib_low, fib_high, fib_source = _nearest_fib_levels(current, prior_fibs, direction)
   zone_dist = _distance_pct(current, kz_low, kz_high)
@@ -192,6 +208,14 @@ def executive_decide(
     structural_gaps.append("no harmonic PRZ overlap yet")
   if violations_sample:
     structural_gaps.append(f"wave violations: {violations_sample[0]}")
+  if expert.get("honest_note"):
+    structural_gaps.append(expert["honest_note"][:80])
+  if cycle_confluence and cycle_confluence.get("cycle_direction") == direction:
+    pass  # cycle aligned — no gap
+  elif cycle_confluence and cycle_confluence.get("cycle_direction") not in ("NEUTRAL", direction):
+    structural_gaps.append(
+      f"cycle split: hurst={cycle_confluence.get('cycle_direction')} vs expert={direction}"
+    )
   if consensus and consensus.get("divergences"):
     structural_gaps.extend(consensus["divergences"][:2])
 
@@ -200,7 +224,7 @@ def executive_decide(
 
   # --- Tier 1: Full confluence — execute now ---
   if in_zone and execution_passes:
-    confidence = min(0.85, 0.70 + mc_prob * 0.15 + (0.05 if harmonic_overlaps else 0))
+    confidence = min(0.85, 0.70 + mc_prob * 0.15 + (0.05 if harmonic_overlaps else 0) + expert_conf * 0.1)
     direction, confidence, consensus_note = _apply_consensus(
       direction, confidence, consensus, execution_passes, structural_gaps
     )
@@ -215,6 +239,7 @@ def executive_decide(
         "confidence": round(confidence, 2),
         "reason": (
           f"Full confluence: HTF {htf_class['state']}, 15m {direction} impulse, in zone. "
+          f"Expert {expert.get('method', 'ew')} {expert_conf:.0%}. "
           f"EW consensus {exec_consensus.get('agreement_pct', 0)}% ({consensus_note})"
         ),
         "instruction": "Execute full position at market or limit inside entry zone. Trail stop after TP1.",
@@ -224,6 +249,9 @@ def executive_decide(
         "conviction": conviction,
         "direction": direction,
         "position_size_pct": 100,
+        "expert_confidence": expert_conf,
+        "expert_method": expert.get("method"),
+        "cycle_regime": (cycle_confluence or {}).get("primary_regime"),
         "playbook": "Enter now. Manage risk with defined stop. Scale out at TP1/TP2.",
         "structural_gaps": [],
         "consensus_summary": exec_consensus,

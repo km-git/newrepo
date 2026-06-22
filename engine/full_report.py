@@ -73,6 +73,11 @@ def build_full_row(result: dict) -> dict:
     "ew_all_tfs": "Y" if result.get("step2_ew_coverage", {}).get("all_tfs_present") else "N",
     "rsi_stack_bias": result.get("step9_market_confluence", {}).get("multi_tf_rsi", {}).get("bias"),
     "market_boost": result.get("step9_market_confluence", {}).get("confluence_boost"),
+    "expert_direction": result.get("step6c_expert_direction", {}).get("direction"),
+    "expert_confidence": result.get("step6c_expert_direction", {}).get("confidence"),
+    "hurst_regime": result.get("step6b_cycle_confluence", {}).get("primary_regime"),
+    "cycle_phase": result.get("step6b_cycle_confluence", {}).get("primary_phase"),
+    "cycle_direction": result.get("step6b_cycle_confluence", {}).get("cycle_direction"),
     "executive_conviction": ex.get("conviction"),
     "executive_size_pct": ex.get("position_size_pct"),
     "structural_gaps": "; ".join(gaps[:3]) if gaps else "",
@@ -115,6 +120,11 @@ def build_setup_rows(result: dict) -> List[dict]:
     "market_signals": "; ".join(mkt.get("confluence_signals", [])[:2]),
     "executive_verdict": ex.get("verdict"),
     "executive_direction": ex.get("direction"),
+    "expert_direction": result.get("step6c_expert_direction", {}).get("direction"),
+    "expert_confidence": result.get("step6c_expert_direction", {}).get("confidence"),
+    "hurst_regime": result.get("step6b_cycle_confluence", {}).get("primary_regime"),
+    "cycle_phase": result.get("step6b_cycle_confluence", {}).get("primary_phase"),
+    "cycle_direction": result.get("step6b_cycle_confluence", {}).get("cycle_direction"),
     "structural_gaps": "; ".join(ex.get("structural_gaps", [])[:2]),
   })
   for tf in ("1w", "1d", "4h", "1h", "15m"):
@@ -156,8 +166,9 @@ COMPLETE_SETUP_COLUMNS = [
   "direction", "timeframe", "horizon", "entry", "entry_zone_low", "entry_zone_high",
   "dca_10pct", "dca_20pct", "dca_30pct", "dca_40pct", "stop_loss", "tp1", "tp2", "tp3", "rr_tp2",
   "htf_state", "htf_bias", "kill_zone_low", "kill_zone_high", "in_kill_zone", "zone_dist_pct",
-  "harmonics_in_zone", "harmonics_all", "verdict", "executive_verdict", "consensus", "agreement_pct",
-  "15m_valid", "ew_coverage_pct", "rsi_stack_bias", "btc_correlation", "market_boost",
+    "harmonics_in_zone", "harmonics_all", "verdict", "executive_verdict", "consensus", "agreement_pct",
+    "expert_direction", "expert_confidence", "hurst_regime", "cycle_phase", "cycle_direction",
+    "15m_valid", "ew_coverage_pct", "rsi_stack_bias", "btc_correlation", "market_boost",
   "1w_structure", "1d_structure", "4h_structure", "1h_structure", "15m_structure",
   "wave_structure", "wave_valid", "harmonic", "indicator_signals", "honest_reason",
   "hist_win_rate", "autodream_lesson",
@@ -369,6 +380,7 @@ def save_trade_setups_markdown(
   md_cols = [
     "symbol", "price", "style", "status", "execution_tier", "readiness_score",
     "direction", "entry", "stop_loss", "tp1", "rr_tp2",
+    "expert_direction", "expert_confidence", "cycle_direction", "hurst_regime", "cycle_phase",
     "1w_structure", "1d_structure", "4h_structure", "1h_structure", "15m_structure",
     "harmonics_in_zone", "consensus", "in_kill_zone", "verdict", "honest_reason",
   ]

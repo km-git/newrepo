@@ -40,6 +40,8 @@ def resolve_execution_status(
   harmonic_near: bool,
   indicator: dict,
   executive_verdict: str,
+  expert_confidence: float = 0.0,
+  cycle_aligned: bool = False,
 ) -> Tuple[str, str, str]:
   """
   Returns (status, execution_tier, honest_reason).
@@ -61,6 +63,11 @@ def resolve_execution_status(
 
   ind_score = indicator.get("score", 0)
   ind_aligned = indicator.get("aligned", False)
+  # Expert + Hurst cycle stack can align probe when EW impulse is incomplete
+  if expert_confidence >= 0.58 and cycle_aligned and not ind_aligned:
+    ind_aligned = ind_score >= indicator.get("threshold", 58) - 8
+  if expert_confidence >= 0.65 and cycle_aligned:
+    ind_score = min(100, ind_score + 5)
   ind_signals = indicator.get("signals", [])
   near_zone = _near_zone(style, in_zone, zone_dist_pct, executive_verdict)
   exec_ok = executive_verdict in PROBE_VERDICTS
@@ -81,7 +88,7 @@ def resolve_execution_status(
     and exec_ok
     and consensus_ok
     and rr >= min_rr
-    and (harmonic_near or ind_score >= 65 or in_zone)
+    and (harmonic_near or ind_score >= 65 or in_zone or (expert_confidence >= 0.6 and cycle_aligned))
   ):
     missing = []
     if not impulse_valid:
@@ -93,6 +100,8 @@ def resolve_execution_status(
       f"{style} PROBE executable: indicators {ind_score}/100 ({sig}) · "
       f"exec={executive_verdict} · R:R {rr:.2f}"
     )
+    if expert_confidence >= 0.6 and cycle_aligned:
+      reason += " · expert+Hurst aligned"
     if missing:
       reason += f" · use 25-50% probe — {'; '.join(missing)}"
     return "executable", "probe", reason

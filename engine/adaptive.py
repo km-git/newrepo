@@ -14,6 +14,8 @@ from cache.dedup import dedup_tool_calls
 from cache.disk_cache import get_cache
 from core.atr import compute_atr14, median_daily_range
 from core.consensus import build_consensus
+from core.cycle_confluence import build_cycle_confluence
+from core.direction_resolver import resolve_expert_direction
 from core.correction import detect_abc, detect_diagonal
 from core.fib_zone import compute_c_targets, compute_prior_decline_fibs, compute_tight_kill_zone
 from core.harmonic import collect_actionable_harmonics, scan_harmonics
@@ -262,6 +264,43 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   consensus = build_consensus(data, adaptive, symbol, timeframes=["1d", "4h", "15m"])
   stages.append(("wave_consensus", {"symbol": symbol}, compact_summary(consensus)))
 
+  # STEP 6b: Hurst cycles + dominant-cycle phase
+  cycle_confluence = build_cycle_confluence(symbol, data, tfs)
+  stages.append(("cycle_confluence", {"symbol": symbol}, {
+    "cycle_direction": cycle_confluence.get("cycle_direction"),
+    "hurst": cycle_confluence.get("primary_hurst"),
+    "phase": cycle_confluence.get("primary_phase"),
+  }))
+
+  # STEP 9 (early): Supplementary market tools for sentinel stack
+  btc_1d = None
+  if is_crypto and not symbol.upper().startswith("BTC"):
+    try:
+      btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
+    except Exception:
+      pass
+  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
+  stages.append(("market_confluence", {"symbol": symbol},
+                 {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
+
+  # STEP 6c: Expert EW direction — sentinel + Hurst + EW stack (always BULL/BEAR)
+  expert_direction = resolve_expert_direction(
+    wave_structure=wave_structure,
+    adaptive=adaptive,
+    htf_class=htf_class,
+    consensus=consensus,
+    cycle_confluence=cycle_confluence,
+    harmonic_overlaps=harmonic_overlaps,
+    exec_direction=exec_direction,
+    execution_passes=execution_passes,
+    market_tools=market_tools,
+  )
+  stages.append(("expert_direction", {"symbol": symbol}, {
+    "direction": expert_direction["direction"],
+    "confidence": expert_direction["confidence"],
+    "method": expert_direction["method"],
+  }))
+
   # STEP 7: Executive decision — expert trader always finds a path
   decision = executive_decide(
     symbol=symbol,
@@ -279,23 +318,14 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     violations_sample=violations_sample,
     mc_result=mc_result,
     consensus=consensus,
+    expert_direction=expert_direction,
+    cycle_confluence=cycle_confluence,
   )
   status = decision["status"]
   trade = decision["trade_setup"]
   executive = decision["executive_decision"]
   print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
   stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
-
-  # STEP 9: Supplementary market tools (EW always primary)
-  btc_1d = None
-  if is_crypto and not symbol.upper().startswith("BTC"):
-    try:
-      btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
-    except Exception:
-      pass
-  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
-  stages.append(("market_confluence", {"symbol": symbol},
-                 {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
 
   # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
   outcomes = build_outcomes(
@@ -312,6 +342,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     c_targets=c_targets,
     executive=executive,
     market_tools=market_tools,
+    expert_direction=expert_direction,
+    cycle_confluence=cycle_confluence,
   )
   outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
   record_outcome(symbol, outcomes, current_price, status)
@@ -326,6 +358,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     f"harmonics={len(harmonic_overlaps)}, 15m_valid={execution_passes}. "
     f"EW consensus={consensus['consensus_direction']} ({consensus['agreement_pct']}% agree, "
     f"score={consensus['consensus_score']}). "
+    f"Expert={expert_direction['direction']} ({expert_direction['confidence']:.0%}, "
+    f"Hurst {cycle_confluence.get('primary_regime')}, phase {cycle_confluence.get('primary_phase')}). "
     f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))} | "
     f"Outcomes: {hs['truth']}"
   )
@@ -371,6 +405,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "violations_sample": violations_sample,
     },
     "step6_wave_consensus": consensus,
+    "step6b_cycle_confluence": cycle_confluence,
+    "step6c_expert_direction": expert_direction,
     "step9_market_confluence": market_tools,
     "step8_outcomes": outcomes,
     "trade_setup": trade,
