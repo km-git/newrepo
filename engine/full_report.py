@@ -27,6 +27,9 @@ def _style_columns(setup: dict, prefix: str) -> dict:
 
   return {
     f"{prefix}_status": setup.get("status"),
+    f"{prefix}_tier": setup.get("execution_tier", ""),
+    f"{prefix}_readiness": setup.get("readiness_score"),
+    f"{prefix}_indicators": "; ".join(setup.get("indicator_signals", [])[:2]),
     f"{prefix}_direction": setup.get("direction"),
     f"{prefix}_tf": setup.get("timeframe"),
     f"{prefix}_horizon": setup.get("horizon"),
@@ -238,8 +241,8 @@ def save_trade_setups_markdown(
     "",
     "## Trade setups (scalp / day / swing / long-term)",
     "",
-    "| Symbol | Price | Style | Status | Dir | Entry | Stop | TP1 | TP2 | RR | Harmonic | Reason |",
-    "|--------|-------|-------|--------|-----|-------|------|-----|-----|-----|----------|--------|",
+    "| Symbol | Price | Style | Status | Tier | Ready | Dir | Entry | Stop | TP1 | TP2 | RR | Signals | Reason |",
+    "|--------|-------|-------|--------|------|-------|-----|-------|------|-----|-----|-----|---------|--------|",
   ]
 
   def _cell(v: Any, n: int = 40) -> str:
@@ -249,11 +252,15 @@ def save_trade_setups_markdown(
     return s[:n] + ("…" if len(s) > n else "")
 
   for r in sorted(all_rows, key=lambda x: (x.get("symbol", ""), x.get("style", ""))):
+    signals = r.get("indicator_signals") or ""
+    if isinstance(signals, str) and not signals:
+      signals = r.get("harmonic", "")
     lines.append(
       f"| {r.get('symbol', '')} | {r.get('price', '')} | {r.get('style', '')} | "
-      f"{r.get('status', '')} | {r.get('direction', '')} | {r.get('entry', '')} | "
+      f"{r.get('status', '')} | {r.get('execution_tier', '')} | {r.get('readiness_score', '')} | "
+      f"{r.get('direction', '')} | {r.get('entry', '')} | "
       f"{r.get('stop_loss', '')} | {r.get('tp1', '')} | {r.get('tp2', '')} | "
-      f"{r.get('rr_tp2', '')} | {_cell(r.get('harmonic', ''), 20)} | "
+      f"{r.get('rr_tp2', '')} | {_cell(signals, 25)} | "
       f"{_cell(r.get('honest_reason', ''), 50)} |"
     )
 
