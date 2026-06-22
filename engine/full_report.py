@@ -69,6 +69,10 @@ def build_full_row(result: dict) -> dict:
 
   base.update({
     "executive_playbook": ex.get("playbook"),
+    "ew_coverage_pct": result.get("step2_ew_coverage", {}).get("coverage_pct"),
+    "ew_all_tfs": "Y" if result.get("step2_ew_coverage", {}).get("all_tfs_present") else "N",
+    "rsi_stack_bias": result.get("step9_market_confluence", {}).get("multi_tf_rsi", {}).get("bias"),
+    "market_boost": result.get("step9_market_confluence", {}).get("confluence_boost"),
     "executive_conviction": ex.get("conviction"),
     "executive_size_pct": ex.get("position_size_pct"),
     "structural_gaps": "; ".join(gaps[:3]) if gaps else "",

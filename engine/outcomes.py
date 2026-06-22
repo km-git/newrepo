@@ -72,6 +72,7 @@ def build_style_setup(
   consensus: dict,
   c_targets: dict,
   executive: dict,
+  market_tools: Optional[dict] = None,
 ) -> dict:
   cfg = STYLE_CONFIG[style]
   tf = cfg["primary_tf"]
@@ -109,6 +110,12 @@ def build_style_setup(
   rr = targets[1]["rr"] if len(targets) > 1 else 0
   harmonic_near = bool(harm_tf)
   indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
+  mkt = market_tools or {}
+  boost = mkt.get("confluence_boost", 0)
+  if boost:
+    indicators["score"] = min(100, indicators["score"] + boost)
+    indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
+    indicators["signals"] = list(indicators.get("signals", [])) + mkt.get("confluence_signals", [])[:2]
   status, execution_tier, reason = resolve_execution_status(
     style=style,
     direction=direction,
@@ -155,6 +162,12 @@ def build_style_setup(
     "targets": targets,
     "risk": risk,
     "indicators": indicators,
+    "market_tools": {
+      "boost": boost,
+      "signals": mkt.get("confluence_signals", [])[:3],
+      "rsi_stack": mkt.get("multi_tf_rsi", {}).get("bias"),
+      "btc_corr": mkt.get("btc_correlation", {}).get("correlation"),
+    },
     "harmonic": harm_tf[0] if harm_tf else None,
     "monitor": {
       "check_interval": tf,
@@ -185,12 +198,16 @@ def build_outcomes(
   consensus: dict,
   c_targets: dict,
   executive: dict,
+  market_tools: Optional[dict] = None,
 ) -> dict:
+  mkt = market_tools or {}
+  boost = mkt.get("confluence_boost", 0)
   setups = {}
   for style in STYLE_CONFIG:
     setups[style] = build_style_setup(
       style, data, adaptive, wave_structure, direction,
       kz_low, kz_high, harmonic_overlaps, in_zone, consensus, c_targets, executive,
+      market_tools=mkt,
     )
 
   executable = [s for s in setups.values() if s.get("status") == "executable"]

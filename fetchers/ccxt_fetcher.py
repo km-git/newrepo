@@ -54,23 +54,31 @@ def _fetch_ohlcv_crypto_uncached(
   symbol: str, timeframes: List[str], limit: int = 500
 ) -> Dict[str, pd.DataFrame]:
   last_err = None
+  tf_limits = {"1w": 300, "1d": 500, "4h": 500, "1h": 500, "15m": 500}
   for ex_name in EXCHANGE_CHAIN:
     try:
       ex = _make_exchange(ex_name)
       ex_sym = _symbol_for_exchange(symbol, ex_name)
       out: Dict[str, pd.DataFrame] = {}
       for tf in timeframes:
-        ccxt_tf = TF_MAP.get(tf, tf)
-        bars = ex.fetch_ohlcv(ex_sym, timeframe=ccxt_tf, limit=limit)
-        if not bars:
-          raise ValueError(f"No bars for {ex_sym} {ccxt_tf}")
-        df = pd.DataFrame(bars, columns=["timestamp", "Open", "High", "Low", "Close", "Volume"])
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
-        df = df.set_index("timestamp")
-        out[tf] = df
-        print(f"[fetch] {ex_name} {ex_sym} {tf}: {len(df)} bars, last={df['Close'].iloc[-1]:.2f}")
-        time.sleep(ex.rateLimit / 1000 if ex.rateLimit else 0.2)
-      return out
+        try:
+          ccxt_tf = TF_MAP.get(tf, tf)
+          tf_limit = tf_limits.get(tf, limit)
+          bars = ex.fetch_ohlcv(ex_sym, timeframe=ccxt_tf, limit=tf_limit)
+          if not bars:
+            print(f"[fetch] {ex_name} {ex_sym} {tf}: no bars")
+            continue
+          df = pd.DataFrame(bars, columns=["timestamp", "Open", "High", "Low", "Close", "Volume"])
+          df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+          df = df.set_index("timestamp")
+          out[tf] = df
+          print(f"[fetch] {ex_name} {ex_sym} {tf}: {len(df)} bars, last={df['Close'].iloc[-1]:.4f}")
+          time.sleep(ex.rateLimit / 1000 if ex.rateLimit else 0.2)
+        except Exception as tf_err:
+          print(f"[fetch] {ex_name} {ex_sym} {tf} failed: {tf_err}")
+      if out:
+        return out
+      raise ValueError(f"No timeframes fetched for {ex_sym}")
     except Exception as e:
       last_err = e
       print(f"[fetch] {ex_name} failed: {e}")

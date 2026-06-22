@@ -14,7 +14,15 @@ Open **[TRADE_SETUPS.md](./TRADE_SETUPS.md)** — markdown table with all scalp 
 | `output/latest_setups.csv` | One row per pair × style (Excel/Sheets) |
 | `output/latest_analysis.csv` | One wide row per pair (149 columns) |
 
-## Generate / refresh
+## Elliott Wave — always on
+
+Every batch run analyzes **all 5 timeframes** (`1w, 1d, 4h, 1h, 15m`) for **every pair**:
+
+- Adaptive monowave extraction with skip fallback (thin data → more waves)
+- Per-TF structure: impulse / ABC / diagonal / invalid — never omitted
+- `step2_ew_coverage` in JSON shows `coverage_pct` and `structures_by_tf`
+
+Supplementary tools (RSI stack, VWAP, divergence, BTC correlation) layer on top — EW is never skipped.
 
 ```bash
 # One-time full batch
