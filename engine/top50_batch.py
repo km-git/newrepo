@@ -13,6 +13,14 @@ from engine.report import save_detailed_csv, save_detailed_markdown
 from engine.outcome_report import save_outcomes_csv
 from engine.full_report import export_all_reports
 from engine.autodream import build_monitor_queue, save_monitor_queue
+from engine.paper_trading import (
+  append_paper_ledger,
+  apply_honesty_adjustments,
+  apply_paper_to_results,
+  run_paper_batch,
+  save_paper_csv,
+  save_paper_metrics,
+)
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
@@ -90,6 +98,20 @@ def run_top_crypto_batch(
   save_detailed_markdown(results, str(markdown_path), title=f"Top {n} Crypto EW Analysis")
   save_outcomes_csv(results, str(outcomes_path))
   full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
+
+  print("\n[batch] Running paper trading + historical analysis on all setups...")
+  paper_report = run_paper_batch(results, fetch_missing=True)
+  results = apply_paper_to_results(results, paper_report)
+  for r in results:
+    if r.get("status") != "incomplete" and r.get("step8_outcomes"):
+      r["step8_outcomes"] = apply_honesty_adjustments(r["step8_outcomes"])
+  save_batch_json(results, str(json_path))
+  append_paper_ledger(paper_report.get("trades", []))
+  paper_metrics_path = save_paper_metrics(paper_report)
+  paper_csv_path = save_paper_csv(paper_report)
+  save_outcomes_csv(results, str(outcomes_path))
+  full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
+
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
@@ -119,6 +141,10 @@ def run_top_crypto_batch(
     "full_html": full_exports["full_html"],
     "report_md": str(markdown_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
+    "paper_metrics": paper_metrics_path,
+    "paper_csv": paper_csv_path,
+    "paper_setups": paper_report.get("setups_papered"),
+    "paper_win_rate": paper_report.get("win_rate"),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
@@ -138,6 +164,8 @@ def run_top_crypto_batch(
   print(f"  Setups MD:{full_exports.get('setups_md', 'reports/TRADE_SETUPS.md')}")
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
+  print(f"  Paper:    {paper_csv_path} ({paper_report.get('setups_papered')} setups, "
+        f"win_rate={paper_report.get('win_rate')})")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta

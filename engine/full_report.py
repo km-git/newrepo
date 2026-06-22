@@ -178,7 +178,8 @@ COMPLETE_SETUP_COLUMNS = [
     "15m_valid", "ew_coverage_pct", "rsi_stack_bias", "btc_correlation", "market_boost",
   "1w_structure", "1d_structure", "4h_structure", "1h_structure", "15m_structure",
   "wave_structure", "wave_valid", "harmonic", "indicator_signals", "honest_reason",
-  "hist_win_rate", "autodream_lesson",
+  "hist_win_rate", "hist_trades", "hist_avg_pnl_r",
+  "paper_outcome", "paper_pnl_r", "autodream_verdict", "autodream_lesson",
 ]
 
 

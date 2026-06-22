@@ -52,9 +52,13 @@ def build_outcome_row(result: dict) -> List[dict]:
       "rr_tp2": targets[1]["rr"] if len(targets) > 1 else "",
       "account_risk_pct": s.get("risk", {}).get("account_risk_pct"),
       "harmonic": f"{s['harmonic']['pattern']}@{s['harmonic']['prz_low']:.4g}" if s.get("harmonic") else "",
-      "hist_win_rate": ad.get("win_rate"),
-      "hist_trades": ad.get("simulated_trades"),
-      "autodream_lesson": "; ".join(ad.get("lessons", [])[:1]),
+      "hist_win_rate": s.get("historical_edge") or ad.get("win_rate"),
+      "hist_trades": s.get("hist_trades") or ad.get("simulated_trades"),
+      "hist_avg_pnl_r": s.get("hist_avg_pnl_r") or ad.get("avg_pnl_r"),
+      "paper_outcome": s.get("paper_outcome"),
+      "paper_pnl_r": s.get("paper_pnl_r"),
+      "autodream_verdict": s.get("autodream_verdict"),
+      "autodream_lesson": "; ".join(ad.get("lessons", [])[:1]) or s.get("confidence_note", "")[:80],
     })
   return rows
 
