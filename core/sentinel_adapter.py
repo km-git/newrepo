@@ -18,41 +18,14 @@ import pandas as pd
 from cache.disk_cache import get_cache
 from core.ehlers import ehlers_cycle_bias, ehlers_instantaneous_phase
 from core.market_tools import vwap_distance_pct
+from core.wave_alpha_adapter import scan_wave_alpha
 
 TF_WEIGHTS = {"1w": 2.0, "1d": 2.5, "4h": 1.5, "1h": 1.2, "15m": 1.0}
 
 
 def _try_wave_alpha(symbol: str) -> Optional[dict]:
-  """Optional wave-alpha library vote (local-first EW scanner)."""
-  try:
-    from wave_alpha import analyze  # type: ignore
-  except ImportError:
-    return None
-  try:
-    ticker = symbol.replace("/USDT", "").replace("/USD", "")
-    result = analyze(ticker)
-    if not result:
-      return None
-    direction = getattr(result, "direction", None) or result.get("direction") if isinstance(result, dict) else None
-    if direction is None:
-      bias = getattr(result, "bias", None) or (result.get("bias") if isinstance(result, dict) else None)
-      if bias:
-        direction = "BULL" if str(bias).lower().startswith("bull") else "BEAR"
-    if direction not in ("BULL", "BEAR", "LONG", "SHORT"):
-      return None
-    d = "BULL" if str(direction).upper() in ("BULL", "LONG") else "BEAR"
-    conf = 0.7
-    if isinstance(result, dict):
-      conf = float(result.get("confidence", 0.7) or 0.7)
-    return {
-      "available": True,
-      "source": "wave-alpha (pypi)",
-      "direction": d,
-      "confidence": min(conf, 0.9),
-      "detail": f"wave-alpha thesis {d}",
-    }
-  except Exception as e:
-    return {"available": False, "error": str(e)}
+  """wave-alpha EW thesis vote (requires pip install wave-alpha)."""
+  return scan_wave_alpha(symbol)
 
 
 def _momentum_sentinel(df: pd.DataFrame) -> dict:
@@ -181,6 +154,8 @@ def build_sentinel_analysis(
         "direction": wa["direction"],
         "score": wa.get("confidence", 0.7),
         "detail": wa.get("detail", "wave-alpha"),
+        "pattern": wa.get("pattern"),
+        "ticker": wa.get("ticker"),
       }
 
     weights = {
@@ -224,7 +199,8 @@ def build_sentinel_analysis(
       "signals": signals[:8],
       "bull_weight": round(bull, 2),
       "bear_weight": round(bear, 2),
-      "wave_alpha_installed": wa is not None and wa.get("available", False),
+      "wave_alpha_installed": bool(wa and wa.get("available")),
+      "wave_alpha_ticker": (wa or {}).get("ticker"),
     }
 
   result, hit = cache.get_or_compute(
