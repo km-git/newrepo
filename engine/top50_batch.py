@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from engine.batch import run_batch, save_batch_json
 from engine.report import save_detailed_csv, save_detailed_markdown
 from engine.outcome_report import save_outcomes_csv
+from engine.full_report import export_all_reports
 from engine.autodream import build_monitor_queue, save_monitor_queue
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
@@ -75,6 +76,7 @@ def run_top_crypto_batch(
   summary_path = out / f"top{n}_summary_{ts}.csv"
   detailed_path = out / f"top{n}_detailed_{ts}.csv"
   outcomes_path = out / f"top{n}_outcomes_{ts}.csv"
+  full_path = out / f"top{n}_full_{ts}"
   markdown_path = out / f"top{n}_report_{ts}.md"
 
   pairs = fetch_top_pairs(n=n, quote=quote)
@@ -87,6 +89,7 @@ def run_top_crypto_batch(
   save_detailed_csv(results, str(detailed_path))
   save_detailed_markdown(results, str(markdown_path), title=f"Top {n} Crypto EW Analysis")
   save_outcomes_csv(results, str(outcomes_path))
+  full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
@@ -110,6 +113,9 @@ def run_top_crypto_batch(
     "summary_csv": str(summary_path),
     "detailed_csv": str(detailed_path),
     "outcomes_csv": str(outcomes_path),
+    "full_csv": full_exports["full_csv"],
+    "setups_csv": full_exports["setups_csv"],
+    "full_html": full_exports["full_html"],
     "report_md": str(markdown_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
     "pairs_csv": str(pairs_csv),
@@ -123,6 +129,9 @@ def run_top_crypto_batch(
   print(f"  Summary:  {summary_path}")
   print(f"  Detailed: {detailed_path}")
   print(f"  Outcomes: {outcomes_path}")
+  print(f"  FULL:     {full_exports['full_csv']}")
+  print(f"  HTML:     {full_exports['full_html']}")
+  print(f"  Setups:   {full_exports['setups_csv']}")
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
   print(f"  Status:  {by_status}")
