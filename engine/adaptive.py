@@ -19,7 +19,13 @@ from core.harmonic import detect_harmonics
 from core.impulse import validate_impulse
 from core.mc import ew_aware_monte_carlo
 from core.monowaves import adaptive_skip_for_df, compute_skip, extract_monowaves_cached
+from engine.executive import executive_decide
 from fetchers import fetch
+
+
+def _distance_pct(price: float, low: float, high: float) -> float:
+  mid = (low + high) / 2
+  return abs(price - mid) / price * 100
 
 
 def classify_htf(df: pd.DataFrame, tf_label: str = "1d") -> dict:
@@ -117,44 +123,6 @@ def classify_htf(df: pd.DataFrame, tf_label: str = "1d") -> dict:
     "bias": "neutral",
   }
 
-
-def build_trade_setup(
-  data: Dict[str, pd.DataFrame],
-  kz_low: float,
-  kz_high: float,
-  htf_class: dict,
-  direction: str,
-) -> dict:
-  current = float(data["1d"]["Close"].iloc[-1])
-  atr = compute_atr14(data["15m"])
-  entry_mid = (kz_low + kz_high) / 2
-
-  if direction == "BULL":
-    action = "execute_long"
-    stop = kz_low - atr * 0.5
-    tp1 = entry_mid + atr * 2
-    tp2 = entry_mid + atr * 4
-  else:
-    action = "execute_short"
-    stop = kz_high + atr * 0.5
-    tp1 = entry_mid - atr * 2
-    tp2 = entry_mid - atr * 4
-
-  risk = abs(entry_mid - stop)
-  reward = abs(tp1 - entry_mid)
-  rr = round(reward / risk, 2) if risk > 0 else None
-  confidence = min(0.85, 0.55 + (0.1 if htf_class["state"] == "correction_ABC" else 0))
-
-  return {
-    "action": action,
-    "entry_zone": [round(kz_low, 2), round(kz_high, 2)],
-    "stop_loss": round(stop, 2),
-    "take_profit_1": round(tp1, 2),
-    "take_profit_2": round(tp2, 2),
-    "risk_reward": rr,
-    "confidence": confidence,
-    "reason": f"HTF {htf_class['state']} + 15m {direction} impulse in kill zone",
-  }
 
 
 def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
@@ -254,36 +222,36 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       print("[cache] HIT monte_carlo")
     print(f"[mc] empirical_probability={mc_result['empirical_probability']}")
 
-  # STEP 6: Status decision
-  if in_zone and execution_passes:
-    status = "execute"
-    trade = build_trade_setup(data, kz_low, kz_high, htf_class, exec_direction)
-  elif harmonic_overlaps and not in_zone:
-    status = "monitoring"
-    trade = {
-      "action": "monitor",
-      "trigger_zone": [round(kz_low, 2), round(kz_high, 2)],
-      "instruction": "Wait for price to enter zone, then 15m validation",
-    }
-  else:
-    status = "abstain"
-    reason_parts = []
-    if not harmonic_overlaps:
-      reason_parts.append("no harmonic overlap")
-    if not in_zone:
-      reason_parts.append("price outside kill zone")
-    if in_zone and not execution_passes:
-      reason_parts.append("15m impulse failed R1/R2/R3")
-    trade = {
-      "action": "no_trade",
-      "reason": "; ".join(reason_parts) or "No structural confluence",
-    }
+  # STEP 6: Executive decision — expert trader always finds a path
+  decision = executive_decide(
+    symbol=symbol,
+    data=data,
+    htf_class=htf_class,
+    kz_low=kz_low,
+    kz_high=kz_high,
+    prior_fibs=prior_fibs,
+    harmonic_overlaps=harmonic_overlaps,
+    in_zone=in_zone,
+    execution_passes=execution_passes,
+    exec_direction=exec_direction,
+    bull_count=bull_count,
+    bear_count=bear_count,
+    violations_sample=violations_sample,
+    mc_result=mc_result,
+  )
+  status = decision["status"]
+  trade = decision["trade_setup"]
+  executive = decision["executive_decision"]
+  print(f"[step6] executive verdict={executive['verdict']} status={status} action={trade['action']}")
+  stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
 
   reasoning = (
-    f"{symbol} at {current_price:.2f}: HTF={htf_class['state']} bias={htf_class['bias']}. "
-    f"Kill zone [{kz_low:.0f}-{kz_high:.0f}] ({width_pct:.1f}% wide). "
-    f"Harmonics={len(harmonic_overlaps)}, in_zone={in_zone}, 15m_valid={execution_passes}. "
-    f"Decision={status}."
+    f"EXECUTIVE CALL [{executive['verdict']}]: {executive['playbook']} "
+    f"{symbol} @ {current_price:.2f}, {executive['direction']} bias, "
+    f"conviction={executive['conviction']}, size={executive['position_size_pct']}%. "
+    f"HTF={htf_class['state']}, zone_dist={_distance_pct(current_price, kz_low, kz_high):.1f}%, "
+    f"harmonics={len(harmonic_overlaps)}, 15m_valid={execution_passes}. "
+    f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))}"
   )
 
   tool_log = dedup_tool_calls(build_tool_calls_log(stages))
@@ -312,11 +280,15 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "violations_sample": violations_sample,
     },
     "trade_setup": trade,
+    "executive_decision": executive,
     "honesty_audit": {
       "hard_cap_applied": True,
       "confidence_cap": 0.85,
       "no_rule_relaxation": True,
-      "computational_provenance": "core/monowaves.py, core/impulse.py, core/harmonic.py",
+      "executive_mode": True,
+      "always_actionable": True,
+      "structural_gaps_disclosed": executive.get("structural_gaps", []),
+      "computational_provenance": "engine/executive.py, core/impulse.py, core/harmonic.py",
     },
     "tool_calls_log": tool_log,
     "reasoning_trace": reasoning,

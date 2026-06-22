@@ -60,6 +60,19 @@ class TradeSetup(BaseModel):
   instruction: Optional[str] = None
 
 
+class ExecutiveDecision(BaseModel):
+  verdict: str  # GO | CONDITIONAL_GO | STANDBY_ORDERS | STAGED_GO
+  conviction: str
+  direction: str
+  position_size_pct: int = 100
+  playbook: str
+  structural_gaps: List[str] = Field(default_factory=list)
+  contingencies: List[Dict[str, str]] = Field(default_factory=list)
+  position_model: Optional[str] = None
+  scale_legs: Optional[List[Dict[str, Any]]] = None
+  alternative_path: Optional[Dict[str, Any]] = None
+
+
 class ToolCall(BaseModel):
   tool: str
   args: str
@@ -76,6 +89,7 @@ class ElliottWaveOutput(BaseModel):
   step4_harmonic_overlap: List[HarmonicPattern]
   step5_execution_validation: ExecutionValidation
   trade_setup: TradeSetup
+  executive_decision: ExecutiveDecision
   honesty_audit: Dict[str, Any]
   tool_calls_log: List[ToolCall]
   reasoning_trace: str

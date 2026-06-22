@@ -46,14 +46,18 @@ ew_tool.py                 # CLI entry point
 └── tests/                 # R1/R2/R3 unit tests
 ```
 
-## Output Status
+## Output Status (Executive Mode)
 
-| Status | Meaning |
-|--------|---------|
-| `execute` | Price in kill zone + 15m impulse passes R1/R2/R3 |
-| `monitoring` | Harmonic overlap but price outside zone |
-| `abstain` | No confluence — `trade_setup.action = no_trade` |
-| `incomplete` | Fetch or pipeline error |
+The agent behaves as an expert trader and **always produces an actionable plan**. Structural gaps are disclosed but never block a decision.
+
+| Status | Verdict | Meaning |
+|--------|---------|---------|
+| `execute` | GO | Full confluence — enter now at full size |
+| `conditional_execute` | CONDITIONAL_GO | In zone, partial confirmation — 50% probe + add on trigger |
+| `active_monitor` | STANDBY_ORDERS | Harmonic PRZ defined — GTC limits placed |
+| `staged_entry` | STAGED_GO | Scale-in across probe → fib → kill zone levels |
+
+Every output includes `executive_decision` with verdict, conviction, playbook, contingencies, and scale legs when applicable.
 
 ## Cache Environment
 

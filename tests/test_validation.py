@@ -91,11 +91,11 @@ def test_tight_kill_zone_cluster():
   assert low < high
 
 
-def test_abstain_schema_no_entry_zone():
+def test_executive_schema_always_actionable():
   sample = {
     "symbol": "TEST",
     "timestamp_utc": "2026-01-01T00:00:00+00:00",
-    "status": "abstain",
+    "status": "staged_entry",
     "step1_htf_bias": {
       "tf": "1d",
       "state": "choppy",
@@ -108,10 +108,27 @@ def test_abstain_schema_no_entry_zone():
     "step3_kill_zone": {"price_low": 1.0, "price_high": 2.0, "width_pct": 1.0},
     "step4_harmonic_overlap": [],
     "step5_execution_validation": {"in_zone": False, "passes": False},
-    "trade_setup": {"action": "no_trade", "reason": "test"},
-    "honesty_audit": {"hard_cap_applied": True},
+    "trade_setup": {
+      "action": "scale_long",
+      "entry_zone": [1.4, 1.6],
+      "stop_loss": 1.2,
+      "take_profit_1": 2.0,
+      "confidence": 0.45,
+      "reason": "staged fib pathway",
+    },
+    "executive_decision": {
+      "verdict": "STAGED_GO",
+      "conviction": "moderate",
+      "direction": "BULL",
+      "position_size_pct": 100,
+      "playbook": "Scale in across fib levels",
+      "structural_gaps": ["no harmonic overlap"],
+      "contingencies": [{"if": "TP1 hit", "then": "trail stop"}],
+    },
+    "honesty_audit": {"hard_cap_applied": True, "executive_mode": True},
     "tool_calls_log": [{"tool": "fetch", "args": "{}", "result_hash": "abc"}],
-    "reasoning_trace": "test abstain",
+    "reasoning_trace": "executive staged entry",
   }
   out = ElliottWaveOutput(**sample)
-  assert out.trade_setup.entry_zone is None
+  assert out.trade_setup.entry_zone is not None
+  assert out.executive_decision.verdict == "STAGED_GO"
