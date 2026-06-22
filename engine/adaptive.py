@@ -16,6 +16,7 @@ from core.atr import compute_atr14, median_daily_range
 from core.consensus import build_consensus
 from core.cycle_confluence import build_cycle_confluence
 from core.direction_resolver import resolve_expert_direction
+from core.sentinel_adapter import build_sentinel_analysis
 from core.correction import detect_abc, detect_diagonal
 from core.fib_zone import compute_c_targets, compute_prior_decline_fibs, compute_tight_kill_zone
 from core.harmonic import collect_actionable_harmonics, scan_harmonics
@@ -283,6 +284,15 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   stages.append(("market_confluence", {"symbol": symbol},
                  {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
 
+  # STEP 6d: Sentinel Trader fusion (structure + momentum + Ehlers cycle + VWAP)
+  sentinel_analysis = build_sentinel_analysis(
+    symbol, data, wave_structure, cycle_confluence, market_tools, consensus,
+  )
+  stages.append(("sentinel_analysis", {"symbol": symbol}, {
+    "direction": sentinel_analysis.get("direction"),
+    "confidence": sentinel_analysis.get("confidence"),
+  }))
+
   # STEP 6c: Expert EW direction — sentinel + Hurst + EW stack (always BULL/BEAR)
   expert_direction = resolve_expert_direction(
     wave_structure=wave_structure,
@@ -294,6 +304,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     exec_direction=exec_direction,
     execution_passes=execution_passes,
     market_tools=market_tools,
+    sentinel_analysis=sentinel_analysis,
   )
   stages.append(("expert_direction", {"symbol": symbol}, {
     "direction": expert_direction["direction"],
@@ -407,6 +418,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "step6_wave_consensus": consensus,
     "step6b_cycle_confluence": cycle_confluence,
     "step6c_expert_direction": expert_direction,
+    "step6d_sentinel_analysis": sentinel_analysis,
     "step9_market_confluence": market_tools,
     "step8_outcomes": outcomes,
     "trade_setup": trade,

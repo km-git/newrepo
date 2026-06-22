@@ -80,6 +80,7 @@ def build_sentinel_stack(
   cycle_confluence: dict,
   harmonic_overlaps: List[dict],
   market_tools: Optional[dict] = None,
+  sentinel_analysis: Optional[dict] = None,
 ) -> dict:
   """
   Sentinel-style multi-signal stack — each layer votes with weight.
@@ -142,6 +143,11 @@ def build_sentinel_stack(
   elif div == "bearish_divergence":
     _vote("BEAR", 1.8, "rsi_divergence", votes)
 
+  # Sentinel Trader fusion processor (dedicated adapter)
+  sa = sentinel_analysis or {}
+  if sa.get("available") and sa.get("direction") in ("BULL", "BEAR"):
+    _vote(sa["direction"], 2.8 + sa.get("confidence", 0.5), "sentinel_trader", votes)
+
   bull = sum(v["weight"] for v in votes if v["direction"] == "BULL")
   bear = sum(v["weight"] for v in votes if v["direction"] == "BEAR")
   total = bull + bear
@@ -178,6 +184,8 @@ def build_sentinel_stack(
     "hurst_regime": cc.get("primary_regime"),
     "cycle_phase": cc.get("primary_phase"),
     "cycle_period": cc.get("primary_period"),
+    "sentinel_direction": (sentinel_analysis or {}).get("direction"),
+    "sentinel_confidence": (sentinel_analysis or {}).get("confidence"),
   }
 
 
@@ -191,6 +199,7 @@ def resolve_expert_direction(
   exec_direction: str,
   execution_passes: bool,
   market_tools: Optional[dict] = None,
+  sentinel_analysis: Optional[dict] = None,
 ) -> dict:
   """
   Expert Elliott Wave direction — always BULL or BEAR with confidence + audit trail.
@@ -199,6 +208,7 @@ def resolve_expert_direction(
   sentinel = build_sentinel_stack(
     wave_structure, adaptive, htf_class, consensus,
     cycle_confluence, harmonic_overlaps, market_tools,
+    sentinel_analysis=sentinel_analysis,
   )
 
   direction = sentinel["direction"]
@@ -233,6 +243,9 @@ def resolve_expert_direction(
     "cycle_phase": sentinel.get("cycle_phase"),
     "cycle_period_bars": sentinel.get("cycle_period"),
     "cycle_direction": cycle_confluence.get("cycle_direction"),
+    "ehlers_phase_deg": cycle_confluence.get("primary_ehlers_phase"),
+    "sentinel_direction": (sentinel_analysis or {}).get("direction"),
+    "sentinel_confidence": (sentinel_analysis or {}).get("confidence"),
     "sentinel": sentinel,
     "honest_note": (
       f"Expert {direction} ({confidence:.0%}) via {method}: "

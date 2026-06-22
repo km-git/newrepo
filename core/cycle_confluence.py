@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from cache.disk_cache import get_cache
+from core.ehlers import ehlers_cycle_bias, ehlers_instantaneous_phase
 
 TF_WEIGHTS = {"1w": 2.5, "1d": 2.0, "4h": 1.5, "1h": 1.2, "15m": 1.0}
 
@@ -70,9 +71,14 @@ def cycle_phase_direction(
   hurst: float,
 ) -> Tuple[float, str, str]:
   """
-  Estimate cycle phase (0–360°) and directional bias from phase + Hurst regime.
+  Ehlers Hilbert instantaneous phase (primary); FFT sin/cos fallback if short series.
   Returns (phase_deg, phase_label, cycle_bias BULL/BEAR/NEUTRAL).
   """
+  ehlers = ehlers_instantaneous_phase(close, hp_period=max(24.0, float(period or 48)))
+  if ehlers.get("available"):
+    bias, _ = ehlers_cycle_bias(close, hurst=hurst, hp_period=max(24.0, float(period or 48)))
+    return ehlers["phase_deg"], ehlers["phase_label"], bias
+
   if period < 8 or len(close) < period * 2:
     return 0.0, "unknown", "NEUTRAL"
 
@@ -130,6 +136,7 @@ def analyze_tf_cycles(df: pd.DataFrame, tf: str) -> dict:
   phase_deg, phase_label, cycle_bias = cycle_phase_direction(close, period, hurst)
 
   regime = "trending" if hurst >= 0.52 else "mean_reverting" if hurst <= 0.48 else "random"
+  ehlers = ehlers_instantaneous_phase(close, hp_period=max(24.0, float(period or 48)))
 
   return {
     "tf": tf,
@@ -141,7 +148,10 @@ def analyze_tf_cycles(df: pd.DataFrame, tf: str) -> dict:
     "phase_deg": phase_deg,
     "phase_label": phase_label,
     "cycle_bias": cycle_bias,
-    "detail": f"H={hurst:.2f} P={period}b {phase_label} ({regime})",
+    "ehlers_phase_deg": ehlers.get("phase_deg"),
+    "ehlers_phase_velocity": ehlers.get("phase_velocity"),
+    "ehlers_trend_mode": ehlers.get("trend_mode"),
+    "detail": f"H={hurst:.2f} P={period}b Ehlers {phase_label} {phase_deg}° ({regime})",
   }
 
 
@@ -206,6 +216,7 @@ def build_cycle_confluence(
       "primary_hurst": primary.get("hurst"),
       "primary_period": primary.get("dominant_period_bars"),
       "primary_phase": primary.get("phase_label"),
+      "primary_ehlers_phase": primary.get("ehlers_phase_deg"),
       "primary_regime": primary.get("regime"),
       "confluence_boost": min(boost, 15),
       "confluence_signals": signals[:6],
