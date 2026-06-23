@@ -208,6 +208,16 @@ def run_top_crypto_batch(
   save_research_setups_csv(research_rows, research_csv)
   research_summary = summarize_research(research_rows)
 
+  from engine.executive_board import apply_board_to_results, build_executive_board, save_executive_board
+  executive_board = build_executive_board(results, picks_per_tf=5, max_total=30)
+  results = apply_board_to_results(results, executive_board)
+  board_paths = save_executive_board(executive_board)
+  save_batch_json(results, str(json_path))
+  print(
+    f"\n[executive] Board: {executive_board['board_picks']} picks — "
+    f"{executive_board.get('by_action')} — {board_paths['csv']}"
+  )
+
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
@@ -254,6 +264,9 @@ def run_top_crypto_batch(
     "accurate_setups": accurate_summary["by_tier"],
     "research_setups_csv": str(research_csv),
     "research_setups": research_summary["by_research_tier"],
+    "executive_board_csv": board_paths["csv"],
+    "executive_board": executive_board.get("by_action"),
+    "executive_board_picks": executive_board.get("board_picks"),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
