@@ -8,7 +8,7 @@ import pandas as pd
 
 from core.atr import compute_atr14
 from core.indicators import score_indicator_confluence
-from core.risk import build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
+from core.risk import MAX_STOP_PCT, build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
 from engine.readiness import resolve_execution_status
 
 STYLE_CONFIG = {
@@ -100,7 +100,10 @@ def build_style_setup(
   fibs = [kz_low, kz_high] if kz_low < kz_high else []
 
   dca = build_dca_ladder(direction, entry_anchor, atr, kz_low, kz_high, fibs)
-  stop = dynamic_stop(direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"])
+  max_sl = MAX_STOP_PCT.get(style, 8.0)
+  stop = dynamic_stop(
+    direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"], max_stop_pct=max_sl
+  )
   targets = dynamic_targets(
     direction,
     entry_anchor,
@@ -109,19 +112,25 @@ def build_style_setup(
     c_targets.get("c_target_100"),
     c_targets.get("c_target_161"),
   )
+  if stop.get("capped"):
+    risk_unit = abs(entry_anchor - stop["price"])
+    if risk_unit > 0:
+      for t in targets:
+        t["rr"] = round(abs(float(t["price"]) - entry_anchor) / risk_unit, 2)
   rr = targets[1]["rr"] if len(targets) > 1 else 0
   harmonic_near = bool(harm_tf)
   indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
+  indicators["stop_dist_pct"] = stop.get("distance_pct")
   mkt = market_tools or {}
   boost = mkt.get("confluence_boost", 0)
   if expert_direction:
-    boost += min(12, int(expert_direction.get("confidence", 0) * 15))
+    boost += min(8, int(expert_direction.get("confidence", 0) * 10))
   if cycle_confluence:
     cy = cycle_confluence.get("cycle_direction", "NEUTRAL")
     dir_bull = direction == "LONG"
     cy_bull = cy == "BULL"
     if (dir_bull and cy_bull) or (not dir_bull and cy == "BEAR"):
-      boost += cycle_confluence.get("confluence_boost", 0) // 2
+      boost += min(6, cycle_confluence.get("confluence_boost", 0) // 3)
   if boost:
     indicators["score"] = min(100, indicators["score"] + boost)
     indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)

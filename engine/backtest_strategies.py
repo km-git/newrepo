@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from core.risk import MAX_STOP_PCT
 from engine.trade_simulation import (
   MAX_FORWARD_BARS,
   in_zone,
@@ -20,6 +21,41 @@ HOLDOUT_TEST_PCT = 0.30
 MC_BOOTSTRAP_RUNS = 500
 STRESS_STOP_WIDEN_PCT = 0.10
 STRESS_SLIPPAGE_PCT = 0.05
+STYLE_ATR_MULT = {"scalp": 0.8, "day_trade": 1.2, "swing": 1.8, "long_term": 2.5}
+
+
+def _honest_bar_geometry(
+  df: pd.DataFrame,
+  i: int,
+  anchor: float,
+  stop: float,
+  targets: List[dict],
+  direction: str,
+  style: str,
+) -> tuple[float, float, List[dict]]:
+  """Per-bar stop/targets; ATR cap when structure-scaled stop is absurd."""
+  from core.atr import compute_atr14
+
+  entry = float(df["Close"].iloc[i])
+  new_stop, scaled_tps = scale_geometry(anchor, stop, targets, entry, direction)
+  max_sl = MAX_STOP_PCT.get(style, 8.0)
+  stop_pct = abs(entry - new_stop) / entry * 100 if entry else 0
+  if stop_pct <= max_sl * 1.2:
+    return entry, new_stop, scaled_tps
+  window = df.iloc[max(0, i - 30) : i + 1]
+  atr = compute_atr14(window) if len(window) >= 15 else abs(entry - new_stop)
+  risk = atr * STYLE_ATR_MULT.get(style, 1.2)
+  new_stop = entry - risk if direction == "LONG" else entry + risk
+  scaled = []
+  for t in targets:
+    reward = abs(float(t["price"]) - anchor)
+    px = entry + reward if direction == "LONG" else entry - reward
+    scaled.append({
+      **t,
+      "price": round(px, 6),
+      "rr": round(reward / risk, 2) if risk else 0,
+    })
+  return entry, new_stop, scaled
 
 
 def collect_zone_trades(
@@ -42,7 +78,7 @@ def collect_zone_trades(
   stop = float(setup.get("stop_loss", {}).get("price") or anchor)
   targets = setup.get("targets") or []
   zone = setup.get("entry", {}).get("zone") or []
-  near_pct = float(setup.get("zone_dist_pct") or 5.0) + 2.0
+  near_pct = min(float(setup.get("zone_dist_pct") or 5.0) + 2.0, MAX_STOP_PCT.get(style, 8.0))
   max_fwd = MAX_FORWARD_BARS.get(style, 30)
 
   highs = df["High"].values.astype(float)
@@ -59,8 +95,9 @@ def collect_zone_trades(
   for i in range(max(0, bar_start), min(bar_end, n - max_fwd - 1)):
     if not in_zone(highs[i], lows[i], closes[i], zone, near_pct):
       continue
-    entry = closes[i]
-    new_stop, scaled_tps = scale_geometry(anchor, stop, targets, entry, direction)
+    entry, new_stop, scaled_tps = _honest_bar_geometry(
+      df, i, anchor, stop, targets, direction, style
+    )
     sub_h = highs[i + 1 : i + 1 + max_fwd].tolist()
     sub_l = lows[i + 1 : i + 1 + max_fwd].tolist()
     sim = simulate_forward(sub_h, sub_l, entry, new_stop, scaled_tps, direction, max_fwd)
@@ -262,7 +299,7 @@ def perturbation_stress_test(
   stop = float(setup.get("stop_loss", {}).get("price") or anchor)
   targets = setup.get("targets") or []
   zone = setup.get("entry", {}).get("zone") or []
-  near_pct = float(setup.get("zone_dist_pct") or 5.0) + 2.0
+  near_pct = min(float(setup.get("zone_dist_pct") or 5.0) + 2.0, MAX_STOP_PCT.get(style, 8.0))
   max_fwd = MAX_FORWARD_BARS.get(style, 30)
   long = direction == "LONG"
 

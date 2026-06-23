@@ -18,8 +18,7 @@ LESSONS_PATH = Path("output/autodream/loss_lessons.json")
 LEARNING_STATE_PATH = Path("output/autodream/learning_state.json")
 PAPER_LEDGER_DEFAULT = Path("output/autodream/paper_ledger.jsonl")
 
-# Max acceptable stop distance (%) before risk/hedge intervention
-MAX_STOP_PCT = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0}
+from core.risk import MAX_STOP_PCT
 HEDGE_TRIGGER_MULT = 1.75  # hedge when stop > mult × style max
 FAST_STOP_BARS = 3
 LEDGER_LOOKBACK = 3000

@@ -200,7 +200,12 @@ def run_paper_batch(
       trades.append(paper)
 
   closed = [t for t in trades if t.get("paper_outcome") in ("win", "loss")]
+  exec_closed = [
+    t for t in closed
+    if t.get("status") == "executable" and t.get("execution_tier") in ("full", "probe")
+  ]
   wins = sum(1 for t in closed if t["paper_outcome"] == "win")
+  exec_wins = sum(1 for t in exec_closed if t["paper_outcome"] == "win")
   total_closed = len(closed)
   report = {
     "updated": datetime.now(timezone.utc).isoformat(),
@@ -209,6 +214,8 @@ def run_paper_batch(
     "closed_trades": total_closed,
     "open_trades": len(trades) - total_closed,
     "win_rate": round(wins / total_closed, 3) if total_closed else None,
+    "executable_closed": len(exec_closed),
+    "executable_win_rate": round(exec_wins / len(exec_closed), 3) if exec_closed else None,
     "avg_pnl_r": round(sum(t.get("paper_pnl_r", 0) for t in trades) / len(trades), 3) if trades else None,
     "oos_win_rate": _aggregate_oos(hist_by_key),
     "by_style": _aggregate_by(trades, "style"),

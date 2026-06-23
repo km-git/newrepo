@@ -7,6 +7,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 DCA_SPLITS = [10, 20, 30, 40]
 
+# Max stop distance (% of entry) — stops beyond this are structurally broken
+MAX_STOP_PCT = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0}
+
 
 def _r(x: float, decimals: int = 6) -> float:
   return round(float(x), decimals)
@@ -59,6 +62,23 @@ def build_dca_ladder(
   return legs
 
 
+def cap_stop_price(
+  direction: str,
+  entry: float,
+  stop: float,
+  max_pct: float,
+) -> tuple[float, bool]:
+  """Clamp stop to max % distance from entry. Returns (stop, was_capped)."""
+  if not entry or max_pct <= 0:
+    return stop, False
+  dist_pct = abs(entry - stop) / entry * 100
+  if dist_pct <= max_pct:
+    return stop, False
+  risk = entry * max_pct / 100
+  capped = entry - risk if direction in ("LONG", "BULL") else entry + risk
+  return _r(capped), True
+
+
 def dynamic_stop(
   direction: str,
   entry: float,
@@ -66,6 +86,7 @@ def dynamic_stop(
   structure_low: float,
   structure_high: float,
   atr_mult: float = 1.0,
+  max_stop_pct: Optional[float] = None,
 ) -> dict:
   if direction in ("LONG", "BULL"):
     base = min(structure_low, entry - 0.5 * atr)
@@ -75,7 +96,21 @@ def dynamic_stop(
     base = max(structure_high, entry + 0.5 * atr)
     stop = base + atr_mult * atr
     rule = f"above structure high {_r(structure_high)} + {atr_mult}×ATR"
-  return {"price": _r(stop), "type": "dynamic", "rule": rule, "distance_pct": _r(abs(entry - stop) / entry * 100, 2)}
+
+  capped_note = ""
+  if max_stop_pct is not None:
+    stop, was_capped = cap_stop_price(direction, entry, stop, max_stop_pct)
+    if was_capped:
+      capped_note = f" · capped at {max_stop_pct}% max"
+      rule += capped_note
+
+  return {
+    "price": _r(stop),
+    "type": "dynamic",
+    "rule": rule,
+    "distance_pct": _r(abs(entry - stop) / entry * 100, 2),
+    "capped": bool(capped_note),
+  }
 
 
 def dynamic_targets(

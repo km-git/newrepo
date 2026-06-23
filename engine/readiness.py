@@ -61,6 +61,15 @@ def resolve_execution_status(
   if rr < min_rr:
     return "not_actionable", "none", f"R:R {rr:.2f} below min {min_rr} for {style}"
 
+  stop_dist = indicator.get("stop_dist_pct")
+  max_stop = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0}.get(style, 4.0)
+  if stop_dist is not None and float(stop_dist) > max_stop * 1.5:
+    return (
+      "monitor",
+      "none",
+      f"{style}: stop {float(stop_dist):.1f}% too wide (max {max_stop}%) — tighten or hedge before entry",
+    )
+
   ind_score = indicator.get("score", 0)
   ind_aligned = indicator.get("aligned", False)
   # Expert + Hurst cycle stack can align probe when EW impulse is incomplete
@@ -80,15 +89,20 @@ def resolve_execution_status(
       f"{style} FULL: impulse R1/R2/R3 valid, in zone, R:R {rr:.2f}",
     )
 
-  # Tier 2: Probe executable — indicators + executive + proximity (honest partial size)
-  probe_gaps = [g for g in gaps if not g.startswith("invalid")]  # allow probe on invalid if indicators strong
+  # Tier 2: Probe — NO probe on invalid impulse; higher bar when out of zone
+  probe_min_score = 72 if not in_zone else 65
+  if structure.startswith("invalid"):
+    gaps.append(structure)  # block probe on invalid structure
+
   if (
     ind_aligned
+    and ind_score >= probe_min_score
     and near_zone
     and exec_ok
     and consensus_ok
     and rr >= min_rr
-    and (harmonic_near or ind_score >= 65 or in_zone or (expert_confidence >= 0.6 and cycle_aligned))
+    and not any(g.startswith("invalid") for g in gaps)
+    and (harmonic_near or in_zone or (expert_confidence >= 0.65 and cycle_aligned))
   ):
     missing = []
     if not impulse_valid:

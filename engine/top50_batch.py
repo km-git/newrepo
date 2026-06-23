@@ -22,6 +22,7 @@ from engine.paper_trading import (
   save_paper_metrics,
 )
 from engine.trade_learning import apply_learning_to_outcomes, run_loss_learning_cycle
+from engine.system_audit import run_system_audit, apply_audit_demotions
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
@@ -122,6 +123,22 @@ def run_top_crypto_batch(
         )
       except Exception as e:
         print(f"[learning] skip {r['symbol']}: {e}")
+
+  setup_rows = []
+  from engine.outcome_report import build_outcome_row
+  for r in results:
+    setup_rows.extend(build_outcome_row(r))
+  audit = run_system_audit(paper_report.get("trades", []), setup_rows)
+  print(f"\n[audit] STATUS={audit['verdict']['status']}: {audit['verdict']['shame_note']}")
+  for f in audit["verdict"].get("failures", []):
+    print(f"  FAIL: {f}")
+  for w in audit["verdict"].get("warnings", []):
+    print(f"  WARN: {w}")
+  if audit["verdict"]["status"] == "FAIL":
+    for r in results:
+      if r.get("status") != "incomplete" and r.get("step8_outcomes"):
+        r["step8_outcomes"] = apply_audit_demotions(r["step8_outcomes"], audit)
+
   save_batch_json(results, str(json_path))
   append_paper_ledger(paper_report.get("trades", []))
   paper_metrics_path = save_paper_metrics(paper_report)
