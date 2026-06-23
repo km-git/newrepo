@@ -51,6 +51,10 @@ def resolve_execution_status(
   oos_win_rate: Optional[float] = None,
   oos_trades: int = 0,
   impulse_partial: bool = False,
+  smc_valid: bool = False,
+  smc_partial: bool = False,
+  smc_aligned: bool = False,
+  smc_structure: str = "",
 ) -> Tuple[str, str, str]:
   """
   Returns (status, execution_tier, honest_reason).
@@ -98,7 +102,23 @@ def resolve_execution_status(
       return f"OOS gate: {float(oos_win_rate):.0%} < {floor:.0%}"
     return None
 
-  # Tier 1: Full executable — strict EW + zone (partial impulse counts for probe only)
+  # Tier 1a: SMC full — TV OSS structure path (BOS/CHoCH + OB/FVG, no EW impulse required)
+  smc_full = smc_valid and smc_aligned and in_zone and rr >= min_rr and not gaps
+  if smc_full:
+    oos_block = _oos_blocks_executable("full")
+    if oos_block:
+      return (
+        "monitor",
+        "none",
+        f"{style} SMC FULL blocked: {smc_structure or 'SMC'}, in zone, R:R {rr:.2f} — {oos_block}",
+      )
+    return (
+      "executable",
+      "full",
+      f"{style} SMC FULL: {smc_structure or 'BOS/OB'}, in zone, R:R {rr:.2f}",
+    )
+
+  # Tier 1b: Full executable — strict EW + zone (partial impulse counts for probe only)
   full_impulse = impulse_valid and not impulse_partial
   if full_impulse and in_zone and rr >= min_rr and not gaps:
     oos_block = _oos_blocks_executable("full")
@@ -119,7 +139,7 @@ def resolve_execution_status(
   if structure.startswith("invalid") and not impulse_partial:
     gaps.append(structure)
 
-  structure_blocks_probe = structure.startswith("invalid") and not impulse_partial
+  structure_blocks_probe = structure.startswith("invalid") and not impulse_partial and not smc_partial
 
   if (
     ind_aligned
@@ -130,13 +150,18 @@ def resolve_execution_status(
     and rr >= min_rr * 0.88
     and not structure_blocks_probe
     and not any(g.startswith("invalid") for g in gaps)
-    and (harmonic_near or in_zone or impulse_partial or (expert_confidence >= 0.65 and cycle_aligned))
+    and (
+      harmonic_near or in_zone or impulse_partial or smc_partial
+      or (expert_confidence >= 0.65 and cycle_aligned)
+    )
   ):
     missing = []
-    if not impulse_valid:
+    if not impulse_valid and not smc_partial:
       missing.append(f"{style} TF impulse pending")
     elif impulse_partial:
       missing.append(f"{style} TF partial impulse (adaptive R1)")
+    elif smc_partial and not impulse_valid:
+      missing.append(f"SMC {smc_structure or 'partial'} confirm")
     if not in_zone:
       missing.append(f"zone dist {zone_dist_pct:.1f}%")
     sig = ", ".join(ind_signals[:3])

@@ -29,6 +29,7 @@ from engine.autodream import enrich_outcomes_with_autodream, record_outcome
 from engine.ew_matrix import DEFAULT_EW_TFS, build_ew_matrix, ew_coverage_summary
 from engine.executive import executive_decide
 from engine.outcomes import build_outcomes
+from engine.tv_edge import build_tv_edge_layer
 from fetchers import fetch
 
 
@@ -338,6 +339,23 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
   stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
 
+  # STEP 7b: TradingView OSS edge layer (SMC + QuanTAlib enhanced)
+  tv_edge = build_tv_edge_layer(
+    symbol,
+    data,
+    executive.get("direction", exec_direction),
+    primary_tf="1h" if "1h" in data else "1d",
+  )
+  stages.append(("tv_edge", {"symbol": symbol}, {
+    "edge_score": tv_edge.get("edge_score"),
+    "smc_valid": tv_edge.get("smc_valid"),
+    "tags": tv_edge.get("tags", [])[:4],
+  }))
+  print(
+    f"[step7b] TV edge score={tv_edge.get('edge_score')} "
+    f"smc_valid={tv_edge.get('smc_valid')} aligned_tfs={tv_edge.get('aligned_tfs')}"
+  )
+
   # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
   outcomes = build_outcomes(
     symbol=symbol,
@@ -355,6 +373,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     market_tools=market_tools,
     expert_direction=expert_direction,
     cycle_confluence=cycle_confluence,
+    tv_edge=tv_edge,
   )
   outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
   record_outcome(symbol, outcomes, current_price, status)
@@ -419,6 +438,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "step6b_cycle_confluence": cycle_confluence,
     "step6c_expert_direction": expert_direction,
     "step6d_sentinel_analysis": sentinel_analysis,
+    "step7b_tv_edge": tv_edge,
     "step9_market_confluence": market_tools,
     "step8_outcomes": outcomes,
     "trade_setup": trade,

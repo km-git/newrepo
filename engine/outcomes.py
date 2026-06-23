@@ -11,6 +11,7 @@ from core.indicators import score_indicator_confluence
 from core.risk import MAX_STOP_PCT, build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
 from engine.indicator_calibration import load_calibration, score_indicator_confluence_calibrated
 from engine.readiness import resolve_execution_status
+from engine.tv_edge import merge_tv_tokens_into_indicators
 
 STYLE_CONFIG = {
   "scalp": {
@@ -76,6 +77,7 @@ def build_style_setup(
   market_tools: Optional[dict] = None,
   expert_direction: Optional[dict] = None,
   cycle_confluence: Optional[dict] = None,
+  tv_edge: Optional[dict] = None,
 ) -> dict:
   cfg = STYLE_CONFIG[style]
   tf = cfg["primary_tf"]
@@ -128,6 +130,8 @@ def build_style_setup(
   else:
     indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
   indicators["stop_dist_pct"] = stop.get("distance_pct")
+  if tv_edge:
+    indicators = merge_tv_tokens_into_indicators(indicators, tv_edge)
   mkt = market_tools or {}
   # Calibrated scoring uses ledger-validated tokens only — no expert/cycle inflation
   boost = 0 if indicators.get("calibrated") else mkt.get("confluence_boost", 0)
@@ -168,6 +172,10 @@ def build_style_setup(
     oos_win_rate=None,
     oos_trades=0,
     impulse_partial=wave.get("impulse_partial", False),
+    smc_valid=bool(tv_edge.get("smc_valid")) if tv_edge else False,
+    smc_partial=bool(tv_edge.get("smc_partial")) if tv_edge else False,
+    smc_aligned=bool(tv_edge.get("smc_aligned")) if tv_edge else False,
+    smc_structure=tv_edge.get("smc_structure", "") if tv_edge else "",
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
@@ -187,6 +195,10 @@ def build_style_setup(
     "wave_structure": wave.get("structure"),
     "wave_valid": wave.get("impulse_valid", False),
     "wave_partial": wave.get("impulse_partial", False),
+    "smc_valid": bool(tv_edge.get("smc_valid")) if tv_edge else False,
+    "smc_partial": bool(tv_edge.get("smc_partial")) if tv_edge else False,
+    "smc_structure": tv_edge.get("smc_structure") if tv_edge else None,
+    "tv_edge_score": tv_edge.get("edge_score") if tv_edge else None,
     "violations": wave.get("violations", [])[:2],
     "entry": {
       "anchor": round(entry_anchor, 6),
@@ -247,6 +259,7 @@ def build_outcomes(
   market_tools: Optional[dict] = None,
   expert_direction: Optional[dict] = None,
   cycle_confluence: Optional[dict] = None,
+  tv_edge: Optional[dict] = None,
 ) -> dict:
   mkt = market_tools or {}
   boost = mkt.get("confluence_boost", 0)
@@ -258,6 +271,7 @@ def build_outcomes(
       market_tools=mkt,
       expert_direction=expert_direction,
       cycle_confluence=cycle_confluence,
+      tv_edge=tv_edge,
     )
 
   executable = [s for s in setups.values() if s.get("status") == "executable"]
