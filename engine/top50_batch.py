@@ -191,11 +191,22 @@ def run_top_crypto_batch(
   save_outcomes_csv(results, str(outcomes_path))
   full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
 
-  from engine.accurate_setups import extract_accurate_setups, save_accurate_setups_csv, summarize_accurate
+  from engine.accurate_setups import (
+    extract_accurate_setups,
+    extract_research_setups,
+    save_accurate_setups_csv,
+    save_research_setups_csv,
+    summarize_accurate,
+    summarize_research,
+  )
   accurate_rows = extract_accurate_setups(results, min_tier="C")
   accurate_csv = out / "latest_accurate_setups.csv"
   save_accurate_setups_csv(accurate_rows, accurate_csv)
   accurate_summary = summarize_accurate(accurate_rows)
+  research_rows = extract_research_setups(results)
+  research_csv = out / "latest_research_setups.csv"
+  save_research_setups_csv(research_rows, research_csv)
+  research_summary = summarize_research(research_rows)
 
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
@@ -241,6 +252,8 @@ def run_top_crypto_batch(
     "calibration_accumulation": acc_after,
     "accurate_setups_csv": str(accurate_csv),
     "accurate_setups": accurate_summary["by_tier"],
+    "research_setups_csv": str(research_csv),
+    "research_setups": research_summary["by_research_tier"],
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"

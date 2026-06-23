@@ -76,6 +76,7 @@ def test_calibrated_scoring_blocks_removed_signals():
 
   r = score_indicator_confluence_calibrated(df, "LONG", 99.5, 100.5, "swing", cal)
   assert r["calibrated"] is True
+  assert r.get("hybrid") is True
   assert "RSI weakness intact" not in " ".join(r.get("active_tokens", []))
 
 

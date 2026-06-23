@@ -249,8 +249,131 @@ def find_latest_analysis_json(output_dir: str = "output") -> Optional[Path]:
     key=lambda p: p.stat().st_mtime,
     reverse=True,
   )
-  # Prefer full 50-pair runs
   for p in candidates:
     if "top50" in p.name:
       return p
   return candidates[0] if candidates else None
+
+
+def _primary_blocker(setup: dict, style: str) -> str:
+  reason = setup.get("honest_reason", "")
+  if not _stop_ok(setup, style):
+    return "broken_geometry"
+  if setup.get("status") == "not_actionable":
+    if "R:R" in reason and "below min" in reason:
+      return "rr_below_min"
+    return "no_edge"
+  if setup.get("oos_gate") == "below_threshold":
+    return "oos_below_floor"
+  if setup.get("oos_gate") == "insufficient_oos":
+    return "oos_insufficient"
+  if "invalid_impulse" in reason and not setup.get("wave_partial"):
+    return "invalid_impulse"
+  if not setup.get("wave_valid") and setup.get("status") == "monitor":
+    return "await_impulse_or_zone"
+  if setup.get("status") == "executable":
+    return "none"
+  return "conditional"
+
+
+def _research_tier(setup: dict, style: str, accuracy_tier: str) -> str:
+  """Human-readable tier for all 200 setups."""
+  if setup.get("status") == "executable":
+    return "tradeable"
+  if accuracy_tier in ("A", "B"):
+    return "high_watch"
+  if accuracy_tier == "C":
+    return "validated_monitor"
+  if setup.get("status") == "monitor":
+    return "conditional"
+  blocker = _primary_blocker(setup, style)
+  if blocker == "rr_below_min" and _stop_ok(setup, style):
+    return "speculative"
+  return "skip"
+
+
+def extract_research_setups(results: List[dict]) -> List[dict]:
+  """All pair × timeframe rows with entry/stop/TP and honest research tier."""
+  rows: List[dict] = []
+  tier_order = {"tradeable": 0, "high_watch": 1, "validated_monitor": 2, "conditional": 3, "speculative": 4, "skip": 5}
+
+  for r in results:
+    if r.get("status") == "incomplete":
+      continue
+    sym = r["symbol"]
+    ex = r.get("executive_decision") or {}
+    cons = r.get("step6_wave_consensus") or {}
+    oc = r.get("step8_outcomes") or {}
+
+    for style, setup in (oc.get("setups") or {}).items():
+      if not setup:
+        continue
+      acc_score, acc_tier, tags = score_setup_accuracy(setup, style)
+      research_tier = _research_tier(setup, style, acc_tier)
+      targets = setup.get("targets") or []
+      entry = setup.get("entry") or {}
+      stop = setup.get("stop_loss") or {}
+
+      rows.append({
+        "research_tier": research_tier,
+        "accuracy_tier": acc_tier,
+        "accuracy_score": acc_score,
+        "primary_blocker": _primary_blocker(setup, style),
+        "tags": ", ".join(tags),
+        "symbol": sym,
+        "style": style,
+        "timeframe": STYLE_TF.get(style, setup.get("timeframe", "")),
+        "horizon": setup.get("horizon", ""),
+        "pipeline_status": setup.get("status"),
+        "execution_tier": setup.get("execution_tier", ""),
+        "direction": setup.get("direction"),
+        "readiness_score": setup.get("readiness_score"),
+        "wave_structure": setup.get("wave_structure"),
+        "wave_valid": setup.get("wave_valid"),
+        "wave_partial": setup.get("wave_partial"),
+        "entry": entry.get("anchor"),
+        "entry_order": entry.get("order_type"),
+        "zone_low": (entry.get("zone") or [None])[0],
+        "zone_high": (entry.get("zone") or [None, None])[1],
+        "stop_loss": stop.get("price"),
+        "stop_pct": stop.get("distance_pct"),
+        "tp1": targets[0]["price"] if targets else None,
+        "tp2": targets[1]["price"] if len(targets) > 1 else None,
+        "tp3": targets[2]["price"] if len(targets) > 2 else None,
+        "rr_tp2": targets[1]["rr"] if len(targets) > 1 else None,
+        "oos_win_rate": setup.get("oos_win_rate"),
+        "oos_trades": setup.get("oos_trades"),
+        "hist_win_rate": setup.get("historical_edge"),
+        "stress_win_rate": setup.get("stress_win_rate"),
+        "paper_outcome": setup.get("paper_outcome"),
+        "autodream_verdict": setup.get("autodream_verdict"),
+        "oos_gate": setup.get("oos_gate"),
+        "executive_verdict": ex.get("verdict"),
+        "consensus": cons.get("consensus_direction"),
+        "honest_reason": (setup.get("honest_reason") or "")[:200],
+      })
+
+  rows.sort(key=lambda x: (
+    tier_order.get(x["research_tier"], 9),
+    -x["accuracy_score"],
+    x["symbol"],
+    x["style"],
+  ))
+  return rows
+
+
+def summarize_research(rows: List[dict]) -> dict:
+  from collections import Counter
+
+  return {
+    "total": len(rows),
+    "by_research_tier": dict(Counter(r["research_tier"] for r in rows)),
+    "by_timeframe": dict(Counter(r["timeframe"] for r in rows)),
+    "by_pipeline_status": dict(Counter(r["pipeline_status"] for r in rows)),
+    "tradeable": [r for r in rows if r["research_tier"] == "tradeable"],
+    "high_watch": [r for r in rows if r["research_tier"] == "high_watch"],
+  }
+
+
+def save_research_setups_csv(rows: List[dict], path: str | Path) -> str:
+  return save_accurate_setups_csv(rows, path)

@@ -21,6 +21,8 @@ PAPER_LEDGER_DEFAULT = Path("output/autodream/paper_ledger.jsonl")
 LEDGER_LOOKBACK = 5000
 
 MIN_OOS_EXECUTABLE = 0.55
+MIN_OOS_EXECUTABLE_PROBE = 0.50
+MIN_OOS_EXECUTABLE_FULL = 0.55
 MIN_OOS_TRADES = 3
 MIN_SIGNAL_SAMPLES = 15
 MIN_LIFT_KEEP = 0.03
@@ -490,6 +492,29 @@ def run_calibration_accumulation_cycle(
   return status
 
 
+def build_hybrid_weights(cal: Optional[dict] = None) -> Tuple[Dict[str, int], set[str], Dict[str, int]]:
+  """
+  Merge calibrated kept signals with reduced default weights for neutral tokens.
+  Blocked anti-predictive tokens stay at zero.
+  """
+  cal = cal or load_calibration() or {}
+  defaults = _default_token_weights()
+  blocked = set(cal.get("blocked_signals") or cal.get("removed_signals", {}).keys())
+  kept = cal.get("signal_weights") or {}
+  hybrid: Dict[str, int] = dict(kept)
+  for token, pts in defaults.items():
+    if token in blocked:
+      continue
+    if token not in hybrid:
+      hybrid[token] = max(4, pts // 2)
+  thresholds = dict(DEFAULT_STYLE_THRESHOLDS)
+  thresholds.update(cal.get("style_thresholds") or {})
+  # Slightly lower thresholds when hybrid restores signal coverage
+  for style in thresholds:
+    thresholds[style] = max(52, int(thresholds[style]) - 5)
+  return hybrid, blocked, thresholds
+
+
 def score_indicator_confluence_calibrated(
   df: pd.DataFrame,
   direction: str,
@@ -498,7 +523,7 @@ def score_indicator_confluence_calibrated(
   style: str,
   calibration: Optional[dict] = None,
 ) -> dict:
-  """Score 0–100 using ledger-validated signal weights only."""
+  """Score 0–100 using hybrid calibrated + default signal weights."""
   if df is None or len(df) < 20:
     return {"score": 0, "aligned": False, "signals": [], "raw": {}, "zone_dist_pct": 99.0}
 
@@ -507,14 +532,12 @@ def score_indicator_confluence_calibrated(
   zdist = zone_proximity_pct(raw["price"], zone_low, zone_high)
   pairs = collect_indicator_signals(raw, direction, zdist)
 
-  if not cal or not cal.get("signal_weights"):
+  if not cal or not cal.get("available"):
     from core.indicators import score_indicator_confluence
 
     return score_indicator_confluence(df, direction, zone_low, zone_high, style)
 
-  weights = cal["signal_weights"]
-  blocked = set(cal.get("blocked_signals", []))
-  thresholds = cal.get("style_thresholds", DEFAULT_STYLE_THRESHOLDS)
+  weights, blocked, thresholds = build_hybrid_weights(cal)
   threshold = int(thresholds.get(style, DEFAULT_STYLE_THRESHOLDS.get(style, 58)))
 
   score = 0
@@ -540,6 +563,7 @@ def score_indicator_confluence_calibrated(
     "raw": raw,
     "zone_dist_pct": round(zdist, 3),
     "calibrated": True,
+    "hybrid": True,
     "active_tokens": active_tokens,
     "blocked_count": sum(1 for t, _ in pairs if t in blocked),
   }
@@ -560,11 +584,13 @@ def _token_display(token: str, raw: dict, zdist: float) -> str:
 
 
 def apply_oos_executable_gate(setup: dict) -> dict:
-  """Refuse executable label until OOS walk-forward clears 55%."""
+  """Refuse executable label until OOS walk-forward clears tier threshold."""
   if setup.get("status") != "executable":
     return setup
   oos_n = int(setup.get("oos_trades") or 0)
   oos_wr = setup.get("oos_win_rate")
+  tier = setup.get("execution_tier", "none")
+  floor = MIN_OOS_EXECUTABLE_PROBE if tier == "probe" else MIN_OOS_EXECUTABLE_FULL
   if oos_n < MIN_OOS_TRADES or oos_wr is None:
     setup["status"] = "monitor"
     setup["execution_tier"] = "none"
@@ -574,12 +600,12 @@ def apply_oos_executable_gate(setup: dict) -> dict:
     )
     setup["oos_gate"] = "insufficient_oos"
     return setup
-  if float(oos_wr) < MIN_OOS_EXECUTABLE:
+  if float(oos_wr) < floor:
     setup["status"] = "monitor"
     setup["execution_tier"] = "none"
     setup["honest_reason"] = (
       setup.get("honest_reason", "")
-      + f" · OOS gate: {float(oos_wr):.0%} < {MIN_OOS_EXECUTABLE:.0%} ({oos_n} trades) — not executable"
+      + f" · OOS gate: {float(oos_wr):.0%} < {floor:.0%} ({oos_n} trades) — not executable"
     )
     setup["oos_gate"] = "below_threshold"
   else:

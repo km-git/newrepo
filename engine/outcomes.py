@@ -167,6 +167,7 @@ def build_style_setup(
     ),
     oos_win_rate=None,
     oos_trades=0,
+    impulse_partial=wave.get("impulse_partial", False),
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
@@ -185,6 +186,7 @@ def build_style_setup(
     "honest_reason": reason,
     "wave_structure": wave.get("structure"),
     "wave_valid": wave.get("impulse_valid", False),
+    "wave_partial": wave.get("impulse_partial", False),
     "violations": wave.get("violations", [])[:2],
     "entry": {
       "anchor": round(entry_anchor, 6),

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from engine.indicator_calibration import MIN_OOS_EXECUTABLE, MIN_OOS_TRADES
+from engine.indicator_calibration import (
+  MIN_OOS_EXECUTABLE_FULL,
+  MIN_OOS_EXECUTABLE_PROBE,
+  MIN_OOS_TRADES,
+)
 
 # Executive verdicts that allow probe-tier execution
 PROBE_VERDICTS = frozenset({"GO", "CONDITIONAL_GO", "STAGED_GO", "STANDBY_ORDERS"})
@@ -46,6 +50,7 @@ def resolve_execution_status(
   cycle_aligned: bool = False,
   oos_win_rate: Optional[float] = None,
   oos_trades: int = 0,
+  impulse_partial: bool = False,
 ) -> Tuple[str, str, str]:
   """
   Returns (status, execution_tier, honest_reason).
@@ -54,7 +59,7 @@ def resolve_execution_status(
   """
   gaps: List[str] = []
   structure = wave.get("structure", "")
-  if structure.startswith("invalid"):
+  if structure.startswith("invalid") and not impulse_partial:
     gaps.append(structure)
 
   dir_bull = direction == "LONG"
@@ -62,7 +67,7 @@ def resolve_execution_status(
   if not consensus_ok:
     gaps.append(f"consensus={consensus_dir} vs {direction}")
 
-  if rr < min_rr:
+  if rr < min_rr * 0.88:
     return "not_actionable", "none", f"R:R {rr:.2f} below min {min_rr} for {style}"
 
   stop_dist = indicator.get("stop_dist_pct")
@@ -85,16 +90,18 @@ def resolve_execution_status(
   near_zone = _near_zone(style, in_zone, zone_dist_pct, executive_verdict)
   exec_ok = executive_verdict in PROBE_VERDICTS
 
-  def _oos_blocks_executable() -> Optional[str]:
+  def _oos_blocks_executable(tier: str) -> Optional[str]:
     if oos_trades < MIN_OOS_TRADES or oos_win_rate is None:
       return None
-    if float(oos_win_rate) < MIN_OOS_EXECUTABLE:
-      return f"OOS gate: {float(oos_win_rate):.0%} < {MIN_OOS_EXECUTABLE:.0%}"
+    floor = MIN_OOS_EXECUTABLE_PROBE if tier == "probe" else MIN_OOS_EXECUTABLE_FULL
+    if float(oos_win_rate) < floor:
+      return f"OOS gate: {float(oos_win_rate):.0%} < {floor:.0%}"
     return None
 
-  # Tier 1: Full executable — strict EW + zone
-  if impulse_valid and in_zone and rr >= min_rr and not gaps:
-    oos_block = _oos_blocks_executable()
+  # Tier 1: Full executable — strict EW + zone (partial impulse counts for probe only)
+  full_impulse = impulse_valid and not impulse_partial
+  if full_impulse and in_zone and rr >= min_rr and not gaps:
+    oos_block = _oos_blocks_executable("full")
     if oos_block:
       return (
         "monitor",
@@ -107,10 +114,12 @@ def resolve_execution_status(
       f"{style} FULL: impulse R1/R2/R3 valid, in zone, R:R {rr:.2f}",
     )
 
-  # Tier 2: Probe — NO probe on invalid impulse; higher bar when out of zone
-  probe_min_score = 72 if not in_zone else 65
-  if structure.startswith("invalid"):
-    gaps.append(structure)  # block probe on invalid structure
+  # Tier 2: Probe — partial impulse allowed; lower readiness bar with hybrid calibration
+  probe_min_score = 65 if not in_zone else 58
+  if structure.startswith("invalid") and not impulse_partial:
+    gaps.append(structure)
+
+  structure_blocks_probe = structure.startswith("invalid") and not impulse_partial
 
   if (
     ind_aligned
@@ -118,13 +127,16 @@ def resolve_execution_status(
     and near_zone
     and exec_ok
     and consensus_ok
-    and rr >= min_rr
+    and rr >= min_rr * 0.88
+    and not structure_blocks_probe
     and not any(g.startswith("invalid") for g in gaps)
-    and (harmonic_near or in_zone or (expert_confidence >= 0.65 and cycle_aligned))
+    and (harmonic_near or in_zone or impulse_partial or (expert_confidence >= 0.65 and cycle_aligned))
   ):
     missing = []
     if not impulse_valid:
       missing.append(f"{style} TF impulse pending")
+    elif impulse_partial:
+      missing.append(f"{style} TF partial impulse (adaptive R1)")
     if not in_zone:
       missing.append(f"zone dist {zone_dist_pct:.1f}%")
     sig = ", ".join(ind_signals[:3])
@@ -136,7 +148,7 @@ def resolve_execution_status(
       reason += " · expert+Hurst aligned"
     if missing:
       reason += f" · use 25-50% probe — {'; '.join(missing)}"
-    oos_block = _oos_blocks_executable()
+    oos_block = _oos_blocks_executable("probe")
     if oos_block:
       return (
         "monitor",
