@@ -181,6 +181,7 @@ COMPLETE_SETUP_COLUMNS = [
   "hist_win_rate", "hist_trades", "hist_avg_pnl_r",
   "oos_win_rate", "oos_trades", "wf_degradation", "stress_win_rate", "mc_win_rate_p5",
   "validation_summary", "paper_outcome", "paper_pnl_r", "autodream_verdict", "autodream_lesson",
+  "loss_lesson", "hedge_plan", "adjusted_risk_pct",
 ]
 
 

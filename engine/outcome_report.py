@@ -65,6 +65,13 @@ def build_outcome_row(result: dict) -> List[dict]:
       "paper_pnl_r": s.get("paper_pnl_r"),
       "autodream_verdict": s.get("autodream_verdict"),
       "autodream_lesson": "; ".join(ad.get("lessons", [])[:1]) or s.get("confidence_note", "")[:80],
+      "loss_lesson": s.get("loss_lesson"),
+      "hedge_plan": (
+        f"{s['hedge_plan']['hedge_size_pct']}% {s['hedge_plan']['hedge_direction']} "
+        f"{s['hedge_plan']['hedge_instrument']}"
+        if s.get("hedge_plan", {}).get("required") else ""
+      ),
+      "adjusted_risk_pct": (s.get("risk") or {}).get("account_risk_pct"),
     })
   return rows
 

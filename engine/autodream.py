@@ -13,6 +13,7 @@ from engine.paper_trading import (
   backtest_setup_on_bars,
   save_paper_metrics,
 )
+from engine.trade_learning import LEARNING_STATE_PATH, apply_learning_to_outcomes
 
 HISTORY_PATH = Path("output/autodream/history.jsonl")
 METRICS_PATH = Path("output/autodream/metrics.json")
@@ -255,6 +256,13 @@ def enrich_outcomes_with_autodream(
     ),
   }
   outcomes = apply_honesty_adjustments(outcomes)
+  if LEARNING_STATE_PATH.exists():
+    try:
+      learning = json.loads(LEARNING_STATE_PATH.read_text())
+      if learning.get("available"):
+        outcomes = apply_learning_to_outcomes(outcomes, symbol, data, learning)
+    except (json.JSONDecodeError, OSError):
+      pass
   _save_metrics(autodream_styles, outcomes.get("honest_summary", {}))
   return outcomes
 

@@ -21,6 +21,7 @@ from engine.paper_trading import (
   save_paper_csv,
   save_paper_metrics,
 )
+from engine.trade_learning import apply_learning_to_outcomes, run_loss_learning_cycle
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
@@ -105,6 +106,22 @@ def run_top_crypto_batch(
   for r in results:
     if r.get("status") != "incomplete" and r.get("step8_outcomes"):
       r["step8_outcomes"] = apply_honesty_adjustments(r["step8_outcomes"])
+
+  print("\n[batch] Loss learning from failed paper trades...")
+  learning = run_loss_learning_cycle()
+  if learning.get("available"):
+    from fetchers import fetch
+
+    for r in results:
+      if r.get("status") == "incomplete":
+        continue
+      try:
+        data = fetch(r["symbol"], tfs, is_crypto=True)
+        r["step8_outcomes"] = apply_learning_to_outcomes(
+          r["step8_outcomes"], r["symbol"], data, learning
+        )
+      except Exception as e:
+        print(f"[learning] skip {r['symbol']}: {e}")
   save_batch_json(results, str(json_path))
   append_paper_ledger(paper_report.get("trades", []))
   paper_metrics_path = save_paper_metrics(paper_report)
@@ -145,6 +162,8 @@ def run_top_crypto_batch(
     "paper_csv": paper_csv_path,
     "paper_setups": paper_report.get("setups_papered"),
     "paper_win_rate": paper_report.get("win_rate"),
+    "loss_lessons": learning.get("lessons", []) if learning.get("available") else [],
+    "losses_analyzed": learning.get("losses_analyzed", 0),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
@@ -166,6 +185,9 @@ def run_top_crypto_batch(
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
   print(f"  Paper:    {paper_csv_path} ({paper_report.get('setups_papered')} setups, "
         f"win_rate={paper_report.get('win_rate')})")
+  if learning.get("available"):
+    print(f"  Learning: {learning.get('losses_analyzed')} losses → {len(learning.get('lessons', []))} lessons")
+    print(f"  Lessons:  {out / 'autodream' / 'loss_lessons.json'}")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta
