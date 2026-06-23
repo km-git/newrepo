@@ -179,6 +179,28 @@ def test_enrich_ledger_entry_tags_calibrated_era():
   assert trade["calibration_id"]
 
 
+def test_enrich_ledger_entry_smc_path():
+  setup = {
+    "style": "smc",
+    "setup_type": "smc",
+    "entry_signal": True,
+    "entry_grade": "A",
+    "confluence_count": 3,
+    "institutional_score": 72,
+    "indicator_signals": ["liquidity sweep", "in bearish OB", "bearish FVG zone"],
+    "institutional": {
+      "tags": ["MSB z-score pass", "VP filter pass"],
+      "by_tf": {"15m": {"tags": ["equal lows cluster"]}},
+    },
+    "indicators": {"calibrated": True},
+  }
+  trade = enrich_ledger_entry({"symbol": "ETH/USDT", "style": "smc"}, setup)
+  assert trade["path"] == "smc"
+  assert trade["entry_signal"] is True
+  assert "liquidity sweep" in trade["indicator_tokens"]
+  assert "MSB z-score pass" in trade["indicator_tokens"]
+
+
 def test_accumulation_status_counts_eras():
   ledger = []
   for i in range(40):

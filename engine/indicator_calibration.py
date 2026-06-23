@@ -221,21 +221,33 @@ def enrich_ledger_entry(
     trade["calibration_generation"] = cal.get("calibration_generation", 0)
     trade["calibration_source"] = cal.get("source")
 
-  tokens = indicators.get("active_tokens")
-  if not tokens and setup.get("indicator_signals"):
-    tokens = list(_tokens_from_reason(" ".join(setup.get("indicator_signals", []))))
-  if not tokens:
-    extra: List[str] = []
-    extra.extend(setup.get("indicators", {}).get("tv_edge_tags") or [])
-    extra.extend(setup.get("indicators", {}).get("market_tokens") or [])
-    if extra:
-      from engine.tv_edge import normalize_tv_tokens
-      tokens = normalize_tv_tokens(extra) + [
-        t for t in extra if t in (setup.get("indicators", {}).get("market_tokens") or [])
-      ]
-      tokens = list(dict.fromkeys(tokens))
+  tokens = list(indicators.get("active_tokens") or [])
+  if setup.get("indicator_signals"):
+    tokens.extend(_tokens_from_reason(" ".join(setup.get("indicator_signals", []))))
+  extra: List[str] = []
+  extra.extend(setup.get("indicators", {}).get("tv_edge_tags") or [])
+  extra.extend(setup.get("indicators", {}).get("market_tokens") or [])
+  inst = setup.get("institutional") or {}
+  extra.extend(inst.get("tags") or [])
+  for tf_data in (inst.get("by_tf") or {}).values():
+    if isinstance(tf_data, dict):
+      extra.extend(tf_data.get("tags") or [])
+  if extra:
+    from engine.tv_edge import normalize_tv_tokens
+    tokens.extend(normalize_tv_tokens(extra))
+    tokens.extend([
+      t for t in extra if t in (setup.get("indicators", {}).get("market_tokens") or [])
+    ])
   if tokens:
     trade["indicator_tokens"] = list(dict.fromkeys(tokens))
+
+  if setup.get("style") == "smc" or setup.get("setup_type") == "smc":
+    trade["path"] = "smc"
+    trade["entry_signal"] = bool(setup.get("entry_signal"))
+    trade["entry_probe"] = bool(setup.get("entry_probe"))
+    trade["entry_grade"] = setup.get("entry_grade")
+    trade["confluence_count"] = setup.get("confluence_count")
+    trade["institutional_score"] = setup.get("institutional_score")
 
   for key in (
     "oos_gate",

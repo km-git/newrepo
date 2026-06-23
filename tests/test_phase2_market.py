@@ -18,6 +18,8 @@ def test_orderbook_tokens():
 
 def test_apply_extra_calibration_tokens_uncalibrated():
   ind = {"score": 40, "threshold": 58, "signals": [], "active_tokens": []}
-  out = apply_extra_calibration_tokens(ind, ["SMC BOS bull", "in bullish OB"])
+  out = apply_extra_calibration_tokens(
+    ind, ["SMC BOS bull", "in bullish OB"], calibration={"available": False},
+  )
   assert out["score"] > 40
   assert "SMC BOS bull" in out["active_tokens"]
