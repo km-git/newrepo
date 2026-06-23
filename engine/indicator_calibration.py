@@ -86,6 +86,15 @@ REASON_PATTERNS: List[Tuple[str, str]] = [
   ("funding extreme", r"funding extreme"),
   ("orderbook bid pressure", r"orderbook bid pressure|orderbook imb \+"),
   ("orderbook ask pressure", r"orderbook ask pressure|orderbook imb -"),
+  ("liquidity sweep", r"liquidity sweep"),
+  ("CVD bullish divergence", r"CVD bullish divergence|cvd_bullish"),
+  ("CVD bearish divergence", r"CVD bearish divergence|cvd_bearish"),
+  ("at volume POC", r"at volume POC|volume POC"),
+  ("VP filter pass", r"VP filter pass"),
+  ("HA bull ROC up", r"HA bull.*ROC"),
+  ("HA bear ROC down", r"HA bear.*ROC"),
+  ("OBI bid pressure", r"OBI bid pressure"),
+  ("OBI ask pressure", r"OBI ask pressure"),
 ]
 
 
@@ -423,6 +432,15 @@ def _default_token_weights() -> Dict[str, int]:
     "funding extreme": 8,
     "orderbook bid pressure": 10,
     "orderbook ask pressure": 10,
+    "liquidity sweep": 20,
+    "CVD bullish divergence": 16,
+    "CVD bearish divergence": 16,
+    "at volume POC": 10,
+    "VP filter pass": 8,
+    "HA bull ROC up": 10,
+    "HA bear ROC down": 10,
+    "OBI bid pressure": 10,
+    "OBI ask pressure": 10,
   }
 
 

@@ -355,6 +355,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     data,
     executive.get("direction", exec_direction),
     primary_tf="1h" if "1h" in data else "1d",
+    exchange=get_crypto_exchange() if is_crypto else None,
   )
   stages.append(("tv_edge", {"symbol": symbol}, {
     "edge_score": tv_edge.get("edge_score"),
@@ -363,7 +364,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   }))
   print(
     f"[step7b] TV edge score={tv_edge.get('edge_score')} "
-    f"smc_valid={tv_edge.get('smc_valid')} aligned_tfs={tv_edge.get('aligned_tfs')}"
+    f"smc_valid={tv_edge.get('smc_valid')} entry_signal={tv_edge.get('entry_signal')} "
+    f"grade={tv_edge.get('entry_grade')} aligned_tfs={tv_edge.get('aligned_tfs')}"
   )
 
   # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
@@ -384,6 +386,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     expert_direction=expert_direction,
     cycle_confluence=cycle_confluence,
     tv_edge=tv_edge,
+    exchange=get_crypto_exchange() if is_crypto else None,
   )
   outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
   record_outcome(symbol, outcomes, current_price, status)

@@ -1,4 +1,4 @@
-"""TradingView OSS edge layer — SMC + QuanTAlib enhanced indicators."""
+"""TradingView OSS edge layer — institutional SMC + QuanTAlib enhanced indicators."""
 
 from __future__ import annotations
 
@@ -6,29 +6,32 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from core.smc_structure import analyze_smc, smc_aligns_direction
+from core.institutional_edge import build_institutional_matrix
 from core.tv_enhanced import compute_enhanced_indicators, detect_oscillator_divergence, score_enhanced_confluence
 
 DEFAULT_EDGE_TFS = ["15m", "1h", "4h", "1d", "1w"]
 
 
-def build_smc_matrix(data: Dict[str, pd.DataFrame], tfs: Optional[List[str]] = None) -> dict:
-  tfs = tfs or DEFAULT_EDGE_TFS
-  matrix = {}
-  for tf in tfs:
-    df = data.get(tf)
-    if df is None or len(df) < 30:
-      matrix[tf] = {"status": "no_data"}
-      continue
-    pivot = 5 if tf in ("15m", "1h") else 7
-    matrix[tf] = analyze_smc(df, pivot_len=pivot, ms_pivot_len=pivot + 2)
-  valid = sum(1 for v in matrix.values() if v.get("smc_valid"))
-  partial = sum(1 for v in matrix.values() if v.get("smc_partial"))
+def build_smc_matrix(
+  data: Dict[str, pd.DataFrame],
+  tfs: Optional[List[str]] = None,
+  direction: str = "LONG",
+  exchange=None,
+  symbol: str = "",
+) -> dict:
+  """Institutional SMC matrix via smartmoneyconcepts library."""
+  inst = build_institutional_matrix(
+    data, direction, tfs=tfs or DEFAULT_EDGE_TFS, exchange=exchange, symbol=symbol,
+  )
+  by_tf = inst.get("by_tf", {})
+  valid = sum(1 for v in by_tf.values() if v.get("entry_signal"))
+  partial = sum(1 for v in by_tf.values() if v.get("partial_confluence", 0) >= 1)
   return {
-    "by_tf": matrix,
+    "by_tf": by_tf,
     "valid_count": valid,
     "partial_count": partial,
-    "coverage_pct": round(100 * valid / max(len(tfs), 1), 1),
+    "coverage_pct": round(100 * partial / max(len(by_tf), 1), 1),
+    "institutional": inst,
   }
 
 
@@ -52,26 +55,28 @@ def build_tv_edge_layer(
   data: Dict[str, pd.DataFrame],
   direction: str,
   primary_tf: str = "1h",
+  exchange=None,
 ) -> dict:
   """
-  Aggregate TV OSS edge for a symbol.
+  Aggregate institutional edge for a symbol (Phases 1–5).
   Returns tokens usable by indicator calibration + readiness SMC path.
   """
-  smc = build_smc_matrix(data)
+  inst = build_institutional_matrix(
+    data, direction, tfs=["15m", "1h", "4h", "1d"], exchange=exchange, symbol=symbol,
+  )
   enhanced = build_enhanced_matrix(data)
-  primary_smc = smc["by_tf"].get(primary_tf, {})
+  primary_inst = inst.get("by_tf", {}).get(primary_tf, inst.get("by_tf", {}).get("1h", {}))
   primary_enh = enhanced["by_tf"].get(primary_tf, {})
 
   enh_score, enh_tags = score_enhanced_confluence(
     primary_enh, direction, primary_enh.get("divergence")
   )
-  smc_score = int(primary_smc.get("smc_score", 0))
-  smc_tags = list(primary_smc.get("tags", []))
+  smc_score = int(inst.get("institutional_score", 0))
+  smc_tags = list(inst.get("tags", []))
 
-  # Multi-TF SMC alignment bonus
   aligned_tfs = [
-    tf for tf, s in smc["by_tf"].items()
-    if s.get("status") == "ok" and smc_aligns_direction(s, direction)
+    tf for tf, s in inst.get("by_tf", {}).items()
+    if s.get("status") == "ok" and s.get("score", 0) >= 35
   ]
   mtf_bonus = min(15, len(aligned_tfs) * 4)
 
@@ -86,30 +91,41 @@ def build_tv_edge_layer(
     "smc_score": smc_score,
     "enhanced_score": enh_score,
     "mtf_bonus": mtf_bonus,
-    "smc_valid": bool(primary_smc.get("smc_valid")),
-    "smc_partial": bool(primary_smc.get("smc_partial")),
-    "smc_aligned": smc_aligns_direction(primary_smc, direction),
-    "smc_structure": primary_smc.get("last_event", "none"),
-    "structure_bias": primary_smc.get("structure_bias", "NEUTRAL"),
+    "smc_valid": bool(inst.get("entry_signal")) or inst.get("entry_grade") in ("A", "B"),
+    "smc_partial": inst.get("confluence_count", 0) >= 1,
+    "smc_aligned": True,
+    "smc_structure": primary_inst.get("structure_event", "none"),
+    "structure_bias": "BULL" if direction in ("LONG", "BULL") else "BEAR",
     "aligned_tfs": aligned_tfs,
     "tags": all_tags,
     "tokens": [(t, 15) for t in all_tags[:8]],
-    "smc_matrix": smc,
+    "smc_matrix": {"by_tf": inst.get("by_tf", {}), "institutional": inst},
     "enhanced_matrix": enhanced,
+    "institutional": inst,
     "primary_tf": primary_tf,
+    "entry_signal": inst.get("entry_signal", False),
+    "entry_grade": inst.get("entry_grade", "D"),
   }
 
 
-# Maps TV edge tag prefixes → calibration token names
 TV_TOKEN_MAP = {
-  "SMC BOS bull": "SMC BOS bull",
-  "SMC CHoCH bull": "SMC CHoCH bull",
-  "SMC BOS bear": "SMC BOS bear",
-  "SMC CHoCH bear": "SMC CHoCH bear",
+  "SMC bos bull": "SMC BOS bull",
+  "SMC choch bull": "SMC CHoCH bull",
+  "SMC bos bear": "SMC BOS bear",
+  "SMC choch bear": "SMC CHoCH bear",
   "in bullish OB": "in bullish OB",
   "in bearish OB": "in bearish OB",
   "bullish FVG zone": "bullish FVG zone",
   "bearish FVG zone": "bearish FVG zone",
+  "liquidity sweep": "liquidity sweep",
+  "CVD bullish divergence": "CVD bullish divergence",
+  "CVD bearish divergence": "CVD bearish divergence",
+  "at volume POC": "at volume POC",
+  "VP filter pass": "VP filter pass",
+  "HA bull + ROC up": "HA bull ROC up",
+  "HA bear + ROC down": "HA bear ROC down",
+  "OBI bid pressure": "OBI bid pressure",
+  "OBI ask pressure": "OBI ask pressure",
   "ADX": "ADX trend strong",
   "above SuperTrend": "above SuperTrend",
   "below SuperTrend": "below SuperTrend",
@@ -125,13 +141,14 @@ TV_TOKEN_MAP = {
 def normalize_tv_tokens(tags: List[str]) -> List[str]:
   out: List[str] = []
   for tag in tags:
+    low = tag.lower()
     matched = False
     for prefix, token in TV_TOKEN_MAP.items():
-      if tag.startswith(prefix) or tag == prefix:
+      if low.startswith(prefix.lower()) or low == prefix.lower():
         out.append(token)
         matched = True
         break
-    if not matched and tag.startswith("SMC "):
+    if not matched and tag.lower().startswith("smc "):
       out.append(tag.split("(")[0].strip())
   return list(dict.fromkeys(out))
 
@@ -160,7 +177,6 @@ def merge_tv_tokens_into_indicators(
   if extra:
     indicators = apply_extra_calibration_tokens(indicators, extra)
 
-  # Uncalibrated fallback boost
   if not indicators.get("calibrated") and tv_edge:
     bonus = min(25, int(tv_edge.get("edge_score", 0) * 0.25))
     if bonus:

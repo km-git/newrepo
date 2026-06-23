@@ -11,6 +11,7 @@ from core.indicators import score_indicator_confluence
 from core.risk import MAX_STOP_PCT, build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
 from engine.indicator_calibration import load_calibration, score_indicator_confluence_calibrated
 from engine.readiness import resolve_execution_status
+from engine.institutional_setups import build_smc_setup
 from engine.tv_edge import merge_tv_tokens_into_indicators
 
 STYLE_CONFIG = {
@@ -263,6 +264,7 @@ def build_outcomes(
   expert_direction: Optional[dict] = None,
   cycle_confluence: Optional[dict] = None,
   tv_edge: Optional[dict] = None,
+  exchange=None,
 ) -> dict:
   mkt = market_tools or {}
   boost = mkt.get("confluence_boost", 0)
@@ -277,13 +279,28 @@ def build_outcomes(
       tv_edge=tv_edge,
     )
 
+  institutional = (tv_edge or {}).get("institutional") or {}
+  setups["smc"] = build_smc_setup(
+    symbol=symbol,
+    data=data,
+    direction=direction,
+    kz_low=kz_low,
+    kz_high=kz_high,
+    in_zone=in_zone,
+    consensus=consensus,
+    executive=executive,
+    institutional=institutional,
+    exchange=exchange,
+    market_tools=mkt,
+  )
+
   executable = [s for s in setups.values() if s.get("status") == "executable"]
   full_exec = [s for s in executable if s.get("execution_tier") == "full"]
   probe_exec = [s for s in executable if s.get("execution_tier") == "probe"]
   monitor = [s for s in setups.values() if s.get("status") == "monitor"]
   skip = [s for s in setups.values() if s.get("status") == "not_actionable"]
 
-  # Primary = best honest outcome
+  # Primary = best honest outcome (SMC setup competes with EW styles)
   if executable:
     primary = max(executable, key=lambda s: (s.get("readiness_score", 0), s["targets"][1]["rr"] if s.get("targets") else 0))
     primary_key = primary["style"]
