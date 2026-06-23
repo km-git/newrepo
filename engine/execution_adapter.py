@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
-from engine.calibrated_execution import calibrated_size_pct
 from engine.indicator_calibration import enrich_ledger_entry, load_calibration
 from engine.paper_trading import append_paper_ledger, paper_trade_setup
 
 EXEC_LOG_PATH = Path("output/autodream/execution_log.jsonl")
+DEDUP_PATH = Path("output/autodream/execution_dedup.json")
+DEFAULT_DEDUP_HOURS = 24
 
 
 def _fetch_data(symbol: str, timeframe: str) -> dict:
@@ -37,6 +38,86 @@ def _candidate_setup(candidate: dict) -> dict:
     "confluence_count": candidate.get("confluence_count"),
     "readiness_score": candidate.get("readiness_score"),
     "honest_reason": candidate.get("playbook") or candidate.get("upgrade_note"),
+  }
+
+
+def load_execution_dedup(path: Path = DEDUP_PATH) -> dict:
+  if not path.exists():
+    return {"ids": {}}
+  try:
+    return json.loads(path.read_text())
+  except (json.JSONDecodeError, OSError):
+    return {"ids": {}}
+
+
+def save_execution_dedup(doc: dict, path: Path = DEDUP_PATH) -> None:
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text(json.dumps(doc, indent=2, default=str))
+
+
+def recently_executed_ids(hours: int = DEFAULT_DEDUP_HOURS, path: Optional[Path] = None) -> Set[str]:
+  """Candidate ids executed within the dedup window."""
+  path = path or DEDUP_PATH
+  doc = load_execution_dedup(path)
+  cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+  out: Set[str] = set()
+  for cid, ts in (doc.get("ids") or {}).items():
+    try:
+      if datetime.fromisoformat(ts) >= cutoff:
+        out.add(cid)
+    except ValueError:
+      continue
+  return out
+
+
+def mark_executed_ids(ids: List[str], path: Optional[Path] = None) -> None:
+  doc = load_execution_dedup(path or DEDUP_PATH)
+  now = datetime.now(timezone.utc).isoformat()
+  doc.setdefault("ids", {})
+  for cid in ids:
+    doc["ids"][cid] = now
+  # prune entries older than 7 days
+  cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+  doc["ids"] = {
+    k: v for k, v in doc["ids"].items()
+    if datetime.fromisoformat(v) >= cutoff
+  }
+  save_execution_dedup(doc, path or DEDUP_PATH)
+
+
+def filter_fresh_candidates(
+  candidates: List[dict],
+  *,
+  hours: int = DEFAULT_DEDUP_HOURS,
+) -> tuple[List[dict], List[dict]]:
+  """Split candidates into fresh vs already executed recently."""
+  recent = recently_executed_ids(hours=hours)
+  fresh: List[dict] = []
+  skipped: List[dict] = []
+  for c in candidates:
+    cid = c.get("id") or f"{c['symbol']}:{c.get('style')}"
+    if cid in recent:
+      skipped.append({**c, "skip_reason": f"executed_within_{hours}h"})
+      continue
+    fresh.append(c)
+  return fresh, skipped
+
+
+def preview_execution(candidate: dict) -> dict:
+  """Dry-run preview — no fetch, no ledger."""
+  return {
+    "symbol": candidate["symbol"],
+    "style": candidate.get("style"),
+    "direction": candidate.get("direction"),
+    "timeframe": candidate.get("timeframe"),
+    "calibrated_size_pct": candidate.get("calibrated_size_pct"),
+    "execution_tier": candidate.get("execution_tier"),
+    "source": candidate.get("source"),
+    "executive_action": candidate.get("executive_action"),
+    "entry_signal": candidate.get("entry_signal"),
+    "entry_probe": candidate.get("entry_probe"),
+    "available": True,
+    "dry_run": True,
   }
 
 
@@ -71,9 +152,10 @@ def execute_paper(
   return trade
 
 
-def append_execution_log(events: List[dict], path: Path = EXEC_LOG_PATH) -> None:
+def append_execution_log(events: List[dict], path: Optional[Path] = None) -> None:
   if not events:
     return
+  path = path or EXEC_LOG_PATH
   path.parent.mkdir(parents=True, exist_ok=True)
   with path.open("a") as f:
     for e in events:
@@ -85,18 +167,50 @@ def drain_execution_queue(
   *,
   mode: str = "paper",
   max_trades: int = 5,
+  dry_run: bool = False,
+  dedup_hours: int = DEFAULT_DEDUP_HOURS,
 ) -> dict:
   """Execute up to max_trades approved candidates."""
   approved = queue.get("approved", [])
   if not approved:
-    return {"executed": 0, "trades": [], "skipped": 0}
+    return {"executed": 0, "trades": [], "skipped": 0, "dry_run": dry_run}
+
+  fresh, deduped = filter_fresh_candidates(approved, hours=dedup_hours)
+  to_run = fresh[:max_trades]
 
   trades: List[dict] = []
   events: List[dict] = []
   data_cache: Dict[str, dict] = {}
+  executed_ids: List[str] = []
 
-  for cand in approved[:max_trades]:
+  for cand in deduped:
+    events.append({
+      "ts": datetime.now(timezone.utc).isoformat(),
+      "symbol": cand["symbol"],
+      "style": cand.get("style"),
+      "mode": "dedup",
+      "status": "skipped",
+      "reason": cand.get("skip_reason"),
+    })
+
+  for cand in to_run:
     sym = cand["symbol"]
+    cid = cand.get("id") or f"{sym}:{cand.get('style')}"
+
+    if dry_run:
+      preview = preview_execution(cand)
+      trades.append(preview)
+      events.append({
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "symbol": sym,
+        "style": cand.get("style"),
+        "mode": "dry_run",
+        "status": "would_execute",
+        "size_pct": preview.get("calibrated_size_pct"),
+        "source": cand.get("source"),
+      })
+      continue
+
     if mode != "paper":
       events.append({
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -113,6 +227,7 @@ def drain_execution_queue(
     trade = execute_paper(cand, data_cache[sym])
     if trade.get("available"):
       trades.append(trade)
+      executed_ids.append(cid)
       events.append({
         "ts": datetime.now(timezone.utc).isoformat(),
         "symbol": sym,
@@ -131,13 +246,16 @@ def drain_execution_queue(
         "reason": trade.get("reason"),
       })
 
-  if trades:
+  if trades and not dry_run:
     append_paper_ledger(trades)
+    mark_executed_ids(executed_ids)
   append_execution_log(events)
 
   return {
     "executed": len(trades),
-    "skipped": len(approved) - len(trades),
+    "skipped": len(approved) - len(to_run),
+    "dedup_skipped": len(deduped),
+    "dry_run": dry_run,
     "trades": trades,
     "events": events,
   }

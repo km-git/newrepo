@@ -79,6 +79,26 @@ def collect_board_candidates(
   return out
 
 
+def collect_monitor_upgrades_from_events(events: List[dict], queue: List[dict]) -> List[dict]:
+  """Build upgrade candidates from monitor scan events + queue geometry."""
+  upgraded_keys = {
+    (e["symbol"], e["style"])
+    for e in events
+    if e.get("prior_status") == "monitor" and e.get("new_status") == "executable"
+  }
+  if not upgraded_keys:
+    return []
+  items: List[dict] = []
+  for item in queue:
+    if (item.get("symbol"), item.get("style")) not in upgraded_keys:
+      continue
+    enriched = dict(item)
+    enriched["prior_status"] = "monitor"
+    enriched["new_status"] = "executable"
+    items.append(enriched)
+  return collect_monitor_upgrades(items)
+
+
 def collect_monitor_upgrades(
   monitor_queue: List[dict],
   since_status: str = "monitor",
