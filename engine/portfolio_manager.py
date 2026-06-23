@@ -135,8 +135,9 @@ def approve_candidates(
 def save_portfolio_state(
   approved: List[dict],
   rejected: List[dict],
-  path: Path = STATE_PATH,
+  path: str | Path = STATE_PATH,
 ) -> dict:
+  path = Path(path)
   payload = {
     "updated": datetime.now(timezone.utc).isoformat(),
     "open_count": len(open_positions()),

@@ -264,6 +264,14 @@ def append_events(events: List[dict], path: Path = EVENTS_PATH) -> None:
       f.write(json.dumps(e, default=str) + "\n")
 
 
+def _json_safe(obj):
+  if hasattr(obj, "item"):
+    return obj.item()
+  if isinstance(obj, (set, frozenset)):
+    return list(obj)
+  return str(obj)
+
+
 def save_scanned_queue(
   queue: List[dict],
   path: str | Path = DEFAULT_QUEUE_PATH,
@@ -279,7 +287,7 @@ def save_scanned_queue(
   p = Path(path)
   p.parent.mkdir(parents=True, exist_ok=True)
   with p.open("w") as f:
-    json.dump(payload, f, indent=2)
+    json.dump(payload, f, indent=2, default=_json_safe)
   return payload
 
 

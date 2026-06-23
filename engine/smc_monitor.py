@@ -117,7 +117,6 @@ def evaluate_smc_triggers(
     "msb_z": msb.get("z"),
     "vp_filter_ok": tf_analysis.get("vp_filter_ok"),
     "upgrade_note": upgrade_note,
-    "institutional": inst,
     "setup_live": setup_stub,
   }
 

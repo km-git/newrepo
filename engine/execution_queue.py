@@ -191,7 +191,16 @@ def load_execution_queue(path: Path = QUEUE_PATH) -> dict:
   return json.loads(path.read_text())
 
 
-def save_execution_queue(queue: dict, path: Path = QUEUE_PATH) -> str:
+def _json_safe(obj):
+  if hasattr(obj, "item"):
+    return obj.item()
+  if isinstance(obj, (set, frozenset)):
+    return list(obj)
+  return str(obj)
+
+
+def save_execution_queue(queue: dict, path: str | Path = QUEUE_PATH) -> str:
+  path = Path(path)
   path.parent.mkdir(parents=True, exist_ok=True)
-  path.write_text(json.dumps(queue, indent=2, default=str))
+  path.write_text(json.dumps(queue, indent=2, default=_json_safe))
   return str(path)
