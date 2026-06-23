@@ -45,7 +45,46 @@ def test_broken_stop_geometry_excluded():
   assert score == 0
 
 
+def test_score_smc_entry_signal():
+  s = _setup(
+    status="executable",
+    execution_tier="full",
+    entry_signal=True,
+    entry_grade="A",
+    smc_valid=True,
+    confluence_count=3,
+    readiness_score=55,
+    oos_gate="passed",
+  )
+  score, tier, tags = score_setup_accuracy(s, "smc")
+  assert score >= 60
+  assert "smc_entry_signal" in tags
+  assert tier in ("A", "B", "C")
+
+
 def test_extract_accurate_setups_filters():
+  results = [{
+    "symbol": "ETH/USDT",
+    "status": "active",
+    "executive_decision": {"verdict": "GO"},
+    "step6_wave_consensus": {"consensus_direction": "BULL"},
+    "step8_outcomes": {
+      "setups": {
+        "smc": _setup(
+          entry_signal=True,
+          entry_grade="A",
+          smc_valid=True,
+          confluence_count=3,
+          oos_win_rate=0.65,
+        ),
+      },
+    },
+  }]
+  rows = extract_accurate_setups(results, min_tier="C")
+  assert len(rows) == 1
+  assert rows[0]["style"] == "smc"
+  assert rows[0]["timeframe"] == "15m"
+
   results = [{
     "symbol": "BTC/USDT",
     "status": "active",

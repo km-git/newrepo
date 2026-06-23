@@ -37,6 +37,7 @@ DEFAULT_STYLE_THRESHOLDS = {
   "day_trade": 65,
   "swing": 58,
   "long_term": 60,
+  "smc": 45,
 }
 
 # Regex patterns for tokens extracted from honest_reason (ledger backfill)
@@ -95,6 +96,7 @@ REASON_PATTERNS: List[Tuple[str, str]] = [
   ("HA bear ROC down", r"HA bear.*ROC"),
   ("OBI bid pressure", r"OBI bid pressure"),
   ("OBI ask pressure", r"OBI ask pressure"),
+  ("london_open", r"london_open|london_ny_overlap|ny_session"),
 ]
 
 
@@ -441,6 +443,7 @@ def _default_token_weights() -> Dict[str, int]:
     "HA bear ROC down": 10,
     "OBI bid pressure": 10,
     "OBI ask pressure": 10,
+    "london_open": 5,
   }
 
 

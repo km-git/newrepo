@@ -91,7 +91,7 @@ def build_smc_setup(
     lo,
     hi,
     SMC_STYLE["atr_mult_sl"],
-    max_stop_pct=MAX_STOP_PCT.get("day_trade", 4.0),
+    max_stop_pct=MAX_STOP_PCT.get("smc", 4.0),
   )
   targets = dynamic_targets(direction, entry_anchor, atr, None, None, None)
   if stop.get("capped"):

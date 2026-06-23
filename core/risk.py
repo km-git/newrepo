@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 DCA_SPLITS = [10, 20, 30, 40]
 
 # Max stop distance (% of entry) — stops beyond this are structurally broken
-MAX_STOP_PCT = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0}
+MAX_STOP_PCT = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0, "smc": 4.0}
 
 
 def _r(x: float, decimals: int = 6) -> float:

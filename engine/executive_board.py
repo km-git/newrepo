@@ -24,8 +24,8 @@ MIN_BOARD_SCORE = 15
 DEFAULT_PICKS_PER_TF = 5
 DEFAULT_PICKS_TOTAL = 30
 BOARD_TIMEFRAMES = ("15m", "1h", "4h", "1d", "1w")
-# 4h is context-only in outcomes — anchor entries from day_trade or swing
-CONTEXT_TF_ANCHOR_STYLE = ("day_trade", "swing")
+# 4h is context-only in outcomes — anchor entries from day_trade, swing, or smc
+CONTEXT_TF_ANCHOR_STYLE = ("smc", "day_trade", "swing")
 
 
 def _baseline_score(setup: dict, style: str) -> int:
@@ -79,6 +79,8 @@ def _executive_action(setup: dict, exec_score: int, blocker: str) -> Tuple[str, 
   oos_n = int(setup.get("oos_trades") or 0)
   wave_valid = bool(setup.get("wave_valid"))
   wave_partial = bool(setup.get("wave_partial"))
+  smc_valid = bool(setup.get("smc_valid") or setup.get("entry_signal"))
+  smc_partial = int(setup.get("confluence_count") or 0) >= 1
 
   if status == "executable" and setup.get("oos_gate") == "passed":
     size = 100 if tier == "full" else 50
@@ -88,11 +90,11 @@ def _executive_action(setup: dict, exec_score: int, blocker: str) -> Tuple[str, 
     return "EXECUTE_CAUTION", 35, "Executable label but OOS pending — reduced size"
 
   if exec_score >= 75 and oos_n >= 3 and oos is not None and float(oos) >= 0.55:
-    size = 75 if wave_valid else 40
+    size = 75 if (wave_valid or smc_valid) else 40
     return "EXECUTE_NOW", size, "Executive override: strong OOS + composite score"
 
-  if exec_score >= 62 and (wave_valid or wave_partial) and blocker != "broken_geometry":
-    return "SCALE_IN", 40, "Scale in 25-40% — partial/valid impulse, await full confirm"
+  if exec_score >= 62 and (wave_valid or wave_partial or smc_valid) and blocker != "broken_geometry":
+    return "SCALE_IN", 40, "Scale in 25-40% — partial/valid impulse or SMC, await full confirm"
 
   if exec_score >= 55 and setup.get("autodream_verdict") == "validated":
     return "STANDBY_LIMIT", 30, "Validated edge — limit at entry zone, confirm rejection"
@@ -130,12 +132,32 @@ def executive_setup_score(
   elif readiness >= 55:
     score += 4
 
+  smc_partial = int(setup.get("confluence_count") or 0) >= 1
+
   if setup.get("wave_valid"):
     score += 10
     tags.append("impulse_valid")
   elif setup.get("wave_partial"):
     score += 6
     tags.append("impulse_partial")
+
+  if setup.get("entry_signal"):
+    score += 15
+    tags.append("smc_entry_signal")
+  elif setup.get("smc_valid"):
+    score += 10
+    tags.append("smc_valid")
+  elif smc_partial:
+    score += 5
+    tags.append("smc_partial")
+
+  entry_grade = setup.get("entry_grade")
+  if entry_grade == "A":
+    score += 10
+    tags.append("smc_grade_A")
+  elif entry_grade == "B":
+    score += 5
+    tags.append("smc_grade_B")
 
   if setup.get("status") == "executable":
     score += 12

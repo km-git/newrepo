@@ -14,6 +14,7 @@ STYLE_TF = {
   "day_trade": "1h",
   "swing": "1d",
   "long_term": "1w",
+  "smc": "15m",
 }
 
 MIN_OOS_TRADES = 3
@@ -94,6 +95,28 @@ def score_setup_accuracy(setup: dict, style: str) -> Tuple[int, str, List[str]]:
     score += 10
     tags.append("impulse_valid")
 
+  # SMC institutional edge (Phases 1–5)
+  if setup.get("entry_signal"):
+    score += 18
+    tags.append("smc_entry_signal")
+  elif setup.get("smc_valid"):
+    score += 10
+    tags.append("smc_valid")
+  entry_grade = setup.get("entry_grade")
+  if entry_grade == "A":
+    score += 12
+    tags.append("smc_grade_A")
+  elif entry_grade == "B":
+    score += 6
+    tags.append("smc_grade_B")
+  conf = int(setup.get("confluence_count") or 0)
+  if conf >= 3:
+    score += 8
+    tags.append("smc_confluence_3")
+  elif conf >= 2:
+    score += 4
+    tags.append("smc_confluence_2")
+
   if readiness >= 72:
     score += 8
   elif readiness >= 65:
@@ -167,6 +190,10 @@ def extract_accurate_setups(results: List[dict], min_tier: str = "C") -> List[di
         "symbol": sym,
         "style": style,
         "timeframe": STYLE_TF.get(style, setup.get("timeframe", "")),
+        "entry_grade": setup.get("entry_grade"),
+        "entry_signal": setup.get("entry_signal"),
+        "confluence_count": setup.get("confluence_count"),
+        "smc_valid": setup.get("smc_valid"),
         "horizon": setup.get("horizon", ""),
         "status": setup.get("status"),
         "execution_tier": setup.get("execution_tier", ""),
@@ -262,11 +289,15 @@ def _primary_blocker(setup: dict, style: str) -> str:
   if setup.get("status") == "not_actionable":
     if "R:R" in reason and "below min" in reason:
       return "rr_below_min"
+    if style == "smc" and setup.get("confluence_count", 0) >= 1:
+      return "await_smc_confluence"
     return "no_edge"
   if setup.get("oos_gate") == "below_threshold":
     return "oos_below_floor"
   if setup.get("oos_gate") == "insufficient_oos":
     return "oos_insufficient"
+  if style == "smc" and setup.get("status") == "monitor":
+    return "await_smc_confluence"
   if "invalid_impulse" in reason and not setup.get("wave_partial"):
     return "invalid_impulse"
   if not setup.get("wave_valid") and setup.get("status") == "monitor":
@@ -323,6 +354,10 @@ def extract_research_setups(results: List[dict]) -> List[dict]:
         "symbol": sym,
         "style": style,
         "timeframe": STYLE_TF.get(style, setup.get("timeframe", "")),
+        "entry_grade": setup.get("entry_grade"),
+        "entry_signal": setup.get("entry_signal"),
+        "confluence_count": setup.get("confluence_count"),
+        "smc_valid": setup.get("smc_valid"),
         "horizon": setup.get("horizon", ""),
         "pipeline_status": setup.get("status"),
         "execution_tier": setup.get("execution_tier", ""),

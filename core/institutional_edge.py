@@ -47,6 +47,37 @@ def _swing_length(tf: str) -> int:
   return {"15m": 8, "1h": 12, "4h": 15, "1d": 20, "1w": 25}.get(tf, 12)
 
 
+def _price_near_zone(price: float, top: float, bot: float, tol_pct: float = 0.005) -> bool:
+  """Price inside zone or within tolerance (ICT retest entry)."""
+  tol = price * tol_pct
+  return bot - tol <= price <= top + tol
+
+
+def _bar_touches_zone(bar_low: float, bar_high: float, top: float, bot: float) -> bool:
+  return bar_low <= top and bar_high >= bot
+
+
+def detect_session_liquidity(df: pd.DataFrame) -> dict:
+  """Session liquidity windows (UTC) — Asia / London / NY kill zones."""
+  if df is None or len(df) < 5:
+    return {"status": "insufficient_data"}
+  idx = df.index[-1]
+  hour = getattr(idx, "hour", None)
+  if hour is None:
+    return {"status": "no_timestamp"}
+  if 0 <= hour < 8:
+    session, tag = "asia", "asia_liquidity"
+  elif 8 <= hour < 13:
+    session, tag = "london", "london_open"
+  elif 13 <= hour < 17:
+    session, tag = "london_ny", "london_ny_overlap"
+  elif 17 <= hour < 22:
+    session, tag = "ny", "ny_session"
+  else:
+    session, tag = "off_hours", "off_hours"
+  return {"status": "ok", "session": session, "tag": tag, "hour_utc": hour}
+
+
 def run_smc_library(df: pd.DataFrame, tf: str = "1h") -> dict:
   """Phase 1 — smartmoneyconcepts detection."""
   if not _HAS_SMC or df is None or len(df) < 60:
@@ -64,7 +95,10 @@ def run_smc_library(df: pd.DataFrame, tf: str = "1h") -> dict:
     price = float(ohlc["close"].iloc[-1])
     n = len(ohlc)
 
-    def _active_ob(direction: str) -> Optional[dict]:
+    touch_lb = {"15m": 24, "1h": 20, "4h": 16}.get(tf, 20)
+    window = ohlc.tail(touch_lb)
+
+    def _ob_signal(direction: str) -> Optional[dict]:
       rows = ob.dropna(subset=["OB"]).tail(30)
       for i in range(len(rows) - 1, -1, -1):
         row = rows.iloc[i]
@@ -74,12 +108,21 @@ def run_smc_library(df: pd.DataFrame, tf: str = "1h") -> dict:
         if direction == "SHORT" and is_bull:
           continue
         top, bot = float(row["Top"]), float(row["Bottom"])
-        if bot <= price <= top:
-          return {"top": top, "bot": bot, "is_bull": is_bull, "strength": float(row.get("Percentage", 0))}
+        if _price_near_zone(price, top, bot):
+          return {
+            "top": top, "bot": bot, "is_bull": is_bull,
+            "strength": float(row.get("Percentage", 0)), "mode": "active",
+          }
+        for _, bar in window.iterrows():
+          if _bar_touches_zone(float(bar["low"]), float(bar["high"]), top, bot):
+            return {
+              "top": top, "bot": bot, "is_bull": is_bull,
+              "strength": float(row.get("Percentage", 0)), "mode": "recent_touch",
+            }
       return None
 
-    def _active_fvg(direction: str) -> Optional[dict]:
-      rows = fvg.dropna(subset=["FVG"]).tail(20)
+    def _fvg_signal(direction: str) -> Optional[dict]:
+      rows = fvg.dropna(subset=["FVG"]).tail(24)
       for i in range(len(rows) - 1, -1, -1):
         row = rows.iloc[i]
         is_bull = row["FVG"] == 1
@@ -88,14 +131,17 @@ def run_smc_library(df: pd.DataFrame, tf: str = "1h") -> dict:
         if direction == "SHORT" and is_bull:
           continue
         top, bot = float(row["Top"]), float(row["Bottom"])
-        if bot <= price <= top:
-          mit = row.get("MitigatedIndex", np.nan)
-          if pd.notna(mit) and mit >= n - 2:
-            continue
-          return {"top": top, "bot": bot, "is_bull": is_bull}
+        mit = row.get("MitigatedIndex", np.nan)
+        if pd.notna(mit) and mit >= n - 2:
+          continue
+        if _price_near_zone(price, top, bot):
+          return {"top": top, "bot": bot, "is_bull": is_bull, "mode": "active"}
+        for _, bar in window.iterrows():
+          if _bar_touches_zone(float(bar["low"]), float(bar["high"]), top, bot):
+            return {"top": top, "bot": bot, "is_bull": is_bull, "mode": "recent_touch"}
       return None
 
-    def _recent_sweep(direction: str, lookback: int = 25) -> Optional[dict]:
+    def _recent_sweep(direction: str, lookback: int = 50) -> Optional[dict]:
       tail = liq.dropna(subset=["Liquidity"]).tail(lookback)
       for i in range(len(tail) - 1, -1, -1):
         row = tail.iloc[i]
@@ -134,8 +180,8 @@ def run_smc_library(df: pd.DataFrame, tf: str = "1h") -> dict:
       "liquidity": liq,
       "bos_choch": bc,
       "_helpers": {
-        "active_ob": _active_ob,
-        "active_fvg": _active_fvg,
+        "active_ob": _ob_signal,
+        "active_fvg": _fvg_signal,
         "recent_sweep": _recent_sweep,
         "recent_structure": _recent_structure,
       },
@@ -335,6 +381,11 @@ def analyze_institutional_tf(
       score += 10
       tags.append("HA bear + ROC down")
 
+  session = detect_session_liquidity(df)
+  if session.get("status") == "ok" and session.get("session") in ("london", "london_ny", "ny"):
+    score += 5
+    tags.append(session["tag"])
+
   obi = compute_obi(exchange, symbol) if exchange and symbol else {"available": False}
   if obi.get("available"):
     imb = float(obi.get("imbalance", 0))
@@ -364,6 +415,7 @@ def analyze_institutional_tf(
     "vp_filter_ok": vp_filter_ok,
     "ha_roc": ha,
     "obi": obi,
+    "session": session,
     "confluence": confluence,
     "partial_confluence": partial_confluence,
     "entry_signal": confluence and vp_filter_ok,

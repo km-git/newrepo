@@ -53,6 +53,15 @@ def test_institutional_matrix():
   assert "by_tf" in m
 
 
+def test_detect_session_liquidity():
+  idx = pd.date_range("2025-06-01", periods=10, freq="1h", tz="UTC")
+  df = pd.DataFrame({"Close": range(10)}, index=idx)
+  from core.institutional_edge import detect_session_liquidity
+  r = detect_session_liquidity(df)
+  assert r.get("status") == "ok"
+  assert r.get("session") in ("asia", "london", "london_ny", "ny", "off_hours")
+
+
 def test_build_smc_setup():
   data = {"15m": _ohlcv(120), "1h": _ohlcv(120), "4h": _ohlcv(120)}
   setup = build_smc_setup(

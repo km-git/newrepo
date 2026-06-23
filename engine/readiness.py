@@ -14,9 +14,9 @@ from engine.indicator_calibration import (
 PROBE_VERDICTS = frozenset({"GO", "CONDITIONAL_GO", "STAGED_GO", "STANDBY_ORDERS"})
 
 # Max distance from kill zone (%) to allow probe entry, by style
-NEAR_ZONE_PCT = {"scalp": 2.5, "day_trade": 3.5, "swing": 6.0, "long_term": 10.0}
+NEAR_ZONE_PCT = {"scalp": 2.5, "day_trade": 3.5, "swing": 6.0, "long_term": 10.0, "smc": 3.5}
 # STAGED_GO scale-in: allow wider approach if indicators strong
-STAGED_ZONE_PCT = {"scalp": 5.0, "day_trade": 8.0, "swing": 12.0, "long_term": 15.0}
+STAGED_ZONE_PCT = {"scalp": 5.0, "day_trade": 8.0, "swing": 12.0, "long_term": 15.0, "smc": 8.0}
 
 
 def _near_zone(
@@ -75,7 +75,7 @@ def resolve_execution_status(
     return "not_actionable", "none", f"R:R {rr:.2f} below min {min_rr} for {style}"
 
   stop_dist = indicator.get("stop_dist_pct")
-  max_stop = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0}.get(style, 4.0)
+  max_stop = {"scalp": 2.5, "day_trade": 4.0, "swing": 8.0, "long_term": 12.0, "smc": 4.0}.get(style, 4.0)
   if stop_dist is not None and float(stop_dist) > max_stop * 1.5:
     return (
       "monitor",

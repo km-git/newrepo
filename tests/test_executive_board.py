@@ -26,6 +26,35 @@ def _setup(**kwargs):
   return base
 
 
+def test_board_prioritizes_smc_entry_signal():
+  results = [{
+    "symbol": "BTC/USDT",
+    "status": "active",
+    "executive_decision": {"verdict": "GO"},
+    "step6_wave_consensus": {"consensus_direction": "BULL", "agreement_pct": 70},
+    "step8_outcomes": {
+      "setups": {
+        "smc": _setup(
+          status="executable",
+          execution_tier="full",
+          entry_signal=True,
+          entry_grade="A",
+          smc_valid=True,
+          confluence_count=3,
+          readiness_score=72,
+          timeframe="15m",
+          oos_win_rate=0.68,
+        ),
+        "day_trade": _setup(oos_win_rate=0.55, readiness_score=50, timeframe="1h"),
+      },
+    },
+  }]
+  board = build_executive_board(results, picks_per_tf=2, max_total=5)
+  smc_picks = [p for p in board["picks"] if p["style"] == "smc"]
+  assert smc_picks
+  assert smc_picks[0]["executive_score"] >= 40
+
+
 def test_board_always_has_picks_per_timeframe():
   results = []
   styles = {"scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w"}
