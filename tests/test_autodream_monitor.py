@@ -78,3 +78,15 @@ def test_invalidate_stop_breach():
   result = evaluate_triggers(item, data, adaptive)
   assert result["invalidated"] is True
   assert result["new_status"] == "invalidated"
+
+
+def test_smc_dispatches_to_smc_monitor():
+  from unittest.mock import patch
+
+  item = {"symbol": "TEST/USDT", "style": "smc", "status": "monitor", "direction": "LONG"}
+  data = {"15m": _ohlc([[10, 11, 9, 10.5, 1]] * 20)}
+  with patch("engine.autodream_monitor.evaluate_smc_triggers") as mock_smc:
+    mock_smc.return_value = {"new_status": "executable", "triggers_hit": ["SMC entry_signal"]}
+    result = evaluate_triggers(item, data, {})
+    mock_smc.assert_called_once_with(item, data)
+    assert result["new_status"] == "executable"

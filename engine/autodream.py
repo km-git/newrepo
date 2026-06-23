@@ -305,7 +305,7 @@ def build_monitor_queue(results: List[dict]) -> List[dict]:
     for style, setup in oc.get("setups", {}).items():
       if setup.get("status") in ("executable", "monitor"):
         zone = setup.get("entry", {}).get("zone")
-        queue.append({
+        row = {
           "id": f"{r['symbol']}:{style}",
           "symbol": r["symbol"],
           "style": style,
@@ -321,7 +321,24 @@ def build_monitor_queue(results: List[dict]) -> List[dict]:
           "autodream_verdict": setup.get("autodream_verdict"),
           "hist_win_rate": setup.get("historical_edge"),
           "last_scan": None,
-        })
+        }
+        if style == "smc":
+          row.update({
+            "timeframe": setup.get("timeframe", "15m"),
+            "execution_tier": setup.get("execution_tier"),
+            "entry_signal": setup.get("entry_signal"),
+            "entry_probe": setup.get("entry_probe"),
+            "entry_grade": setup.get("entry_grade"),
+            "confluence_count": setup.get("confluence_count"),
+            "msb_pass": setup.get("msb_pass"),
+            "indicator_tokens": setup.get("indicator_signals") or (
+              (setup.get("indicators") or {}).get("active_tokens")
+            ),
+            "oos_win_rate": setup.get("oos_win_rate"),
+            "oos_trades": setup.get("oos_trades"),
+            "institutional_score": setup.get("institutional_score"),
+          })
+        queue.append(row)
   return queue
 
 

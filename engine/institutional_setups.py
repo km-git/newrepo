@@ -8,7 +8,9 @@ import pandas as pd
 
 from core.atr import compute_atr14
 from core.institutional_edge import build_institutional_matrix
+from core.msb_zscore import validate_msb_zscore
 from core.risk import MAX_STOP_PCT, dynamic_stop, dynamic_targets, risk_package
+from engine.calibrated_execution import apply_msb_pass_demotion
 from engine.indicator_calibration import apply_extra_calibration_tokens, load_calibration
 from engine.readiness import resolve_execution_status
 
@@ -174,6 +176,28 @@ def build_smc_setup(
   probe_size = 50 if tier == "probe" else 100
   risk = risk_package(entry_anchor, stop["price"], SMC_STYLE["account_risk_pct"] * probe_size / 100)
 
+  msb = validate_msb_zscore(df, direction)
+  setup_pre = {
+    "style": "smc",
+    "status": status,
+    "execution_tier": tier,
+    "entry_signal": entry_signal,
+    "entry_probe": entry_probe,
+    "entry_grade": entry_grade,
+    "confluence_count": inst.get("confluence_count", 0),
+    "indicator_signals": tags[:8],
+    "honest_reason": reason,
+    "targets": targets,
+    "entry": {"anchor": round(entry_anchor, 6)},
+    "stop_loss": stop,
+    "readiness_score": indicators["score"],
+    "indicators": indicators,
+  }
+  demoted = apply_msb_pass_demotion(setup_pre, msb)
+  status = demoted.get("status", status)
+  tier = demoted.get("execution_tier", tier)
+  reason = demoted.get("honest_reason", reason)
+
   return {
     "setup_type": "smc",
     "style": "smc",
@@ -196,6 +220,9 @@ def build_smc_setup(
     "cvd_divergence": tf_analysis.get("cvd_divergence"),
     "volume_profile": tf_analysis.get("volume_profile"),
     "vp_filter_ok": vp_ok,
+    "msb_pass": demoted.get("msb_pass", msb.get("pass")),
+    "msb_z": demoted.get("msb_z", msb.get("z")),
+    "msb_gate": demoted.get("msb_gate"),
     "obi": tf_analysis.get("obi"),
     "ha_roc": tf_analysis.get("ha_roc"),
     "wave_valid": entry_signal,

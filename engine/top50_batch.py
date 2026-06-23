@@ -218,8 +218,25 @@ def run_top_crypto_batch(
     f"{executive_board.get('by_action')} — {board_paths['csv']}"
   )
 
+  from engine.smc_paper_cohort import run_and_persist_smc_cohort
+  from engine.execution_queue import build_execution_queue, save_execution_queue
+
+  smc_cohort = run_and_persist_smc_cohort(results, fetch_missing=True)
+  print(
+    f"\n[smc_cohort] {smc_cohort.get('executables_found')} executables — "
+    f"papered {smc_cohort.get('papered')} (FULL={smc_cohort.get('full_count')}, "
+    f"PROBE={smc_cohort.get('probe_count')})"
+  )
+
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
+
+  exec_queue = build_execution_queue(results=results, board=executive_board, approve=True)
+  exec_queue_path = save_execution_queue(exec_queue, str(out / "autodream" / "execution_queue.json"))
+  print(
+    f"\n[execution] Queue: {exec_queue.get('approved_count')} approved, "
+    f"{exec_queue.get('rejected_count')} rejected — {exec_queue_path}"
+  )
 
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}
@@ -267,6 +284,10 @@ def run_top_crypto_batch(
     "executive_board_csv": board_paths["csv"],
     "executive_board": executive_board.get("by_action"),
     "executive_board_picks": executive_board.get("board_picks"),
+    "smc_cohort": smc_cohort.get("cohort_id"),
+    "smc_cohort_path": str(out / "autodream" / "smc_paper_cohort.json"),
+    "execution_queue": exec_queue_path,
+    "execution_approved": exec_queue.get("approved_count"),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"

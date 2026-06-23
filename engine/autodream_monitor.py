@@ -11,12 +11,14 @@ from core.atr import compute_atr14, median_daily_range
 from core.impulse import validate_impulse
 from core.monowaves import adaptive_skip_for_df, compute_skip, extract_monowaves_cached
 from engine.outcomes import STYLE_CONFIG
+from engine.smc_monitor import evaluate_smc_triggers
 from fetchers import fetch
 
 DEFAULT_QUEUE_PATH = Path("output/autodream/monitor_queue.json")
 EVENTS_PATH = Path("output/autodream/monitor_events.jsonl")
 
 STYLE_CHECK_TF = {style: cfg["primary_tf"] for style, cfg in STYLE_CONFIG.items()}
+STYLE_CHECK_TF["smc"] = "15m"
 
 
 def load_monitor_queue(path: str | Path = DEFAULT_QUEUE_PATH) -> dict:
@@ -79,6 +81,9 @@ def evaluate_triggers(
   Returns scan result with triggers_hit, new_status, and reasons.
   """
   style = item["style"]
+  if style == "smc":
+    return evaluate_smc_triggers(item, data)
+
   direction = item.get("direction", "LONG")
   check_tf = item.get("check") or STYLE_CHECK_TF.get(style, "1d")
   impulse_dir = _dir_to_impulse(direction)
