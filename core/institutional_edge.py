@@ -28,6 +28,8 @@ except ImportError:
   _HAS_TA = False
 
 from core.smc_structure import analyze_smc as _fallback_smc
+from core.eq_liquidity import detect_eq_sweep, detect_equal_levels
+from core.msb_zscore import validate_msb_zscore
 
 
 def _prep_ohlc(df: pd.DataFrame) -> pd.DataFrame:
@@ -55,6 +57,20 @@ def _price_near_zone(price: float, top: float, bot: float, tol_pct: float = 0.00
 
 def _bar_touches_zone(bar_low: float, bar_high: float, top: float, bot: float) -> bool:
   return bar_low <= top and bar_high >= bot
+
+
+def _is_chop_market(df: pd.DataFrame, period: int = 20) -> bool:
+  """Low-trend chop — soften VP hard filter."""
+  if df is None or len(df) < period + 5:
+    return False
+  high = df["High"].astype(float).tail(period)
+  low = df["Low"].astype(float).tail(period)
+  close = df["Close"].astype(float).tail(period)
+  rng = float(high.max() - low.min())
+  atr_proxy = float((high - low).rolling(14).mean().iloc[-1])
+  if atr_proxy <= 0:
+    return False
+  return rng / atr_proxy < 3.5 and abs(float(close.iloc[-1] / close.iloc[0] - 1)) < 0.02
 
 
 def detect_session_liquidity(df: pd.DataFrame) -> dict:
@@ -323,8 +339,9 @@ def analyze_institutional_tf(
   tags: List[str] = []
   score = 0
 
-  active_ob = active_fvg = recent_sweep = None
+  active_ob = active_fvg = recent_sweep = eq_sweep = None
   structure_event = None
+  msb = {"status": "no_break", "pass": False}
 
   if smc.get("status") == "ok":
     h = smc["_helpers"]
@@ -349,6 +366,39 @@ def analyze_institutional_tf(
     if fb.get("status") == "ok":
       score += int(fb.get("smc_score", 0))
       tags.extend(fb.get("tags", []))
+      if fb.get("eq_sweep"):
+        recent_sweep = fb["eq_sweep"]
+        score += 18
+        tags.append(fb["eq_sweep"].get("tag", "liquidity sweep"))
+
+  # EQH/EQL sweeps (explicit equal-level liquidity)
+  eq_sweep = detect_eq_sweep(df, dir_norm)
+  if eq_sweep and not recent_sweep:
+    recent_sweep = eq_sweep
+    score += 18
+    tags.append(eq_sweep.get("tag", "liquidity sweep"))
+  elif eq_sweep:
+    score += 6
+    if eq_sweep.get("type") == "eql":
+      tags.append("equal lows")
+    else:
+      tags.append("equal highs")
+
+  eq_levels = detect_equal_levels(df)
+  if eq_levels.get("has_eqh"):
+    tags.append("equal highs cluster")
+  if eq_levels.get("has_eql"):
+    tags.append("equal lows cluster")
+
+  # LuxAlgo MSB z-score on structure break
+  msb = validate_msb_zscore(df, dir_norm)
+  if msb.get("status") == "ok":
+    if msb.get("pass"):
+      score += 12
+      tags.append("MSB z-score pass")
+    else:
+      score -= 4
+      tags.append("MSB z-score weak")
 
   cvd_div = detect_cvd_divergence(df)
   if cvd_div == "cvd_bullish_divergence" and is_long:
@@ -360,15 +410,23 @@ def analyze_institutional_tf(
 
   vp = compute_volume_profile(df)
   vp_filter_ok = True
+  vp_soft_fail = False
+  chop = _is_chop_market(df)
   if vp.get("status") == "ok":
     if is_long and not vp.get("above_val"):
-      vp_filter_ok = False
+      vp_soft_fail = True
     elif not is_long and not vp.get("below_vah"):
+      vp_soft_fail = True
+    if vp_soft_fail and chop:
+      vp_filter_ok = True
+      score -= 3
+      tags.append("VP soft pass (chop)")
+    elif vp_soft_fail:
       vp_filter_ok = False
     if vp.get("near_poc"):
       score += 8
       tags.append("at volume POC")
-    if vp_filter_ok:
+    if vp_filter_ok and not vp_soft_fail:
       score += 6
       tags.append("VP filter pass")
 
@@ -397,8 +455,20 @@ def analyze_institutional_tf(
       tags.append("OBI ask pressure")
 
   # Core entry: Sweep + OB + FVG confluence (Phase 1 priority)
-  confluence = bool(recent_sweep and active_ob and active_fvg)
-  partial_confluence = sum([bool(recent_sweep), bool(active_ob), bool(active_fvg)])
+  sweep_hit = bool(recent_sweep)
+  confluence = sweep_hit and bool(active_ob) and bool(active_fvg)
+  partial_confluence = sum([sweep_hit, bool(active_ob), bool(active_fvg)])
+  msb_ok = msb.get("pass", True) if msb.get("status") == "ok" else True
+
+  # Full entry: 3/3 + VP pass; probe-grade A: 2/3 + MSB pass + VP pass
+  entry_signal = confluence and vp_filter_ok and msb_ok
+  entry_probe = (
+    not entry_signal
+    and partial_confluence >= 2
+    and vp_filter_ok
+    and msb_ok
+    and score >= 42
+  )
 
   return {
     "timeframe": tf,
@@ -410,17 +480,24 @@ def analyze_institutional_tf(
     "active_ob": active_ob,
     "active_fvg": active_fvg,
     "recent_sweep": recent_sweep,
+    "eq_sweep": eq_sweep,
+    "eq_levels": eq_levels if eq_levels.get("status") == "ok" else None,
+    "msb_zscore": msb,
     "cvd_divergence": cvd_div,
     "volume_profile": vp,
     "vp_filter_ok": vp_filter_ok,
+    "vp_soft_fail": vp_soft_fail,
     "ha_roc": ha,
     "obi": obi,
     "session": session,
     "confluence": confluence,
     "partial_confluence": partial_confluence,
-    "entry_signal": confluence and vp_filter_ok,
-    "entry_grade": "A" if confluence and vp_filter_ok and score >= 55 else (
-      "B" if partial_confluence >= 2 and score >= 40 else "C" if score >= 25 else "D"
+    "entry_signal": entry_signal,
+    "entry_probe": entry_probe,
+    "entry_grade": "A" if entry_signal and score >= 55 else (
+      "B" if (entry_probe or (partial_confluence >= 2 and score >= 40)) else (
+        "C" if score >= 25 else "D"
+      )
     ),
   }
 
@@ -445,7 +522,7 @@ def build_institutional_matrix(
   entry_tfs = [t for t in ("15m", "1h") if by_tf.get(t, {}).get("status") == "ok"]
   best_entry = max(
     (by_tf[t] for t in entry_tfs),
-    key=lambda x: (x.get("entry_signal", False), x.get("score", 0)),
+    key=lambda x: (x.get("entry_signal", False), x.get("entry_probe", False), x.get("score", 0)),
     default=None,
   )
   scores = [by_tf[t]["score"] for t in entry_tfs if by_tf.get(t, {}).get("score")]
@@ -457,6 +534,7 @@ def build_institutional_matrix(
     "by_tf": by_tf,
     "best_entry_tf": best_entry.get("timeframe") if best_entry else None,
     "entry_signal": bool(best_entry and best_entry.get("entry_signal")),
+    "entry_probe": bool(best_entry and best_entry.get("entry_probe")),
     "entry_grade": best_entry.get("entry_grade", "D") if best_entry else "D",
     "institutional_score": max(scores) if scores else 0,
     "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,

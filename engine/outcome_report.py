@@ -7,21 +7,21 @@ from typing import List
 
 
 def build_outcome_row(result: dict) -> List[dict]:
-  """One row per style (scalp, day_trade, swing, long_term)."""
+  """One row per style (scalp, day_trade, swing, long_term, smc)."""
   if result.get("status") == "incomplete":
     return [{"symbol": result.get("symbol"), "style": "—", "status": "error", "error": result.get("error")}]
 
   oc = result.get("step8_outcomes", {})
   hs = oc.get("honest_summary", {})
   rows = []
-  for style in ("scalp", "day_trade", "swing", "long_term"):
+  for style in ("scalp", "day_trade", "swing", "long_term", "smc"):
     s = oc.get("setups", {}).get(style, {})
     if not s:
       continue
     targets = s.get("targets") or []
     dca = s.get("dca") or []
     ad = (oc.get("autodream") or {}).get("by_style", {}).get(style, {})
-    rows.append({
+    row = {
       "symbol": result["symbol"],
       "price": result.get("step1_htf_bias", {}).get("wave_C_current"),
       "primary": "Y" if hs.get("primary_style") == style else "",
@@ -72,7 +72,18 @@ def build_outcome_row(result: dict) -> List[dict]:
         if s.get("hedge_plan", {}).get("required") else ""
       ),
       "adjusted_risk_pct": (s.get("risk") or {}).get("account_risk_pct"),
-    })
+    }
+    if style == "smc":
+      row.update({
+        "entry_signal": s.get("entry_signal"),
+        "entry_probe": s.get("entry_probe"),
+        "entry_grade": s.get("entry_grade"),
+        "confluence_count": s.get("confluence_count"),
+        "institutional_score": s.get("institutional_score"),
+        "smc_valid": s.get("smc_valid"),
+        "setup_type": "smc",
+      })
+    rows.append(row)
   return rows
 
 

@@ -221,8 +221,11 @@ def enrich_outcomes_with_autodream(
   """Add per-style historical analysis, honesty adjustments, and autodream block."""
   autodream_styles = {}
   setups = outcomes.get("setups", {})
-  for style in ("scalp", "day_trade", "swing", "long_term"):
-    tf = {"scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w"}.get(style, "1d")
+  style_tf = {
+    "scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w", "smc": "15m",
+  }
+  for style in ("scalp", "day_trade", "swing", "long_term", "smc"):
+    tf = style_tf.get(style, "1d")
     df = _get_df(data, tf, "1d")
     setup = setups.get(style, {})
     autodream_styles[style] = analyze_historical(symbol, style, df, setup=setup)

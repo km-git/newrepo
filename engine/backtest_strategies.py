@@ -16,12 +16,12 @@ from engine.trade_simulation import (
 )
 
 # Default walk-forward folds by style (more bars on lower TFs)
-DEFAULT_WF_FOLDS = {"scalp": 6, "day_trade": 5, "swing": 4, "long_term": 3}
+DEFAULT_WF_FOLDS = {"scalp": 6, "day_trade": 5, "swing": 4, "long_term": 3, "smc": 6}
 HOLDOUT_TEST_PCT = 0.30
 MC_BOOTSTRAP_RUNS = 500
 STRESS_STOP_WIDEN_PCT = 0.10
 STRESS_SLIPPAGE_PCT = 0.05
-STYLE_ATR_MULT = {"scalp": 0.8, "day_trade": 1.2, "swing": 1.8, "long_term": 2.5}
+STYLE_ATR_MULT = {"scalp": 0.8, "day_trade": 1.2, "swing": 1.8, "long_term": 2.5, "smc": 1.0}
 
 
 def _honest_bar_geometry(

@@ -118,6 +118,7 @@ def build_smc_setup(
   indicators = apply_extra_calibration_tokens(indicators, tags + mkt.get("calibration_tokens", []))
 
   entry_signal = inst.get("entry_signal", False)
+  entry_probe = inst.get("entry_probe", False)
   entry_grade = inst.get("entry_grade", "D")
   vp_ok = inst.get("vp_filter_ok", True)
   exec_ok = executive.get("verdict", "") in ("GO", "CONDITIONAL_GO", "STAGED_GO", "STANDBY_ORDERS")
@@ -127,7 +128,7 @@ def build_smc_setup(
     status, tier, reason = "executable", "full", (
       f"SMC FULL: sweep+OB+FVG on {entry_tf}, grade {entry_grade}, R:R {rr:.2f}"
     )
-  elif entry_grade in ("A", "B") and inst.get("confluence_count", 0) >= 2 and rr >= SMC_STYLE["min_rr"] * 0.9:
+  elif (entry_probe or entry_grade in ("A", "B")) and inst.get("confluence_count", 0) >= 2 and rr >= SMC_STYLE["min_rr"] * 0.9:
     status, tier, reason = "executable", "probe", (
       f"SMC PROBE: {inst.get('confluence_count')}/3 confluence on {entry_tf}, "
       f"grade {entry_grade}, score {score}/100"
@@ -161,7 +162,7 @@ def build_smc_setup(
     indicator=indicators,
     executive_verdict=executive.get("verdict", ""),
     impulse_partial=inst.get("confluence_count", 0) >= 2,
-    smc_valid=entry_signal or entry_grade == "A",
+    smc_valid=entry_signal or entry_probe or entry_grade == "A",
     smc_partial=inst.get("confluence_count", 0) >= 1,
     smc_aligned=True,
     smc_structure=tf_analysis.get("structure_event", ""),
@@ -186,6 +187,7 @@ def build_smc_setup(
     "direction": direction,
     "honest_reason": reason,
     "entry_signal": entry_signal,
+    "entry_probe": entry_probe,
     "entry_grade": entry_grade,
     "institutional_score": score,
     "confluence_count": inst.get("confluence_count", 0),
@@ -198,7 +200,7 @@ def build_smc_setup(
     "ha_roc": tf_analysis.get("ha_roc"),
     "wave_valid": entry_signal,
     "wave_partial": inst.get("confluence_count", 0) >= 2,
-    "smc_valid": entry_signal or entry_grade in ("A", "B"),
+    "smc_valid": entry_signal or entry_probe or entry_grade in ("A", "B"),
     "entry": {
       "anchor": round(entry_anchor, 6),
       "zone": [round(kz_low, 6), round(kz_high, 6)],

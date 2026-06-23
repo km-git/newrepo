@@ -32,6 +32,7 @@ PAPER_CSV_PATH = Path("output/latest_paper_trades.csv")
 VALIDATION_PATH = Path("output/autodream/validation_summary.json")
 
 STYLE_TF = {s: STYLE_CONFIG[s]["primary_tf"] for s in STYLE_CONFIG}
+STYLE_TF["smc"] = "15m"
 
 
 def backtest_setup_on_bars(

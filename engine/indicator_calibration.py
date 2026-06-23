@@ -97,6 +97,12 @@ REASON_PATTERNS: List[Tuple[str, str]] = [
   ("OBI bid pressure", r"OBI bid pressure"),
   ("OBI ask pressure", r"OBI ask pressure"),
   ("london_open", r"london_open|london_ny_overlap|ny_session"),
+  ("equal highs", r"equal highs"),
+  ("equal lows", r"equal lows"),
+  ("MSB z-score pass", r"MSB z-score pass"),
+  ("MSB z-score weak", r"MSB z-score weak"),
+  ("liquidity sweep EQL", r"liquidity sweep \(EQL\)"),
+  ("liquidity sweep EQH", r"liquidity sweep \(EQH\)"),
 ]
 
 
@@ -444,6 +450,12 @@ def _default_token_weights() -> Dict[str, int]:
     "OBI bid pressure": 10,
     "OBI ask pressure": 10,
     "london_open": 5,
+    "equal highs": 8,
+    "equal lows": 8,
+    "MSB z-score pass": 12,
+    "MSB z-score weak": -4,
+    "liquidity sweep EQL": 18,
+    "liquidity sweep EQH": 18,
   }
 
 

@@ -86,6 +86,10 @@ def _executive_action(setup: dict, exec_score: int, blocker: str) -> Tuple[str, 
     size = 100 if tier == "full" else 50
     return "EXECUTE_NOW", size, "All gates passed — execute per setup tier"
 
+  if status == "executable" and (setup.get("entry_signal") or setup.get("entry_probe")):
+    size = 100 if tier == "full" else 50
+    return "EXECUTE_NOW", size, "SMC confluence executable — execute per tier"
+
   if status == "executable":
     return "EXECUTE_CAUTION", 35, "Executable label but OOS pending — reduced size"
 
@@ -142,8 +146,11 @@ def executive_setup_score(
     tags.append("impulse_partial")
 
   if setup.get("entry_signal"):
-    score += 15
+    score += 22
     tags.append("smc_entry_signal")
+  elif setup.get("entry_probe"):
+    score += 14
+    tags.append("smc_entry_probe")
   elif setup.get("smc_valid"):
     score += 10
     tags.append("smc_valid")
@@ -153,7 +160,8 @@ def executive_setup_score(
 
   entry_grade = setup.get("entry_grade")
   if entry_grade == "A":
-    score += 10
+    bonus = 12 if setup.get("oos_gate") == "passed" else 8
+    score += bonus
     tags.append("smc_grade_A")
   elif entry_grade == "B":
     score += 5
@@ -420,6 +428,10 @@ def build_executive_board(
       "honest_reason": (setup.get("honest_reason") or "")[:160],
       "autodream_verdict": setup.get("autodream_verdict"),
       "paper_outcome": setup.get("paper_outcome"),
+      "entry_signal": setup.get("entry_signal"),
+      "entry_probe": setup.get("entry_probe"),
+      "entry_grade": setup.get("entry_grade"),
+      "confluence_count": setup.get("confluence_count"),
     }
     by_symbol[sym].append(row)
     scored.append(row)
@@ -508,6 +520,9 @@ def build_executive_board(
   picks.sort(key=lambda x: (
     {"EXECUTE_NOW": 0, "EXECUTE_CAUTION": 1, "SCALE_IN": 2, "STANDBY_LIMIT": 3,
      "WATCH_ALERT": 4, "WATCH_SPECULATIVE": 5, "WATCH_ONLY": 6}.get(x["executive_action"], 9),
+    0 if x.get("style") == "smc" and x.get("entry_signal") else (
+      1 if x.get("style") == "smc" else 2
+    ),
     -x["executive_score"],
   ))
 

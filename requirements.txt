@@ -12,3 +12,5 @@ wave-alpha>=0.14.0
 smartmoneyconcepts>=0.0.27
 pandas-ta>=0.3.14b
 quantalib>=0.8.4
+# Optional research backtest engine: pip install vectorbt
+# vectorbt>=0.26.0

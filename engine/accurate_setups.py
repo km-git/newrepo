@@ -99,6 +99,9 @@ def score_setup_accuracy(setup: dict, style: str) -> Tuple[int, str, List[str]]:
   if setup.get("entry_signal"):
     score += 18
     tags.append("smc_entry_signal")
+  elif setup.get("entry_probe"):
+    score += 12
+    tags.append("smc_entry_probe")
   elif setup.get("smc_valid"):
     score += 10
     tags.append("smc_valid")

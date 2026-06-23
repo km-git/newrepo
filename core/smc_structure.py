@@ -13,6 +13,8 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
+from core.eq_liquidity import detect_eq_sweep
+
 
 @dataclass
 class OrderBlock:
@@ -191,6 +193,16 @@ def analyze_smc(
   smc_valid = smc_score >= 40 and structure_bias != "NEUTRAL"
   smc_partial = smc_score >= 25
 
+  eq_sweep = None
+  if structure_bias in ("BULL", "BEAR"):
+    eq_sweep = detect_eq_sweep(df, "LONG" if structure_bias == "BULL" else "SHORT")
+  if eq_sweep:
+    smc_score += 18
+    tags.append(eq_sweep.get("tag", "liquidity sweep"))
+    smc_partial = True
+    if smc_score >= 35:
+      smc_valid = structure_bias != "NEUTRAL"
+
   return {
     "status": "ok",
     "structure_bias": structure_bias,
@@ -208,6 +220,7 @@ def analyze_smc(
     "smc_valid": smc_valid,
     "smc_partial": smc_partial,
     "tags": tags,
+    "eq_sweep": eq_sweep,
     "ms_levels": {"swing_high": last_ph_ms, "swing_low": last_pl_ms},
   }
 
