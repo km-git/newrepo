@@ -77,6 +77,119 @@ def compute_raw_indicators(df: pd.DataFrame) -> dict:
   }
 
 
+def collect_indicator_signals(
+  raw: dict,
+  direction: str,
+  zdist: float,
+) -> List[tuple[str, int]]:
+  """Return (calibration_token, default_points) for active indicator signals."""
+  pairs: List[tuple[str, int]] = []
+  is_long = direction in ("LONG", "BULL")
+
+  if zdist == 0:
+    pairs.append(("in kill zone", 25))
+  elif zdist < 1.5:
+    pairs.append(("near zone", 18))
+  elif zdist < 3.0:
+    pairs.append(("approaching zone", 10))
+
+  rsi = raw["rsi14"]
+  if is_long:
+    if 35 <= rsi <= 55:
+      pairs.append(("RSI bullish reset", 20))
+    elif 55 < rsi <= 65:
+      pairs.append(("RSI momentum intact", 12))
+    elif rsi < 35:
+      pairs.append(("RSI oversold bounce", 15))
+  else:
+    if 45 <= rsi <= 65:
+      pairs.append(("RSI bearish reset", 20))
+    elif 35 <= rsi < 45:
+      pairs.append(("RSI weakness intact", 12))
+    elif rsi > 65:
+      pairs.append(("RSI overbought fade", 15))
+
+  if is_long:
+    if raw["above_ema20"] and raw["above_ema50"]:
+      pairs.append(("above EMA20/50", 20))
+    elif raw["above_ema20"]:
+      pairs.append(("above EMA20", 12))
+    elif raw["price"] > raw["ema20"] * 0.995:
+      pairs.append(("EMA20 support", 8))
+  else:
+    if not raw["above_ema20"] and not raw["above_ema50"]:
+      pairs.append(("below EMA20/50", 20))
+    elif not raw["above_ema20"]:
+      pairs.append(("below EMA20", 12))
+    elif raw["price"] < raw["ema20"] * 1.005:
+      pairs.append(("EMA20 resistance", 8))
+
+  if is_long and raw["macd_hist_delta"] > 0:
+    pairs.append(("MACD rising", 20))
+  elif not is_long and raw["macd_hist_delta"] < 0:
+    pairs.append(("MACD falling", 20))
+  elif is_long and raw["macd_hist"] > 0:
+    pairs.append(("MACD positive", 10))
+  elif not is_long and raw["macd_hist"] < 0:
+    pairs.append(("MACD negative", 10))
+
+  vr = raw["volume_ratio"]
+  if vr >= 1.3:
+    pairs.append(("volume surge", 15))
+  elif vr >= 1.0:
+    pairs.append(("volume at/above avg", 8))
+
+  return pairs
+
+
+def _signals_from_pairs(pairs: List[tuple[str, int]], raw: dict, zdist: float) -> List[str]:
+  out: List[str] = []
+  for token, _ in pairs:
+    if token == "near zone":
+      out.append(f"near zone ({zdist:.1f}% away)")
+    elif token == "approaching zone":
+      out.append(f"approaching zone ({zdist:.1f}%)")
+    elif token == "RSI bullish reset":
+      out.append(f"RSI {raw['rsi14']} bullish reset zone")
+    elif token == "RSI momentum intact":
+      out.append(f"RSI {raw['rsi14']} momentum intact")
+    elif token == "RSI oversold bounce":
+      out.append(f"RSI {raw['rsi14']} oversold bounce potential")
+    elif token == "RSI bearish reset":
+      out.append(f"RSI {raw['rsi14']} bearish reset zone")
+    elif token == "RSI weakness intact":
+      out.append(f"RSI {raw['rsi14']} weakness intact")
+    elif token == "RSI overbought fade":
+      out.append(f"RSI {raw['rsi14']} overbought fade potential")
+    elif token == "above EMA20/50":
+      out.append("price above EMA20/50")
+    elif token == "above EMA20":
+      out.append("price above EMA20")
+    elif token == "EMA20 support":
+      out.append("testing EMA20 support")
+    elif token == "below EMA20/50":
+      out.append("price below EMA20/50")
+    elif token == "below EMA20":
+      out.append("price below EMA20")
+    elif token == "EMA20 resistance":
+      out.append("testing EMA20 resistance")
+    elif token == "MACD rising":
+      out.append("MACD histogram rising")
+    elif token == "MACD falling":
+      out.append("MACD histogram falling")
+    elif token == "MACD positive":
+      out.append("MACD positive")
+    elif token == "MACD negative":
+      out.append("MACD negative")
+    elif token == "volume surge":
+      out.append(f"volume surge {raw['volume_ratio']:.1f}x avg")
+    elif token == "volume at/above avg":
+      out.append(f"volume at/above avg ({raw['volume_ratio']:.1f}x)")
+    else:
+      out.append(token)
+  return out
+
+
 def score_indicator_confluence(
   df: pd.DataFrame,
   direction: str,
@@ -92,91 +205,12 @@ def score_indicator_confluence(
     return {"score": 0, "aligned": False, "signals": [], "raw": {}, "zone_dist_pct": 99.0}
 
   raw = compute_raw_indicators(df)
-  signals: List[str] = []
-  score = 0
   is_long = direction in ("LONG", "BULL")
   zdist = zone_proximity_pct(raw["price"], zone_low, zone_high)
+  pairs = collect_indicator_signals(raw, direction, zdist)
+  score = sum(pts for _, pts in pairs)
+  signals = _signals_from_pairs(pairs, raw, zdist)
 
-  # Zone proximity (max 25)
-  if zdist == 0:
-    score += 25
-    signals.append("in kill zone")
-  elif zdist < 1.5:
-    score += 18
-    signals.append(f"near zone ({zdist:.1f}% away)")
-  elif zdist < 3.0:
-    score += 10
-    signals.append(f"approaching zone ({zdist:.1f}%)")
-
-  # RSI (max 20)
-  rsi = raw["rsi14"]
-  if is_long:
-    if 35 <= rsi <= 55:
-      score += 20
-      signals.append(f"RSI {rsi} bullish reset zone")
-    elif 55 < rsi <= 65:
-      score += 12
-      signals.append(f"RSI {rsi} momentum intact")
-    elif rsi < 35:
-      score += 15
-      signals.append(f"RSI {rsi} oversold bounce potential")
-  else:
-    if 45 <= rsi <= 65:
-      score += 20
-      signals.append(f"RSI {rsi} bearish reset zone")
-    elif 35 <= rsi < 45:
-      score += 12
-      signals.append(f"RSI {rsi} weakness intact")
-    elif rsi > 65:
-      score += 15
-      signals.append(f"RSI {rsi} overbought fade potential")
-
-  # EMA trend (max 20)
-  if is_long:
-    if raw["above_ema20"] and raw["above_ema50"]:
-      score += 20
-      signals.append("price above EMA20/50")
-    elif raw["above_ema20"]:
-      score += 12
-      signals.append("price above EMA20")
-    elif raw["price"] > raw["ema20"] * 0.995:
-      score += 8
-      signals.append("testing EMA20 support")
-  else:
-    if not raw["above_ema20"] and not raw["above_ema50"]:
-      score += 20
-      signals.append("price below EMA20/50")
-    elif not raw["above_ema20"]:
-      score += 12
-      signals.append("price below EMA20")
-    elif raw["price"] < raw["ema20"] * 1.005:
-      score += 8
-      signals.append("testing EMA20 resistance")
-
-  # MACD momentum (max 20)
-  if is_long and raw["macd_hist_delta"] > 0:
-    score += 20
-    signals.append("MACD histogram rising")
-  elif not is_long and raw["macd_hist_delta"] < 0:
-    score += 20
-    signals.append("MACD histogram falling")
-  elif is_long and raw["macd_hist"] > 0:
-    score += 10
-    signals.append("MACD positive")
-  elif not is_long and raw["macd_hist"] < 0:
-    score += 10
-    signals.append("MACD negative")
-
-  # Volume (max 15)
-  vr = raw["volume_ratio"]
-  if vr >= 1.3:
-    score += 15
-    signals.append(f"volume surge {vr:.1f}x avg")
-  elif vr >= 1.0:
-    score += 8
-    signals.append(f"volume at/above avg ({vr:.1f}x)")
-
-  # Style-specific minimum for "aligned"
   thresholds = {"scalp": 62, "day_trade": 58, "swing": 55, "long_term": 52}
   threshold = thresholds.get(style, 58)
 

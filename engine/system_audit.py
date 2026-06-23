@@ -12,6 +12,7 @@ AUDIT_PATH = Path("output/autodream/system_audit.json")
 # Minimum bar for calling the system "working"
 MIN_EXECUTABLE_WIN_RATE = 0.52
 MIN_OOS_WIN_RATE = 0.50
+MIN_OOS_EXECUTABLE = 0.55
 MIN_READINESS_PREDICTIVE_WR = 0.50
 MAX_HEDGE_RATIO = 0.35
 MAX_CAUTION_RATIO = 0.50
@@ -69,6 +70,13 @@ def audit_setups(setup_rows: List[dict]) -> dict:
   oos = [float(r["oos_win_rate"]) for r in setup_rows if r.get("oos_win_rate")]
   is_rates = [float(r["hist_win_rate"]) for r in setup_rows if r.get("hist_win_rate")]
   perfect_is = sum(1 for x in is_rates if x >= 0.99)
+  exec_oos = [
+    float(r["oos_win_rate"])
+    for r in setup_rows
+    if r.get("status") == "executable"
+    and r.get("oos_win_rate") is not None
+    and (r.get("oos_trades") or 0) >= 3
+  ]
 
   return {
     "available": True,
@@ -80,6 +88,7 @@ def audit_setups(setup_rows: List[dict]) -> dict:
     "validated_ratio": round(validated / n, 3),
     "readiness_ge65_win_rate": hi_wr,
     "oos_avg": round(sum(oos) / len(oos), 3) if oos else None,
+    "oos_executable_avg": round(sum(exec_oos) / len(exec_oos), 3) if exec_oos else None,
     "is_avg": round(sum(is_rates) / len(is_rates), 3) if is_rates else None,
     "suspicious_perfect_is": perfect_is,
   }
@@ -98,6 +107,10 @@ def compute_verdict(paper: dict, setups: dict) -> dict:
   oos = setups.get("oos_avg")
   if oos is not None and oos < MIN_OOS_WIN_RATE:
     failures.append(f"OOS avg {oos:.0%} < {MIN_OOS_WIN_RATE:.0%}")
+
+  oos_exec = setups.get("oos_executable_avg")
+  if oos_exec is not None and oos_exec < MIN_OOS_EXECUTABLE:
+    failures.append(f"executable OOS avg {oos_exec:.0%} < {MIN_OOS_EXECUTABLE:.0%}")
 
   hi_wr = setups.get("readiness_ge65_win_rate")
   if hi_wr is not None and hi_wr < MIN_READINESS_PREDICTIVE_WR:

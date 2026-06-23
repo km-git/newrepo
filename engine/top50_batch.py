@@ -22,6 +22,7 @@ from engine.paper_trading import (
   save_paper_metrics,
 )
 from engine.trade_learning import apply_learning_to_outcomes, run_loss_learning_cycle
+from engine.indicator_calibration import run_indicator_calibration, load_calibration
 from engine.system_audit import run_system_audit, apply_audit_demotions
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
@@ -93,6 +94,19 @@ def run_top_crypto_batch(
   write_pairs_csv(pairs, str(pairs_csv))
 
   print(f"\n[batch] Running {len(pairs)} pairs × timeframes {tfs}")
+  print("\n[batch] Indicator recalibration from paper ledger...")
+  calibration = run_indicator_calibration()
+  if calibration.get("available"):
+    kept = len(calibration.get("kept_signals", {}))
+    removed = len(calibration.get("removed_signals", {}))
+    print(
+      f"  Calibrated from {calibration.get('closed_trades')} closed trades "
+      f"(baseline WR {calibration.get('baseline_win_rate', 0):.0%}) — "
+      f"kept {kept} signals, removed {removed}"
+    )
+  else:
+    print(f"  Calibration skipped: {calibration.get('reason', 'unknown')}")
+
   results = run_batch(str(pairs_csv), tfs, is_crypto=True)
   save_batch_json(results, str(json_path))
   save_batch_summary_csv(results, str(summary_path))
@@ -181,6 +195,12 @@ def run_top_crypto_batch(
     "paper_win_rate": paper_report.get("win_rate"),
     "loss_lessons": learning.get("lessons", []) if learning.get("available") else [],
     "losses_analyzed": learning.get("losses_analyzed", 0),
+    "indicator_calibration": str(out / "autodream" / "indicator_calibration.json")
+    if calibration.get("available")
+    else None,
+    "calibration_kept_signals": len(calibration.get("kept_signals", {}))
+    if calibration.get("available")
+    else 0,
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from engine.indicator_calibration import apply_oos_executable_gate
 from engine.outcomes import STYLE_CONFIG
 from engine.trade_simulation import (
   MAX_FORWARD_BARS,
@@ -397,6 +398,7 @@ def apply_honesty_adjustments(outcomes: dict) -> dict:
       mc_win_rate_p5=setup.get("mc_win_rate_p5"),
     )
     setup["autodream_verdict"] = verdict
+    setup = apply_oos_executable_gate(setup)
 
     notes: List[str] = []
     oos_note = ""

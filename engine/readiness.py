@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+
+from engine.indicator_calibration import MIN_OOS_EXECUTABLE, MIN_OOS_TRADES
 
 # Executive verdicts that allow probe-tier execution
 PROBE_VERDICTS = frozenset({"GO", "CONDITIONAL_GO", "STAGED_GO", "STANDBY_ORDERS"})
@@ -42,6 +44,8 @@ def resolve_execution_status(
   executive_verdict: str,
   expert_confidence: float = 0.0,
   cycle_aligned: bool = False,
+  oos_win_rate: Optional[float] = None,
+  oos_trades: int = 0,
 ) -> Tuple[str, str, str]:
   """
   Returns (status, execution_tier, honest_reason).
@@ -81,8 +85,22 @@ def resolve_execution_status(
   near_zone = _near_zone(style, in_zone, zone_dist_pct, executive_verdict)
   exec_ok = executive_verdict in PROBE_VERDICTS
 
+  def _oos_blocks_executable() -> Optional[str]:
+    if oos_trades < MIN_OOS_TRADES or oos_win_rate is None:
+      return None
+    if float(oos_win_rate) < MIN_OOS_EXECUTABLE:
+      return f"OOS gate: {float(oos_win_rate):.0%} < {MIN_OOS_EXECUTABLE:.0%}"
+    return None
+
   # Tier 1: Full executable — strict EW + zone
   if impulse_valid and in_zone and rr >= min_rr and not gaps:
+    oos_block = _oos_blocks_executable()
+    if oos_block:
+      return (
+        "monitor",
+        "none",
+        f"{style} FULL blocked: impulse valid, in zone, R:R {rr:.2f} — {oos_block}",
+      )
     return (
       "executable",
       "full",
@@ -118,6 +136,13 @@ def resolve_execution_status(
       reason += " · expert+Hurst aligned"
     if missing:
       reason += f" · use 25-50% probe — {'; '.join(missing)}"
+    oos_block = _oos_blocks_executable()
+    if oos_block:
+      return (
+        "monitor",
+        "none",
+        f"{style} PROBE blocked: {oos_block} · indicators {ind_score}/100",
+      )
     return "executable", "probe", reason
 
   # Monitor paths

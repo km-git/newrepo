@@ -9,6 +9,7 @@ import pandas as pd
 from core.atr import compute_atr14
 from core.indicators import score_indicator_confluence
 from core.risk import MAX_STOP_PCT, build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
+from engine.indicator_calibration import load_calibration, score_indicator_confluence_calibrated
 from engine.readiness import resolve_execution_status
 
 STYLE_CONFIG = {
@@ -119,13 +120,20 @@ def build_style_setup(
         t["rr"] = round(abs(float(t["price"]) - entry_anchor) / risk_unit, 2)
   rr = targets[1]["rr"] if len(targets) > 1 else 0
   harmonic_near = bool(harm_tf)
-  indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
+  calibration = load_calibration()
+  if calibration and calibration.get("available"):
+    indicators = score_indicator_confluence_calibrated(
+      df, direction, kz_low, kz_high, style, calibration
+    )
+  else:
+    indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
   indicators["stop_dist_pct"] = stop.get("distance_pct")
   mkt = market_tools or {}
-  boost = mkt.get("confluence_boost", 0)
-  if expert_direction:
+  # Calibrated scoring uses ledger-validated tokens only — no expert/cycle inflation
+  boost = 0 if indicators.get("calibrated") else mkt.get("confluence_boost", 0)
+  if not indicators.get("calibrated") and expert_direction:
     boost += min(8, int(expert_direction.get("confidence", 0) * 10))
-  if cycle_confluence:
+  if not indicators.get("calibrated") and cycle_confluence:
     cy = cycle_confluence.get("cycle_direction", "NEUTRAL")
     dir_bull = direction == "LONG"
     cy_bull = cy == "BULL"
@@ -135,7 +143,7 @@ def build_style_setup(
     indicators["score"] = min(100, indicators["score"] + boost)
     indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
     indicators["signals"] = list(indicators.get("signals", [])) + mkt.get("confluence_signals", [])[:2]
-  if expert_direction and expert_direction.get("confluence_signals"):
+  if not indicators.get("calibrated") and expert_direction and expert_direction.get("confluence_signals"):
     indicators["signals"] = list(indicators.get("signals", [])) + expert_direction["confluence_signals"][:2]
   status, execution_tier, reason = resolve_execution_status(
     style=style,
@@ -157,6 +165,8 @@ def build_style_setup(
         direction, "BULL" if direction == "LONG" else "BEAR"
       )
     ),
+    oos_win_rate=None,
+    oos_trades=0,
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
