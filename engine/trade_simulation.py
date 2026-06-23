@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-MAX_FORWARD_BARS = {"scalp": 48, "day_trade": 72, "swing": 30, "long_term": 12}
+MAX_FORWARD_BARS = {"scalp": 48, "day_trade": 72, "swing": 30, "long_term": 12, "smc": 48}
 TIER_SIZE = {"full": 1.0, "probe": 0.35, "none": 0.0}
+# Reduced-size paper cohort for live-forward SMC validation
+SMC_COHORT_SIZE = {"full": 0.50, "probe": 0.25}
 
 
 def scale_geometry(

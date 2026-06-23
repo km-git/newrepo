@@ -96,6 +96,7 @@ def paper_trade_setup(
   symbol: str,
   setup: dict,
   df: pd.DataFrame,
+  size_override: Optional[float] = None,
 ) -> dict:
   """Paper-trade the current setup from the latest bar."""
   if df is None or len(df) < 5:
@@ -107,7 +108,7 @@ def paper_trade_setup(
   targets = setup.get("targets") or []
   style = setup.get("style", "swing")
   tier = setup.get("execution_tier", "none")
-  size = TIER_SIZE.get(tier, 0.0)
+  size = size_override if size_override is not None else TIER_SIZE.get(tier, 0.0)
   if setup.get("status") not in ("executable", "monitor"):
     size = 0.0
 
