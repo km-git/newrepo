@@ -130,9 +130,9 @@ def build_style_setup(
   else:
     indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
   indicators["stop_dist_pct"] = stop.get("distance_pct")
+  mkt = market_tools or {}
   if tv_edge or mkt:
     indicators = merge_tv_tokens_into_indicators(indicators, tv_edge or {}, mkt)
-  mkt = market_tools or {}
   # Calibrated scoring uses ledger-validated tokens only — no expert/cycle inflation
   boost = 0 if indicators.get("calibrated") else mkt.get("confluence_boost", 0)
   if not indicators.get("calibrated") and expert_direction:
