@@ -31,6 +31,7 @@ from engine.executive import executive_decide
 from engine.outcomes import build_outcomes
 from engine.tv_edge import build_tv_edge_layer
 from fetchers import fetch
+from fetchers.exchange_client import get_crypto_exchange
 
 
 def _distance_pct(price: float, low: float, high: float) -> float:
@@ -281,7 +282,16 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
     except Exception:
       pass
-  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
+  market_tools = build_market_confluence(
+    symbol, data, tfs, btc_1d=btc_1d,
+    exchange=get_crypto_exchange() if is_crypto else None,
+    direction=exec_direction if exec_direction in ("LONG", "SHORT") else (
+      "LONG" if exec_direction == "BULL" else "SHORT" if exec_direction == "BEAR" else "LONG"
+    ),
+  )
+  ob_ok = market_tools.get("orderbook", {}).get("available")
+  fr_ok = market_tools.get("funding", {}).get("available")
+  print(f"[step9] market: orderbook={ob_ok} funding={fr_ok} boost={market_tools.get('confluence_boost')}")
   stages.append(("market_confluence", {"symbol": symbol},
                  {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
 

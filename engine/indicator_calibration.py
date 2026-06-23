@@ -63,6 +63,29 @@ REASON_PATTERNS: List[Tuple[str, str]] = [
   ("volume surge", r"volume surge"),
   ("volume at/above avg", r"volume at/above avg"),
   ("harmonic PRZ", r"harmonic PRZ"),
+  # TV OSS / SMC tokens (Phase 2)
+  ("SMC BOS bull", r"SMC BOS bull"),
+  ("SMC CHoCH bull", r"SMC CHoCH bull"),
+  ("SMC BOS bear", r"SMC BOS bear"),
+  ("SMC CHoCH bear", r"SMC CHoCH bear"),
+  ("in bullish OB", r"in bullish OB"),
+  ("in bearish OB", r"in bearish OB"),
+  ("bullish FVG zone", r"bullish FVG zone"),
+  ("bearish FVG zone", r"bearish FVG zone"),
+  ("ADX trend strong", r"ADX \d+ trend strong"),
+  ("above SuperTrend", r"above SuperTrend"),
+  ("below SuperTrend", r"below SuperTrend"),
+  ("Williams %R oversold", r"Williams %R oversold"),
+  ("Williams %R overbought", r"Williams %R overbought"),
+  ("RSI bullish divergence", r"RSI bullish divergence|bullish_divergence"),
+  ("RSI bearish divergence", r"RSI bearish divergence|bearish_divergence"),
+  ("momentum z-score", r"momentum z="),
+  ("SMC MTF align", r"SMC MTF align"),
+  ("funding crowded long", r"funding crowded long|long_pays"),
+  ("funding crowded short", r"funding crowded short|short_pays"),
+  ("funding extreme", r"funding extreme"),
+  ("orderbook bid pressure", r"orderbook bid pressure|orderbook imb \+"),
+  ("orderbook ask pressure", r"orderbook ask pressure|orderbook imb -"),
 ]
 
 
@@ -184,8 +207,18 @@ def enrich_ledger_entry(
   tokens = indicators.get("active_tokens")
   if not tokens and setup.get("indicator_signals"):
     tokens = list(_tokens_from_reason(" ".join(setup.get("indicator_signals", []))))
+  if not tokens:
+    extra: List[str] = []
+    extra.extend(setup.get("indicators", {}).get("tv_edge_tags") or [])
+    extra.extend(setup.get("indicators", {}).get("market_tokens") or [])
+    if extra:
+      from engine.tv_edge import normalize_tv_tokens
+      tokens = normalize_tv_tokens(extra) + [
+        t for t in extra if t in (setup.get("indicators", {}).get("market_tokens") or [])
+      ]
+      tokens = list(dict.fromkeys(tokens))
   if tokens:
-    trade["indicator_tokens"] = list(tokens)
+    trade["indicator_tokens"] = list(dict.fromkeys(tokens))
 
   for key in (
     "oos_gate",
@@ -367,6 +400,29 @@ def _default_token_weights() -> Dict[str, int]:
     "volume surge": 15,
     "volume at/above avg": 8,
     "harmonic PRZ": 0,
+    # TV OSS / SMC (default until ledger calibrates)
+    "SMC BOS bull": 18,
+    "SMC CHoCH bull": 22,
+    "SMC BOS bear": 18,
+    "SMC CHoCH bear": 22,
+    "in bullish OB": 16,
+    "in bearish OB": 16,
+    "bullish FVG zone": 12,
+    "bearish FVG zone": 12,
+    "ADX trend strong": 14,
+    "above SuperTrend": 12,
+    "below SuperTrend": 12,
+    "Williams %R oversold": 10,
+    "Williams %R overbought": 10,
+    "RSI bullish divergence": 15,
+    "RSI bearish divergence": 15,
+    "momentum z-score": 10,
+    "SMC MTF align": 14,
+    "funding crowded long": 12,
+    "funding crowded short": 12,
+    "funding extreme": 8,
+    "orderbook bid pressure": 10,
+    "orderbook ask pressure": 10,
   }
 
 
@@ -513,6 +569,49 @@ def build_hybrid_weights(cal: Optional[dict] = None) -> Tuple[Dict[str, int], se
   for style in thresholds:
     thresholds[style] = max(52, int(thresholds[style]) - 5)
   return hybrid, blocked, thresholds
+
+
+def apply_extra_calibration_tokens(
+  indicators: dict,
+  extra_tokens: List[str],
+  calibration: Optional[dict] = None,
+) -> dict:
+  """Apply SMC / funding / orderbook tokens through hybrid calibration weights."""
+  if not extra_tokens:
+    return indicators
+  cal = calibration or load_calibration()
+  indicators = dict(indicators)
+  active = list(indicators.get("active_tokens") or [])
+  signals = list(indicators.get("signals") or [])
+  score = int(indicators.get("score") or 0)
+  threshold = int(indicators.get("threshold") or 58)
+
+  if cal and cal.get("available"):
+    weights, blocked, thresholds = build_hybrid_weights(cal)
+    threshold = int(thresholds.get(indicators.get("style", "swing"), threshold))
+    for token in extra_tokens:
+      if token in blocked:
+        continue
+      w = weights.get(token, 0)
+      if w <= 0:
+        continue
+      score = min(100, score + w)
+      active.append(token)
+      signals.append(token)
+  else:
+    defaults = _default_token_weights()
+    for token in extra_tokens:
+      w = defaults.get(token, 8)
+      score = min(100, score + w)
+      active.append(token)
+      signals.append(token)
+
+  indicators["score"] = score
+  indicators["active_tokens"] = list(dict.fromkeys(active))
+  indicators["signals"] = signals
+  indicators["aligned"] = score >= threshold
+  indicators["threshold"] = threshold
+  return indicators
 
 
 def score_indicator_confluence_calibrated(

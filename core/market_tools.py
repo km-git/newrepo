@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from core.indicators import compute_raw_indicators, rsi14
+
+# Calibration token names (ledger + hybrid weights)
+FUNDING_CROWDED_LONG = "funding crowded long"
+FUNDING_CROWDED_SHORT = "funding crowded short"
+ORDERBOOK_BID_PRESSURE = "orderbook bid pressure"
+ORDERBOOK_ASK_PRESSURE = "orderbook ask pressure"
+FUNDING_EXTREME = "funding extreme"
 
 
 def vwap_distance_pct(df: pd.DataFrame) -> float:
@@ -80,7 +87,10 @@ def btc_correlation(symbol: str, df_1d: pd.DataFrame, btc_df: Optional[pd.DataFr
 def orderbook_imbalance(exchange, symbol: str, depth: int = 20) -> dict:
   """Bid/ask volume imbalance from order book (-1 to +1)."""
   try:
-    book = exchange.fetch_order_book(symbol, limit=depth)
+    from fetchers.ccxt_fetcher import _symbol_for_exchange
+    ex_id = getattr(exchange, "id", "okx")
+    sym = _symbol_for_exchange(symbol, ex_id)
+    book = exchange.fetch_order_book(sym, limit=depth)
     bids = sum(b[1] for b in book.get("bids", [])[:depth])
     asks = sum(a[1] for a in book.get("asks", [])[:depth])
     total = bids + asks
@@ -110,12 +120,34 @@ def funding_rate_snapshot(exchange, symbol: str) -> dict:
     return {"available": False}
 
 
+def _funding_tokens(rate: float) -> List[str]:
+  tokens: List[str] = []
+  if rate > 0.0003:
+    tokens.append(FUNDING_CROWDED_LONG)
+    if rate > 0.0008:
+      tokens.append(FUNDING_EXTREME)
+  elif rate < -0.0003:
+    tokens.append(FUNDING_CROWDED_SHORT)
+    if rate < -0.0008:
+      tokens.append(FUNDING_EXTREME)
+  return tokens
+
+
+def _orderbook_tokens(imbalance: float) -> List[str]:
+  if imbalance > 0.12:
+    return [ORDERBOOK_BID_PRESSURE]
+  if imbalance < -0.12:
+    return [ORDERBOOK_ASK_PRESSURE]
+  return []
+
+
 def build_market_confluence(
   symbol: str,
   data: Dict[str, pd.DataFrame],
   tfs: List[str],
   btc_1d: Optional[pd.DataFrame] = None,
   exchange=None,
+  direction: str = "LONG",
 ) -> dict:
   """Aggregate supplementary tools (EW remains primary)."""
   primary_tf = "1h" if "1h" in data else "1d"
@@ -139,9 +171,12 @@ def build_market_confluence(
     tools["orderbook"] = {"available": False}
     tools["funding"] = {"available": False}
 
-  # Confluence score boost for readiness (0-20)
+  # Confluence score boost for readiness (0-25)
   boost = 0
   signals: List[str] = []
+  calibration_tokens: List[str] = []
+  is_long = direction in ("LONG", "BULL")
+
   rsi_stack = tools["multi_tf_rsi"]
   if rsi_stack.get("bias") == "BULL":
     boost += 5
@@ -154,18 +189,29 @@ def build_market_confluence(
   if div:
     boost += 8
     signals.append(div)
+    if div == "bullish_divergence" and is_long:
+      calibration_tokens.append("RSI bullish divergence")
+    elif div == "bearish_divergence" and not is_long:
+      calibration_tokens.append("RSI bearish divergence")
 
   ob = tools.get("orderbook", {})
   if ob.get("available"):
     imb = ob.get("imbalance", 0)
-    if abs(imb) > 0.15:
-      boost += 5
+    if abs(imb) > 0.12:
+      boost += 6
       signals.append(f"orderbook imb {imb:+.2f}")
+      calibration_tokens.extend(_orderbook_tokens(imb))
 
   fr = tools.get("funding", {})
-  if fr.get("available") and abs(fr.get("rate", 0)) > 0.0001:
-    signals.append(f"funding {fr.get('rate_pct')}% ({fr.get('bias')})")
+  if fr.get("available"):
+    rate = float(fr.get("rate", 0))
+    if abs(rate) > 0.0001:
+      signals.append(f"funding {fr.get('rate_pct')}% ({fr.get('bias')})")
+      if abs(rate) > 0.0002:
+        boost += 5
+      calibration_tokens.extend(_funding_tokens(rate))
 
-  tools["confluence_boost"] = min(boost, 20)
+  tools["confluence_boost"] = min(boost, 25)
   tools["confluence_signals"] = signals
+  tools["calibration_tokens"] = list(dict.fromkeys(calibration_tokens))
   return tools

@@ -100,17 +100,72 @@ def build_tv_edge_layer(
   }
 
 
-def merge_tv_tokens_into_indicators(indicators: dict, tv_edge: dict) -> dict:
-  """Add TV edge tokens to indicator score (post-calibration boost path)."""
-  if not tv_edge:
+# Maps TV edge tag prefixes → calibration token names
+TV_TOKEN_MAP = {
+  "SMC BOS bull": "SMC BOS bull",
+  "SMC CHoCH bull": "SMC CHoCH bull",
+  "SMC BOS bear": "SMC BOS bear",
+  "SMC CHoCH bear": "SMC CHoCH bear",
+  "in bullish OB": "in bullish OB",
+  "in bearish OB": "in bearish OB",
+  "bullish FVG zone": "bullish FVG zone",
+  "bearish FVG zone": "bearish FVG zone",
+  "ADX": "ADX trend strong",
+  "above SuperTrend": "above SuperTrend",
+  "below SuperTrend": "below SuperTrend",
+  "Williams %R oversold": "Williams %R oversold",
+  "Williams %R overbought": "Williams %R overbought",
+  "RSI bullish divergence": "RSI bullish divergence",
+  "RSI bearish divergence": "RSI bearish divergence",
+  "momentum z=": "momentum z-score",
+  "SMC MTF align": "SMC MTF align",
+}
+
+
+def normalize_tv_tokens(tags: List[str]) -> List[str]:
+  out: List[str] = []
+  for tag in tags:
+    matched = False
+    for prefix, token in TV_TOKEN_MAP.items():
+      if tag.startswith(prefix) or tag == prefix:
+        out.append(token)
+        matched = True
+        break
+    if not matched and tag.startswith("SMC "):
+      out.append(tag.split("(")[0].strip())
+  return list(dict.fromkeys(out))
+
+
+def merge_tv_tokens_into_indicators(
+  indicators: dict,
+  tv_edge: dict,
+  market_tools: Optional[dict] = None,
+) -> dict:
+  """Add TV edge + market microstructure tokens to indicator score."""
+  if not tv_edge and not market_tools:
     return indicators
-  bonus = min(25, int(tv_edge.get("edge_score", 0) * 0.25))
-  tokens = tv_edge.get("tags", [])
+
+  from engine.indicator_calibration import apply_extra_calibration_tokens
+
   indicators = dict(indicators)
-  indicators["tv_edge_score"] = tv_edge.get("edge_score", 0)
-  indicators["tv_edge_tags"] = tokens
-  if bonus:
-    indicators["score"] = min(100, indicators.get("score", 0) + bonus)
-    indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
-    indicators["signals"] = list(indicators.get("signals", [])) + tokens[:3]
+  extra = normalize_tv_tokens(tv_edge.get("tags", []) if tv_edge else [])
+  if market_tools:
+    extra.extend(market_tools.get("calibration_tokens", []))
+  extra = list(dict.fromkeys(extra))
+
+  indicators["tv_edge_score"] = tv_edge.get("edge_score", 0) if tv_edge else 0
+  indicators["tv_edge_tags"] = tv_edge.get("tags", []) if tv_edge else []
+  indicators["market_tokens"] = market_tools.get("calibration_tokens", []) if market_tools else []
+
+  if extra:
+    indicators = apply_extra_calibration_tokens(indicators, extra)
+
+  # Uncalibrated fallback boost
+  if not indicators.get("calibrated") and tv_edge:
+    bonus = min(25, int(tv_edge.get("edge_score", 0) * 0.25))
+    if bonus:
+      indicators["score"] = min(100, indicators.get("score", 0) + bonus)
+      indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
+      indicators["signals"] = list(indicators.get("signals", [])) + tv_edge.get("tags", [])[:3]
+
   return indicators
