@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -15,6 +16,7 @@ import pandas as pd
 from core.indicators import collect_indicator_signals, compute_raw_indicators, zone_proximity_pct
 
 CALIBRATION_PATH = Path("output/autodream/indicator_calibration.json")
+ACCUMULATION_PATH = Path("output/autodream/calibration_accumulation.json")
 PAPER_LEDGER_DEFAULT = Path("output/autodream/paper_ledger.jsonl")
 LEDGER_LOOKBACK = 5000
 
@@ -23,6 +25,10 @@ MIN_OOS_TRADES = 3
 MIN_SIGNAL_SAMPLES = 15
 MIN_LIFT_KEEP = 0.03
 MAX_LIFT_DROP = -0.05
+MIN_BOOTSTRAP_CLOSED = 30
+MIN_RECALIBRATION_CLOSED = 100
+SCORING_ERA_CALIBRATED = "calibrated"
+SCORING_ERA_LEGACY = "legacy"
 
 DEFAULT_STYLE_THRESHOLDS = {
   "scalp": 72,
@@ -58,7 +64,8 @@ REASON_PATTERNS: List[Tuple[str, str]] = [
 ]
 
 
-def _load_ledger(path: Path = PAPER_LEDGER_DEFAULT, limit: int = LEDGER_LOOKBACK) -> List[dict]:
+def _load_ledger(path: Optional[Path] = None, limit: int = LEDGER_LOOKBACK) -> List[dict]:
+  path = path or PAPER_LEDGER_DEFAULT
   if not path.exists():
     return []
   rows: List[dict] = []
@@ -80,6 +87,138 @@ def _tokens_from_reason(reason: str) -> set[str]:
     if re.search(pat, reason, re.I):
       found.add(token)
   return found
+
+
+def _trade_tokens(trade: dict) -> set[str]:
+  """Prefer explicit indicator_tokens logged at paper time."""
+  tokens = trade.get("indicator_tokens")
+  if tokens:
+    return set(tokens)
+  return _tokens_from_reason(str(trade.get("honest_reason", "")))
+
+
+def _make_calibration_id(cal: dict) -> str:
+  payload = json.dumps(
+    {
+      "weights": sorted((cal.get("signal_weights") or {}).items()),
+      "blocked": sorted(cal.get("blocked_signals") or []),
+      "thresholds": sorted((cal.get("style_thresholds") or {}).items()),
+      "generation": cal.get("calibration_generation", 0),
+    },
+    sort_keys=True,
+  )
+  return hashlib.sha256(payload.encode()).hexdigest()[:12]
+
+
+def filter_calibrated_ledger(ledger: Optional[List[dict]] = None) -> List[dict]:
+  """Closed-trade subset scored under calibrated era (tagged at ledger append)."""
+  ledger = ledger if ledger is not None else _load_ledger()
+  return [t for t in ledger if t.get("scoring_era") == SCORING_ERA_CALIBRATED]
+
+
+def accumulation_status(ledger: Optional[List[dict]] = None) -> dict:
+  """Track progress toward clean-subset re-estimation."""
+  ledger = ledger if ledger is not None else _load_ledger()
+  closed = [t for t in ledger if t.get("paper_outcome") in ("win", "loss")]
+  calibrated_closed = [t for t in closed if t.get("scoring_era") == SCORING_ERA_CALIBRATED]
+  calibrated_wins = sum(1 for t in calibrated_closed if t["paper_outcome"] == "win")
+  target = MIN_RECALIBRATION_CLOSED
+  n_cal = len(calibrated_closed)
+  cal = load_calibration() or {}
+
+  return {
+    "updated": datetime.now(timezone.utc).isoformat(),
+    "total_closed": len(closed),
+    "legacy_closed": len(closed) - n_cal,
+    "calibrated_closed": n_cal,
+    "calibrated_win_rate": round(calibrated_wins / n_cal, 3) if n_cal else None,
+    "target_closed": target,
+    "remaining_to_target": max(0, target - n_cal),
+    "ready_for_clean_reestimate": n_cal >= target,
+    "current_calibration_id": cal.get("calibration_id"),
+    "current_generation": cal.get("calibration_generation", 0),
+    "current_source": cal.get("source", "unknown"),
+  }
+
+
+def save_accumulation_state(status: dict, path: Optional[Path] = None) -> str:
+  path = path or ACCUMULATION_PATH
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text(json.dumps(status, indent=2, default=str))
+  return str(path)
+
+
+def load_accumulation_state(path: Optional[Path] = None) -> dict:
+  path = path or ACCUMULATION_PATH
+  if not path.exists():
+    return {}
+  try:
+    return json.loads(path.read_text())
+  except (json.JSONDecodeError, OSError):
+    return {}
+
+
+def enrich_ledger_entry(
+  trade: dict,
+  setup: Optional[dict] = None,
+  calibration: Optional[dict] = None,
+) -> dict:
+  """Tag ledger rows so future calibration can filter to clean calibrated-era data."""
+  trade = dict(trade)
+  setup = setup or {}
+  cal = calibration or load_calibration()
+
+  indicators = setup.get("indicators") or {}
+  calibrated_active = bool(indicators.get("calibrated")) or bool(
+    cal and cal.get("available") and cal.get("signal_weights")
+  )
+  trade["scoring_era"] = SCORING_ERA_CALIBRATED if calibrated_active else SCORING_ERA_LEGACY
+
+  if cal:
+    trade["calibration_id"] = cal.get("calibration_id")
+    trade["calibration_generation"] = cal.get("calibration_generation", 0)
+    trade["calibration_source"] = cal.get("source")
+
+  tokens = indicators.get("active_tokens")
+  if not tokens and setup.get("indicator_signals"):
+    tokens = list(_tokens_from_reason(" ".join(setup.get("indicator_signals", []))))
+  if tokens:
+    trade["indicator_tokens"] = list(tokens)
+
+  for key in (
+    "oos_gate",
+    "autodream_verdict",
+    "oos_win_rate",
+    "oos_trades",
+    "wf_degradation",
+    "validation_summary",
+  ):
+    if setup.get(key) is not None:
+      trade[key] = setup.get(key)
+
+  trade["ledger_schema"] = 2
+  return trade
+
+
+def merge_setup_metadata_into_trades(
+  trades: List[dict],
+  results: List[dict],
+  calibration: Optional[dict] = None,
+) -> List[dict]:
+  """Merge post-honesty setup fields back into paper trades before ledger append."""
+  cal = calibration or load_calibration()
+  setup_map: Dict[tuple[str, str], dict] = {}
+  for r in results:
+    if r.get("status") == "incomplete":
+      continue
+    sym = r.get("symbol", "")
+    for style, setup in (r.get("step8_outcomes") or {}).get("setups", {}).items():
+      setup_map[(sym, style)] = setup or {}
+
+  return [
+    enrich_ledger_entry(t, setup_map.get((t.get("symbol", ""), t.get("style", ""))), cal)
+    for t in trades
+  ]
 
 
 def _wilson_lower(wins: int, n: int, z: float = 1.96) -> float:
@@ -115,8 +254,7 @@ def analyze_signal_predictiveness(
 
   for trade in closed:
     win = trade["paper_outcome"] == "win"
-    reason = str(trade.get("honest_reason", ""))
-    for token in _tokens_from_reason(reason):
+    for token in _trade_tokens(trade):
       key = "wins" if win else "losses"
       token_stats[token][key] += 1
 
@@ -230,15 +368,24 @@ def _default_token_weights() -> Dict[str, int]:
   }
 
 
-def build_calibration(ledger: Optional[List[dict]] = None) -> dict:
+def build_calibration(
+  ledger: Optional[List[dict]] = None,
+  source: str = "all_ledger",
+) -> dict:
   """Full calibration document for persistence and scoring."""
   stats = analyze_signal_predictiveness(ledger)
   if not stats.get("available"):
     return stats
+  stats["source"] = source
   stats["signal_weights"] = {
     k: v["weight"] for k, v in stats["kept_signals"].items() if v.get("weight", 0) > 0
   }
   stats["blocked_signals"] = list(stats["removed_signals"].keys())
+  prev = load_calibration() or {}
+  stats["calibration_generation"] = prev.get("calibration_generation", 0)
+  if source == "calibrated_era_only":
+    stats["calibration_generation"] = int(prev.get("calibration_generation", 0)) + 1
+  stats["calibration_id"] = _make_calibration_id(stats)
   return stats
 
 
@@ -249,7 +396,8 @@ def save_calibration(cal: dict, path: Optional[Path] = None) -> str:
   return str(path)
 
 
-def load_calibration(path: Path = CALIBRATION_PATH) -> Optional[dict]:
+def load_calibration(path: Optional[Path] = None) -> Optional[dict]:
+  path = path or CALIBRATION_PATH
   if not path.exists():
     return None
   try:
@@ -259,12 +407,87 @@ def load_calibration(path: Path = CALIBRATION_PATH) -> Optional[dict]:
   return cal if cal.get("available") else None
 
 
-def run_indicator_calibration() -> dict:
+def run_indicator_calibration(
+  calibrated_only: bool = False,
+  ledger: Optional[List[dict]] = None,
+) -> dict:
   """Analyze ledger and persist calibrated weights."""
-  cal = build_calibration()
+  ledger = ledger if ledger is not None else _load_ledger()
+  status = accumulation_status(ledger)
+  use_clean = calibrated_only or status["ready_for_clean_reestimate"]
+
+  if use_clean:
+    subset = filter_calibrated_ledger(ledger)
+    source = "calibrated_era_only"
+    if len([t for t in subset if t.get("paper_outcome") in ("win", "loss")]) < MIN_BOOTSTRAP_CLOSED:
+      subset = ledger
+      source = "all_ledger"
+      use_clean = False
+  else:
+    subset = ledger
+    source = "all_ledger"
+
+  cal = build_calibration(subset, source=source)
   if cal.get("available"):
     save_calibration(cal)
+  cal["accumulation"] = status
+  cal["used_clean_subset"] = use_clean and source == "calibrated_era_only"
   return cal
+
+
+def run_calibration_accumulation_cycle(
+  results: Optional[List[dict]] = None,
+  trades: Optional[List[dict]] = None,
+  force_reestimate: bool = False,
+) -> dict:
+  """
+  After a paper batch: update accumulation state and re-estimate from clean
+  calibrated-era trades when the target is met.
+  """
+  ledger = _load_ledger()
+  status = accumulation_status(ledger)
+  status["force_reestimate"] = force_reestimate
+
+  if trades and results:
+    merged = merge_setup_metadata_into_trades(trades, results)
+    status["last_batch_calibrated_appended"] = sum(
+      1 for t in merged if t.get("scoring_era") == SCORING_ERA_CALIBRATED
+    )
+
+  should_reestimate = (
+    force_reestimate
+    or status["ready_for_clean_reestimate"]
+  )
+  reestimated = False
+  cal_summary: dict = {}
+
+  if should_reestimate and status["calibrated_closed"] >= MIN_BOOTSTRAP_CLOSED:
+    cal = run_indicator_calibration(calibrated_only=True, ledger=ledger)
+    reestimated = cal.get("used_clean_subset", False)
+    cal_summary = {
+      "calibration_id": cal.get("calibration_id"),
+      "generation": cal.get("calibration_generation"),
+      "source": cal.get("source"),
+      "kept_signals": len(cal.get("kept_signals", {})),
+      "removed_signals": len(cal.get("removed_signals", {})),
+      "baseline_win_rate": cal.get("baseline_win_rate"),
+      "closed_trades": cal.get("closed_trades"),
+    }
+
+  status["reestimated"] = reestimated
+  status["calibration"] = cal_summary
+  if not status["ready_for_clean_reestimate"]:
+    status["next_action"] = (
+      f"Run paper batches to accumulate {status['remaining_to_target']} more "
+      f"calibrated-era closed trades (have {status['calibrated_closed']}/{status['target_closed']})"
+    )
+  elif reestimated:
+    status["next_action"] = "Clean-subset calibration applied — continue accumulating for next generation"
+  else:
+    status["next_action"] = "Target met — re-estimation will run on next batch"
+
+  save_accumulation_state(status)
+  return status
 
 
 def score_indicator_confluence_calibrated(

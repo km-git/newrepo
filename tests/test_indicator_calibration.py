@@ -10,9 +10,15 @@ import pandas as pd
 from core.indicators import collect_indicator_signals, compute_raw_indicators
 from engine.indicator_calibration import (
   MIN_OOS_EXECUTABLE,
+  SCORING_ERA_CALIBRATED,
+  accumulation_status,
   analyze_signal_predictiveness,
   apply_oos_executable_gate,
   build_calibration,
+  enrich_ledger_entry,
+  filter_calibrated_ledger,
+  merge_setup_metadata_into_trades,
+  run_calibration_accumulation_cycle,
   run_indicator_calibration,
   score_indicator_confluence_calibrated,
 )
@@ -156,3 +162,86 @@ def test_collect_indicator_signals_tokens():
   tokens = [t for t, _ in collect_indicator_signals(raw, "LONG", 0.0)]
   assert "in kill zone" in tokens
   assert "RSI bullish reset" in tokens
+
+
+def test_enrich_ledger_entry_tags_calibrated_era():
+  cal = build_calibration(_synthetic_ledger(80))
+  setup = {
+    "indicators": {"calibrated": True, "active_tokens": ["in kill zone", "MACD rising"]},
+    "oos_win_rate": 0.62,
+    "oos_trades": 8,
+    "oos_gate": "passed",
+  }
+  trade = enrich_ledger_entry({"symbol": "BTC/USDT", "style": "swing"}, setup, cal)
+  assert trade["scoring_era"] == SCORING_ERA_CALIBRATED
+  assert trade["indicator_tokens"] == ["in kill zone", "MACD rising"]
+  assert trade["calibration_id"]
+
+
+def test_accumulation_status_counts_eras():
+  ledger = []
+  for i in range(40):
+    ledger.append({"paper_outcome": "win", "scoring_era": SCORING_ERA_CALIBRATED})
+  for i in range(20):
+    ledger.append({"paper_outcome": "loss"})
+  status = accumulation_status(ledger)
+  assert status["calibrated_closed"] == 40
+  assert status["legacy_closed"] == 20
+  assert status["remaining_to_target"] == 60
+
+
+def test_filter_calibrated_ledger():
+  ledger = [
+    {"scoring_era": SCORING_ERA_CALIBRATED, "paper_outcome": "win"},
+    {"paper_outcome": "loss"},
+  ]
+  assert len(filter_calibrated_ledger(ledger)) == 1
+
+
+def test_merge_setup_metadata_into_trades():
+  results = [{
+    "symbol": "ETH/USDT",
+    "status": "active",
+    "step8_outcomes": {
+      "setups": {
+        "swing": {
+          "indicators": {"calibrated": True, "active_tokens": ["near zone"]},
+          "oos_win_rate": 0.57,
+          "oos_trades": 6,
+          "oos_gate": "passed",
+        },
+      },
+    },
+  }]
+  trades = [{"symbol": "ETH/USDT", "style": "swing", "paper_outcome": "win"}]
+  merged = merge_setup_metadata_into_trades(trades, results)
+  assert merged[0]["scoring_era"] == SCORING_ERA_CALIBRATED
+  assert merged[0]["indicator_tokens"] == ["near zone"]
+
+
+def test_run_calibration_accumulation_cycle_reestimates(tmp_path, monkeypatch):
+  ledger = tmp_path / "ledger.jsonl"
+  rows = []
+  for i in range(110):
+    rows.append({
+      "paper_outcome": "win" if i % 2 == 0 else "loss",
+      "scoring_era": SCORING_ERA_CALIBRATED,
+      "honest_reason": "swing PROBE (RSI 48 bullish reset zone, MACD histogram rising, in kill zone)",
+      "indicator_tokens": ["in kill zone", "RSI bullish reset", "MACD rising"],
+      "style": "swing",
+      "readiness_score": 75,
+    })
+  ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+
+  cal_path = tmp_path / "calibration.json"
+  acc_path = tmp_path / "accumulation.json"
+  monkeypatch.setattr("engine.indicator_calibration.PAPER_LEDGER_DEFAULT", ledger)
+  monkeypatch.setattr("engine.indicator_calibration.CALIBRATION_PATH", cal_path)
+  monkeypatch.setattr("engine.indicator_calibration.ACCUMULATION_PATH", acc_path)
+
+  status = run_calibration_accumulation_cycle(force_reestimate=True)
+  assert status["reestimated"] is True
+  assert cal_path.exists()
+  saved = json.loads(cal_path.read_text())
+  assert saved.get("source") == "calibrated_era_only"
+  assert saved.get("calibration_generation", 0) >= 1

@@ -22,7 +22,12 @@ from engine.paper_trading import (
   save_paper_metrics,
 )
 from engine.trade_learning import apply_learning_to_outcomes, run_loss_learning_cycle
-from engine.indicator_calibration import run_indicator_calibration, load_calibration
+from engine.indicator_calibration import (
+  accumulation_status,
+  merge_setup_metadata_into_trades,
+  run_calibration_accumulation_cycle,
+  run_indicator_calibration,
+)
 from engine.system_audit import run_system_audit, apply_audit_demotions
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
@@ -95,14 +100,22 @@ def run_top_crypto_batch(
 
   print(f"\n[batch] Running {len(pairs)} pairs × timeframes {tfs}")
   print("\n[batch] Indicator recalibration from paper ledger...")
-  calibration = run_indicator_calibration()
+  acc = accumulation_status()
+  use_clean = acc.get("ready_for_clean_reestimate", False)
+  calibration = run_indicator_calibration(calibrated_only=use_clean)
   if calibration.get("available"):
     kept = len(calibration.get("kept_signals", {}))
     removed = len(calibration.get("removed_signals", {}))
+    src = calibration.get("source", "all_ledger")
+    gen = calibration.get("calibration_generation", 0)
     print(
       f"  Calibrated from {calibration.get('closed_trades')} closed trades "
-      f"(baseline WR {calibration.get('baseline_win_rate', 0):.0%}) — "
+      f"(baseline WR {calibration.get('baseline_win_rate', 0):.0%}, source={src}, gen={gen}) — "
       f"kept {kept} signals, removed {removed}"
+    )
+    print(
+      f"  Accumulation: {acc.get('calibrated_closed', 0)}/{acc.get('target_closed')} "
+      f"calibrated-era closed ({acc.get('remaining_to_target')} to clean re-estimate)"
     )
   else:
     print(f"  Calibration skipped: {calibration.get('reason', 'unknown')}")
@@ -154,7 +167,25 @@ def run_top_crypto_batch(
         r["step8_outcomes"] = apply_audit_demotions(r["step8_outcomes"], audit)
 
   save_batch_json(results, str(json_path))
-  append_paper_ledger(paper_report.get("trades", []))
+  enriched_trades = merge_setup_metadata_into_trades(
+    paper_report.get("trades", []), results, calibration
+  )
+  append_paper_ledger(enriched_trades)
+  acc_after = run_calibration_accumulation_cycle(
+    results=results,
+    trades=enriched_trades,
+  )
+  if acc_after.get("reestimated"):
+    print(
+      f"\n[calibration] Clean re-estimate applied (gen {acc_after.get('calibration', {}).get('generation')}, "
+      f"source={acc_after.get('calibration', {}).get('source')})"
+    )
+  elif acc_after.get("remaining_to_target", 0) > 0:
+    print(
+      f"\n[calibration] Accumulating clean data: "
+      f"{acc_after.get('calibrated_closed')}/{acc_after.get('target_closed')} "
+      f"({acc_after.get('remaining_to_target')} remaining)"
+    )
   paper_metrics_path = save_paper_metrics(paper_report)
   paper_csv_path = save_paper_csv(paper_report)
   save_outcomes_csv(results, str(outcomes_path))
@@ -201,6 +232,7 @@ def run_top_crypto_batch(
     "calibration_kept_signals": len(calibration.get("kept_signals", {}))
     if calibration.get("available")
     else 0,
+    "calibration_accumulation": acc_after,
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"

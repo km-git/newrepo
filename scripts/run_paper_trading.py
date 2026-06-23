@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from engine.full_report import export_all_reports, regenerate_from_json
+from engine.indicator_calibration import merge_setup_metadata_into_trades
 from engine.paper_trading import (
   append_paper_ledger,
   apply_honesty_adjustments,
@@ -46,7 +47,8 @@ def main() -> int:
       r["step8_outcomes"] = apply_honesty_adjustments(r["step8_outcomes"])
 
   json_path.write_text(json.dumps(results, indent=2, default=str))
-  append_paper_ledger(report.get("trades", []))
+  enriched = merge_setup_metadata_into_trades(report.get("trades", []), results)
+  append_paper_ledger(enriched)
   metrics = save_paper_metrics(report)
   csv_path = save_paper_csv(report)
   save_monitor_queue(build_monitor_queue(results))

@@ -10,7 +10,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from engine.indicator_calibration import apply_oos_executable_gate
+from engine.indicator_calibration import (
+  apply_oos_executable_gate,
+  load_calibration,
+  merge_setup_metadata_into_trades,
+  run_calibration_accumulation_cycle,
+)
 from engine.outcomes import STYLE_CONFIG
 from engine.trade_simulation import (
   MAX_FORWARD_BARS,
@@ -198,6 +203,11 @@ def run_paper_batch(
       paper["validation_summary"] = hist.get("validation_summary")
       paper["readiness_score"] = setup.get("readiness_score")
       paper["honest_reason"] = setup.get("honest_reason", "")[:120]
+      cal = load_calibration()
+      if cal:
+        from engine.indicator_calibration import enrich_ledger_entry
+
+        paper = enrich_ledger_entry(paper, setup, cal)
       trades.append(paper)
 
   closed = [t for t in trades if t.get("paper_outcome") in ("win", "loss")]
@@ -399,6 +409,7 @@ def apply_honesty_adjustments(outcomes: dict) -> dict:
     )
     setup["autodream_verdict"] = verdict
     setup = apply_oos_executable_gate(setup)
+    outcomes["setups"][style] = setup
 
     notes: List[str] = []
     oos_note = ""
