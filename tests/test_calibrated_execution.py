@@ -9,19 +9,21 @@ from engine.calibrated_execution import (
 )
 
 
-def test_msb_pass_demotion_full_to_monitor():
+def test_msb_pass_demotion_blocks_executable():
   setup = {
     "entry_signal": True,
+    "entry_probe": True,
     "execution_tier": "full",
     "status": "executable",
     "honest_reason": "SMC FULL",
-    "indicator_signals": ["MSB z-score weak"],
+    "indicator_signals": ["MSB z-score pass"],
   }
-  msb = {"status": "ok", "pass": False, "tag": "MSB z-score weak", "z": 0.2}
+  msb = {"status": "ok", "pass": True, "tag": "MSB z-score pass", "z": 2.0}
   out = apply_msb_pass_demotion(setup, msb)
+  assert out["entry_signal"] is False
+  assert out["entry_probe"] is False
   assert out["status"] == "monitor"
-  assert out["execution_tier"] == "none"
-  assert out["msb_gate"] == "demoted_weak"
+  assert out["msb_gate"] == "blocked_pass"
 
 
 def test_anti_predictive_token_reduces_multiplier():

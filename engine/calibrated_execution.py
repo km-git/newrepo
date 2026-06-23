@@ -51,24 +51,26 @@ def token_confidence_multiplier(active_tokens: List[str], calibration: Optional[
 
 def apply_msb_pass_demotion(setup: dict, msb: Optional[dict] = None) -> dict:
   """
-  Runtime MSB demotion: FULL requiring MSB pass → monitor if MSB weak.
-  Does not block probe tier unless MSB pass was required for entry_signal.
+  Runtime MSB hard block: MSB z-score pass is anti-predictive in ledger (~11% WR).
+  Clears entry_signal / demotes executable setups when pass fires.
   """
+  from core.msb_zscore import msb_blocks_entry
+
   setup = dict(setup)
   msb = msb or {}
-  tags = setup.get("indicator_signals") or setup.get("indicators", {}).get("active_tokens") or []
-  msb_pass = msb.get("pass", True) if msb.get("status") == "ok" else True
-  msb_weak = msb.get("tag") == "MSB z-score weak" or WEAK_MSb_TOKEN in tags
+  msb_pass = bool(msb.get("pass")) if msb.get("status") == "ok" else False
+  blocked = msb_blocks_entry(msb)
 
-  if setup.get("entry_signal") and not msb_pass:
-    setup["status"] = "monitor"
-    setup["execution_tier"] = "none"
-    setup["msb_gate"] = "demoted_weak"
-    setup["honest_reason"] = (setup.get("honest_reason", "") + " · MSB z-score weak — FULL demoted").strip()
-  elif setup.get("execution_tier") == "full" and msb_weak and not msb_pass:
-    setup["execution_tier"] = "probe"
-    setup["msb_gate"] = "demoted_to_probe"
-    setup["honest_reason"] = (setup.get("honest_reason", "") + " · MSB weak — demoted FULL→PROBE").strip()
+  if blocked and (setup.get("entry_signal") or setup.get("entry_probe")):
+    setup["entry_signal"] = False
+    setup["entry_probe"] = False
+    if setup.get("status") == "executable":
+      setup["status"] = "monitor"
+      setup["execution_tier"] = "none"
+    setup["msb_gate"] = "blocked_pass"
+    setup["honest_reason"] = (
+      setup.get("honest_reason", "") + " · MSB z-score pass blocked (anti-predictive)"
+    ).strip()
 
   setup["msb_pass"] = msb_pass
   setup["msb_z"] = msb.get("z")
@@ -152,7 +154,7 @@ def resolve_live_status(
     oos_trades=int(setup.get("oos_trades") or 0),
   )
 
-  if setup.get("msb_gate") == "demoted_weak":
+  if setup.get("msb_gate") in ("demoted_weak", "blocked_pass"):
     status, tier = "monitor", "none"
 
   setup["status"] = status

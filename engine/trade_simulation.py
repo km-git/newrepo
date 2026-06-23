@@ -37,6 +37,23 @@ def scale_geometry(
   return new_stop, scaled
 
 
+def forward_bars_after_entry(
+  highs,
+  lows,
+  entry_bar_idx: int,
+  max_bars: int,
+) -> Tuple[List[float], List[float]]:
+  """
+  OHLC slices for bars strictly after entry_bar_idx (no same-bar stop check).
+  Matches backtest_strategies.collect_zone_trades bar+1 convention.
+  """
+  start = entry_bar_idx + 1
+  end = min(len(highs), start + max_bars)
+  if start >= end:
+    return [], []
+  return list(highs[start:end]), list(lows[start:end])
+
+
 def simulate_forward(
   highs: List[float],
   lows: List[float],

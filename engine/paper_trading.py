@@ -20,6 +20,7 @@ from engine.outcomes import STYLE_CONFIG
 from engine.trade_simulation import (
   MAX_FORWARD_BARS,
   TIER_SIZE,
+  forward_bars_after_entry,
   in_zone as _in_zone,
   scale_geometry as _scale_geometry,
   simulate_forward,
@@ -112,21 +113,36 @@ def paper_trade_setup(
   if setup.get("status") not in ("executable", "monitor"):
     size = 0.0
 
-  entry = float(df["Close"].iloc[-1])
+  n = len(df)
+  if n < 3:
+    return {"symbol": symbol, "available": False, "reason": "insufficient bars for bar+1 sim"}
+
+  # Signal bar: prior complete candle; forward sim from next bar (no same-bar stop)
+  entry_idx = n - 2
+  entry = float(df["Close"].iloc[entry_idx])
   new_stop, scaled_tps = _scale_geometry(anchor, stop, targets, entry, direction)
   max_fwd = MAX_FORWARD_BARS.get(style, 30)
   highs = df["High"].values.astype(float)
   lows = df["Low"].values.astype(float)
-  # Only past bars available — simulate from last bar as entry snapshot
-  sim = simulate_forward(
-    highs[-max_fwd:].tolist(),
-    lows[-max_fwd:].tolist(),
-    entry,
-    new_stop,
-    scaled_tps,
-    direction,
-    max_fwd,
-  )
+  fwd_h, fwd_l = forward_bars_after_entry(highs, lows, entry_idx, max_fwd)
+  if not fwd_h:
+    sim = {
+      "outcome": "open",
+      "pnl_r": 0.0,
+      "bars_held": 0,
+      "exit_detail": "await_next_bar",
+      "tp_hits": [],
+    }
+  else:
+    sim = simulate_forward(
+      fwd_h,
+      fwd_l,
+      entry,
+      new_stop,
+      scaled_tps,
+      direction,
+      max_fwd,
+    )
 
   return {
     "symbol": symbol,
@@ -159,12 +175,14 @@ def run_paper_batch(
   results: List[dict],
   fetch_missing: bool = True,
   tfs: Optional[List[str]] = None,
+  executable_only: bool = True,
 ) -> dict:
-  """Paper-trade and backtest every setup across batch results."""
+  """Paper-trade executable setups; backtest all actionable setups for OOS."""
   tfs = tfs or ["1w", "1d", "4h", "1h", "15m"]
   trades: List[dict] = []
   hist_by_key: Dict[str, dict] = {}
   data_cache: Dict[str, Dict[str, pd.DataFrame]] = {}
+  monitor_skipped = 0
 
   for r in results:
     if r.get("status") == "incomplete":
@@ -192,6 +210,13 @@ def run_paper_batch(
 
       hist = backtest_setup_on_bars(df, setup)
       hist_by_key[f"{sym}:{style}"] = hist
+
+      if executable_only and (
+        setup.get("status") != "executable"
+        or setup.get("execution_tier") not in ("full", "probe")
+      ):
+        monitor_skipped += 1
+        continue
 
       paper = paper_trade_setup(sym, setup, df)
       paper["hist_win_rate"] = hist.get("win_rate")
@@ -224,6 +249,8 @@ def run_paper_batch(
     "updated": datetime.now(timezone.utc).isoformat(),
     "pairs": len({t["symbol"] for t in trades}),
     "setups_papered": len(trades),
+    "monitor_skipped": monitor_skipped,
+    "paper_policy": "executable_only" if executable_only else "all_actionable",
     "closed_trades": total_closed,
     "open_trades": len(trades) - total_closed,
     "win_rate": round(wins / total_closed, 3) if total_closed else None,

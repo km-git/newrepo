@@ -84,7 +84,7 @@ def evaluate_smc_triggers(
   if tf_analysis.get("active_fvg"):
     triggers_hit.append("in FVG zone")
   if msb.get("pass"):
-    triggers_hit.append("MSB z-score pass")
+    triggers_hit.append("MSB z-score pass (blocked)")
   elif msb.get("status") == "ok":
     triggers_hit.append("MSB z-score weak")
 

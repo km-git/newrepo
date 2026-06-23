@@ -62,7 +62,7 @@ def test_portfolio_rejects_duplicate():
 @patch("engine.smc_monitor.load_calibration")
 def test_smc_monitor_upgrade(mock_cal, mock_msb, mock_inst):
   mock_cal.return_value = {"available": False}
-  mock_msb.return_value = {"status": "ok", "pass": True, "z": 1.5}
+  mock_msb.return_value = {"status": "ok", "pass": False, "z": 0.5}
   mock_inst.return_value = {
     "entry_signal": True,
     "entry_probe": False,

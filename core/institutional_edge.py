@@ -29,7 +29,7 @@ except ImportError:
 
 from core.smc_structure import analyze_smc as _fallback_smc
 from core.eq_liquidity import detect_eq_sweep, detect_equal_levels
-from core.msb_zscore import validate_msb_zscore
+from core.msb_zscore import msb_allows_entry, validate_msb_zscore
 
 
 def _prep_ohlc(df: pd.DataFrame) -> pd.DataFrame:
@@ -394,7 +394,7 @@ def analyze_institutional_tf(
   msb = validate_msb_zscore(df, dir_norm)
   if msb.get("status") == "ok":
     if msb.get("pass"):
-      score += 12
+      score += 4
       tags.append("MSB z-score pass")
     else:
       score -= 4
@@ -458,9 +458,11 @@ def analyze_institutional_tf(
   sweep_hit = bool(recent_sweep)
   confluence = sweep_hit and bool(active_ob) and bool(active_fvg)
   partial_confluence = sum([sweep_hit, bool(active_ob), bool(active_fvg)])
-  msb_ok = msb.get("pass", True) if msb.get("status") == "ok" else True
+  msb_ok = msb_allows_entry(msb)
+  if msb.get("status") == "ok" and msb.get("pass"):
+    tags.append("MSB pass blocked (anti-predictive)")
 
-  # Full entry: 3/3 + VP pass; probe-grade A: 2/3 + MSB pass + VP pass
+  # Full entry: 3/3 + VP pass; MSB pass hard-blocked (ledger anti-predictive)
   entry_signal = confluence and vp_filter_ok and msb_ok
   entry_probe = (
     not entry_signal

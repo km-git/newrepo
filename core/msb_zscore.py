@@ -113,3 +113,21 @@ def validate_msb_zscore(
     "bar_idx": bar_idx,
     "tag": "MSB z-score pass" if passed else "MSB z-score weak",
   }
+
+
+MSB_PASS_TOKEN = "MSB z-score pass"
+
+
+def msb_blocks_entry(msb: Optional[dict]) -> bool:
+  """
+  Hard block MSB z-score pass from entry_signal.
+  Ledger: pass token ~11% WR (anti-predictive); weak is also poor but pass is worse.
+  """
+  if not msb:
+    return False
+  return msb.get("status") == "ok" and bool(msb.get("pass"))
+
+
+def msb_allows_entry(msb: Optional[dict]) -> bool:
+  """True when MSB filter does not veto SMC entry."""
+  return not msb_blocks_entry(msb)
