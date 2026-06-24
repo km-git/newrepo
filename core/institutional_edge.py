@@ -59,6 +59,88 @@ def _bar_touches_zone(bar_low: float, bar_high: float, top: float, bot: float) -
   return bar_low <= top and bar_high >= bot
 
 
+def structure_blocks_entry(structure_event: Optional[str], direction: str) -> bool:
+  """Hard block: bear structure on LONG / bull structure on SHORT (ledger anti-predictive)."""
+  if not structure_event:
+    return False
+  is_long = direction in ("LONG", "BULL")
+  if is_long and structure_event in ("choch_bear", "bos_bear"):
+    return True
+  if not is_long and structure_event in ("choch_bull", "bos_bull"):
+    return True
+  return False
+
+
+def _zone_bounds(
+  active_ob: Optional[dict],
+  active_fvg: Optional[dict],
+) -> Tuple[Optional[float], Optional[float]]:
+  if active_ob:
+    return float(active_ob["top"]), float(active_ob["bot"])
+  if active_fvg:
+    return float(active_fvg["top"]), float(active_fvg["bot"])
+  return None, None
+
+
+def detect_entry_confirmation(
+  df: pd.DataFrame,
+  direction: str,
+  zone_top: Optional[float] = None,
+  zone_bot: Optional[float] = None,
+) -> dict:
+  """
+  SMC executable confirm: rejection wick at zone OR bar+2 directional close after touch.
+  """
+  if df is None or len(df) < 4:
+    return {"confirmed": False, "mode": None}
+  is_long = direction in ("LONG", "BULL")
+  o = df["Open"].astype(float)
+  h = df["High"].astype(float)
+  l = df["Low"].astype(float)
+  c = df["Close"].astype(float)
+
+  zt = zb = None
+  touch_pad = float(c.iloc[-1]) * 0.006
+  if zone_top is not None and zone_bot is not None:
+    zt, zb = max(zone_top, zone_bot), min(zone_top, zone_bot)
+    touch_pad = max((zt - zb) * 0.25, zt * 0.006)
+
+  def _touched(bar_l: float, bar_h: float) -> bool:
+    if zt is None:
+      return True
+    return bar_l <= zt + touch_pad and bar_h >= zb - touch_pad
+
+  for i in range(-3, 0):
+    bar_o, bar_h, bar_l, bar_c = float(o.iloc[i]), float(h.iloc[i]), float(l.iloc[i]), float(c.iloc[i])
+    rng = bar_h - bar_l
+    if rng <= 0 or not _touched(bar_l, bar_h):
+      continue
+    if is_long:
+      lower_wick = min(bar_o, bar_c) - bar_l
+      if lower_wick / rng >= 0.35 and bar_c >= bar_o:
+        return {"confirmed": True, "mode": "rejection_wick"}
+    else:
+      upper_wick = bar_h - max(bar_o, bar_c)
+      if upper_wick / rng >= 0.35 and bar_c <= bar_o:
+        return {"confirmed": True, "mode": "rejection_wick"}
+
+  if zt is not None and len(df) >= 4:
+    touch_idx = None
+    for i in range(-4, -1):
+      if _touched(float(l.iloc[i]), float(h.iloc[i])):
+        touch_idx = i
+        break
+    if touch_idx is not None:
+      c_touch = float(c.iloc[touch_idx])
+      c_last = float(c.iloc[-1])
+      if is_long and c_last > c_touch:
+        return {"confirmed": True, "mode": "bar+2"}
+      if not is_long and c_last < c_touch:
+        return {"confirmed": True, "mode": "bar+2"}
+
+  return {"confirmed": False, "mode": None}
+
+
 def _is_chop_market(df: pd.DataFrame, period: int = 20) -> bool:
   """Low-trend chop — soften VP hard filter."""
   if df is None or len(df) < period + 5:
@@ -350,8 +432,11 @@ def analyze_institutional_tf(
     recent_sweep = h["recent_sweep"](dir_norm)
     structure_event, struct_pts = h["recent_structure"](dir_norm)
     if structure_event:
-      score += struct_pts
-      tags.append(f"SMC {structure_event.replace('_', ' ')}")
+      if structure_blocks_entry(structure_event, dir_norm):
+        tags.append(f"SMC {structure_event.replace('_', ' ')} (counter-trend block)")
+      else:
+        score += struct_pts
+        tags.append(f"SMC {structure_event.replace('_', ' ')}")
     if active_ob:
       score += 18
       tags.append("in bullish OB" if active_ob["is_bull"] else "in bearish OB")
@@ -462,14 +547,20 @@ def analyze_institutional_tf(
   if msb.get("status") == "ok" and msb.get("pass"):
     tags.append("MSB pass blocked (anti-predictive)")
 
-  # Full entry: 3/3 + VP pass; MSB pass hard-blocked (ledger anti-predictive)
-  entry_signal = confluence and vp_filter_ok and msb_ok
+  structure_blocked = structure_blocks_entry(structure_event, dir_norm)
+  zone_top, zone_bot = _zone_bounds(active_ob, active_fvg)
+  entry_confirm = detect_entry_confirmation(df, dir_norm, zone_top, zone_bot)
+
+  # Full entry: 3/3 + VP + confirm; MSB pass hard-blocked; no counter-trend structure
+  pattern_signal = confluence and vp_filter_ok and msb_ok and not structure_blocked
+  entry_signal = pattern_signal and entry_confirm["confirmed"]
   entry_probe = (
-    not entry_signal
+    not pattern_signal
     and partial_confluence >= 2
     and vp_filter_ok
     and msb_ok
     and score >= 42
+    and not structure_blocked
   )
 
   return {
@@ -494,6 +585,9 @@ def analyze_institutional_tf(
     "session": session,
     "confluence": confluence,
     "partial_confluence": partial_confluence,
+    "structure_blocked": structure_blocked,
+    "entry_confirm_ok": entry_confirm["confirmed"],
+    "entry_confirm_mode": entry_confirm["mode"],
     "entry_signal": entry_signal,
     "entry_probe": entry_probe,
     "entry_grade": "A" if entry_signal and score >= 55 else (
@@ -537,6 +631,9 @@ def build_institutional_matrix(
     "best_entry_tf": best_entry.get("timeframe") if best_entry else None,
     "entry_signal": bool(best_entry and best_entry.get("entry_signal")),
     "entry_probe": bool(best_entry and best_entry.get("entry_probe")),
+    "entry_confirm_ok": bool(best_entry and best_entry.get("entry_confirm_ok")),
+    "entry_confirm_mode": best_entry.get("entry_confirm_mode") if best_entry else None,
+    "structure_blocked": bool(best_entry and best_entry.get("structure_blocked")),
     "entry_grade": best_entry.get("entry_grade", "D") if best_entry else "D",
     "institutional_score": max(scores) if scores else 0,
     "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,

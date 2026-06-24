@@ -121,19 +121,38 @@ def build_smc_setup(
 
   entry_signal = inst.get("entry_signal", False)
   entry_probe = inst.get("entry_probe", False)
+  entry_confirm_ok = inst.get("entry_confirm_ok", False)
   entry_grade = inst.get("entry_grade", "D")
   vp_ok = inst.get("vp_filter_ok", True)
   exec_ok = executive.get("verdict", "") in ("GO", "CONDITIONAL_GO", "STAGED_GO", "STANDBY_ORDERS")
 
-  # SMC-specific execution resolution
-  if entry_signal and vp_ok and rr >= SMC_STYLE["min_rr"] and indicators["aligned"]:
+  if inst.get("structure_blocked"):
+    entry_signal = False
+    entry_probe = False
+
+  # SMC-specific execution resolution (executable requires entry confirmation)
+  if entry_signal and entry_confirm_ok and vp_ok and rr >= SMC_STYLE["min_rr"] and indicators["aligned"]:
     status, tier, reason = "executable", "full", (
       f"SMC FULL: sweep+OB+FVG on {entry_tf}, grade {entry_grade}, R:R {rr:.2f}"
     )
-  elif (entry_probe or entry_grade in ("A", "B")) and inst.get("confluence_count", 0) >= 2 and rr >= SMC_STYLE["min_rr"] * 0.9:
+  elif (
+    (entry_probe or entry_grade in ("A", "B"))
+    and entry_confirm_ok
+    and inst.get("confluence_count", 0) >= 2
+    and rr >= SMC_STYLE["min_rr"] * 0.9
+  ):
     status, tier, reason = "executable", "probe", (
       f"SMC PROBE: {inst.get('confluence_count')}/3 confluence on {entry_tf}, "
       f"grade {entry_grade}, score {score}/100"
+    )
+  elif (
+    inst.get("confluence_count", 0) >= 2
+    and not entry_confirm_ok
+    and not inst.get("structure_blocked")
+    and rr >= SMC_STYLE["min_rr"] * 0.9
+  ):
+    status, tier, reason = "monitor", "none", (
+      f"Monitor SMC: confluence met — await rejection wick or bar+2 confirm on {entry_tf}"
     )
   elif score >= 35 and exec_ok:
     status, tier, reason = "monitor", "none", (

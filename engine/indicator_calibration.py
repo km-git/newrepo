@@ -24,6 +24,7 @@ MIN_OOS_EXECUTABLE = 0.55
 MIN_OOS_EXECUTABLE_PROBE = 0.50
 MIN_OOS_EXECUTABLE_FULL = 0.55
 MIN_OOS_TRADES = 3
+MIN_PROBE_OOS_TRADES = 15
 MIN_SIGNAL_SAMPLES = 15
 MIN_LIFT_KEEP = 0.03
 MAX_LIFT_DROP = -0.05
@@ -731,16 +732,17 @@ def apply_oos_executable_gate(setup: dict) -> dict:
   """Refuse executable label until OOS walk-forward clears tier threshold."""
   if setup.get("status") != "executable":
     return setup
+  tier = setup.get("execution_tier", "none")
   oos_n = int(setup.get("oos_trades") or 0)
   oos_wr = setup.get("oos_win_rate")
-  tier = setup.get("execution_tier", "none")
+  min_trades = MIN_PROBE_OOS_TRADES if tier == "probe" else MIN_OOS_TRADES
   floor = MIN_OOS_EXECUTABLE_PROBE if tier == "probe" else MIN_OOS_EXECUTABLE_FULL
-  if oos_n < MIN_OOS_TRADES or oos_wr is None:
+  if oos_n < min_trades or oos_wr is None:
     setup["status"] = "monitor"
     setup["execution_tier"] = "none"
     setup["honest_reason"] = (
       setup.get("honest_reason", "")
-      + f" · OOS gate: insufficient OOS data ({oos_n} trades) — monitor until WF validates"
+      + f" · OOS gate: insufficient OOS data ({oos_n}/{min_trades} trades) — monitor until WF validates"
     )
     setup["oos_gate"] = "insufficient_oos"
     return setup

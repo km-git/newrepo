@@ -86,12 +86,25 @@ def test_apply_oos_executable_gate_demotes():
     "execution_tier": "probe",
     "honest_reason": "probe ok",
     "oos_win_rate": 0.48,
-    "oos_trades": 12,
+    "oos_trades": 16,
   }
   out = apply_oos_executable_gate(dict(setup))
   assert out["status"] == "monitor"
   assert out["execution_tier"] == "none"
   assert out["oos_gate"] == "below_threshold"
+
+
+def test_apply_oos_executable_gate_probe_requires_min_trades():
+  setup = {
+    "status": "executable",
+    "execution_tier": "probe",
+    "honest_reason": "probe ok",
+    "oos_win_rate": 0.62,
+    "oos_trades": 10,
+  }
+  out = apply_oos_executable_gate(dict(setup))
+  assert out["status"] == "monitor"
+  assert out["oos_gate"] == "insufficient_oos"
 
 
 def test_apply_oos_executable_gate_passes():

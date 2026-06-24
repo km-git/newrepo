@@ -8,6 +8,7 @@ from engine.indicator_calibration import (
   MIN_OOS_EXECUTABLE_FULL,
   MIN_OOS_EXECUTABLE_PROBE,
   MIN_OOS_TRADES,
+  MIN_PROBE_OOS_TRADES,
 )
 
 # Executive verdicts that allow probe-tier execution
@@ -95,11 +96,12 @@ def resolve_execution_status(
   exec_ok = executive_verdict in PROBE_VERDICTS
 
   def _oos_blocks_executable(tier: str) -> Optional[str]:
-    if oos_trades < MIN_OOS_TRADES or oos_win_rate is None:
+    min_trades = MIN_PROBE_OOS_TRADES if tier == "probe" else MIN_OOS_TRADES
+    if oos_trades < min_trades or oos_win_rate is None:
       return None
     floor = MIN_OOS_EXECUTABLE_PROBE if tier == "probe" else MIN_OOS_EXECUTABLE_FULL
     if float(oos_win_rate) < floor:
-      return f"OOS gate: {float(oos_win_rate):.0%} < {floor:.0%}"
+      return f"OOS gate: {float(oos_win_rate):.0%} < {floor:.0%} ({oos_trades} trades, need {min_trades})"
     return None
 
   # Tier 1a: SMC full — TV OSS structure path (BOS/CHoCH + OB/FVG, no EW impulse required)

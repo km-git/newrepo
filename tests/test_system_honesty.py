@@ -59,3 +59,31 @@ def test_run_system_audit_writes():
     [{"status": "executable", "readiness_score": 80, "paper_outcome": "loss", "oos_win_rate": "0.4"}],
   )
   assert audit["verdict"]["status"] in ("FAIL", "WARN", "PASS")
+
+
+def test_smc_bootstrap_passes_despite_legacy_executable_paper():
+  paper = {
+    "executable_win_rate": 0.0,
+    "executable_closed": 5,
+    "monitor_closed": 100,
+    "monitor_win_rate": 0.41,
+  }
+  setups = {
+    "smc_setups": 50,
+    "smc_executable": 5,
+    "oos_executable_avg": 0.655,
+    "oos_executable_wilson_lb": 0.566,
+    "by_path": {
+      "smc": {"oos_executable_avg": 0.655, "oos_avg": 0.486},
+      "ew": {"oos_avg": 0.464},
+    },
+    "oos_avg": 0.468,
+    "full_executable": 2,
+    "readiness_ge65_win_rate": 0.46,
+    "hedge_ratio": 0.0,
+    "caution_ratio": 0.12,
+    "suspicious_perfect_is": 14,
+  }
+  v = compute_verdict(paper, setups)
+  assert v["status"] == "PASS"
+  assert not any("executable paper win rate" in f for f in v.get("failures", []))

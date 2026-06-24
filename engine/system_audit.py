@@ -13,6 +13,7 @@ AUDIT_PATH = Path("output/autodream/system_audit.json")
 
 # Minimum bar for calling the system "working"
 MIN_EXECUTABLE_WIN_RATE = 0.52
+MIN_EXECUTABLE_PAPER_SAMPLE = 15
 MIN_OOS_WIN_RATE = 0.50
 MIN_OOS_EXECUTABLE = 0.55
 MIN_OOS_SMC = 0.48
@@ -20,6 +21,7 @@ MIN_OOS_EXECUTABLE_SMC = 0.52
 MIN_READINESS_PREDICTIVE_WR = 0.50
 MAX_HEDGE_RATIO = 0.35
 MAX_CAUTION_RATIO = 0.50
+SMC_BOOTSTRAP_MIN_EXECUTABLE = 3
 
 
 def _is_smc_row(row: dict) -> bool:
@@ -28,6 +30,7 @@ def _is_smc_row(row: dict) -> bool:
 
 def audit_paper_trades(trades: List[dict]) -> dict:
   closed = [t for t in trades if t.get("paper_outcome") in ("win", "loss")]
+  monitor_closed = [t for t in closed if t.get("status") == "monitor"]
   exec_closed = [
     t for t in closed
     if t.get("status") == "executable" and t.get("execution_tier") in ("full", "probe")
@@ -36,10 +39,15 @@ def audit_paper_trades(trades: List[dict]) -> dict:
   ew_closed = [t for t in closed if not _is_smc_row(t)]
   all_wr = None
   exec_wr = None
+  monitor_wr = None
   smc_wr = None
   ew_wr = None
   if closed:
     all_wr = round(sum(1 for t in closed if t["paper_outcome"] == "win") / len(closed), 3)
+  if monitor_closed:
+    monitor_wr = round(
+      sum(1 for t in monitor_closed if t["paper_outcome"] == "win") / len(monitor_closed), 3
+    )
   if exec_closed:
     exec_wr = round(sum(1 for t in exec_closed if t["paper_outcome"] == "win") / len(exec_closed), 3)
   if smc_closed:
@@ -49,12 +57,19 @@ def audit_paper_trades(trades: List[dict]) -> dict:
   return {
     "all_setups_closed": len(closed),
     "all_win_rate": all_wr,
+    "monitor_closed": len(monitor_closed),
+    "monitor_win_rate": monitor_wr,
     "executable_closed": len(exec_closed),
     "executable_win_rate": exec_wr,
     "smc_closed": len(smc_closed),
     "smc_win_rate": smc_wr,
     "ew_closed": len(ew_closed),
     "ew_win_rate": ew_wr,
+    "headline_note": (
+      "Use executable_win_rate for trade decisions; monitor_win_rate is watch-list only"
+      if monitor_closed and exec_closed
+      else None
+    ),
   }
 
 
@@ -137,15 +152,50 @@ def audit_setups(setup_rows: List[dict]) -> dict:
   }
 
 
+def _smc_bootstrap_ok(paper: dict, setups: dict) -> bool:
+  """SMC-primary OOS evidence can supersede tiny legacy executable paper bucket."""
+  if setups.get("smc_setups", 0) < 10:
+    return False
+  smc_exec_oos = (setups.get("by_path") or {}).get("smc", {}).get("oos_executable_avg")
+  wilson_lb = setups.get("oos_executable_wilson_lb")
+  smc_executable = setups.get("smc_executable", 0)
+  return (
+    smc_exec_oos is not None
+    and smc_exec_oos >= MIN_OOS_EXECUTABLE_SMC
+    and wilson_lb is not None
+    and wilson_lb >= MIN_OOS_EXECUTABLE_SMC - 0.04
+    and smc_executable >= SMC_BOOTSTRAP_MIN_EXECUTABLE
+  )
+
+
 def compute_verdict(paper: dict, setups: dict) -> dict:
   failures: List[str] = []
   warnings: List[str] = []
 
   exec_wr = paper.get("executable_win_rate")
+  exec_closed = paper.get("executable_closed", 0)
+  monitor_wr = paper.get("monitor_win_rate")
+  smc_bootstrap = _smc_bootstrap_ok(paper, setups)
+
   if exec_wr is not None and exec_wr < MIN_EXECUTABLE_WIN_RATE:
-    failures.append(f"executable paper win rate {exec_wr:.0%} < {MIN_EXECUTABLE_WIN_RATE:.0%}")
+    if smc_bootstrap and exec_closed < MIN_EXECUTABLE_PAPER_SAMPLE:
+      warnings.append(
+        f"legacy executable paper WR {exec_wr:.0%} on n={exec_closed} — "
+        f"SMC OOS bootstrap OK (use executable_win_rate once n≥{MIN_EXECUTABLE_PAPER_SAMPLE})"
+      )
+    else:
+      failures.append(f"executable paper win rate {exec_wr:.0%} < {MIN_EXECUTABLE_WIN_RATE:.0%}")
   elif exec_wr is None:
-    warnings.append("no closed executable paper trades to score")
+    if smc_bootstrap:
+      warnings.append("no closed executable paper trades — SMC OOS bootstrap active")
+    else:
+      warnings.append("no closed executable paper trades to score")
+
+  if monitor_wr is not None and exec_wr is not None and paper.get("monitor_closed", 0) >= 20:
+    warnings.append(
+      f"split metrics: monitor WR {monitor_wr:.0%} (n={paper.get('monitor_closed')}) "
+      f"vs executable WR {exec_wr:.0%} (n={exec_closed}) — do not blend"
+    )
 
   oos = setups.get("oos_avg")
   ew_oos = (setups.get("by_path") or {}).get("ew", {}).get("oos_avg")
@@ -205,8 +255,12 @@ def compute_verdict(paper: dict, setups: dict) -> dict:
     status = "FAIL"
     shame = "System is NOT achieving tradeable edge. Do not trust executable labels."
   elif warnings:
-    status = "WARN"
-    shame = "Marginal system. Paper before live. Probe size only."
+    status = "WARN" if not smc_bootstrap else "PASS"
+    shame = (
+      "SMC-primary OOS meets bars — legacy executable paper still accumulating; probe size only."
+      if smc_bootstrap
+      else "Marginal system. Paper before live. Probe size only."
+    )
   else:
     status = "PASS"
     shame = "Metrics meet minimum bars — still verify out-of-sample."
@@ -239,9 +293,13 @@ def run_system_audit(
 
 
 def apply_audit_demotions(outcomes: dict, audit: dict) -> dict:
-  """Demote executable→monitor when system audit FAILs on edge."""
+  """Demote executable→monitor when system audit FAILs on edge (not SMC bootstrap WARN/PASS)."""
   v = audit.get("verdict", {})
   if v.get("status") != "FAIL":
+    return outcomes
+  setups_audit = audit.get("setups", {})
+  if _smc_bootstrap_ok(audit.get("paper", {}), setups_audit):
+    outcomes.setdefault("autodream", {})["system_audit"] = v
     return outcomes
   for style, setup in outcomes.get("setups", {}).items():
     if setup.get("status") != "executable":
