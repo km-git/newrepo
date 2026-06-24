@@ -8,7 +8,7 @@ import pandas as pd
 
 from core.atr import compute_atr14
 from core.indicators import score_indicator_confluence
-from core.risk import build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
+from core.risk import build_dca_ladder, compute_wae, dynamic_stop, dynamic_targets, risk_package
 from engine.readiness import resolve_execution_status
 
 STYLE_CONFIG = {
@@ -98,14 +98,15 @@ def build_style_setup(
   fibs = [kz_low, kz_high] if kz_low < kz_high else []
 
   dca = build_dca_ladder(direction, entry_anchor, atr, kz_low, kz_high, fibs)
+  wae = compute_wae(dca)
   stop = dynamic_stop(
-    direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"],
+    direction, wae, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=kz_low, zone_high=kz_high,
     max_stop_atr={"15m": 3.0, "1h": 4.0, "4h": 4.5, "1d": 5.0, "1w": 6.0}.get(tf, 5.0),
   )
   targets = dynamic_targets(
     direction,
-    entry_anchor,
+    wae,
     atr,
     prz,
     c_targets.get("c_target_100"),
@@ -136,7 +137,7 @@ def build_style_setup(
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
-  risk = risk_package(entry_anchor, stop["price"], cfg["account_risk_pct"] * probe_size_pct / 100)
+  risk = risk_package(wae, stop["price"], cfg["account_risk_pct"] * probe_size_pct / 100)
 
   return {
     "style": style,

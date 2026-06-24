@@ -5,12 +5,28 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 
+# Asymmetric pyramiding: lightest at first touch, heaviest at max confluence/discount.
 DCA_SPLITS = [10, 20, 30, 40]
+DCA_LABELS = ["L1", "L2", "L3", "L4"]
 
-# Max distance from entry for structure reference and final stop (in ATR units).
 DEFAULT_MAX_STRUCTURE_ATR = 4.0
 DEFAULT_MAX_STOP_ATR = 5.0
-DCA_LEG_ATR = [0.0, 0.5, 1.0, 1.5]  # per-leg max scale-in distance from anchor
+
+# Golden-ratio scale-in depths inside the entry zone (0 = near-side, 1 = far-side).
+_ZONE_DEPTH_RATIOS = [0.0, 0.382, 0.618, 1.0]
+
+_DCA_RATIONALE_LONG = [
+  "zone boundary — first touch, minimal exposure (10%)",
+  "zone 0.382 — confirmed discount (20%)",
+  "zone 0.618 — structural confluence (30%)",
+  "zone floor — maximum discount, maximum conviction (40%)",
+]
+_DCA_RATIONALE_SHORT = [
+  "zone boundary — first supply probe (10%)",
+  "zone 0.382 — confirmed rejection (20%)",
+  "zone 0.618 — deep supply confluence (30%)",
+  "zone ceiling — maximum short conviction (40%)",
+]
 
 
 def _r(x: float, decimals: int = 6) -> float:
@@ -21,23 +37,110 @@ def _clamp(x: float, lo: float, hi: float) -> float:
   return max(lo, min(hi, x))
 
 
-def _scale_in_fibs(
+def _is_long(direction: str) -> bool:
+  return direction.upper() in ("LONG", "BULL")
+
+
+def compute_wae(legs: List[dict]) -> float:
+  """Weighted average entry: Σ(price × allocation%)."""
+  total = sum(float(leg["price"]) * float(leg["size_pct"]) / 100.0 for leg in legs)
+  return _r(total)
+
+
+def _zone_pyramid_prices(
   direction: str,
   anchor: float,
   zone_low: float,
   zone_high: float,
-  fib_levels: Optional[List[float]] = None,
+  atr: float,
+  harmonic_prz: Optional[Tuple[float, float]] = None,
 ) -> List[float]:
-  """Fib prices on the scale-in side of anchor, nearest first."""
+  """
+  Asymmetric pyramid ticks inside the entry zone.
+  LONG: L1 highest → L4 lowest. SHORT: L1 lowest → L4 highest.
+  """
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
-  candidates = [float(f) for f in (fib_levels or []) if f is not None]
-  if not candidates and lo < hi:
-    candidates = [lo, hi]
-  # Only use levels inside the entry zone (never HTF cluster prices far from anchor).
-  candidates = [f for f in candidates if lo <= f <= hi]
-  if direction in ("LONG", "BULL"):
-    return sorted([f for f in candidates if f <= anchor], reverse=True)[:2]
-  return sorted([f for f in candidates if f >= anchor])[:2]
+  span = hi - lo
+  if span <= 0:
+    span = max(atr * 0.5, abs(anchor) * 0.002, 1e-9)
+
+  long = _is_long(direction)
+  if long:
+    # Depth 0 = zone high (near side), depth 1 = zone low (max discount).
+    prices = [hi - d * span for d in _ZONE_DEPTH_RATIOS]
+    if lo <= anchor <= hi:
+      prices[0] = anchor  # first probe at anchor when inside zone
+    if harmonic_prz:
+      prz_lo, prz_hi = min(harmonic_prz), max(harmonic_prz)
+      prz_lo, prz_hi = _clamp(prz_lo, lo, hi), _clamp(prz_hi, lo, hi)
+      if prz_hi > prz_lo:
+        prices[1] = prz_hi - 0.25 * (prz_hi - prz_lo)
+        prices[2] = prz_lo + 0.25 * (prz_hi - prz_lo)
+    # Enforce strict descent: L1 ≥ L2 ≥ L3 ≥ L4.
+    for i in range(1, len(prices)):
+      prices[i] = min(prices[i], prices[i - 1])
+    prices[-1] = lo
+  else:
+    prices = [lo + d * span for d in _ZONE_DEPTH_RATIOS]
+    if lo <= anchor <= hi:
+      prices[0] = anchor
+    if harmonic_prz:
+      prz_lo, prz_hi = min(harmonic_prz), max(harmonic_prz)
+      prz_lo, prz_hi = _clamp(prz_lo, lo, hi), _clamp(prz_hi, lo, hi)
+      if prz_hi > prz_lo:
+        prices[1] = prz_lo + 0.25 * (prz_hi - prz_lo)
+        prices[2] = prz_hi - 0.25 * (prz_hi - prz_lo)
+    for i in range(1, len(prices)):
+      prices[i] = max(prices[i], prices[i - 1])
+    prices[-1] = hi
+
+  return [_r(p) for p in prices]
+
+
+def build_dca_ladder(
+  direction: str,
+  anchor: float,
+  atr: float,
+  zone_low: float,
+  zone_high: float,
+  fib_levels: Optional[List[float]] = None,
+  *,
+  harmonic_prz: Optional[Tuple[float, float]] = None,
+  gtc: bool = False,
+) -> List[dict]:
+  """
+  Asymmetric pyramiding DCA: 10% / 20% / 30% / 40%.
+  Smallest size at highest uncertainty; largest at deepest confluence/discount.
+  """
+  if atr <= 0:
+    atr = max(abs(anchor) * 0.01, 1e-9)
+  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+  if lo <= 0 and hi <= 0 and anchor > 0:
+    pad = anchor * 0.005
+    lo, hi = anchor - pad, anchor + pad
+
+  prices = _zone_pyramid_prices(direction, anchor, lo, hi, atr, harmonic_prz)
+  rationales = _DCA_RATIONALE_LONG if _is_long(direction) else _DCA_RATIONALE_SHORT
+
+  legs: List[dict] = []
+  for i, (label, pct, px, rationale) in enumerate(
+    zip(DCA_LABELS, DCA_SPLITS, prices, rationales)
+  ):
+    legs.append({
+      "leg": i + 1,
+      "layer": label,
+      "size_pct": pct,
+      "price": px,
+      "rationale": rationale,
+      "order_type": "limit" if (gtc or i > 0) else "market",
+      "time_in_force": "GTC" if gtc else ("GTC" if i > 0 else "IOC"),
+      "trigger": f"GTC limit @ {px}" if (gtc or i > 0) else "immediate",
+    })
+
+  wae = compute_wae(legs)
+  for leg in legs:
+    leg["wae"] = wae
+  return legs
 
 
 def _clamp_structure_to_entry(
@@ -48,7 +151,6 @@ def _clamp_structure_to_entry(
   structure_high: float,
   max_atr: float = DEFAULT_MAX_STRUCTURE_ATR,
 ) -> Tuple[float, float]:
-  """Keep structure bounds local to entry — ignore stale HTF extremes."""
   if atr <= 0:
     atr = max(abs(entry) * 0.01, 1e-9)
   band = max_atr * atr
@@ -57,68 +159,6 @@ def _clamp_structure_to_entry(
   if s_low > s_high:
     s_low, s_high = s_high, s_low
   return s_low, s_high
-
-
-def build_dca_ladder(
-  direction: str,
-  anchor: float,
-  atr: float,
-  zone_low: float,
-  zone_high: float,
-  fib_levels: Optional[List[float]] = None,
-) -> List[dict]:
-  """
-  Dynamic DCA: 10% / 20% / 30% / 40% across price levels.
-  LONG: scale in lower; SHORT: scale in higher.
-  """
-  if atr <= 0:
-    atr = max(abs(anchor) * 0.01, 1e-9)
-  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
-  mid = (lo + hi) / 2
-  fibs = _scale_in_fibs(direction, anchor, lo, hi, fib_levels)
-
-  if direction in ("LONG", "BULL"):
-    prices = [
-      anchor,
-      min(anchor - 0.35 * atr, mid),
-      min(anchor - 0.75 * atr, lo),
-      lo,
-    ]
-  else:
-    prices = [
-      anchor,
-      max(anchor + 0.35 * atr, mid),
-      max(anchor + 0.75 * atr, hi),
-      hi,
-    ]
-
-  for i, fb in enumerate(fibs[:2]):
-    idx = i + 1
-    if idx < len(prices):
-      prices[idx] = fb
-
-  # Monotonic scale-in + per-leg ATR cap from anchor.
-  for i in range(1, len(prices)):
-    leg_cap = DCA_LEG_ATR[i] * atr if i < len(DCA_LEG_ATR) else DCA_LEG_ATR[-1] * atr
-    if direction in ("LONG", "BULL"):
-      cap = anchor - leg_cap
-      prices[i] = min(prices[i], prices[i - 1])
-      prices[i] = max(prices[i], cap)
-    else:
-      cap = anchor + leg_cap
-      prices[i] = max(prices[i], prices[i - 1])
-      prices[i] = min(prices[i], cap)
-
-  legs = []
-  for i, (pct, px) in enumerate(zip(DCA_SPLITS, prices)):
-    legs.append({
-      "leg": i + 1,
-      "size_pct": pct,
-      "price": _r(px),
-      "order_type": "market" if i == 0 else "limit",
-      "trigger": "immediate" if i == 0 else f"limit @ {_r(px)}",
-    })
-  return legs
 
 
 def stop_is_sane(
@@ -131,7 +171,7 @@ def stop_is_sane(
 ) -> bool:
   if entry <= 0 or atr <= 0:
     return False
-  if direction in ("LONG", "BULL"):
+  if _is_long(direction):
     if stop >= entry:
       return False
   else:
@@ -153,6 +193,7 @@ def dynamic_stop(
   max_structure_atr: float = DEFAULT_MAX_STRUCTURE_ATR,
   max_stop_atr: float = DEFAULT_MAX_STOP_ATR,
 ) -> dict:
+  """Hard stop from WAE/entry, structure, and zone invalidation."""
   if atr <= 0:
     atr = max(abs(entry) * 0.01, 1e-9)
 
@@ -160,10 +201,10 @@ def dynamic_stop(
     direction, entry, atr, structure_low, structure_high, max_structure_atr,
   )
 
-  if direction in ("LONG", "BULL"):
+  if _is_long(direction):
     base = min(s_low, entry - 0.5 * atr)
     stop = base - atr_mult * atr
-    rule = f"below structure low {_r(s_low)} − {atr_mult}×ATR"
+    rule = f"hard stop below structure {_r(s_low)} − {atr_mult}×ATR"
     min_stop = entry - max_stop_atr * atr
     max_stop = entry - 0.25 * atr
     stop = _clamp(stop, min_stop, max_stop)
@@ -172,11 +213,11 @@ def dynamic_stop(
       zone_stop = lo - atr_mult * atr
       stop = max(stop, zone_stop)
       stop = _clamp(stop, min_stop, max_stop)
-      rule = f"max(zone SL @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
+      rule = f"hard stop max(zone @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
   else:
     base = max(s_high, entry + 0.5 * atr)
     stop = base + atr_mult * atr
-    rule = f"above structure high {_r(s_high)} + {atr_mult}×ATR"
+    rule = f"hard stop above structure {_r(s_high)} + {atr_mult}×ATR"
     max_stop = entry + max_stop_atr * atr
     min_stop = entry + 0.25 * atr
     stop = _clamp(stop, min_stop, max_stop)
@@ -185,11 +226,11 @@ def dynamic_stop(
       zone_stop = hi + atr_mult * atr
       stop = min(stop, zone_stop)
       stop = _clamp(stop, min_stop, max_stop)
-      rule = f"min(zone SL @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
+      rule = f"hard stop min(zone @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
 
   return {
     "price": _r(stop),
-    "type": "dynamic",
+    "type": "hard",
     "rule": rule,
     "distance_pct": _r(abs(entry - stop) / entry * 100, 2),
   }
@@ -203,8 +244,8 @@ def dynamic_targets(
   c_target_100: Optional[float] = None,
   c_target_161: Optional[float] = None,
 ) -> List[dict]:
-  """Three-tier targets with 40/30/30 exit split."""
-  if direction in ("LONG", "BULL"):
+  """Three-tier targets from WAE with 40/30/30 exit split."""
+  if _is_long(direction):
     t1 = entry + atr * 1.5
     t2 = entry + atr * 3.0
     t3 = c_target_100 if c_target_100 and c_target_100 > entry else entry + atr * 5.0
@@ -237,6 +278,6 @@ def risk_package(entry: float, stop: float, account_risk_pct: float = 1.0) -> di
   return {
     "account_risk_pct": account_risk_pct,
     "risk_per_unit_pct": _r(risk_pct, 3),
-    "sizing_rule": f"Risk {account_risk_pct}% account; size = (equity×{account_risk_pct}%) / (entry−stop)",
+    "sizing_rule": f"Risk {account_risk_pct}% account; size = (equity×{account_risk_pct}%) / (WAE−stop)",
     "max_legs_active": 4,
   }

@@ -112,6 +112,8 @@ def test_build_limit_order_row_has_dca_legs():
   assert [leg["size_pct"] for leg in row["dca_legs"]] == DCA_SPLITS
   assert all(leg["order_type"] == "limit" for leg in row["dca_legs"])
   assert all(leg["time_in_force"] == "GTC" for leg in row["dca_legs"])
+  assert row.get("wae")
+  assert row.get("dca_architecture") == "asymmetric_pyramid_10_20_30_40"
 
 
 def test_build_all_limit_orders_row_count():

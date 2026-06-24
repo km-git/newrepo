@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from core.risk import (
   DCA_SPLITS,
   build_dca_ladder,
+  compute_wae,
   dynamic_stop,
   dynamic_targets,
   risk_package,
@@ -175,14 +176,14 @@ def _gtc_dca_ladder(
   zone_low: float,
   zone_high: float,
   fib_levels: Optional[List[float]] = None,
+  *,
+  harmonic_prz: Optional[Tuple[float, float]] = None,
 ) -> List[dict]:
-  """10/20/30/40 DCA legs — all limits, GTC."""
-  legs = build_dca_ladder(direction, anchor, atr, zone_low, zone_high, fib_levels)
-  for leg in legs:
-    leg["order_type"] = "limit"
-    leg["time_in_force"] = "GTC"
-    leg["trigger"] = f"GTC limit @ {leg['price']}"
-  return legs
+  """Asymmetric 10/20/30/40 pyramid — all GTC limits."""
+  return build_dca_ladder(
+    direction, anchor, atr, zone_low, zone_high, fib_levels,
+    harmonic_prz=harmonic_prz, gtc=True,
+  )
 
 
 def _tier_account_risk(base_pct: float, gtc_tier: str, honest_tier: str) -> float:
@@ -237,32 +238,21 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
   mapped_style = TF_STYLE_MAP.get(tf)
   reuse = setups.get(mapped_style) if mapped_style else None
 
+  harm_tf = _harmonic_for_tf(result, tf)
+  prz = _prz_tuple(harm_tf)
+
   # Reuse honest geometry when this TF owns the style setup (gates unchanged).
   if reuse and reuse.get("timeframe") == tf and reuse.get("entry"):
     entry_anchor = float(reuse["entry"]["anchor"])
     zone = reuse["entry"].get("zone") or [kz_low, kz_high]
     zone_low, zone_high = float(zone[0]), float(zone[1])
-    dca = _gtc_dca_ladder(
-      direction, entry_anchor, atr, zone_low, zone_high,
-      fib_levels=fib_levels,
-    )
-    stop = _resolve_stop(
-      direction, entry_anchor, atr, *_structure_bounds(wave, current, atr), cfg,
-      zone_low, zone_high, reuse.get("stop_loss"),
-    )
-    targets = reuse.get("targets") or dynamic_targets(
-      direction, entry_anchor, atr,
-      harmonic_prz=_prz_tuple(_harmonic_for_tf(result, tf)),
-      c_target_100=ct.get("c_target_100"),
-      c_target_161=ct.get("c_target_161"),
-    )
     readiness = reuse.get("readiness_score")
     indicators = "; ".join((reuse.get("indicator_signals") or [])[:3])
     honest_status = reuse.get("status")
+    reused_stop = reuse.get("stop_loss")
   else:
-    harm = _harmonic_for_tf(result, tf)
-    if harm:
-      zone_low, zone_high = float(harm["prz_low"]), float(harm["prz_high"])
+    if harm_tf:
+      zone_low, zone_high = float(harm_tf["prz_low"]), float(harm_tf["prz_high"])
       entry_anchor = (zone_low + zone_high) / 2
     elif in_zone:
       entry_anchor = current
@@ -270,30 +260,33 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
     else:
       entry_anchor = (kz_low + kz_high) / 2
       zone_low, zone_high = kz_low, kz_high
-
-    s_low, s_high = _structure_bounds(wave, current, atr)
-    dca = _gtc_dca_ladder(
-      direction, entry_anchor, atr, zone_low, zone_high,
-      fib_levels=fib_levels,
-    )
-    stop = _resolve_stop(
-      direction, entry_anchor, atr, s_low, s_high, cfg, zone_low, zone_high,
-    )
-    targets = dynamic_targets(
-      direction, entry_anchor, atr,
-      harmonic_prz=_prz_tuple(harm),
-      c_target_100=ct.get("c_target_100"),
-      c_target_161=ct.get("c_target_161"),
-    )
     readiness = None
     indicators = wave.get("structure", "")
     honest_status = "staged"
+    reused_stop = None
+
+  s_low, s_high = _structure_bounds(wave, current, atr)
+  dca = _gtc_dca_ladder(
+    direction, entry_anchor, atr, zone_low, zone_high,
+    fib_levels=fib_levels, harmonic_prz=prz,
+  )
+  wae = compute_wae(dca)
+
+  stop = _resolve_stop(
+    direction, wae, atr, s_low, s_high, cfg, zone_low, zone_high, reused_stop,
+  )
+  targets = dynamic_targets(
+    direction, wae, atr,
+    harmonic_prz=prz,
+    c_target_100=ct.get("c_target_100"),
+    c_target_161=ct.get("c_target_161"),
+  )
 
   while len(targets) < 3:
-    targets.append(targets[-1] if targets else {"price": entry_anchor, "exit_pct": 0, "rr": 0})
+    targets.append(targets[-1] if targets else {"price": wae, "exit_pct": 0, "rr": 0})
   rr = targets[1].get("rr", 0) if len(targets) > 1 else 0
   acct_risk = _tier_account_risk(cfg["account_risk_pct"], gtc_tier, honest_tier)
-  risk = risk_package(entry_anchor, stop["price"], acct_risk)
+  risk = risk_package(wae, stop["price"], acct_risk)
   size_cap = TIER_SIZE_CAP[gtc_tier]
   if gtc_tier == "executable" and honest_tier == "probe":
     size_cap = min(size_cap, 50)
@@ -317,9 +310,15 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
     "wave_structure": wave.get("structure"),
     "wave_valid": "Y" if wave.get("impulse_valid") else "N",
     "entry_anchor": entry_anchor,
+    "wae": wae,
+    "dca_architecture": "asymmetric_pyramid_10_20_30_40",
     "entry_zone_low": zone_low,
     "entry_zone_high": zone_high,
     "dca_legs": dca,
+    "dca_l1_rationale": dca[0].get("rationale", ""),
+    "dca_l2_rationale": dca[1].get("rationale", ""),
+    "dca_l3_rationale": dca[2].get("rationale", ""),
+    "dca_l4_rationale": dca[3].get("rationale", ""),
     "dca_10pct_price": dca[0]["price"],
     "dca_10pct_size": dca[0]["size_pct"],
     "dca_20pct_price": dca[1]["price"],
@@ -344,7 +343,7 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
     "order_type": "limit",
     "time_in_force": "GTC",
     "tier_note": tier_note,
-    "playbook": _playbook_line(gtc_tier, honest_tier, direction, tf, dca, stop, targets),
+    "playbook": _playbook_line(gtc_tier, honest_tier, direction, tf, dca, stop, targets, wae),
   }
 
 
@@ -362,14 +361,15 @@ def _playbook_line(
   dca: List[dict],
   stop: dict,
   targets: List[dict],
+  wae: float,
 ) -> str:
-  legs = ", ".join(f"L{l['leg']} {l['size_pct']}%@{l['price']}" for l in dca)
+  legs = ", ".join(f"{l.get('layer', 'L'+str(l['leg']))} {l['size_pct']}%@{l['price']}" for l in dca)
   tier_lbl = gtc_tier.upper()
   if gtc_tier == "executable" and honest_tier == "probe":
     tier_lbl = "EXECUTABLE_PROBE"
   return (
-    f"{tier_lbl} {direction} {tf}: GTC DCA [{legs}] · SL {stop['price']} · "
-    f"TP {targets[0]['price']}/{targets[1]['price']}/{targets[2]['price']}"
+    f"{tier_lbl} {direction} {tf}: asymmetric DCA [{legs}] · WAE {wae} · "
+    f"hard SL {stop['price']} · TP {targets[0]['price']}/{targets[1]['price']}/{targets[2]['price']}"
   )
 
 
