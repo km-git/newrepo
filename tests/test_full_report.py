@@ -79,8 +79,16 @@ def test_full_row_includes_all_styles():
   assert row["1d_structure"] == "abc_correction"
 
 
-def test_setup_rows_per_style():
-  rows = build_setup_rows(_sample_result())
-  assert len(rows) == 1  # only scalp in sample
-  assert rows[0]["style"] == "scalp"
-  assert rows[0]["htf_state"] == "choppy"
+def test_setup_rows_includes_not_actionable():
+  result = _sample_result()
+  result["step8_outcomes"]["setups"]["day_trade"] = {
+    **result["step8_outcomes"]["setups"]["scalp"],
+    "style": "day_trade",
+    "status": "not_actionable",
+    "honest_reason": "R:R too low",
+  }
+  rows = build_setup_rows(result)
+  assert len(rows) == 2
+  statuses = {r["status"] for r in rows}
+  assert "not_actionable" in statuses
+  assert "monitor" in statuses

@@ -1,209 +1,217 @@
-# Full Analysis — 50 pairs
+# Top 50 Crypto — Trade Setups
 
-Updated: **2026-06-22 13:25 UTC** · 50 pairs · 143 setup rows
+Updated: **2026-06-22 14:34 UTC** · 50 pairs · **200 setup rows**
 
-> Full interactive table: `output/latest_analysis.html` (after batch run)
-> CSV: `output/latest_setups.csv`
+| Status | Count |
+|--------|-------|
+| executable | 29 |
+| monitor | 102 |
+| not_actionable | 69 |
 
-## Trade setups (scalp / day / swing / long-term)
+> CSV (all columns): `output/latest_setups_complete.csv`
+> HTML: `output/latest_setups.html` · Wide per-pair: `output/latest_analysis.html`
 
-| Symbol | Price | Style | Status | Dir | Entry | Stop | TP1 | TP2 | RR | Harmonic | Reason |
-|--------|-------|-------|--------|-----|-------|------|-----|-----|-----|----------|--------|
-| 2Z/USDT | 0.07434 | day_trade | monitor | LONG | 0.094462 | 0.065049 | 0.096289 | 0.098116 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| 2Z/USDT | 0.07434 | scalp | monitor | LONG | 0.094462 | 0.067127 | 0.095049 | 0.095636 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| AAVE/USDT | 76.68 | day_trade | monitor | LONG | 117.4511 | 69.650857 | 118.875029 | 120.298957 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| AAVE/USDT | 76.68 | scalp | monitor | LONG | 117.4511 | 73.041143 | 117.936457 | 118.421814 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| ADA/USDT | 0.1617 | day_trade | monitor | SHORT | 0.321077 | 0.324307 | 0.318227 | 0.315377 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| ADA/USDT | 0.1617 | scalp | monitor | SHORT | 0.321077 | 0.321941 | 0.320081 | 0.319084 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| ADA/USDT | 0.1617 | swing | monitor | SHORT | 0.321077 | 0.970966 | 0.307106 | 0.293134 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=175.4%)) |
-| ALLO/USDT | 0.42659 | day_trade | monitor | LONG | 0.42659 | 0.309589 | 0.446591 | 0.466593 | 3.0 |  | Monitor day_trade: in zone, await 15m/1h close (ga… |
-| ALLO/USDT | 0.42659 | long_term | monitor | LONG | 0.42659 | -0.138818 | 0.558961 | 0.691331 | 3.0 |  | Monitor long_term: in zone, await 15m/1h close |
-| ALLO/USDT | 0.42659 | scalp | monitor | LONG | 0.42659 | 0.363719 | 0.439267 | 0.451944 | 3.0 |  | Monitor scalp: in zone, await 15m/1h close (gaps: … |
-| ALLO/USDT | 0.42659 | swing | monitor | LONG | 0.42659 | -0.073557 | 0.525771 | 0.624952 | 3.0 |  | Monitor swing: in zone, await 15m/1h close |
-| AVAX/USDT | 6.368 | day_trade | monitor | LONG | 12.205436 | 5.593229 | 12.3189 | 12.432365 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| AVAX/USDT | 6.368 | scalp | monitor | LONG | 12.205436 | 5.659486 | 12.2514 | 12.297365 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| BASED/USDT | 0.09189 | day_trade | monitor | LONG | -0.05882 | -0.063267 | -0.054896 | -0.050973 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| BASED/USDT | 0.09189 | scalp | monitor | LONG | -0.05882 | -0.060324 | -0.057084 | -0.055349 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| BCH/USDT | 201.2 | day_trade | monitor | SHORT | 293.9994 | 297.2294 | 291.1494 | 288.2994 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| BCH/USDT | 201.2 | scalp | monitor | SHORT | 293.9994 | 294.900114 | 292.960114 | 291.920829 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| BCH/USDT | 201.2 | swing | monitor | SHORT | 293.9994 | 690.317143 | 276.235114 | 258.470829 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=321.8%)) |
-| BICO/USDT | 0.04012 | day_trade | monitor | LONG | 0.04012 | 0.015597 | 0.043399 | 0.046677 | 3.0 |  | Monitor day_trade: in zone, await 15m/1h close (ga… |
-| BICO/USDT | 0.04012 | long_term | monitor | LONG | 0.04012 | -0.005895 | 0.053977 | 0.067834 | 3.0 |  | Monitor long_term: in zone, await 15m/1h close |
-| BICO/USDT | 0.04012 | scalp | monitor | LONG | 0.04012 | 0.020828 | 0.041923 | 0.043726 | 3.0 |  | Monitor scalp: in zone, await 15m/1h close (gaps: … |
-| BICO/USDT | 0.04012 | swing | monitor | LONG | 0.04012 | 0.005005 | 0.050283 | 0.060445 | 3.0 |  | Monitor swing: in zone, await 15m/1h close |
-| BNB/USDT | 597.4 | day_trade | monitor | SHORT | 732.0586 | 738.457886 | 726.412171 | 720.765743 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| BNB/USDT | 597.4 | scalp | monitor | SHORT | 732.0586 | 733.785743 | 730.065743 | 728.072886 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| BNB/USDT | 597.4 | swing | monitor | SHORT | 732.0586 | 1407.035714 | 706.612171 | 681.165743 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=1310.0%)… |
-| BTC/USDT | 64637.6 | day_trade | monitor | SHORT | 73468.2032 | 74228.394629 | 72797.446057 | 72126.688914 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| BTC/USDT | 64637.6 | scalp | monitor | SHORT | 73468.2032 | 73698.210343 | 73202.810343 | 72937.417486 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| BTC/USDT | 64637.6 | swing | monitor | SHORT | 73468.2032 | 129593.668571 | 70640.146057 | 67812.088914 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=206.1%)) |
-| DOGE/USDT | 0.08423 | day_trade | monitor | SHORT | 0.126665 | 0.127658 | 0.125788 | 0.082177 | 76.14 | XABCD@0.08218 | Monitor day_trade: harmonic PRZ active (gaps: inva… |
-| DOGE/USDT | 0.08423 | long_term | monitor | SHORT | 0.126665 | 0.765975 | 0.11108 | 0.082177 | 4.28 | XABCD@0.08218 | Monitor long_term: harmonic PRZ active |
-| DOGE/USDT | 0.08423 | scalp | monitor | SHORT | 0.126665 | 0.126973 | 0.126309 | 0.082177 | 187.6 | XABCD@0.08218 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| DOGE/USDT | 0.08423 | swing | monitor | SHORT | 0.126665 | 0.312851 | 0.121622 | 0.082177 | 13.23 | XABCD@0.08218 | Monitor swing: harmonic PRZ active (gaps: invalid_… |
-| EIGEN/USDT | 0.3013 | day_trade | monitor | LONG | 0.57961 | 0.157071 | 0.59552 | 0.611431 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| EIGEN/USDT | 0.3013 | scalp | monitor | LONG | 0.57961 | 0.211183 | 0.586392 | 0.593174 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| ENA/USDT | 0.09666 | day_trade | monitor | SHORT | 0.09666 | 0.100941 | 0.093447 | 0.090234 | 3.0 | XABCD@0.097 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| ENA/USDT | 0.09666 | long_term | monitor | SHORT | 0.09666 | 0.780705 | 0.061317 | 0.025974 | 3.0 | XABCD@0.097 | Monitor long_term: harmonic PRZ active |
-| ENA/USDT | 0.09666 | scalp | monitor | SHORT | 0.09666 | 0.098191 | 0.094893 | 0.093126 | 3.0 | XABCD@0.097 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| ENA/USDT | 0.09666 | swing | monitor | SHORT | 0.09666 | 0.736953 | 0.084032 | 0.071404 | 3.0 | XABCD@0.097 | Monitor swing: harmonic PRZ active |
-| ETH/USDT | 1767.93 | day_trade | monitor | SHORT | 2202.54718 | 2226.441894 | 2181.463609 | 2160.380037 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| ETH/USDT | 1767.93 | scalp | monitor | SHORT | 2202.54718 | 2210.54218 | 2193.32218 | 2184.09718 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| ETH/USDT | 1767.93 | swing | monitor | SHORT | 2202.54718 | 4890.757857 | 2099.223966 | 1995.900751 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=122.7%)) |
-| FIL/USDT | 0.8118 | scalp | monitor | SHORT | 1.985832 | 1.991051 | 1.979811 | 1.973789 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| FIL/USDT | 0.8118 | swing | monitor | SHORT | 1.985832 | 4.029017 | 1.920818 | 1.855803 | 3.0 |  | Conditional swing: invalid_impulse (R3) |
-| GRAM/USDT | 1.664 | day_trade | monitor | LONG | 1.664 | 1.545171 | 1.686286 | 1.708571 | 3.0 |  | Monitor day_trade: in zone, await 15m/1h close (ga… |
-| GRAM/USDT | 1.664 | long_term | monitor | LONG | 1.664 | -0.2425 | 1.8095 | 1.955 | 3.0 |  | Monitor long_term: in zone, await 15m/1h close |
-| GRAM/USDT | 1.664 | scalp | monitor | LONG | 1.664 | 1.556257 | 1.676643 | 1.689286 | 3.0 |  | Monitor scalp: in zone, await 15m/1h close (gaps: … |
-| GRAM/USDT | 1.664 | swing | monitor | LONG | 1.664 | -0.1482 | 1.7875 | 1.911 | 3.0 |  | Monitor swing: in zone, await 15m/1h close |
-| HMSTR/USDT | 0.0001878 | day_trade | monitor | SHORT | 0.000188 | 0.000398 | 0.000171 | 0.000154 | 3.0 |  | Monitor day_trade: in zone, await 15m/1h close (ga… |
-| HMSTR/USDT | 0.0001878 | long_term | monitor | SHORT | 0.000188 | 0.013403 | 0.000109 | 3.1e-05 | 3.0 |  | Monitor long_term: in zone, await 15m/1h close |
-| HMSTR/USDT | 0.0001878 | scalp | monitor | SHORT | 0.000188 | 0.000224 | 0.00018 | 0.000172 | 3.0 |  | Monitor scalp: in zone, await 15m/1h close (gaps: … |
-| HMSTR/USDT | 0.0001878 | swing | monitor | SHORT | 0.000188 | 0.000879 | 0.000117 | 4.6e-05 | 3.0 |  | Monitor swing: in zone, await 15m/1h close |
-| HYPE/USDT | 68.2 | day_trade | monitor | LONG | 13.084 | 11.390679 | 14.578107 | 68.793736 | 55.93 | XABCD@68.79 | Monitor day_trade: harmonic PRZ active (gaps: inva… |
-| HYPE/USDT | 68.2 | long_term | monitor | LONG | 13.084 | -15.119643 | 27.185821 | 68.793736 | 5.93 | XABCD@68.79 | Monitor long_term: harmonic PRZ active |
-| HYPE/USDT | 68.2 | scalp | monitor | LONG | 13.084 | 12.620921 | 13.618321 | 68.793736 | 156.39 | XABCD@68.79 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| HYPE/USDT | 68.2 | swing | monitor | LONG | 13.084 | -0.04325 | 21.64525 | 68.793736 | 9.76 | XABCD@68.79 | Monitor swing: harmonic PRZ active |
-| ID/USDT | 0.03682 | day_trade | monitor | SHORT | 0.01073 | 0.044158 | 0.006783 | 0.002836 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| ID/USDT | 0.03682 | scalp | monitor | SHORT | 0.01073 | 0.041926 | 0.008994 | 0.007259 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| IP/USDT | 0.3183 | day_trade | monitor | SHORT | 3.423674 | 3.433534 | 3.414974 | 3.406274 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| IP/USDT | 0.3183 | scalp | monitor | SHORT | 3.423674 | 3.425958 | 3.421038 | 3.418402 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| JTO/USDT | 0.6489 | day_trade | monitor | SHORT | 0.627195 | 0.898974 | 0.603227 | 0.579259 | 3.0 |  | Conditional day_trade: invalid_impulse (R2); day_t… |
-| JTO/USDT | 0.6489 | scalp | monitor | SHORT | 0.627195 | 0.812294 | 0.619706 | 0.612216 | 3.0 |  | Conditional scalp: invalid_impulse (R1(W2=210.1%))… |
-| LAYER/USDT | 0.08756 | day_trade | monitor | LONG | 0.172323 | 0.060033 | 0.177445 | 0.182566 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| LAYER/USDT | 0.08756 | scalp | monitor | LONG | 0.172323 | 0.062069 | 0.178924 | 0.185526 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| LINK/USDT | 8.085 | scalp | monitor | SHORT | 11.06742 | 11.110506 | 11.017706 | 10.967991 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| LIT/USDT | 1.7059 | day_trade | monitor | SHORT | 1.767041 | 1.961474 | 1.710823 | 1.654605 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| LIT/USDT | 1.7059 | scalp | monitor | SHORT | 1.767041 | 1.791648 | 1.738648 | 1.710255 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| LTC/USDT | 45.3 | day_trade | monitor | SHORT | 60.90704 | 61.449826 | 60.428111 | 59.949183 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| LTC/USDT | 45.3 | scalp | monitor | SHORT | 60.90704 | 61.087183 | 60.699183 | 60.491326 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| LTC/USDT | 45.3 | swing | monitor | SHORT | 60.90704 | 138.617857 | 58.608826 | 56.310611 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=146.0%)) |
-| MET/USDT | 0.1708 | day_trade | monitor | SHORT | 0.209411 | 0.219295 | 0.200689 | 0.191968 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| MET/USDT | 0.1708 | scalp | monitor | SHORT | 0.209411 | 0.212976 | 0.205296 | 0.201182 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| NEAR/USDT | 2.167 | day_trade | monitor | SHORT | 2.092 | 2.314429 | 2.046464 | 2.000929 | 3.0 | XABCD@2.129 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| NEAR/USDT | 2.167 | long_term | monitor | SHORT | 2.092 | 21.584821 | 1.501107 | 0.910214 | 3.0 | XABCD@2.129 | Monitor long_term: harmonic PRZ active |
-| NEAR/USDT | 2.167 | scalp | monitor | SHORT | 2.092 | 2.287257 | 2.074643 | 2.057286 | 3.0 | XABCD@2.089 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| NEAR/USDT | 2.167 | swing | monitor | SHORT | 2.092 | 3.5921 | 1.79275 | 1.4935 | 3.0 | XABCD@2.129 | Monitor swing: harmonic PRZ active |
-| OFC/USDT | 0.02308 | day_trade | monitor | SHORT | 0.02308 | 0.039095 | 0.022086 | 0.021091 | 3.0 |  | Monitor day_trade: in zone, await 15m/1h close (ga… |
-| OFC/USDT | 0.02308 | long_term | monitor | SHORT | 0.02308 | 0.091162 | -0.010961 | -0.045002 | 3.0 |  | Monitor long_term: in zone, await 15m/1h close |
-| OFC/USDT | 0.02308 | scalp | monitor | SHORT | 0.02308 | 0.029407 | 0.022655 | 0.022229 | 3.0 |  | Monitor scalp: in zone, await 15m/1h close (gaps: … |
-| OFC/USDT | 0.02308 | swing | monitor | SHORT | 0.02308 | 0.10792 | 0.01648 | 0.00988 | 3.0 |  | Monitor swing: in zone, await 15m/1h close |
-| OKB/USDT | 76.45 | day_trade | monitor | LONG | 98.092 | 73.863714 | 98.712357 | 99.332714 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| OKB/USDT | 76.45 | scalp | monitor | LONG | 98.092 | 74.229143 | 98.337357 | 98.582714 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| ONDO/USDT | 0.3395 | day_trade | monitor | LONG | 0.401297 | 0.322054 | 0.407105 | 0.412912 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| ONDO/USDT | 0.3395 | long_term | monitor | LONG | 0.401297 | 0.014257 | 0.513583 | 0.625869 | 3.0 |  | Conditional long_term: invalid_impulse (R1(W2=314.… |
-| ONDO/USDT | 0.3395 | scalp | monitor | LONG | 0.401297 | 0.327966 | 0.403612 | 0.405926 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| PEPE/USDT | 2.877e-06 | scalp | monitor | SHORT | 5e-06 | 5e-06 | 5e-06 | 5e-06 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| PEPE/USDT | 2.877e-06 | swing | monitor | SHORT | 5e-06 | 1.3e-05 | 4e-06 | 4e-06 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=305.8%)) |
-| PI/USDT | 0.1356 | day_trade | monitor | LONG | 0.178306 | 0.121994 | 0.179688 | 0.18107 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| PI/USDT | 0.1356 | scalp | monitor | LONG | 0.178306 | 0.132931 | 0.178809 | 0.179313 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| PI/USDT | 0.1356 | swing | monitor | LONG | 0.178306 | 0.109133 | 0.185945 | 0.193584 | 3.0 |  | Conditional swing: invalid_impulse (R3) |
-| PUMP/USDT | 0.001521 | day_trade | monitor | SHORT | 0.002953 | 0.002994 | 0.002917 | 0.001554 | 58.27 | XABCD@0.001554 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| PUMP/USDT | 0.001521 | long_term | monitor | SHORT | 0.002953 | 0.008337 | 0.002472 | 0.001554 | 4.36 | XABCD@0.001554 | Monitor long_term: harmonic PRZ active |
-| PUMP/USDT | 0.001521 | scalp | monitor | SHORT | 0.002953 | 0.002964 | 0.00294 | 0.001554 | 164.53 | XABCD@0.001554 | Monitor scalp: harmonic PRZ active (gaps: invalid_… |
-| PUMP/USDT | 0.001521 | swing | monitor | SHORT | 0.002953 | 0.009203 | 0.002779 | 0.001554 | 12.07 | XABCD@0.001554 | Monitor swing: harmonic PRZ active |
-| RE/USDT | 0.80451 | day_trade | monitor | LONG | 0.80496 | 0.372992 | 0.854357 | 0.903754 | 3.0 | XABCD@0.8249 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| RE/USDT | 0.80451 | long_term | monitor | LONG | 0.80496 | -1.090738 | 1.459402 | 2.113845 | 3.0 | XABCD@0.8249 | Monitor long_term: harmonic PRZ active |
-| RE/USDT | 0.80451 | scalp | monitor | LONG | 0.80469 | 0.423621 | 0.8279 | 0.851111 | 3.0 | XABCD@0.8249 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| RE/USDT | 0.80451 | swing | monitor | LONG | 0.80451 | -0.522324 | 1.23978 | 1.67505 | 3.0 | XABCD@0.8249 | Monitor swing: harmonic PRZ active |
-| RESOLV/USDT | 0.0216 | day_trade | monitor | LONG | 0.064031 | 0.012567 | 0.066135 | 0.068239 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| RESOLV/USDT | 0.0216 | scalp | monitor | LONG | 0.064031 | 0.013683 | 0.065095 | 0.066159 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| RESOLV/USDT | 0.0216 | swing | monitor | LONG | 0.064031 | 0.009641 | 0.067872 | 0.071713 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=179.1%)) |
-| SOL/USDT | 74.2 | day_trade | monitor | SHORT | 101.49974 | 102.74924 | 100.39724 | 99.29474 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| SOL/USDT | 74.2 | scalp | monitor | SHORT | 101.49974 | 101.895311 | 101.043311 | 100.586883 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| SOL/USDT | 74.2 | swing | monitor | SHORT | 101.49974 | 260.039857 | 96.066526 | 90.633311 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=267.4%)) |
-| SPACE/USDT | 0.00696 | day_trade | monitor | LONG | 0.014053 | 0.00604 | 0.014313 | 0.014573 | 3.0 | XABCD@0.006789 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| SPACE/USDT | 0.00696 | long_term | monitor | LONG | 0.014053 | -0.001889 | 0.01788 | 0.021707 | 3.0 | XABCD@0.006789 | Monitor long_term: harmonic PRZ active |
-| SPACE/USDT | 0.00696 | scalp | monitor | LONG | 0.014053 | 0.006242 | 0.014152 | 0.01425 | 3.0 | XABCD@0.006789 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| SPACE/USDT | 0.00696 | swing | monitor | LONG | 0.014053 | 0.001862 | 0.015897 | 0.017741 | 3.0 | XABCD@0.006789 | Monitor swing: harmonic PRZ active |
-| SUI/USDT | 0.7363 | day_trade | monitor | LONG | 1.291489 | 0.67894 | 1.304314 | 1.317139 | 3.0 | XABCD@0.737 | Monitor day_trade: harmonic PRZ active |
-| SUI/USDT | 0.7363 | long_term | monitor | LONG | 1.291489 | 0.133339 | 1.548085 | 1.804682 | 3.0 | XABCD@0.737 | Monitor long_term: harmonic PRZ active (gaps: inva… |
-| SUI/USDT | 0.7363 | scalp | monitor | LONG | 1.291489 | 0.685411 | 1.298593 | 1.305696 | 3.0 | XABCD@0.7294 | Monitor scalp: harmonic PRZ active (gaps: invalid_… |
-| SUI/USDT | 0.7363 | swing | monitor | LONG | 1.291489 | 0.588099 | 1.352657 | 1.413825 | 3.0 | XABCD@0.737 | Monitor swing: harmonic PRZ active |
-| TNSR/USDT | 0.04032 | day_trade | monitor | LONG | 0.099369 | 0.023369 | 0.10507 | 0.110771 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| TNSR/USDT | 0.04032 | scalp | monitor | LONG | 0.099369 | 0.027133 | 0.101276 | 0.103183 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| TNSR/USDT | 0.04032 | swing | monitor | LONG | 0.099369 | 0.019276 | 0.106056 | 0.112742 | 3.0 |  | Conditional swing: invalid_impulse (R3) |
-| TRUMP/USDT | 1.906 | scalp | monitor | LONG | 10.29 | 1.860886 | 10.301464 | 10.312929 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| TRUMP/USDT | 1.906 | swing | monitor | LONG | 10.29 | 1.192229 | 10.538143 | 10.786286 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=281.1%)) |
-| TRX/USDT | 0.33154 | day_trade | monitor | LONG | 0.2009 | 0.199726 | 0.201936 | 0.202972 | 3.0 |  | Conditional day_trade: invalid_impulse (R2); day_t… |
-| TRX/USDT | 0.33154 | scalp | monitor | LONG | 0.2009 | 0.200348 | 0.201536 | 0.202173 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| UNI/USDT | 3.052 | scalp | monitor | LONG | 4.00205 | 2.952486 | 4.021764 | 4.041479 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| W/USDT | 0.012733 | day_trade | monitor | LONG | 0.038174 | 0.008283 | 0.038908 | 0.039642 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| W/USDT | 0.012733 | scalp | monitor | LONG | 0.038174 | 0.009067 | 0.038694 | 0.039214 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| WLD/USDT | 0.6262 | day_trade | monitor | LONG | 0.64875 | 0.436814 | 0.669858 | 0.690965 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| WLD/USDT | 0.6262 | scalp | monitor | LONG | 0.64875 | 0.585989 | 0.657772 | 0.666793 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| WLFI/USDT | 0.05924 | day_trade | monitor | SHORT | 0.07361 | 0.074505 | 0.07282 | 0.057525 | 30.56 | XABCD@0.05752 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| WLFI/USDT | 0.05924 | long_term | monitor | SHORT | 0.07361 | 0.377611 | 0.057044 | 0.040477 | 3.0 | XABCD@0.05752 | Monitor long_term: harmonic PRZ active |
-| WLFI/USDT | 0.05924 | scalp | monitor | SHORT | 0.07361 | 0.073864 | 0.073318 | 0.057525 | 82.49 | XABCD@0.05752 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| WLFI/USDT | 0.05924 | swing | monitor | SHORT | 0.07361 | 0.081961 | 0.068164 | 0.057525 | 4.43 | XABCD@0.05752 | Monitor swing: harmonic PRZ active |
-| XAUT/USDT | 4194.1 | day_trade | monitor | LONG | 4194.1 | 3998.722857 | 4220.821429 | 4247.542857 | 3.0 |  | Monitor day_trade: in zone, await 15m/1h close (ga… |
-| XAUT/USDT | 4194.1 | long_term | monitor | LONG | 4194.1 | 1222.478571 | 4547.092857 | 4900.085714 | 3.0 |  | Monitor long_term: in zone, await 15m/1h close |
-| XAUT/USDT | 4194.1 | scalp | monitor | LONG | 4194.1 | 4123.357143 | 4201.492857 | 4208.885714 | 3.0 |  | Monitor scalp: in zone, await 15m/1h close (gaps: … |
-| XAUT/USDT | 4194.1 | swing | monitor | LONG | 4194.1 | 3203.777143 | 4334.285714 | 4474.471429 | 3.0 |  | Monitor swing: in zone, await 15m/1h close |
-| XLM/USDT | 0.21407 | day_trade | monitor | SHORT | 0.195725 | 0.255063 | 0.191683 | 0.187642 | 3.0 |  | Conditional day_trade: invalid_impulse (R1(W2=156.… |
-| XLM/USDT | 0.21407 | scalp | monitor | SHORT | 0.195725 | 0.225157 | 0.194099 | 0.192474 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| XPL/USDT | 0.09131 | day_trade | monitor | LONG | -0.96673 | -0.968689 | -0.965002 | -0.963274 | 3.0 |  | Conditional day_trade: invalid_impulse (R1(W2=923.… |
-| XPL/USDT | 0.09131 | scalp | monitor | LONG | -0.96673 | -0.967324 | -0.966044 | -0.965359 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| XRP/USDT | 1.1477 | day_trade | monitor | SHORT | 1.506747 | 1.522278 | 1.493043 | 1.47934 | 3.0 |  | Conditional day_trade: day_trade needs TF impulse … |
-| XRP/USDT | 1.1477 | long_term | monitor | SHORT | 1.506747 | 3.987693 | 1.311211 | 1.115675 | 3.0 |  | Conditional long_term: invalid_impulse (R3) |
-| XRP/USDT | 1.1477 | scalp | monitor | SHORT | 1.506747 | 1.511473 | 1.501293 | 1.49584 | 3.0 |  | Conditional scalp: scalp needs TF impulse confirma… |
-| XRP/USDT | 1.1477 | swing | monitor | SHORT | 1.506747 | 3.273794 | 1.433418 | 1.36009 | 3.0 |  | Conditional swing: invalid_impulse (R1(W2=147.3%)) |
-| ZEC/USDT | 455.44 | day_trade | monitor | SHORT | -173.08 | 553.155429 | -182.174286 | -191.268571 | 3.0 | XABCD@445.6 | Monitor day_trade: harmonic PRZ active (gaps: day_… |
-| ZEC/USDT | 455.44 | long_term | monitor | SHORT | -173.08 | 1017.647143 | -367.124286 | -561.168571 | 3.0 | XABCD@445.6 | Monitor long_term: harmonic PRZ active |
-| ZEC/USDT | 455.44 | scalp | monitor | SHORT | -173.08 | 489.456857 | -177.442857 | -181.805714 | 3.0 | XABCD@445.6 | Monitor scalp: harmonic PRZ active (gaps: scalp ne… |
-| ZEC/USDT | 455.44 | swing | monitor | SHORT | -173.08 | 775.913714 | -241.141429 | -309.202857 | 3.0 | XABCD@445.6 | Monitor swing: harmonic PRZ active |
+## All trade setups — executable AND non-executable
 
-## Primary setup per pair
-
-| Symbol | Price | Primary | Status | Dir | Verdict | Outcome summary |
-|--------|-------|---------|--------|-----|---------|-----------------|
-| ETH/USDT | 1767.93 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| BTC/USDT | 64637.6 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| SOL/USDT | 74.2 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| HYPE/USDT | 68.2 | scalp | monitor | LONG | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| XRP/USDT | 1.1477 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| WLD/USDT | 0.6262 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| OFC/USDT | 0.02308 | scalp | monitor | SHORT | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| OKB/USDT | 76.45 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| ZEC/USDT | 455.44 | scalp | monitor | SHORT | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| DOGE/USDT | 0.08423 | scalp | monitor | SHORT | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| RE/USDT | 0.80451 | scalp | monitor | LONG | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| TRX/USDT | 0.33154 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| RESOLV/USDT | 0.0216 | scalp | monitor | LONG | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| SUI/USDT | 0.7363 | scalp | monitor | LONG | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| XAUT/USDT | 4194.1 | scalp | monitor | LONG | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| TNSR/USDT | 0.04032 | scalp | monitor | LONG | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| IP/USDT | 0.3183 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| FIL/USDT | 0.8118 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| ALLO/USDT | 0.42659 | scalp | monitor | LONG | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| BICO/USDT | 0.04012 | scalp | monitor | LONG | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| TRUMP/USDT | 1.906 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| LINK/USDT | 8.085 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 1 monitor, 3 skip — primary=scalp (monitor) |
-| LIT/USDT | 1.7059 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| BASED/USDT | 0.09189 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| ADA/USDT | 0.1617 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| EIGEN/USDT | 0.3013 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| PUMP/USDT | 0.001521 | scalp | monitor | SHORT | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| XLM/USDT | 0.21407 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| BNB/USDT | 597.4 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| LTC/USDT | 45.3 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| HMSTR/USDT | 0.0001878 | scalp | monitor | SHORT | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| NEAR/USDT | 2.167 | scalp | monitor | SHORT | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| UNI/USDT | 3.052 | scalp | monitor | LONG | STAGED_GO | 0 executable, 1 monitor, 3 skip — primary=scalp (monitor) |
-| JTO/USDT | 0.6489 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| W/USDT | 0.012733 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| PEPE/USDT | 2.877e-06 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| GRAM/USDT | 1.664 | scalp | monitor | LONG | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| AVAX/USDT | 6.368 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| ID/USDT | 0.03682 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| ENA/USDT | 0.09666 | scalp | monitor | SHORT | CONDITIONAL_GO | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| XPL/USDT | 0.09131 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| PI/USDT | 0.1356 | scalp | monitor | LONG | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| LAYER/USDT | 0.08756 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| MET/USDT | 0.1708 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| ONDO/USDT | 0.3395 | scalp | monitor | LONG | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| BCH/USDT | 201.2 | scalp | monitor | SHORT | STAGED_GO | 0 executable, 3 monitor, 1 skip — primary=scalp (monitor) |
-| AAVE/USDT | 76.68 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| SPACE/USDT | 0.00696 | scalp | monitor | LONG | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
-| 2Z/USDT | 0.07434 | scalp | monitor | LONG | STAGED_GO | 0 executable, 2 monitor, 2 skip — primary=scalp (monitor) |
-| WLFI/USDT | 0.05924 | scalp | monitor | SHORT | STANDBY_ORDERS | 0 executable, 4 monitor, 0 skip — primary=scalp (monitor) |
+| symbol | price | style | status | execution_tier | readiness_score | direction | entry | stop_loss | tp1 | rr_tp2 | 1w_structure | 1d_structure | 4h_structure | 1h_structure | 15m_structure | harmonics_in_zone | consensus | in_kill_zone | verdict | honest_reason |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ALLO/USDT | 0.43245 | day_trade | executable | probe | 65 | SHORT | 0.43303 | 0.492006 | 0.411335 | 3.0 | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=309.0… | invalid_impulse (R3) |  | BEAR | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| ALLO/USDT | 0.43245 | swing | executable | probe | 60 | SHORT | 0.43245 | 0.675517 | 0.333269 | 3.0 | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=309.0… | invalid_impulse (R3) |  | BEAR | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| BICO/USDT | 0.03903 | day_trade | executable | full | 71 | SHORT | 0.03903 | 0.069425 | 0.035836 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | bull_impulse_5 | invalid_impulse (R1(W2=956.3… |  | BEAR | Y | CONDITIONAL_GO | day_trade FULL: impulse R1/R… |
+| BICO/USDT | 0.03903 | long_term | executable | probe | 61 | SHORT | 0.03903 | 22.823095 | 0.025173 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | bull_impulse_5 | invalid_impulse (R1(W2=956.3… |  | BEAR | Y | CONDITIONAL_GO | long_term PROBE executable: … |
+| BICO/USDT | 0.03903 | scalp | executable | probe | 73 | SHORT | 0.03903 | 0.067573 | 0.037712 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | bull_impulse_5 | invalid_impulse (R1(W2=956.3… |  | BEAR | Y | CONDITIONAL_GO | scalp PROBE executable: indi… |
+| BICO/USDT | 0.03903 | swing | executable | probe | 88 | SHORT | 0.03903 | 0.150195 | 0.028868 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | bull_impulse_5 | invalid_impulse (R1(W2=956.3… |  | BEAR | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| BTC/USDT | 65452.5 | long_term | executable | probe | 65 | SHORT | 73468.2032 | 140829.571429 | 64690.460343 | 3.0 | abc_correction | invalid_impulse (R1(W2=206.1… | abc_correction | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | long_term PROBE executable: … |
+| ENA/USDT | 0.09793 | day_trade | executable | probe | 78 | LONG | 0.09793 | 0.071863 | 0.101188 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| ENA/USDT | 0.09793 | long_term | executable | probe | 70 | LONG | 0.09793 | 0.010722 | 0.133389 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | Y | CONDITIONAL_GO | long_term PROBE executable: … |
+| ENA/USDT | 0.09793 | scalp | executable | probe | 70 | LONG | 0.09793 | 0.084654 | 0.099441 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | Y | CONDITIONAL_GO | scalp PROBE executable: indi… |
+| ENA/USDT | 0.09793 | swing | executable | probe | 82 | LONG | 0.09793 | 0.054528 | 0.110674 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| GRAM/USDT | 1.677 | day_trade | executable | probe | 90 | LONG | 1.677 | 1.544829 | 1.699714 | 3.0 | no_data | no_data | ending_diagonal | abc_correction | abc_correction |  | BULL | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| GRAM/USDT | 1.677 | scalp | executable | probe | 68 | LONG | 1.677 | 1.555971 | 1.690179 | 3.0 | no_data | no_data | ending_diagonal | abc_correction | abc_correction |  | BULL | Y | CONDITIONAL_GO | scalp PROBE executable: indi… |
+| HMSTR/USDT | 0.0001822 | day_trade | executable | probe | 80 | SHORT | 0.000182 | 0.000397 | 0.000166 | 3.0 | unclassified | invalid_impulse (R1(W2=350.8… | abc_correction | unclassified | invalid_impulse (R1(W2=193.3… |  | BEAR | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| HMSTR/USDT | 0.0001822 | long_term | executable | probe | 98 | SHORT | 0.000182 | 0.013403 | 0.000103 | 3.0 | unclassified | invalid_impulse (R1(W2=350.8… | abc_correction | unclassified | invalid_impulse (R1(W2=193.3… |  | BEAR | Y | CONDITIONAL_GO | long_term PROBE executable: … |
+| HMSTR/USDT | 0.0001822 | scalp | executable | probe | 68 | SHORT | 0.000182 | 0.000223 | 0.000176 | 3.0 | unclassified | invalid_impulse (R1(W2=350.8… | abc_correction | unclassified | invalid_impulse (R1(W2=193.3… |  | BEAR | Y | CONDITIONAL_GO | scalp PROBE executable: indi… |
+| HMSTR/USDT | 0.0001822 | swing | executable | probe | 83 | SHORT | 0.000182 | 0.000458 | 0.000111 | 3.0 | unclassified | invalid_impulse (R1(W2=350.8… | abc_correction | unclassified | invalid_impulse (R1(W2=193.3… |  | BEAR | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| JTO/USDT | 0.6462 | scalp | executable | probe | 65 | SHORT | 0.627195 | 0.812746 | 0.618859 | 3.0 | unclassified | invalid_impulse (R1(W2=112.9… | unclassified | abc_correction | unclassified |  | BEAR | N | STAGED_GO | scalp PROBE executable: indi… |
+| LIT/USDT | 1.6994 | swing | executable | probe | 67 | LONG | 1.767041 | 0.481771 | 2.015398 | 3.0 | unclassified | invalid_impulse (R2) | abc_correction | abc_correction | invalid_impulse (R1(W2=119.0… |  | BULL | N | STAGED_GO | swing PROBE executable: indi… |
+| OFC/USDT | 0.02281 | day_trade | executable | probe | 90 | SHORT | 0.02281 | 0.038524 | 0.021843 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | abc_correction | unclassified |  | BEAR | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| OFC/USDT | 0.02281 | scalp | executable | probe | 68 | SHORT | 0.02281 | 0.029397 | 0.022404 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | abc_correction | unclassified |  | BEAR | Y | CONDITIONAL_GO | scalp PROBE executable: indi… |
+| OFC/USDT | 0.02281 | swing | executable | probe | 68 | SHORT | 0.02281 | 0.107939 | 0.016194 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | abc_correction | unclassified |  | BEAR | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| RE/USDT | 0.80076 | day_trade | executable | probe | 80 | LONG | 0.80076 | 0.372407 | 0.850889 | 3.0 | no_data | no_data | unclassified | abc_correction | abc_correction |  | NEUTRAL | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| WLD/USDT | 0.6451 | day_trade | executable | probe | 63 | SHORT | 0.6448 | 0.741057 | 0.622729 | 3.0 | unclassified | invalid_impulse (R1(W2=1010.… | invalid_impulse (R1(W2=813.6… | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| WLD/USDT | 0.6451 | long_term | executable | probe | 53 | SHORT | 0.6451 | 12.207393 | 0.499664 | 3.0 | unclassified | invalid_impulse (R1(W2=1010.… | invalid_impulse (R1(W2=813.6… | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | long_term PROBE executable: … |
+| WLD/USDT | 0.6451 | swing | executable | probe | 73 | SHORT | 0.6451 | 2.330629 | 0.536243 | 3.0 | unclassified | invalid_impulse (R1(W2=1010.… | invalid_impulse (R1(W2=813.6… | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| XAUT/USDT | 4189.6 | day_trade | executable | probe | 73 | SHORT | 4189.6 | 4380.788571 | 4163.864286 | 3.0 | invalid_impulse (R1(W2=6452.… | unclassified | abc_correction | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | day_trade PROBE executable: … |
+| XAUT/USDT | 4189.6 | long_term | executable | probe | 72 | SHORT | 4189.6 | 17588.321429 | 3836.607143 | 3.0 | invalid_impulse (R1(W2=6452.… | unclassified | abc_correction | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | long_term PROBE executable: … |
+| XAUT/USDT | 4189.6 | swing | executable | probe | 62 | SHORT | 4189.6 | 5778.122857 | 4049.414286 | 3.0 | invalid_impulse (R1(W2=6452.… | unclassified | abc_correction | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | swing PROBE executable: indi… |
+| ADA/USDT | 0.1629 | day_trade | monitor | none | 40 | LONG | 0.321077 | 0.154191 | 0.323713 | 3.0 | bull_impulse_5 | invalid_impulse (R1(W2=175.4… | invalid_impulse (R1(W2=698.2… | invalid_impulse (R2) | invalid_impulse (R1(W2=135.7… |  | BULL | N | STAGED_GO | Conditional day_trade: inval… |
+| ADA/USDT | 0.1629 | scalp | monitor | none | 40 | LONG | 0.321077 | 0.155666 | 0.322266 | 3.0 | bull_impulse_5 | invalid_impulse (R1(W2=175.4… | invalid_impulse (R1(W2=698.2… | invalid_impulse (R2) | invalid_impulse (R1(W2=135.7… |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| ADA/USDT | 0.1629 | swing | monitor | none | 40 | LONG | 0.321077 | 0.131934 | 0.335048 | 3.0 | bull_impulse_5 | invalid_impulse (R1(W2=175.4… | invalid_impulse (R1(W2=698.2… | invalid_impulse (R2) | invalid_impulse (R1(W2=135.7… |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| ALLO/USDT | 0.43245 | long_term | monitor | none | 45 | SHORT | 0.43245 | 1.143318 | 0.300079 | 3.0 | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=309.0… | invalid_impulse (R3) |  | BEAR | Y | CONDITIONAL_GO | Monitor long_term: near zone… |
+| ALLO/USDT | 0.43245 | scalp | monitor | none | 60 | SHORT | 0.43245 | 0.465141 | 0.422135 | 3.0 | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=309.0… | invalid_impulse (R3) |  | BEAR | Y | CONDITIONAL_GO | Monitor scalp: near zone, aw… |
+| BASED/USDT | 0.09149 | scalp | monitor | none | 65 | SHORT | -0.05882 | 0.101219 | -0.060505 | 3.0 | unclassified | invalid_impulse (R1(W2=276.4… | abc_correction | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | Conditional scalp: indicator… |
+| BASED/USDT | 0.09149 | swing | monitor | none | 40 | SHORT | -0.05882 | 0.347786 | -0.076217 | 3.0 | unclassified | invalid_impulse (R1(W2=276.4… | abc_correction | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | Conditional swing: invalid_i… |
+| BCH/USDT | 204.7 | day_trade | monitor | none | 60 | LONG | 293.9994 | 190.617143 | 296.977971 | 3.0 | abc_correction | invalid_impulse (R1(W2=321.8… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| BCH/USDT | 204.7 | swing | monitor | none | 45 | LONG | 293.9994 | 170.184286 | 312.095829 | 3.0 | abc_correction | invalid_impulse (R1(W2=321.8… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| BNB/USDT | 601.7 | long_term | monitor | none | 65 | SHORT | 732.0586 | 1520.946429 | 645.390743 | 3.0 | abc_correction | invalid_impulse (R1(W2=1310.… | abc_correction | unclassified | unclassified |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| BNB/USDT | 601.7 | swing | monitor | none | 45 | SHORT | 732.0586 | 1407.588571 | 706.151457 | 3.0 | abc_correction | invalid_impulse (R1(W2=1310.… | abc_correction | unclassified | unclassified |  | BEAR | N | STAGED_GO | Conditional swing: invalid_i… |
+| BTC/USDT | 65452.5 | day_trade | monitor | none | 35 | SHORT | 73468.2032 | 74272.837486 | 72758.231771 | 3.0 | abc_correction | invalid_impulse (R1(W2=206.1… | abc_correction | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional day_trade: inval… |
+| BTC/USDT | 65452.5 | scalp | monitor | none | 28 | SHORT | 73468.2032 | 73803.371057 | 73081.471057 | 3.0 | abc_correction | invalid_impulse (R1(W2=206.1… | abc_correction | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional scalp: invalid_i… |
+| BTC/USDT | 65452.5 | swing | monitor | none | 45 | SHORT | 73468.2032 | 129680.441429 | 70567.835343 | 3.0 | abc_correction | invalid_impulse (R1(W2=206.1… | abc_correction | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Monitor swing: near zone, aw… |
+| CHZ/USDT | 0.02066 | day_trade | monitor | none | 88 | SHORT | 0.08338 | 0.083822 | 0.08299 | 3.0 | unclassified | invalid_impulse (R1(W2=182.4… | unclassified | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional day_trade: indic… |
+| CHZ/USDT | 0.02066 | long_term | monitor | none | 65 | SHORT | 0.08338 | 0.852655 | 0.070867 | 3.0 | unclassified | invalid_impulse (R1(W2=182.4… | unclassified | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| CHZ/USDT | 0.02066 | scalp | monitor | none | 63 | SHORT | 0.08338 | 0.083571 | 0.083159 | 3.0 | unclassified | invalid_impulse (R1(W2=182.4… | unclassified | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional scalp: indicator… |
+| CHZ/USDT | 0.02066 | swing | monitor | none | 43 | SHORT | 0.08338 | 0.088419 | 0.080094 | 3.0 | unclassified | invalid_impulse (R1(W2=182.4… | unclassified | invalid_impulse (R3) | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional swing: invalid_i… |
+| DOGE/USDT | 0.08479 | day_trade | monitor | none | 60 | LONG | 0.126665 | 0.081133 | 0.127524 | 3.0 | abc_correction | invalid_impulse (R1(W2=464.8… | abc_correction | invalid_impulse (R2) | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| DOGE/USDT | 0.08479 | scalp | monitor | none | 45 | LONG | 0.126665 | 0.081913 | 0.127108 | 3.0 | abc_correction | invalid_impulse (R1(W2=464.8… | abc_correction | invalid_impulse (R2) | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| DOGE/USDT | 0.08479 | swing | monitor | none | 45 | LONG | 0.126665 | 0.071513 | 0.131754 | 3.0 | abc_correction | invalid_impulse (R1(W2=464.8… | abc_correction | invalid_impulse (R2) | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| ETH/USDT | 1773.97 | swing | monitor | none | 64 | LONG | 2202.54718 | 1379.724286 | 2306.443609 | 3.0 | abc_correction | invalid_impulse (R1(W2=123.9… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional swing: indicator… |
+| FIL/USDT | 0.8178 | swing | monitor | none | 49 | LONG | 1.985832 | 0.592083 | 2.050846 | 3.0 | abc_correction | invalid_impulse (R3) | abc_correction | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| GRAM/USDT | 1.677 | long_term | monitor | none | 13 | LONG | 1.677 | -0.26625 | 1.83675 | 3.0 | no_data | no_data | ending_diagonal | abc_correction | abc_correction |  | BULL | Y | CONDITIONAL_GO | Monitor long_term: near zone… |
+| GRAM/USDT | 1.677 | swing | monitor | none | 13 | LONG | 1.677 | -0.1539 | 1.80525 | 3.0 | no_data | no_data | ending_diagonal | abc_correction | abc_correction |  | BULL | Y | CONDITIONAL_GO | Monitor swing: near zone, aw… |
+| HYPE/USDT | 69.421 | day_trade | monitor | none | 72 | LONG | 13.084 | 11.311507 | 14.647964 | 53.43 | unclassified | unclassified | invalid_impulse (R1(W2=161.0… | bull_impulse_5 | unclassified | 15m:XABCD@68.79-68.79 | BULL | N | STANDBY_ORDERS | Monitor day_trade: harmonic … |
+| HYPE/USDT | 69.421 | long_term | monitor | none | 27 | LONG | 13.084 | -15.2555 | 27.25375 | 5.9 | unclassified | unclassified | invalid_impulse (R1(W2=161.0… | bull_impulse_5 | unclassified | 15m:XABCD@68.79-68.79 | BULL | N | STANDBY_ORDERS | Monitor long_term: harmonic … |
+| HYPE/USDT | 69.421 | scalp | monitor | none | 45 | LONG | 13.084 | 12.4925 | 13.7665 | 122.44 | unclassified | unclassified | invalid_impulse (R1(W2=161.0… | bull_impulse_5 | unclassified | 15m:XABCD@68.79-68.79 | BULL | N | STANDBY_ORDERS | Monitor scalp: harmonic PRZ … |
+| HYPE/USDT | 69.421 | swing | monitor | none | 47 | LONG | 13.084 | -0.147407 | 21.713179 | 9.68 | unclassified | unclassified | invalid_impulse (R1(W2=161.0… | bull_impulse_5 | unclassified | 15m:XABCD@68.79-68.79 | BULL | N | STANDBY_ORDERS | Monitor swing: harmonic PRZ … |
+| ID/USDT | 0.03728 | long_term | monitor | none | 53 | SHORT | 0.01073 | 1.866213 | -0.004278 | 3.0 | unclassified | bear_impulse_5 | invalid_impulse (R3) | abc_correction | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| ID/USDT | 0.03728 | scalp | monitor | none | 35 | SHORT | 0.01073 | 0.041743 | 0.009336 | 3.0 | unclassified | bear_impulse_5 | invalid_impulse (R3) | abc_correction | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | Conditional scalp: invalid_i… |
+| IP/USDT | 0.3207 | day_trade | monitor | none | 73 | LONG | 3.423674 | 0.267529 | 3.432138 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| JTO/USDT | 0.6462 | day_trade | monitor | none | 63 | SHORT | 0.627195 | 0.89648 | 0.606345 | 3.0 | unclassified | invalid_impulse (R1(W2=112.9… | unclassified | abc_correction | unclassified |  | BEAR | N | STAGED_GO | Monitor day_trade: indicator… |
+| JTO/USDT | 0.6462 | long_term | monitor | none | 58 | SHORT | 0.627195 | 5.673732 | 0.419756 | 3.0 | unclassified | invalid_impulse (R1(W2=112.9… | unclassified | abc_correction | unclassified |  | BEAR | N | STAGED_GO | Monitor long_term: indicator… |
+| JTO/USDT | 0.6462 | swing | monitor | none | 63 | SHORT | 0.627195 | 2.318944 | 0.489741 | 3.0 | unclassified | invalid_impulse (R1(W2=112.9… | unclassified | abc_correction | unclassified |  | BEAR | N | STAGED_GO | Monitor swing: indicators 63… |
+| LAYER/USDT | 0.07834 | day_trade | monitor | none | 55 | SHORT | 0.172323 | 0.179472 | 0.166016 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=358.4… | invalid_impulse (R1(W2=201.4… | invalid_impulse (R1(W2=105.1… |  | BEAR | N | STAGED_GO | Conditional day_trade: inval… |
+| LAYER/USDT | 0.07834 | long_term | monitor | none | 73 | SHORT | 0.172323 | 3.493939 | 0.1339 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=358.4… | invalid_impulse (R1(W2=201.4… | invalid_impulse (R1(W2=105.1… |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| LAYER/USDT | 0.07834 | scalp | monitor | none | 57 | SHORT | 0.172323 | 0.179272 | 0.164306 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=358.4… | invalid_impulse (R1(W2=201.4… | invalid_impulse (R1(W2=105.1… |  | BEAR | N | STAGED_GO | Conditional scalp: invalid_i… |
+| LINK/USDT | 8.141 | day_trade | monitor | none | 45 | LONG | 11.06742 | 7.678429 | 11.175634 | 3.0 | abc_correction | bear_impulse_5 | abc_correction | invalid_impulse (R1(W2=218.0… | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional day_trade: inval… |
+| LIT/USDT | 1.6994 | day_trade | monitor | none | 35 | LONG | 1.767041 | 1.342471 | 1.817077 | 3.0 | unclassified | invalid_impulse (R2) | abc_correction | abc_correction | invalid_impulse (R1(W2=119.0… |  | BULL | N | STAGED_GO | Monitor day_trade: near zone… |
+| LIT/USDT | 1.6994 | long_term | monitor | none | 27 | LONG | 1.767041 | 0.008996 | 2.229523 | 3.0 | unclassified | invalid_impulse (R2) | abc_correction | abc_correction | invalid_impulse (R1(W2=119.0… |  | BULL | N | STAGED_GO | Monitor long_term: near zone… |
+| LIT/USDT | 1.6994 | scalp | monitor | none | 55 | LONG | 1.767041 | 1.490649 | 1.791137 | 3.0 | unclassified | invalid_impulse (R2) | abc_correction | abc_correction | invalid_impulse (R1(W2=119.0… |  | BULL | N | STAGED_GO | Monitor scalp: near zone, aw… |
+| LTC/USDT | 45.79 | swing | monitor | none | 25 | SHORT | 60.90704 | 138.644857 | 58.586326 | 3.0 | abc_correction | invalid_impulse (R1(W2=146.0… | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | Conditional swing: invalid_i… |
+| MET/USDT | 0.1684 | day_trade | monitor | none | 55 | LONG | 0.209411 | 0.098174 | 0.218068 | 3.0 | unclassified | unclassified | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BEAR | N | STAGED_GO | Conditional day_trade: conse… |
+| MET/USDT | 0.1684 | long_term | monitor | none | 45 | LONG | 0.209411 | 0.001532 | 0.265071 | 3.0 | unclassified | unclassified | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BEAR | N | STAGED_GO | Conditional long_term: conse… |
+| MET/USDT | 0.1684 | scalp | monitor | none | 28 | LONG | 0.209411 | 0.153374 | 0.213021 | 3.0 | unclassified | unclassified | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BEAR | N | STAGED_GO | Conditional scalp: consensus… |
+| MET/USDT | 0.1684 | swing | monitor | none | 61 | LONG | 0.209411 | 0.068097 | 0.231246 | 3.0 | unclassified | unclassified | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BEAR | N | STAGED_GO | Conditional swing: indicator… |
+| NEAR/USDT | 2.184 | day_trade | monitor | none | 43 | SHORT | 2.092 | 2.312971 | 2.048286 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | abc_correction | 1h:XABCD@2.129-2.129; 15m:XA… | BEAR | N | STANDBY_ORDERS | Monitor day_trade: harmonic … |
+| NEAR/USDT | 2.184 | long_term | monitor | none | 48 | SHORT | 2.092 | 21.584821 | 1.501107 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | abc_correction | 1h:XABCD@2.129-2.129; 15m:XA… | BEAR | N | STANDBY_ORDERS | Monitor long_term: harmonic … |
+| NEAR/USDT | 2.184 | scalp | monitor | none | 36 | SHORT | 2.092 | 2.210657 | 2.070143 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | abc_correction | 1h:XABCD@2.129-2.129; 15m:XA… | BEAR | N | STANDBY_ORDERS | Monitor scalp: harmonic PRZ … |
+| NEAR/USDT | 2.184 | swing | monitor | none | 51 | SHORT | 2.092 | 3.5921 | 1.79275 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | abc_correction | 1h:XABCD@2.129-2.129; 15m:XA… | BEAR | N | STANDBY_ORDERS | Monitor swing: harmonic PRZ … |
+| OFC/USDT | 0.02281 | long_term | monitor | none | 13 | SHORT | 0.02281 | 0.156767 | -0.01125 | 3.0 | unclassified | unclassified | invalid_impulse (R2) | abc_correction | unclassified |  | BEAR | Y | CONDITIONAL_GO | Monitor long_term: near zone… |
+| OKB/USDT | 79.89 | day_trade | monitor | none | 60 | LONG | 98.092 | 69.936571 | 99.446286 | 3.0 | invalid_impulse (R1(W2=10608… | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=217.7… | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| OKB/USDT | 79.89 | long_term | monitor | none | 45 | LONG | 98.092 | 38.967857 | 110.711286 | 3.0 | invalid_impulse (R1(W2=10608… | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=217.7… | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional long_term: inval… |
+| OKB/USDT | 79.89 | swing | monitor | none | 60 | LONG | 98.092 | 53.827286 | 103.235929 | 3.0 | invalid_impulse (R1(W2=10608… | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=217.7… | bull_impulse_5 |  | BULL | N | STAGED_GO | Conditional swing: indicator… |
+| ONDO/USDT | 0.3436 | day_trade | monitor | none | 60 | LONG | 0.401297 | 0.324614 | 0.40703 | 3.0 | invalid_impulse (R1(W2=314.9… | abc_correction | abc_correction | invalid_impulse (R2) | invalid_impulse (R3) |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| ONDO/USDT | 0.3436 | long_term | monitor | none | 27 | LONG | 0.401297 | 0.013971 | 0.513755 | 3.0 | invalid_impulse (R1(W2=314.9… | abc_correction | abc_correction | invalid_impulse (R2) | invalid_impulse (R3) |  | BULL | N | STAGED_GO | Conditional long_term: inval… |
+| ONDO/USDT | 0.3436 | scalp | monitor | none | 45 | LONG | 0.401297 | 0.327554 | 0.404383 | 3.0 | invalid_impulse (R1(W2=314.9… | abc_correction | abc_correction | invalid_impulse (R2) | invalid_impulse (R3) |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| PENGU/USDT | 0.006914 | long_term | monitor | none | 65 | SHORT | 0.012641 | 0.050455 | 0.010328 | 3.0 | ending_diagonal | ending_diagonal | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| PEPE/USDT | 2.912e-06 | scalp | monitor | none | 25 | LONG | 5e-06 | 3e-06 | 5e-06 | 3.0 | abc_correction | invalid_impulse (R1(W2=305.8… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| PEPE/USDT | 2.912e-06 | swing | monitor | none | 17 | LONG | 5e-06 | 2e-06 | 5e-06 | 3.0 | abc_correction | invalid_impulse (R1(W2=305.8… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| PI/USDT | 0.1365 | day_trade | monitor | none | 60 | LONG | 0.178306 | 0.132554 | 0.179613 | 3.0 | unclassified | invalid_impulse (R3) | invalid_impulse (R1(W2=464.7… | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| PI/USDT | 0.1365 | swing | monitor | none | 49 | LONG | 0.178306 | 0.109133 | 0.185945 | 3.0 | unclassified | invalid_impulse (R3) | invalid_impulse (R1(W2=464.7… | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| PUMP/USDT | 0.001533 | day_trade | monitor | none | 43 | SHORT | 0.002953 | 0.002991 | 0.002919 | 62.61 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=129.4… | 1h:XABCD@0.001544-0.001556 | BEAR | N | STANDBY_ORDERS | Monitor day_trade: harmonic … |
+| PUMP/USDT | 0.001533 | long_term | monitor | none | 45 | SHORT | 0.002953 | 0.009559 | 0.002472 | 4.39 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=129.4… | 1h:XABCD@0.001544-0.001556 | BEAR | N | STANDBY_ORDERS | Monitor long_term: harmonic … |
+| PUMP/USDT | 0.001533 | scalp | monitor | none | 28 | SHORT | 0.002953 | 0.002966 | 0.002938 | 139.87 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=129.4… | 1h:XABCD@0.001544-0.001556 | BEAR | N | STANDBY_ORDERS | Monitor scalp: harmonic PRZ … |
+| PUMP/USDT | 0.001533 | swing | monitor | none | 33 | SHORT | 0.002953 | 0.009203 | 0.002779 | 12.16 | unclassified | unclassified | abc_correction | abc_correction | invalid_impulse (R1(W2=129.4… | 1h:XABCD@0.001544-0.001556 | BEAR | N | STANDBY_ORDERS | Monitor swing: harmonic PRZ … |
+| RE/USDT | 0.80076 | long_term | monitor | none | 5 | LONG | 0.80076 | -1.090738 | 1.455202 | 3.0 | no_data | no_data | unclassified | abc_correction | abc_correction |  | NEUTRAL | Y | CONDITIONAL_GO | Monitor long_term: near zone… |
+| RE/USDT | 0.80076 | scalp | monitor | none | 60 | LONG | 0.80076 | 0.639879 | 0.825568 | 3.0 | no_data | no_data | unclassified | abc_correction | abc_correction |  | NEUTRAL | Y | CONDITIONAL_GO | Monitor scalp: near zone, aw… |
+| RE/USDT | 0.80076 | swing | monitor | none | 5 | LONG | 0.80076 | -0.522324 | 1.23603 | 3.0 | no_data | no_data | unclassified | abc_correction | abc_correction |  | NEUTRAL | Y | CONDITIONAL_GO | Monitor swing: near zone, aw… |
+| RESOLV/USDT | 0.02216 | day_trade | monitor | none | 65 | LONG | 0.064031 | 0.012322 | 0.06644 | 3.0 | unclassified | invalid_impulse (R1(W2=179.1… | abc_correction | invalid_impulse (R1(W2=118.6… | abc_correction |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| RESOLV/USDT | 0.02216 | long_term | monitor | none | 55 | LONG | 0.064031 | -0.006666 | 0.07658 | 3.0 | unclassified | invalid_impulse (R1(W2=179.1… | abc_correction | invalid_impulse (R1(W2=118.6… | abc_correction |  | BULL | N | STAGED_GO | Conditional long_term: indic… |
+| RESOLV/USDT | 0.02216 | swing | monitor | none | 52 | LONG | 0.064031 | 0.009504 | 0.067985 | 3.0 | unclassified | invalid_impulse (R1(W2=179.1… | abc_correction | invalid_impulse (R1(W2=118.6… | abc_correction |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| SOL/USDT | 74.79 | day_trade | monitor | none | 60 | LONG | 101.49974 | 67.058571 | 102.576526 | 3.0 | abc_correction | invalid_impulse (R1(W2=267.4… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| SOL/USDT | 74.79 | scalp | monitor | none | 45 | LONG | 101.49974 | 68.459429 | 102.025811 | 3.0 | abc_correction | invalid_impulse (R1(W2=267.4… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| SOL/USDT | 74.79 | swing | monitor | none | 37 | LONG | 101.49974 | 53.590143 | 106.932954 | 3.0 | abc_correction | invalid_impulse (R1(W2=267.4… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| SPACE/USDT | 0.006964 | day_trade | monitor | none | 35 | LONG | 0.014053 | 0.006066 | 0.01428 | 3.0 | abc_correction | abc_correction | abc_correction | abc_correction | invalid_impulse (R1(W2=409.7… | 15m:XABCD@0.006789-0.006789 | BULL | N | STANDBY_ORDERS | Monitor day_trade: harmonic … |
+| SPACE/USDT | 0.006964 | long_term | monitor | none | 25 | LONG | 0.014053 | -0.002304 | 0.01788 | 3.0 | abc_correction | abc_correction | abc_correction | abc_correction | invalid_impulse (R1(W2=409.7… | 15m:XABCD@0.006789-0.006789 | BULL | N | STANDBY_ORDERS | Monitor long_term: harmonic … |
+| SPACE/USDT | 0.006964 | scalp | monitor | none | 55 | LONG | 0.014053 | 0.006242 | 0.014152 | 3.0 | abc_correction | abc_correction | abc_correction | abc_correction | invalid_impulse (R1(W2=409.7… | 15m:XABCD@0.006789-0.006789 | BULL | N | STANDBY_ORDERS | Monitor scalp: harmonic PRZ … |
+| SPACE/USDT | 0.006964 | swing | monitor | none | 57 | LONG | 0.014053 | 0.002277 | 0.015897 | 3.0 | abc_correction | abc_correction | abc_correction | abc_correction | invalid_impulse (R1(W2=409.7… | 15m:XABCD@0.006789-0.006789 | BULL | N | STANDBY_ORDERS | Monitor swing: harmonic PRZ … |
+| SUI/USDT | 0.7401 | day_trade | monitor | none | 60 | LONG | 1.291489 | 0.678409 | 1.304978 | 3.0 | invalid_impulse (R1(W2=374.2… | ending_diagonal | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=119.4… |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| SUI/USDT | 0.7401 | long_term | monitor | none | 35 | LONG | 1.291489 | 0.132089 | 1.548835 | 3.0 | invalid_impulse (R1(W2=374.2… | ending_diagonal | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=119.4… |  | BULL | N | STAGED_GO | Conditional long_term: inval… |
+| SUI/USDT | 0.7401 | scalp | monitor | none | 35 | LONG | 1.291489 | 0.685834 | 1.301925 | 3.0 | invalid_impulse (R1(W2=374.2… | ending_diagonal | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=119.4… |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| TNSR/USDT | 0.03949 | long_term | monitor | none | 55 | SHORT | 0.099369 | 2.624955 | 0.084396 | 3.0 | unclassified | invalid_impulse (R3) | bear_impulse_5 | bull_impulse_5 | invalid_impulse (R1(W2=133.3… |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| TNSR/USDT | 0.03949 | scalp | monitor | none | 20 | SHORT | 0.099369 | 0.100683 | 0.097853 | 3.0 | unclassified | invalid_impulse (R3) | bear_impulse_5 | bull_impulse_5 | invalid_impulse (R1(W2=133.3… |  | BEAR | N | STAGED_GO | Conditional scalp: invalid_i… |
+| TNSR/USDT | 0.03949 | swing | monitor | none | 30 | SHORT | 0.099369 | 0.372269 | 0.092536 | 3.0 | unclassified | invalid_impulse (R3) | bear_impulse_5 | bull_impulse_5 | invalid_impulse (R1(W2=133.3… |  | BEAR | N | STAGED_GO | Conditional swing: invalid_i… |
+| TRUMP/USDT | 1.933 | swing | monitor | none | 33 | SHORT | 10.29 | 10.670486 | 10.041857 | 3.0 | abc_correction | invalid_impulse (R1(W2=281.1… | bear_impulse_5 | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | Conditional swing: invalid_i… |
+| W/USDT | 0.011852 | day_trade | monitor | none | 70 | LONG | 0.038174 | 0.008501 | 0.038996 | 3.0 | unclassified | unclassified | unclassified | bull_impulse_5 | invalid_impulse (R1(W2=116.9… |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| W/USDT | 0.011852 | long_term | monitor | none | 53 | LONG | 0.038174 | 0.001717 | 0.042238 | 3.0 | unclassified | unclassified | unclassified | bull_impulse_5 | invalid_impulse (R1(W2=116.9… |  | BULL | N | STAGED_GO | Conditional long_term: indic… |
+| W/USDT | 0.011852 | scalp | monitor | none | 33 | LONG | 0.038174 | 0.009935 | 0.038761 | 3.0 | unclassified | unclassified | unclassified | bull_impulse_5 | invalid_impulse (R1(W2=116.9… |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| W/USDT | 0.011852 | swing | monitor | none | 68 | LONG | 0.038174 | 0.006852 | 0.039539 | 3.0 | unclassified | unclassified | unclassified | bull_impulse_5 | invalid_impulse (R1(W2=116.9… |  | BULL | N | STAGED_GO | Conditional swing: indicator… |
+| WLD/USDT | 0.6451 | scalp | monitor | none | 53 | SHORT | 0.6447 | 0.659629 | 0.636021 | 3.0 | unclassified | invalid_impulse (R1(W2=1010.… | invalid_impulse (R1(W2=813.6… | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | Monitor scalp: near zone, aw… |
+| XAUT/USDT | 4189.6 | scalp | monitor | none | 60 | SHORT | 4189.5 | 4208.102857 | 4179.557143 | 3.0 | invalid_impulse (R1(W2=6452.… | unclassified | abc_correction | abc_correction | abc_correction |  | BEAR | Y | CONDITIONAL_GO | Monitor scalp: near zone, aw… |
+| XLM/USDT | 0.21548 | day_trade | monitor | none | 40 | SHORT | 0.195725 | 0.255115 | 0.191619 | 3.0 | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) | abc_correction |  | BEAR | N | STAGED_GO | Conditional day_trade: inval… |
+| XLM/USDT | 0.21548 | long_term | monitor | none | 25 | SHORT | 0.195725 | 0.729292 | 0.140494 | 3.0 | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) | abc_correction |  | BEAR | N | STAGED_GO | Monitor long_term: near zone… |
+| XLM/USDT | 0.21548 | swing | monitor | none | 45 | SHORT | 0.195725 | 0.367736 | 0.170903 | 3.0 | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) | abc_correction |  | BEAR | N | STAGED_GO | Monitor swing: near zone, aw… |
+| XPL/USDT | 0.09238 | long_term | monitor | none | 65 | SHORT | -0.96673 | 1.764566 | -1.00997 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=492.6… | abc_correction | unclassified |  | BEAR | N | STAGED_GO | Conditional long_term: indic… |
+| XRP/USDT | 1.1604 | long_term | monitor | none | 40 | LONG | 1.506747 | -0.040209 | 1.70315 | 3.0 | invalid_impulse (R3) | invalid_impulse (R1(W2=147.3… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional long_term: inval… |
+| XRP/USDT | 1.1604 | scalp | monitor | none | 45 | LONG | 1.506747 | 1.117686 | 1.514086 | 3.0 | invalid_impulse (R3) | invalid_impulse (R1(W2=147.3… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| XRP/USDT | 1.1604 | swing | monitor | none | 45 | LONG | 1.506747 | 0.960564 | 1.580943 | 3.0 | invalid_impulse (R3) | invalid_impulse (R1(W2=147.3… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | Conditional swing: invalid_i… |
+| ZEC/USDT | 464.14 | day_trade | monitor | none | 60 | LONG | -173.08 | -183.008 | -164.32 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | N | STAGED_GO | Conditional day_trade: indic… |
+| ZEC/USDT | 464.14 | scalp | monitor | none | 45 | LONG | -173.08 | -177.733071 | -167.711071 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | N | STAGED_GO | Conditional scalp: invalid_i… |
+| AAVE/USDT | 76.7 | day_trade | not_actionable | none | 50 | LONG | 117.4511 | 69.690286 | 118.825743 | 3.0 | abc_correction | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| AAVE/USDT | 76.7 | long_term | not_actionable | none | 40 | LONG | 117.4511 | 11.47 | 137.9411 | 3.0 | abc_correction | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| AAVE/USDT | 76.7 | scalp | not_actionable | none | 50 | LONG | 117.4511 | 71.519143 | 118.033957 | 3.0 | abc_correction | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No scalp edge: structure=abc… |
+| AAVE/USDT | 76.7 | swing | not_actionable | none | 37 | LONG | 117.4511 | 49.961714 | 123.999671 | 3.0 | abc_correction | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No swing edge: structure=unc… |
+| ADA/USDT | 0.1629 | long_term | not_actionable | none | 25 | LONG | 0.321077 | 0.020229 | 0.36762 | 3.0 | bull_impulse_5 | invalid_impulse (R1(W2=175.4… | invalid_impulse (R1(W2=698.2… | invalid_impulse (R2) | invalid_impulse (R1(W2=135.7… |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| AVAX/USDT | 6.454 | day_trade | not_actionable | none | 53 | LONG | 12.205436 | 5.5868 | 12.326936 | 3.0 | unclassified | unclassified | invalid_impulse (R3) | bull_impulse_5 | unclassified |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| AVAX/USDT | 6.454 | long_term | not_actionable | none | 30 | LONG | 12.205436 | -0.031607 | 13.8744 | 3.0 | unclassified | unclassified | invalid_impulse (R3) | bull_impulse_5 | unclassified |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| AVAX/USDT | 6.454 | scalp | not_actionable | none | 60 | LONG | 12.205436 | 5.649029 | 12.271007 | 3.0 | unclassified | unclassified | invalid_impulse (R3) | bull_impulse_5 | unclassified |  | BULL | N | STAGED_GO | No scalp edge: structure=unc… |
+| AVAX/USDT | 6.454 | swing | not_actionable | none | 45 | LONG | 12.205436 | 5.007843 | 12.7689 | 3.0 | unclassified | unclassified | invalid_impulse (R3) | bull_impulse_5 | unclassified |  | BULL | N | STAGED_GO | No swing edge: structure=unc… |
+| BASED/USDT | 0.09149 | day_trade | not_actionable | none | 47 | SHORT | -0.05882 | 0.113082 | -0.062322 | 3.0 | unclassified | invalid_impulse (R1(W2=276.4… | abc_correction | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| BASED/USDT | 0.09149 | long_term | not_actionable | none | 5 | SHORT | -0.05882 | 0.253457 | -0.14169 | 3.0 | unclassified | invalid_impulse (R1(W2=276.4… | abc_correction | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | No long_term edge: structure… |
+| BCH/USDT | 204.7 | long_term | not_actionable | none | 40 | LONG | 293.9994 | -32.005 | 365.3244 | 3.0 | abc_correction | invalid_impulse (R1(W2=321.8… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| BCH/USDT | 204.7 | scalp | not_actionable | none | 45 | LONG | 293.9994 | 193.642857 | 295.606543 | 3.0 | abc_correction | invalid_impulse (R1(W2=321.8… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | No scalp edge: structure=bul… |
+| BNB/USDT | 601.7 | day_trade | not_actionable | none | 35 | SHORT | 732.0586 | 738.397171 | 726.465743 | 3.0 | abc_correction | invalid_impulse (R1(W2=1310.… | abc_correction | unclassified | unclassified |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| BNB/USDT | 601.7 | scalp | not_actionable | none | 40 | SHORT | 732.0586 | 734.324314 | 729.444314 | 3.0 | abc_correction | invalid_impulse (R1(W2=1310.… | abc_correction | unclassified | unclassified |  | BEAR | N | STAGED_GO | No scalp edge: structure=unc… |
+| DOGE/USDT | 0.08479 | long_term | not_actionable | none | 35 | LONG | 0.126665 | 0.023076 | 0.142297 | 3.0 | abc_correction | invalid_impulse (R1(W2=464.8… | abc_correction | invalid_impulse (R2) | invalid_impulse (R2) |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| EIGEN/USDT | 0.3052 | day_trade | not_actionable | none | 40 | SHORT | 0.57961 | 0.59871 | 0.562756 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=158.0… | unclassified | abc_correction |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| EIGEN/USDT | 0.3052 | long_term | not_actionable | none | 20 | SHORT | 0.57961 | 5.784679 | 0.504202 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=158.0… | unclassified | abc_correction |  | BEAR | N | STAGED_GO | No long_term edge: structure… |
+| EIGEN/USDT | 0.3052 | scalp | not_actionable | none | 45 | SHORT | 0.57961 | 0.585135 | 0.573235 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=158.0… | unclassified | abc_correction |  | BEAR | N | STAGED_GO | No scalp edge: structure=abc… |
+| EIGEN/USDT | 0.3052 | swing | not_actionable | none | 35 | SHORT | 0.57961 | 2.211621 | 0.540342 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=158.0… | unclassified | abc_correction |  | BEAR | N | STAGED_GO | No swing edge: structure=unc… |
+| ETH/USDT | 1773.97 | day_trade | not_actionable | none | 45 | LONG | 2202.54718 | 1615.665714 | 2223.965037 | 3.0 | abc_correction | invalid_impulse (R1(W2=123.9… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| ETH/USDT | 1773.97 | long_term | not_actionable | none | 45 | LONG | 2202.54718 | -207.584286 | 2526.945751 | 3.0 | abc_correction | invalid_impulse (R1(W2=123.9… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| ETH/USDT | 1773.97 | scalp | not_actionable | none | 45 | LONG | 2202.54718 | 1695.694286 | 2213.770394 | 3.0 | abc_correction | invalid_impulse (R1(W2=123.9… | abc_correction | bull_impulse_5 | bull_impulse_5 |  | BULL | N | STAGED_GO | No scalp edge: structure=bul… |
+| FIL/USDT | 0.8178 | day_trade | not_actionable | none | 53 | LONG | 1.985832 | 0.743834 | 2.000414 | 3.0 | abc_correction | invalid_impulse (R3) | abc_correction | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| FIL/USDT | 0.8178 | long_term | not_actionable | none | 35 | LONG | 1.985832 | 0.187071 | 2.218589 | 3.0 | abc_correction | invalid_impulse (R3) | abc_correction | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| FIL/USDT | 0.8178 | scalp | not_actionable | none | 53 | LONG | 1.985832 | 0.770454 | 1.992668 | 3.0 | abc_correction | invalid_impulse (R3) | abc_correction | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | No scalp edge: structure=abc… |
+| ID/USDT | 0.03728 | day_trade | not_actionable | none | 40 | SHORT | 0.01073 | 0.045357 | 0.006609 | 3.0 | unclassified | bear_impulse_5 | invalid_impulse (R3) | abc_correction | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| ID/USDT | 0.03728 | swing | not_actionable | none | 35 | SHORT | 0.01073 | 0.052771 | 0.001804 | 3.0 | unclassified | bear_impulse_5 | invalid_impulse (R3) | abc_correction | invalid_impulse (R2) |  | BEAR | N | STAGED_GO | No swing edge: structure=bea… |
+| IP/USDT | 0.3207 | long_term | not_actionable | none | 48 | LONG | 3.423674 | 0.026729 | 3.572217 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| IP/USDT | 0.3207 | scalp | not_actionable | none | 43 | LONG | 3.423674 | 0.2896 | 3.427424 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No scalp edge: structure=abc… |
+| IP/USDT | 0.3207 | swing | not_actionable | none | 45 | LONG | 3.423674 | 0.227166 | 3.462952 | 3.0 | unclassified | unclassified | abc_correction | abc_correction | abc_correction |  | BULL | N | STAGED_GO | No swing edge: structure=unc… |
+| LAYER/USDT | 0.07834 | swing | not_actionable | none | 40 | SHORT | 0.172323 | 0.593978 | 0.162342 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=358.4… | invalid_impulse (R1(W2=201.4… | invalid_impulse (R1(W2=105.1… |  | BEAR | N | STAGED_GO | No swing edge: structure=unc… |
+| LINK/USDT | 8.141 | long_term | not_actionable | none | 35 | LONG | 11.06742 | 2.065429 | 12.632563 | 3.0 | abc_correction | bear_impulse_5 | abc_correction | invalid_impulse (R1(W2=218.0… | bull_impulse_5 |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| LINK/USDT | 8.141 | scalp | not_actionable | none | 45 | LONG | 11.06742 | 7.735171 | 11.123349 | 3.0 | abc_correction | bear_impulse_5 | abc_correction | invalid_impulse (R1(W2=218.0… | bull_impulse_5 |  | BULL | N | STAGED_GO | No scalp edge: structure=bul… |
+| LINK/USDT | 8.141 | swing | not_actionable | none | 53 | LONG | 11.06742 | 6.3695 | 11.58867 | 3.0 | abc_correction | bear_impulse_5 | abc_correction | invalid_impulse (R1(W2=218.0… | bull_impulse_5 |  | BULL | N | STAGED_GO | No swing edge: structure=bea… |
+| LTC/USDT | 45.79 | day_trade | not_actionable | none | 35 | SHORT | 60.90704 | 61.457111 | 60.421683 | 3.0 | abc_correction | invalid_impulse (R1(W2=146.0… | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| LTC/USDT | 45.79 | long_term | not_actionable | none | 37 | SHORT | 60.90704 | 157.875 | 54.38204 | 3.0 | abc_correction | invalid_impulse (R1(W2=146.0… | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | No long_term edge: structure… |
+| LTC/USDT | 45.79 | scalp | not_actionable | none | 20 | SHORT | 60.90704 | 61.124326 | 60.656326 | 3.0 | abc_correction | invalid_impulse (R1(W2=146.0… | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | No scalp edge: structure=abc… |
+| OKB/USDT | 79.89 | scalp | not_actionable | none | 35 | LONG | 98.092 | 72.209429 | 99.705571 | 3.0 | invalid_impulse (R1(W2=10608… | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=217.7… | bull_impulse_5 |  | BULL | N | STAGED_GO | No scalp edge: structure=bul… |
+| ONDO/USDT | 0.3436 | swing | not_actionable | none | 45 | LONG | 0.401297 | 0.155436 | 0.439601 | 3.0 | invalid_impulse (R1(W2=314.9… | abc_correction | abc_correction | invalid_impulse (R2) | invalid_impulse (R3) |  | BULL | N | STAGED_GO | No swing edge: structure=abc… |
+| PENGU/USDT | 0.006914 | day_trade | not_actionable | none | 35 | SHORT | 0.012641 | 0.012766 | 0.01253 | 3.0 | ending_diagonal | ending_diagonal | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| PENGU/USDT | 0.006914 | scalp | not_actionable | none | 35 | SHORT | 0.012641 | 0.012692 | 0.012581 | 3.0 | ending_diagonal | ending_diagonal | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | No scalp edge: structure=abc… |
+| PENGU/USDT | 0.006914 | swing | not_actionable | none | 45 | SHORT | 0.012641 | 0.013652 | 0.011981 | 3.0 | ending_diagonal | ending_diagonal | abc_correction | abc_correction | abc_correction |  | BEAR | N | STAGED_GO | No swing edge: structure=end… |
+| PEPE/USDT | 2.912e-06 | day_trade | not_actionable | none | 40 | LONG | 5e-06 | 3e-06 | 5e-06 | 3.0 | abc_correction | invalid_impulse (R1(W2=305.8… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| PEPE/USDT | 2.912e-06 | long_term | not_actionable | none | 25 | LONG | 5e-06 | -1e-06 | 5e-06 | 3.0 | abc_correction | invalid_impulse (R1(W2=305.8… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| PI/USDT | 0.1365 | long_term | not_actionable | none | 30 | LONG | 0.178306 | 0.072782 | 0.205616 | 3.0 | unclassified | invalid_impulse (R3) | invalid_impulse (R1(W2=464.7… | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| PI/USDT | 0.1365 | scalp | not_actionable | none | 45 | LONG | 0.178306 | 0.132863 | 0.178938 | 3.0 | unclassified | invalid_impulse (R3) | invalid_impulse (R1(W2=464.7… | bull_impulse_5 | abc_correction |  | BULL | N | STAGED_GO | No scalp edge: structure=abc… |
+| RESOLV/USDT | 0.02216 | scalp | not_actionable | none | 55 | LONG | 0.064031 | 0.013551 | 0.065341 | 3.0 | unclassified | invalid_impulse (R1(W2=179.1… | abc_correction | invalid_impulse (R1(W2=118.6… | abc_correction |  | BULL | N | STAGED_GO | No scalp edge: structure=abc… |
+| SOL/USDT | 74.79 | long_term | not_actionable | none | 45 | LONG | 101.49974 | -24.616571 | 116.456883 | 3.0 | abc_correction | invalid_impulse (R1(W2=267.4… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| SUI/USDT | 0.7401 | swing | not_actionable | none | 45 | LONG | 1.291489 | 0.587199 | 1.353407 | 3.0 | invalid_impulse (R1(W2=374.2… | ending_diagonal | abc_correction | invalid_impulse (R3) | invalid_impulse (R1(W2=119.4… |  | BULL | N | STAGED_GO | No swing edge: structure=end… |
+| TNSR/USDT | 0.03949 | day_trade | not_actionable | none | 30 | SHORT | 0.099369 | 0.105322 | 0.094116 | 3.0 | unclassified | invalid_impulse (R3) | bear_impulse_5 | bull_impulse_5 | invalid_impulse (R1(W2=133.3… |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| TRUMP/USDT | 1.933 | day_trade | not_actionable | none | 43 | SHORT | 10.29 | 10.331286 | 10.253571 | 3.0 | abc_correction | invalid_impulse (R1(W2=281.1… | bear_impulse_5 | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| TRUMP/USDT | 1.933 | long_term | not_actionable | none | 33 | SHORT | 10.29 | 11.518071 | 9.675964 | 3.0 | abc_correction | invalid_impulse (R1(W2=281.1… | bear_impulse_5 | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | No long_term edge: structure… |
+| TRUMP/USDT | 1.933 | scalp | not_actionable | none | 28 | SHORT | 10.29 | 10.303093 | 10.274893 | 3.0 | abc_correction | invalid_impulse (R1(W2=281.1… | bear_impulse_5 | bull_impulse_5 | abc_correction |  | BEAR | N | STAGED_GO | No scalp edge: structure=abc… |
+| TRX/USDT | 0.33125 | day_trade | not_actionable | none | 35 | LONG | 0.2009 | 0.199783 | 0.201886 | 3.0 | abc_correction | abc_correction | invalid_impulse (R3) | unclassified | bull_impulse_5 |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| TRX/USDT | 0.33125 | long_term | not_actionable | none | 37 | LONG | 0.2009 | 0.14753 | 0.227585 | 3.0 | abc_correction | abc_correction | invalid_impulse (R3) | unclassified | bull_impulse_5 |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| TRX/USDT | 0.33125 | scalp | not_actionable | none | 45 | LONG | 0.2009 | 0.200457 | 0.201411 | 3.0 | abc_correction | abc_correction | invalid_impulse (R3) | unclassified | bull_impulse_5 |  | BULL | N | STAGED_GO | No scalp edge: structure=bul… |
+| TRX/USDT | 0.33125 | swing | not_actionable | none | 49 | LONG | 0.2009 | 0.189165 | 0.208553 | 3.0 | abc_correction | abc_correction | invalid_impulse (R3) | unclassified | bull_impulse_5 |  | BULL | N | STAGED_GO | No swing edge: structure=abc… |
+| UNI/USDT | 3.1 | day_trade | not_actionable | none | 35 | SHORT | 4.00205 | 4.067986 | 3.943871 | 3.0 | abc_correction | abc_correction | abc_correction | bull_impulse_5 | bear_impulse_5 |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| UNI/USDT | 3.1 | long_term | not_actionable | none | 37 | SHORT | 4.00205 | 11.6025 | 3.22055 | 3.0 | abc_correction | abc_correction | abc_correction | bull_impulse_5 | bear_impulse_5 |  | BEAR | N | STAGED_GO | No long_term edge: structure… |
+| UNI/USDT | 3.1 | scalp | not_actionable | none | 35 | SHORT | 4.00205 | 4.027214 | 3.973014 | 3.0 | abc_correction | abc_correction | abc_correction | bull_impulse_5 | bear_impulse_5 |  | BEAR | N | STAGED_GO | No scalp edge: structure=bea… |
+| UNI/USDT | 3.1 | swing | not_actionable | none | 40 | SHORT | 4.00205 | 10.716057 | 3.655336 | 3.0 | abc_correction | abc_correction | abc_correction | bull_impulse_5 | bear_impulse_5 |  | BEAR | N | STAGED_GO | No swing edge: structure=abc… |
+| XLM/USDT | 0.21548 | scalp | not_actionable | none | 40 | SHORT | 0.195725 | 0.225344 | 0.193748 | 3.0 | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) | abc_correction |  | BEAR | N | STAGED_GO | No scalp edge: structure=abc… |
+| XPL/USDT | 0.09238 | day_trade | not_actionable | none | 35 | SHORT | -0.96673 | 0.124652 | -0.968483 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=492.6… | abc_correction | unclassified |  | BEAR | N | STAGED_GO | No day_trade edge: structure… |
+| XPL/USDT | 0.09238 | scalp | not_actionable | none | 20 | SHORT | -0.96673 | 0.104847 | -0.967569 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=492.6… | abc_correction | unclassified |  | BEAR | N | STAGED_GO | No scalp edge: structure=unc… |
+| XPL/USDT | 0.09238 | swing | not_actionable | none | 45 | SHORT | -0.96673 | 1.274998 | -0.985895 | 3.0 | unclassified | unclassified | invalid_impulse (R1(W2=492.6… | abc_correction | unclassified |  | BEAR | N | STAGED_GO | No swing edge: structure=unc… |
+| XRP/USDT | 1.1604 | day_trade | not_actionable | none | 53 | LONG | 1.506747 | 1.093163 | 1.520793 | 3.0 | invalid_impulse (R3) | invalid_impulse (R1(W2=147.3… | abc_correction | abc_correction | invalid_impulse (R2) |  | BULL | N | STAGED_GO | No day_trade edge: structure… |
+| ZEC/USDT | 464.14 | long_term | not_actionable | none | 39 | LONG | -173.08 | -562.627857 | 21.693929 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | N | STAGED_GO | No long_term edge: structure… |
+| ZEC/USDT | 464.14 | swing | not_actionable | none | 45 | LONG | -173.08 | -278.559643 | -104.288929 | 3.0 | unclassified | abc_correction | abc_correction | abc_correction | invalid_impulse (R3) |  | BULL | N | STAGED_GO | No swing edge: structure=abc… |

@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from core.atr import compute_atr14
+from core.indicators import score_indicator_confluence
 from core.risk import build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
+from engine.readiness import resolve_execution_status
 
 STYLE_CONFIG = {
   "scalp": {
@@ -57,44 +59,6 @@ def _structure_low_high(mws: List[dict]) -> tuple[float, float]:
   return min(lows), max(highs)
 
 
-def _honest_status(
-  style: str,
-  direction: str,
-  wave: dict,
-  in_zone: bool,
-  impulse_valid: bool,
-  consensus_dir: str,
-  rr: float,
-  min_rr: float,
-  harmonic_near: bool,
-) -> tuple[str, str]:
-  """Returns (status, honest_reason). status: executable | monitor | not_actionable"""
-  gaps: List[str] = []
-  if wave.get("structure", "").startswith("invalid"):
-    gaps.append(wave["structure"])
-  if not impulse_valid and style in ("scalp", "day_trade"):
-    gaps.append(f"{style} needs TF impulse confirmation")
-  if consensus_dir not in ("NEUTRAL", direction, "BULL" if direction == "LONG" else "BEAR"):
-    gaps.append(f"consensus={consensus_dir} vs {direction}")
-
-  if rr < min_rr:
-    return "not_actionable", f"R:R {rr:.2f} below min {min_rr} for {style}"
-
-  if impulse_valid and in_zone and rr >= min_rr and not gaps:
-    return "executable", f"{style} confluence: impulse valid, in zone, R:R {rr:.2f}"
-
-  if harmonic_near or (in_zone and rr >= min_rr * 0.9):
-    reason = f"Monitor {style}: " + ("harmonic PRZ active" if harmonic_near else "in zone, await 15m/1h close")
-    if gaps:
-      reason += f" (gaps: {'; '.join(gaps[:2])})"
-    return "monitor", reason
-
-  if gaps:
-    return "monitor", f"Conditional {style}: {'; '.join(gaps[:3])}"
-
-  return "not_actionable", f"No {style} edge: structure={wave.get('structure', 'n/a')}, R:R={rr:.2f}"
-
-
 def build_style_setup(
   style: str,
   data: Dict[str, pd.DataFrame],
@@ -107,6 +71,8 @@ def build_style_setup(
   in_zone: bool,
   consensus: dict,
   c_targets: dict,
+  executive: dict,
+  market_tools: Optional[dict] = None,
 ) -> dict:
   cfg = STYLE_CONFIG[style]
   tf = cfg["primary_tf"]
@@ -142,25 +108,41 @@ def build_style_setup(
     c_targets.get("c_target_161"),
   )
   rr = targets[1]["rr"] if len(targets) > 1 else 0
-  status, reason = _honest_status(
-    style,
-    direction,
-    wave,
-    in_zone,
-    wave.get("impulse_valid", False),
-    consensus_dir,
-    rr,
-    cfg["min_rr"],
-    bool(harm_tf),
+  harmonic_near = bool(harm_tf)
+  indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
+  mkt = market_tools or {}
+  boost = mkt.get("confluence_boost", 0)
+  if boost:
+    indicators["score"] = min(100, indicators["score"] + boost)
+    indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
+    indicators["signals"] = list(indicators.get("signals", [])) + mkt.get("confluence_signals", [])[:2]
+  status, execution_tier, reason = resolve_execution_status(
+    style=style,
+    direction=direction,
+    wave=wave,
+    in_zone=in_zone,
+    zone_dist_pct=indicators.get("zone_dist_pct", 99.0),
+    impulse_valid=wave.get("impulse_valid", False),
+    consensus_dir=consensus_dir,
+    rr=rr,
+    min_rr=cfg["min_rr"],
+    harmonic_near=harmonic_near,
+    indicator=indicators,
+    executive_verdict=executive.get("verdict", ""),
   )
 
-  risk = risk_package(entry_anchor, stop["price"], cfg["account_risk_pct"])
+  probe_size_pct = 50 if execution_tier == "probe" else 100
+  risk = risk_package(entry_anchor, stop["price"], cfg["account_risk_pct"] * probe_size_pct / 100)
 
   return {
     "style": style,
     "timeframe": tf,
     "horizon": cfg["horizon"],
     "status": status,
+    "execution_tier": execution_tier,
+    "readiness_score": indicators.get("score", 0),
+    "indicator_signals": indicators.get("signals", []),
+    "zone_dist_pct": indicators.get("zone_dist_pct"),
     "direction": direction,
     "honest_reason": reason,
     "wave_structure": wave.get("structure"),
@@ -169,22 +151,35 @@ def build_style_setup(
     "entry": {
       "anchor": round(entry_anchor, 6),
       "zone": [round(kz_low, 6), round(kz_high, 6)],
-      "order_type": "market" if status == "executable" and in_zone else "limit",
+      "order_type": (
+        "market"
+        if status == "executable" and in_zone and execution_tier == "full"
+        else "limit"
+      ),
     },
     "dca": dca,
     "stop_loss": stop,
     "targets": targets,
     "risk": risk,
+    "indicators": indicators,
+    "market_tools": {
+      "boost": boost,
+      "signals": mkt.get("confluence_signals", [])[:3],
+      "rsi_stack": mkt.get("multi_tf_rsi", {}).get("bias"),
+      "btc_corr": mkt.get("btc_correlation", {}).get("correlation"),
+    },
     "harmonic": harm_tf[0] if harm_tf else None,
     "monitor": {
       "check_interval": tf,
       "invalidate_if": [
         f"1d close beyond stop {stop['price']}",
         f"{tf} impulse flips opposite",
+        "readiness_score drops below 40",
       ],
       "upgrade_if": [
         f"{tf} impulse passes R1/R2/R3",
         "price enters entry zone with rejection wick",
+        f"readiness_score >= {indicators.get('threshold', 58)}",
       ],
     },
   }
@@ -203,21 +198,27 @@ def build_outcomes(
   consensus: dict,
   c_targets: dict,
   executive: dict,
+  market_tools: Optional[dict] = None,
 ) -> dict:
+  mkt = market_tools or {}
+  boost = mkt.get("confluence_boost", 0)
   setups = {}
   for style in STYLE_CONFIG:
     setups[style] = build_style_setup(
       style, data, adaptive, wave_structure, direction,
-      kz_low, kz_high, harmonic_overlaps, in_zone, consensus, c_targets,
+      kz_low, kz_high, harmonic_overlaps, in_zone, consensus, c_targets, executive,
+      market_tools=mkt,
     )
 
   executable = [s for s in setups.values() if s.get("status") == "executable"]
+  full_exec = [s for s in executable if s.get("execution_tier") == "full"]
+  probe_exec = [s for s in executable if s.get("execution_tier") == "probe"]
   monitor = [s for s in setups.values() if s.get("status") == "monitor"]
   skip = [s for s in setups.values() if s.get("status") == "not_actionable"]
 
   # Primary = best honest outcome
   if executable:
-    primary = max(executable, key=lambda s: s["targets"][1]["rr"] if s.get("targets") else 0)
+    primary = max(executable, key=lambda s: (s.get("readiness_score", 0), s["targets"][1]["rr"] if s.get("targets") else 0))
     primary_key = primary["style"]
     primary_status = "executable"
   elif monitor:
@@ -236,12 +237,14 @@ def build_outcomes(
       "primary_status": primary_status,
       "primary_direction": primary.get("direction"),
       "executable_count": len(executable),
+      "full_executable_count": len(full_exec),
+      "probe_executable_count": len(probe_exec),
       "monitor_count": len(monitor),
       "not_actionable_count": len(skip),
       "executive_verdict": executive.get("verdict"),
       "truth": (
-        f"{len(executable)} executable, {len(monitor)} monitor, {len(skip)} skip — "
-        f"primary={primary_key} ({primary_status})"
+        f"{len(full_exec)} full + {len(probe_exec)} probe executable, "
+        f"{len(monitor)} monitor, {len(skip)} skip — primary={primary_key} ({primary_status})"
       ),
     },
     "setups": setups,

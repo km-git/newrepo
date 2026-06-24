@@ -19,11 +19,13 @@ from core.fib_zone import compute_c_targets, compute_prior_decline_fibs, compute
 from core.harmonic import collect_actionable_harmonics, scan_harmonics
 from core.impulse import validate_impulse
 from core.mc import ew_aware_monte_carlo
-from core.monowaves import adaptive_skip_for_df, compute_skip, extract_monowaves_cached
-from engine.executive import executive_decide
+from core.ew_coverage import build_adaptive_pivots
+from core.market_tools import build_market_confluence
+from core.monowaves import adaptive_skip_for_df, extract_monowaves_cached
 from engine.autodream import enrich_outcomes_with_autodream, record_outcome
+from engine.ew_matrix import DEFAULT_EW_TFS, build_ew_matrix, ew_coverage_summary
+from engine.executive import executive_decide
 from engine.outcomes import build_outcomes
-from engine.wave_detail import analyze_all_timeframes
 from fetchers import fetch
 
 
@@ -129,33 +131,56 @@ def classify_htf(df: pd.DataFrame, tf_label: str = "1d") -> dict:
 
 
 
+def _first_usable_df(data: dict, prefer: List[str]):
+  for k in prefer:
+    df = data.get(k)
+    if df is not None and len(df) >= 5:
+      return df
+  for df in data.values():
+    if df is not None and len(df) >= 5:
+      return df
+  return None
+
+
 def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   stages: List[tuple[str, dict, Any]] = []
+  tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
 
-  # Fetch
+  # Fetch — always attempt all timeframes (partial OK)
   data = fetch(symbol, tfs, is_crypto)
-  stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto}, {"bars": {tf: len(data[tf]) for tf in tfs}}))
+  stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto},
+                 {"bars": {tf: len(data[tf]) for tf in tfs if tf in data}}))
 
-  # STEP 1: HTF bias
-  htf_class = classify_htf(data["1d"])
+  htf_df = _first_usable_df(data, ["1d", "4h", "1h"])
+  if htf_df is None or len(htf_df) < 5:
+    raise ValueError(f"Insufficient OHLCV for {symbol}")
+
+  # STEP 1: HTF bias (1d primary; 1w context when available)
+  htf_class = classify_htf(htf_df, tf_label="1d" if "1d" in data else "4h")
+  htf_weekly = None
+  if "1w" in data and len(data["1w"]) >= 5:
+    htf_weekly = classify_htf(data["1w"], tf_label="1w")
   stages.append(("classify_htf", {"tf": "1d"}, compact_summary(htf_class)))
 
-  # STEP 2: Adaptive pivots
-  adaptive: Dict[str, dict] = {}
+  # STEP 2: Adaptive pivots — ALL timeframes, adaptive skip fallback
+  adaptive = build_adaptive_pivots(symbol, data, tfs)
   for tf in tfs:
-    if tf not in data:
-      continue
-    atr = compute_atr14(data[tf])
-    med = median_daily_range(data[tf])
-    skip = compute_skip(atr, med)
-    mws = extract_monowaves_cached(data[tf], skip, cache_tag=f"{symbol}_{tf}")
-    adaptive[tf] = {"skip": skip, "monowaves": mws, "atr_14": atr}
-    print(f"[step2] {tf}: skip={skip} monowaves={len(mws)} ATR={atr:.2f}")
-  stages.append(("adaptive_pivots", {"tfs": tfs}, {tf: {"skip": adaptive[tf]["skip"], "count": len(adaptive[tf]["monowaves"])} for tf in adaptive}))
+    ad = adaptive.get(tf, {})
+    print(f"[step2] {tf}: skip={ad.get('skip', 0)} monowaves={len(ad.get('monowaves', []))} "
+          f"bars={ad.get('bars', 0)} status={ad.get('status', 'n/a')}")
+  stages.append(("adaptive_pivots", {"tfs": tfs},
+                 {tf: {"skip": adaptive[tf]["skip"], "count": len(adaptive[tf]["monowaves"]),
+                       "status": adaptive[tf].get("status")} for tf in tfs}))
 
-  # STEP 2b: Per-timeframe wave structure
-  wave_structure = analyze_all_timeframes(adaptive, data, tfs)
-  print("[step2b] wave structures: " + ", ".join(f"{tf}={wave_structure[tf].get('structure', 'n/a')}" for tf in wave_structure))
+  # STEP 2b: Elliott Wave matrix — guaranteed every TF
+  wave_structure = build_ew_matrix(adaptive, data, tfs)
+  ew_summary = ew_coverage_summary(wave_structure, tfs)
+  print("[step2b] EW matrix: " + ", ".join(
+    f"{tf}={wave_structure[tf].get('structure', 'n/a')}" for tf in tfs
+  ))
+  print(f"[step2b] EW coverage: {ew_summary['timeframes_analyzed']}/{len(tfs)} TFs "
+        f"({ew_summary['coverage_pct']}%)")
+  stages.append(("ew_matrix", {"symbol": symbol}, ew_summary))
 
   # STEP 3: Kill zone (direction-aware C targets, price-proximate cluster)
   wave_a = htf_class["wave_A"]
@@ -164,8 +189,8 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   c_target_100 = c_targets["c_target_100"]
   c_target_161 = c_targets["c_target_161"]
 
-  prior_fibs = compute_prior_decline_fibs(data["1d"])
-  current_price = float(data["1d"]["Close"].iloc[-1])
+  prior_fibs = compute_prior_decline_fibs(htf_df)
+  current_price = float(htf_df["Close"].iloc[-1])
   kz_low, kz_high, kz_meta = compute_tight_kill_zone(
     c_target_100, c_target_161, prior_fibs, current_price
   )
@@ -190,7 +215,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   bear_count = 0
   violations_sample: List[str] = []
 
-  if "15m" in adaptive:
+  if "15m" in adaptive and adaptive["15m"].get("monowaves"):
     mws_15m = adaptive["15m"]["monowaves"]
     best_val = None
     for start in range(len(mws_15m) - 4):
@@ -261,6 +286,17 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
   print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
   stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
 
+  # STEP 9: Supplementary market tools (EW always primary)
+  btc_1d = None
+  if is_crypto and not symbol.upper().startswith("BTC"):
+    try:
+      btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
+    except Exception:
+      pass
+  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
+  stages.append(("market_confluence", {"symbol": symbol},
+                 {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
+
   # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
   outcomes = build_outcomes(
     symbol=symbol,
@@ -275,6 +311,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     consensus=consensus,
     c_targets=c_targets,
     executive=executive,
+    market_tools=market_tools,
   )
   outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
   record_outcome(symbol, outcomes, current_price, status)
@@ -300,11 +337,19 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     "status": status,
     "step1_htf_bias": htf_class,
+    "step1_htf_weekly": htf_weekly,
     "step2_adaptive_pivots": {
-      tf: {"skip": adaptive[tf]["skip"], "monowave_count": len(adaptive[tf]["monowaves"]), "atr_14": adaptive[tf]["atr_14"]}
-      for tf in adaptive
+      tf: {
+        "skip": adaptive[tf]["skip"],
+        "monowave_count": len(adaptive[tf]["monowaves"]),
+        "atr_14": adaptive[tf].get("atr_14", 0),
+        "bars": adaptive[tf].get("bars", 0),
+        "status": adaptive[tf].get("status", "ok"),
+      }
+      for tf in tfs
     },
     "step2_wave_structure": wave_structure,
+    "step2_ew_coverage": ew_summary,
     "step3_c_targets": c_targets,
     "step3_kill_zone": {
       "price_low": kz_low,
@@ -326,6 +371,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "violations_sample": violations_sample,
     },
     "step6_wave_consensus": consensus,
+    "step9_market_confluence": market_tools,
     "step8_outcomes": outcomes,
     "trade_setup": trade,
     "executive_decision": executive,

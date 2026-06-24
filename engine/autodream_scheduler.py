@@ -73,6 +73,8 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
     "full_html": str(out / "latest_analysis.html"),
     "full_csv": str(out / "latest_analysis.csv"),
     "setups_csv": str(out / "latest_setups.csv"),
+    "setups_complete_csv": str(out / "latest_setups_complete.csv"),
+    "setups_html": str(out / "latest_setups.html"),
     "setups_md": "reports/TRADE_SETUPS.md",
   }
 
@@ -85,7 +87,18 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
   if src_csv and Path(src_csv).exists():
     shutil.copy2(src_csv, stable["full_csv"])
   if src_setups and Path(src_setups).exists():
-    shutil.copy2(src_setups, stable["setups_csv"])
+    dst_csv = Path(stable["setups_csv"])
+    dst_complete = Path(stable["setups_complete_csv"])
+    if Path(src_setups).resolve() != dst_csv.resolve():
+      shutil.copy2(src_setups, dst_csv)
+    if Path(src_setups).resolve() != dst_complete.resolve():
+      shutil.copy2(src_setups, dst_complete)
+
+  setups_html_src = Path("output/latest_setups.html")
+  if setups_html_src.exists():
+    dst = Path(stable["setups_html"])
+    if setups_html_src.resolve() != dst.resolve():
+      shutil.copy2(setups_html_src, dst)
 
   # setups markdown written by export_all_reports; ensure reports path exists in doc
   setups_md = Path("reports/TRADE_SETUPS.md")
@@ -99,6 +112,8 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
     "full_html": stable["full_html"],
     "full_csv": stable["full_csv"],
     "setups_csv": stable["setups_csv"],
+    "setups_complete_csv": stable.get("setups_complete_csv"),
+    "setups_html": stable.get("setups_html"),
     "setups_md": stable.get("setups_md"),
     "outcomes_csv": meta.get("outcomes_csv"),
     "detailed_csv": meta.get("detailed_csv"),

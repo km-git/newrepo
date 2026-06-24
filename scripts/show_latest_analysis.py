@@ -35,14 +35,17 @@ def main() -> None:
 
   stable_html = out / "latest_analysis.html"
   stable_csv = out / "latest_analysis.csv"
-  stable_setups = out / "latest_setups.csv"
+  stable_setups = out / "latest_setups_complete.csv"
+  stable_setups_html = out / "latest_setups.html"
   paths_doc = _from_latest_paths(out)
 
   full = stable_csv if stable_csv.exists() else (_latest("top*_full_*.csv", out) or _latest("*_full_*.csv", out))
   setups = stable_setups if stable_setups.exists() else (_latest("top*_setups_*.csv", out) or _latest("*_setups_*.csv", out))
+  setups_html = stable_setups_html if stable_setups_html.exists() else (_latest("latest_setups.html", out) or _latest("top*_setups_*.html", out))
   html = stable_html if stable_html.exists() else (_latest("top*_full_*.html", out) or _latest("*_full_*.html", out))
   detailed = _latest("top*_detailed_*.csv", out)
   outcomes = _latest("top*_outcomes_*.csv", out)
+  md = Path("reports/TRADE_SETUPS.md")
 
   if not any([full, detailed, outcomes]):
     print("No analysis exports found. Run:", file=sys.stderr)
@@ -53,21 +56,26 @@ def main() -> None:
   print("Latest analysis tables:\n")
   if paths_doc:
     print(f"  Scheduler updated: {paths_doc.get('updated', 'n/a')}")
-  if full:
-    print(f"  FULL (all confluences + 4 setups/pair): {full.resolve()}")
-  if html:
-    print(f"  HTML (browser view):                   {html.resolve()}")
-  md = Path("reports/TRADE_SETUPS.md")
-  if md.exists():
-    print(f"  TRADE SETUPS (in repo):                {md.resolve()}")
+  print("\n  ALL setups (executable + monitor + not_actionable):")
+  if setups_html:
+    print(f"  SETUPS HTML (color-coded):             {setups_html.resolve()}")
   if setups:
-    print(f"  SETUPS (one row per pair×style):       {setups.resolve()}")
+    print(f"  SETUPS CSV (all columns):              {setups.resolve()}")
+  if md.exists():
+    print(f"  TRADE SETUPS MD (in repo):             {md.resolve()}")
+  print("\n  Per-pair wide table:")
+  if full:
+    print(f"  FULL CSV (1 row/pair):                 {full.resolve()}")
+  if html:
+    print(f"  FULL HTML (browser):                   {html.resolve()}")
   if detailed:
     print(f"  Detailed (waves only):                 {detailed.resolve()}")
   if outcomes:
     print(f"  Outcomes (styles only):                {outcomes.resolve()}")
 
-  if args.open_html and html:
+  if args.open_html and setups_html:
+    print(f"\nOpen setups table: file://{setups_html.resolve()}")
+  elif args.open_html and html:
     print(f"\nOpen in browser: file://{html.resolve()}")
 
 
