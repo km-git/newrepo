@@ -72,6 +72,7 @@ def _executive_action(setup: dict, exec_score: int, blocker: str) -> Tuple[str, 
   """
   Returns (action, position_size_pct, playbook_line).
   Never returns SKIP — executive always routes to a plan.
+  EXECUTE_NOW requires full gate bundle (executable + oos_gate passed).
   """
   status = setup.get("status")
   tier = setup.get("execution_tier", "none")
@@ -82,20 +83,25 @@ def _executive_action(setup: dict, exec_score: int, blocker: str) -> Tuple[str, 
   smc_valid = bool(setup.get("smc_valid") or setup.get("entry_signal"))
   smc_partial = int(setup.get("confluence_count") or 0) >= 1
 
-  if status == "executable" and setup.get("oos_gate") == "passed":
+  all_gates = (
+    status == "executable"
+    and tier in ("full", "probe")
+    and setup.get("oos_gate") == "passed"
+    and not setup.get("structure_blocked")
+    and setup.get("msb_gate") != "blocked_pass"
+    and (setup.get("style") != "smc" or setup.get("entry_confirm_ok"))
+  )
+
+  if all_gates:
     size = 100 if tier == "full" else 50
     return "EXECUTE_NOW", size, "All gates passed — execute per setup tier"
 
-  if status == "executable" and (setup.get("entry_signal") or setup.get("entry_probe")):
-    size = 100 if tier == "full" else 50
-    return "EXECUTE_NOW", size, "SMC confluence executable — execute per tier"
-
   if status == "executable":
-    return "EXECUTE_CAUTION", 35, "Executable label but OOS pending — reduced size"
+    return "EXECUTE_CAUTION", 35, "Executable label but gates incomplete — reduced size, no live"
 
-  if exec_score >= 75 and oos_n >= 3 and oos is not None and float(oos) >= 0.55:
-    size = 75 if (wave_valid or smc_valid) else 40
-    return "EXECUTE_NOW", size, "Executive override: strong OOS + composite score"
+  if exec_score >= 75 and oos_n >= 15 and oos is not None and float(oos) >= 0.55:
+    size = 40 if (wave_valid or smc_valid) else 25
+    return "SCALE_IN", size, "Strong OOS — scale in only until all gates pass (no EXECUTE_NOW on monitor)"
 
   if exec_score >= 62 and (wave_valid or wave_partial or smc_valid) and blocker != "broken_geometry":
     return "SCALE_IN", 40, "Scale in 25-40% — partial/valid impulse or SMC, await full confirm"
@@ -432,6 +438,11 @@ def build_executive_board(
       "entry_probe": setup.get("entry_probe"),
       "entry_grade": setup.get("entry_grade"),
       "confluence_count": setup.get("confluence_count"),
+      "oos_gate": setup.get("oos_gate"),
+      "entry_confirm_ok": setup.get("entry_confirm_ok"),
+      "structure_blocked": setup.get("structure_blocked"),
+      "msb_gate": setup.get("msb_gate"),
+      "vp_filter_ok": setup.get("vp_filter_ok"),
     }
     by_symbol[sym].append(row)
     scored.append(row)

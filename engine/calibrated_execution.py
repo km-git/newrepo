@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from engine.indicator_calibration import (
   apply_extra_calibration_tokens,
+  apply_oos_executable_gate,
   build_hybrid_weights,
   load_calibration,
 )
@@ -102,16 +103,85 @@ def calibrated_size_pct(
   return size, notes
 
 
+def validate_execution_gates(
+  setup: dict,
+  *,
+  audit_status: Optional[str] = None,
+  stamp: bool = True,
+) -> Tuple[bool, dict, str]:
+  """
+  Single gate bundle for batch, board, queue, and live paths.
+  Returns (passed, setup, blocker_reason).
+  """
+  s = dict(setup)
+  msb = None
+  if s.get("msb_pass") is not None or s.get("msb_z") is not None:
+    msb = {"status": "ok", "pass": bool(s.get("msb_pass")), "z": s.get("msb_z")}
+  s = apply_msb_pass_demotion(s, msb)
+
+  if audit_status == "FAIL":
+    if stamp and s.get("status") == "executable":
+      s["status"] = "monitor"
+      s["execution_tier"] = "none"
+      s["gate_blocker"] = "system_audit_fail"
+    return False, s, "system audit FAIL"
+
+  style = s.get("style", "")
+  tier = s.get("execution_tier", "none")
+  wants_exec = s.get("status") == "executable" and tier in ("full", "probe")
+
+  if wants_exec:
+    if s.get("structure_blocked"):
+      if stamp:
+        s["status"] = "monitor"
+        s["execution_tier"] = "none"
+        s["gate_blocker"] = "structure_counter_trend"
+      return False, s, "counter-trend structure block"
+    if style == "smc" and not s.get("entry_confirm_ok", False):
+      if stamp:
+        s["status"] = "monitor"
+        s["execution_tier"] = "none"
+        s["gate_blocker"] = "await_entry_confirm"
+      return False, s, "await rejection wick / bar+2 confirm"
+    if s.get("vp_filter_ok") is False:
+      if stamp:
+        s["status"] = "monitor"
+        s["execution_tier"] = "none"
+        s["gate_blocker"] = "vp_filter_fail"
+      return False, s, "volume profile filter fail"
+
+  s = apply_oos_executable_gate(s)
+  passed = (
+    s.get("status") == "executable"
+    and s.get("execution_tier") in ("full", "probe")
+    and s.get("oos_gate") == "passed"
+  )
+  if passed:
+    s["gates_passed"] = True
+    return True, s, "all gates passed"
+  blocker = s.get("gate_blocker") or s.get("oos_gate") or "gates_incomplete"
+  s["gates_passed"] = False
+  return False, s, str(blocker)
+
+
+def gates_passed(setup: dict) -> bool:
+  """Quick check without mutating setup."""
+  ok, _, _ = validate_execution_gates(setup, stamp=False)
+  return ok
+
+
 def resolve_live_status(
   setup: dict,
   style: str = "smc",
   executive_verdict: str = "",
   msb: Optional[dict] = None,
+  audit_status: Optional[str] = None,
 ) -> dict:
   """Re-resolve execution status with OOS + MSB demotion for live/monitor upgrades."""
   setup = apply_msb_pass_demotion(setup, msb)
 
   if style != "smc":
+    _, setup, _ = validate_execution_gates(setup, audit_status=audit_status)
     return setup
 
   wave_stub = {
@@ -160,4 +230,7 @@ def resolve_live_status(
   setup["status"] = status
   setup["execution_tier"] = tier
   setup["honest_reason"] = reason
+  setup["entry_confirm_ok"] = setup.get("entry_confirm_ok", False)
+  setup["structure_blocked"] = setup.get("structure_blocked", False)
+  _, setup, _ = validate_execution_gates(setup, audit_status=audit_status)
   return setup

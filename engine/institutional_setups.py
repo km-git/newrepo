@@ -189,8 +189,9 @@ def build_smc_setup(
     smc_structure=tf_analysis.get("structure_event", ""),
   )
   if ew_status == "executable" and status != "executable":
-    status, tier = ew_status, ew_tier
-    reason = f"SMC+EW: {reason}"
+    if entry_confirm_ok and not inst.get("structure_blocked"):
+      status, tier = ew_status, ew_tier
+      reason = f"SMC+EW: {reason}"
 
   probe_size = 50 if tier == "probe" else 100
   risk = risk_package(entry_anchor, stop["price"], SMC_STYLE["account_risk_pct"] * probe_size / 100)
@@ -231,6 +232,8 @@ def build_smc_setup(
     "honest_reason": reason,
     "entry_signal": entry_signal,
     "entry_probe": entry_probe,
+    "entry_confirm_ok": entry_confirm_ok,
+    "structure_blocked": inst.get("structure_blocked", False),
     "entry_grade": entry_grade,
     "institutional_score": score,
     "confluence_count": inst.get("confluence_count", 0),

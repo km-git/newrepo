@@ -32,6 +32,9 @@ MIN_BOOTSTRAP_CLOSED = 30
 MIN_RECALIBRATION_CLOSED = 100
 SCORING_ERA_CALIBRATED = "calibrated"
 SCORING_ERA_LEGACY = "legacy"
+EXECUTION_ERA_GATED = "executable_gated"
+EXECUTION_ERA_MONITOR = "monitor"
+EXECUTION_ERA_UNVALIDATED = "executable_unvalidated"
 
 DEFAULT_STYLE_THRESHOLDS = {
   "scalp": 72,
@@ -159,14 +162,27 @@ def filter_calibrated_ledger(ledger: Optional[List[dict]] = None) -> List[dict]:
   return [t for t in ledger if t.get("scoring_era") == SCORING_ERA_CALIBRATED]
 
 
+def filter_executable_gated_ledger(ledger: Optional[List[dict]] = None) -> List[dict]:
+  """Closed trades that passed full execution gate bundle — preferred calibration input."""
+  ledger = ledger if ledger is not None else _load_ledger()
+  return [
+    t for t in ledger
+    if t.get("execution_era") == EXECUTION_ERA_GATED
+    and t.get("paper_outcome") in ("win", "loss")
+  ]
+
+
 def accumulation_status(ledger: Optional[List[dict]] = None) -> dict:
   """Track progress toward clean-subset re-estimation."""
   ledger = ledger if ledger is not None else _load_ledger()
   closed = [t for t in ledger if t.get("paper_outcome") in ("win", "loss")]
   calibrated_closed = [t for t in closed if t.get("scoring_era") == SCORING_ERA_CALIBRATED]
+  gated_closed = [t for t in closed if t.get("execution_era") == EXECUTION_ERA_GATED]
   calibrated_wins = sum(1 for t in calibrated_closed if t["paper_outcome"] == "win")
+  gated_wins = sum(1 for t in gated_closed if t["paper_outcome"] == "win")
   target = MIN_RECALIBRATION_CLOSED
   n_cal = len(calibrated_closed)
+  n_gated = len(gated_closed)
   cal = load_calibration() or {}
 
   return {
@@ -175,8 +191,10 @@ def accumulation_status(ledger: Optional[List[dict]] = None) -> dict:
     "legacy_closed": len(closed) - n_cal,
     "calibrated_closed": n_cal,
     "calibrated_win_rate": round(calibrated_wins / n_cal, 3) if n_cal else None,
+    "executable_gated_closed": n_gated,
+    "executable_gated_win_rate": round(gated_wins / n_gated, 3) if n_gated else None,
     "target_closed": target,
-    "remaining_to_target": max(0, target - n_cal),
+    "remaining_to_target": max(0, target - n_gated if n_gated >= MIN_BOOTSTRAP_CLOSED else target - n_cal),
     "ready_for_clean_reestimate": n_cal >= target,
     "current_calibration_id": cal.get("calibration_id"),
     "current_generation": cal.get("calibration_generation", 0),
@@ -216,6 +234,21 @@ def enrich_ledger_entry(
     cal and cal.get("available") and cal.get("signal_weights")
   )
   trade["scoring_era"] = SCORING_ERA_CALIBRATED if calibrated_active else SCORING_ERA_LEGACY
+
+  if (
+    setup.get("status") == "executable"
+    and setup.get("execution_tier") in ("full", "probe")
+    and setup.get("oos_gate") == "passed"
+    and not setup.get("structure_blocked")
+    and setup.get("msb_gate") != "blocked_pass"
+  ):
+    trade["execution_era"] = EXECUTION_ERA_GATED
+  elif setup.get("status") == "executable":
+    trade["execution_era"] = EXECUTION_ERA_UNVALIDATED
+  elif setup.get("status") == "monitor":
+    trade["execution_era"] = EXECUTION_ERA_MONITOR
+  else:
+    trade["execution_era"] = SCORING_ERA_LEGACY
 
   if cal:
     trade["calibration_id"] = cal.get("calibration_id")
@@ -521,12 +554,18 @@ def run_indicator_calibration(
   use_clean = calibrated_only or status["ready_for_clean_reestimate"]
 
   if use_clean:
-    subset = filter_calibrated_ledger(ledger)
-    source = "calibrated_era_only"
-    if len([t for t in subset if t.get("paper_outcome") in ("win", "loss")]) < MIN_BOOTSTRAP_CLOSED:
-      subset = ledger
-      source = "all_ledger"
-      use_clean = False
+    gated = filter_executable_gated_ledger(ledger)
+    gated_closed = [t for t in gated if t.get("paper_outcome") in ("win", "loss")]
+    if len(gated_closed) >= MIN_BOOTSTRAP_CLOSED:
+      subset = gated_closed
+      source = "executable_gated_era"
+    else:
+      subset = filter_calibrated_ledger(ledger)
+      source = "calibrated_era_only"
+      if len([t for t in subset if t.get("paper_outcome") in ("win", "loss")]) < MIN_BOOTSTRAP_CLOSED:
+        subset = ledger
+        source = "all_ledger"
+        use_clean = False
   else:
     subset = ledger
     source = "all_ledger"

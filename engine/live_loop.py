@@ -21,6 +21,7 @@ from engine.execution_queue import (
   QUEUE_PATH,
   build_execution_queue,
   collect_monitor_upgrades_from_events,
+  load_audit_status,
   load_execution_queue,
   save_execution_queue,
 )
@@ -90,12 +91,16 @@ def run_live_tick(
 
   if rebuild_queue:
     board = _load_board()
-    eq = build_execution_queue(board=board, monitor_queue=upgraded, approve=True)
+    audit_status = load_audit_status()
+    eq = build_execution_queue(
+      board=board, monitor_queue=upgraded, approve=True, audit_status=audit_status,
+    )
     save_execution_queue(eq)
     result["execution_queue"] = {
       "approved_count": eq.get("approved_count"),
       "rejected_count": eq.get("rejected_count"),
       "upgrade_count": len(upgraded),
+      "audit_status": audit_status,
       "path": str(QUEUE_PATH),
     }
   else:
@@ -104,6 +109,7 @@ def run_live_tick(
   if execute and eq.get("approved"):
     drain = drain_execution_queue(
       eq, mode="paper", max_trades=max_executions, dry_run=dry_run,
+      audit_status=eq.get("audit_status") or load_audit_status(),
     )
     result["execution"] = drain
 

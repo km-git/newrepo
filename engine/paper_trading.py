@@ -444,11 +444,17 @@ def apply_honesty_adjustments(outcomes: dict) -> dict:
     oos_note = ""
     if (setup.get("oos_trades") or 0) >= 3 and setup.get("oos_win_rate") is not None:
       oos_note = f"OOS WF {setup['oos_win_rate']:.0%} ({setup['oos_trades']} trades)"
-    if verdict == "validated":
+    gates_ok = (
+      setup.get("status") == "executable"
+      and setup.get("oos_gate") == "passed"
+    )
+    if verdict == "validated" and gates_ok:
       boost = int((wr - 0.5) * 20) if wr else 0
       if boost > 0:
         setup["readiness_score"] = min(100, setup.get("readiness_score", 0) + boost)
         notes.append(f"{'OOS' if oos_note else 'hist'} {wr:.0%} ({n} trades) supports setup +{boost} readiness")
+    elif verdict == "validated" and not gates_ok:
+      notes.append("validated hist/OOS but gates incomplete — no readiness boost")
     elif verdict == "caution":
       if setup.get("wf_degradation", 0) and setup["wf_degradation"] > 0.15:
         notes.append(f"WF degradation {setup['wf_degradation']:.0%} IS→OOS")
@@ -462,9 +468,11 @@ def apply_honesty_adjustments(outcomes: dict) -> dict:
         )
     elif verdict == "demote_probe":
       notes.append(f"probe unvalidated: OOS/hist {wr:.0%} on {n} zone entries")
+      setup["status"] = "monitor"
+      setup["execution_tier"] = "none"
       setup["honest_reason"] = (
         setup.get("honest_reason", "")
-        + f" · autodream: effective {wr:.0%} — treat probe as monitor-only"
+        + f" · autodream: effective {wr:.0%} — probe demoted to monitor"
       )
     elif verdict == "insufficient_data":
       notes.append(f"hist sample {n} trades — no autodream adjustment")

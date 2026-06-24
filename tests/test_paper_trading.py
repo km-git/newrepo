@@ -172,6 +172,8 @@ def test_apply_honesty_boosts_readiness():
         "readiness_score": 70,
         "historical_edge": 0.62,
         "hist_trades": 8,
+        "oos_win_rate": 0.62,
+        "oos_trades": 12,
         "honest_reason": "swing FULL",
       }
     }
@@ -179,3 +181,4 @@ def test_apply_honesty_boosts_readiness():
   out = apply_honesty_adjustments(outcomes)
   assert out["setups"]["swing"]["readiness_score"] > 70
   assert out["setups"]["swing"]["autodream_verdict"] == "validated"
+  assert out["setups"]["swing"]["oos_gate"] == "passed"

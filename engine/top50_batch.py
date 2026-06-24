@@ -165,6 +165,10 @@ def run_top_crypto_batch(
     for r in results:
       if r.get("status") != "incomplete" and r.get("step8_outcomes"):
         r["step8_outcomes"] = apply_audit_demotions(r["step8_outcomes"], audit)
+  else:
+    for r in results:
+      if r.get("status") != "incomplete" and r.get("step8_outcomes"):
+        r["step8_outcomes"].setdefault("autodream", {})["system_audit"] = audit["verdict"]
 
   save_batch_json(results, str(json_path))
   enriched_trades = merge_setup_metadata_into_trades(
@@ -231,7 +235,9 @@ def run_top_crypto_batch(
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
-  exec_queue = build_execution_queue(results=results, board=executive_board, approve=True)
+  exec_queue = build_execution_queue(
+    results=results, board=executive_board, approve=True, audit_status=audit["verdict"]["status"],
+  )
   exec_queue_path = save_execution_queue(exec_queue, str(out / "autodream" / "execution_queue.json"))
   print(
     f"\n[execution] Queue: {exec_queue.get('approved_count')} approved, "

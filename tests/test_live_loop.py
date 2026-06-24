@@ -28,6 +28,14 @@ def test_collect_upgrades_from_events():
       "stop": 95,
       "tp1": 110,
       "entry_signal": True,
+      "oos_win_rate": 0.62,
+      "oos_trades": 20,
+      "setup_live": {
+        "entry_confirm_ok": True,
+        "structure_blocked": False,
+        "vp_filter_ok": True,
+        "oos_gate": "passed",
+      },
     }
   ]
   upgrades = collect_monitor_upgrades_from_events(events, queue)

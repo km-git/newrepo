@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+from engine.calibrated_execution import validate_execution_gates
 from engine.indicator_calibration import enrich_ledger_entry, load_calibration
 from engine.paper_trading import append_paper_ledger, paper_trade_setup
 
@@ -169,9 +170,12 @@ def drain_execution_queue(
   max_trades: int = 5,
   dry_run: bool = False,
   dedup_hours: int = DEFAULT_DEDUP_HOURS,
+  audit_status: Optional[str] = None,
 ) -> dict:
   """Execute up to max_trades approved candidates."""
   approved = queue.get("approved", [])
+  if audit_status is None:
+    audit_status = queue.get("audit_status")
   if not approved:
     return {"executed": 0, "trades": [], "skipped": 0, "dry_run": dry_run}
 
@@ -196,6 +200,30 @@ def drain_execution_queue(
   for cand in to_run:
     sym = cand["symbol"]
     cid = cand.get("id") or f"{sym}:{cand.get('style')}"
+
+    setup_check = {
+      "style": cand.get("style"),
+      "status": cand.get("pipeline_status", "executable"),
+      "execution_tier": cand.get("execution_tier"),
+      "oos_win_rate": cand.get("oos_win_rate"),
+      "oos_trades": cand.get("oos_trades"),
+      "entry_confirm_ok": cand.get("entry_confirm_ok"),
+      "structure_blocked": cand.get("structure_blocked"),
+      "vp_filter_ok": cand.get("vp_filter_ok", True),
+      "oos_gate": cand.get("oos_gate"),
+      "msb_gate": cand.get("msb_gate"),
+    }
+    ok, _, gate_reason = validate_execution_gates(setup_check, audit_status=audit_status, stamp=False)
+    if not ok:
+      events.append({
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "symbol": sym,
+        "style": cand.get("style"),
+        "mode": mode,
+        "status": "blocked",
+        "reason": gate_reason,
+      })
+      continue
 
     if dry_run:
       preview = preview_execution(cand)

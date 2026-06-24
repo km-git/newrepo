@@ -5,13 +5,56 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
-from engine.calibrated_execution import calibrated_size_pct
+from engine.calibrated_execution import calibrated_size_pct, validate_execution_gates
 from engine.portfolio_manager import approve_candidates, save_portfolio_state
 
 QUEUE_PATH = Path("output/autodream/execution_queue.json")
+AUDIT_PATH = Path("output/autodream/system_audit.json")
 EXECUTABLE_ACTIONS = frozenset({"EXECUTE_NOW", "EXECUTE_CAUTION"})
+
+
+def load_audit_status() -> Optional[str]:
+  if not AUDIT_PATH.exists():
+    return None
+  try:
+    doc = json.loads(AUDIT_PATH.read_text())
+    return (doc.get("verdict") or {}).get("status")
+  except (json.JSONDecodeError, OSError):
+    return None
+
+
+def _gate_filter_candidates(
+  candidates: List[dict],
+  audit_status: Optional[str] = None,
+) -> Tuple[List[dict], List[dict]]:
+  """Apply execution gate bundle; split passed vs blocked."""
+  passed: List[dict] = []
+  blocked: List[dict] = []
+  for c in candidates:
+    setup = {
+      "style": c.get("style"),
+      "status": c.get("pipeline_status", c.get("status")),
+      "execution_tier": c.get("execution_tier"),
+      "oos_win_rate": c.get("oos_win_rate"),
+      "oos_trades": c.get("oos_trades"),
+      "entry_confirm_ok": c.get("entry_confirm_ok"),
+      "structure_blocked": c.get("structure_blocked"),
+      "vp_filter_ok": c.get("vp_filter_ok", True),
+      "msb_gate": c.get("msb_gate"),
+      "oos_gate": c.get("oos_gate"),
+    }
+    ok, stamped, reason = validate_execution_gates(setup, audit_status=audit_status)
+    enriched = {**c, **{k: stamped[k] for k in (
+      "status", "execution_tier", "oos_gate", "gates_passed", "gate_blocker",
+    ) if k in stamped}}
+    enriched["pipeline_status"] = stamped.get("status", c.get("pipeline_status"))
+    if ok:
+      passed.append(enriched)
+    else:
+      blocked.append({**enriched, "gate_block_reason": reason})
+  return passed, blocked
 
 
 def _pick_to_candidate(pick: dict, source: str = "board") -> dict:
@@ -47,6 +90,11 @@ def _pick_to_candidate(pick: dict, source: str = "board") -> dict:
     "confluence_count": pick.get("confluence_count"),
     "oos_win_rate": pick.get("oos_win_rate"),
     "oos_trades": pick.get("oos_trades"),
+    "oos_gate": pick.get("oos_gate"),
+    "entry_confirm_ok": pick.get("entry_confirm_ok"),
+    "structure_blocked": pick.get("structure_blocked"),
+    "vp_filter_ok": pick.get("vp_filter_ok"),
+    "msb_gate": pick.get("msb_gate"),
     "playbook": pick.get("playbook"),
     "priority": _priority_score(pick),
   }
@@ -65,6 +113,7 @@ def _priority_score(row: dict) -> int:
 def collect_board_candidates(
   board: dict,
   actions: Optional[frozenset] = None,
+  audit_status: Optional[str] = None,
 ) -> List[dict]:
   """Pull EXECUTE_NOW / EXECUTE_CAUTION picks from executive board."""
   actions = actions or EXECUTABLE_ACTIONS
@@ -74,9 +123,12 @@ def collect_board_candidates(
       continue
     if pick.get("pipeline_status") not in ("executable", "monitor"):
       continue
+    if pick.get("executive_action") == "EXECUTE_NOW" and pick.get("pipeline_status") != "executable":
+      continue
     out.append(_pick_to_candidate(pick, source="board"))
-  out.sort(key=lambda x: x["priority"])
-  return out
+  gated, _ = _gate_filter_candidates(out, audit_status=audit_status)
+  gated.sort(key=lambda x: x["priority"])
+  return gated
 
 
 def collect_monitor_upgrades_from_events(events: List[dict], queue: List[dict]) -> List[dict]:
@@ -102,6 +154,7 @@ def collect_monitor_upgrades_from_events(events: List[dict], queue: List[dict]) 
 def collect_monitor_upgrades(
   monitor_queue: List[dict],
   since_status: str = "monitor",
+  audit_status: Optional[str] = None,
 ) -> List[dict]:
   """Items upgraded monitor→executable since last scan."""
   out: List[dict] = []
@@ -118,6 +171,7 @@ def collect_monitor_upgrades(
       "indicators": {"active_tokens": item.get("indicator_tokens") or []},
     }
     cal_size, notes = calibrated_size_pct(setup_stub, size_base)
+    live = item.get("setup_live") or {}
     out.append({
       "id": item.get("id") or f"{item['symbol']}:{item.get('style')}",
       "symbol": item["symbol"],
@@ -125,7 +179,7 @@ def collect_monitor_upgrades(
       "timeframe": item.get("check") or item.get("timeframe"),
       "direction": item.get("direction"),
       "source": "monitor_upgrade",
-      "executive_action": "EXECUTE_NOW",
+      "executive_action": "EXECUTE_CAUTION",
       "position_size_pct": size_base,
       "calibrated_size_pct": cal_size,
       "size_notes": notes,
@@ -138,11 +192,19 @@ def collect_monitor_upgrades(
       "entry_probe": item.get("entry_probe"),
       "entry_grade": item.get("entry_grade"),
       "confluence_count": item.get("confluence_count"),
+      "entry_confirm_ok": live.get("entry_confirm_ok", item.get("entry_confirm_ok")),
+      "structure_blocked": live.get("structure_blocked", item.get("structure_blocked")),
+      "vp_filter_ok": live.get("vp_filter_ok", item.get("vp_filter_ok", True)),
+      "oos_win_rate": item.get("oos_win_rate"),
+      "oos_trades": item.get("oos_trades"),
+      "msb_gate": live.get("msb_gate"),
       "upgrade_note": item.get("upgrade_note"),
       "priority": 50 if item.get("style") == "smc" else 100,
     })
-  out.sort(key=lambda x: x["priority"])
-  return out
+  gated, blocked = _gate_filter_candidates(out, audit_status=audit_status)
+  for b in blocked:
+    b["executive_action"] = "WATCH_ALERT"
+  return gated
 
 
 def build_execution_queue(
@@ -151,13 +213,15 @@ def build_execution_queue(
   monitor_queue: Optional[List[dict]] = None,
   *,
   approve: bool = True,
+  audit_status: Optional[str] = None,
 ) -> dict:
   """Merge board + monitor upgrades, dedupe, optionally portfolio-approve."""
+  audit_status = audit_status if audit_status is not None else load_audit_status()
   candidates: List[dict] = []
   if board:
-    candidates.extend(collect_board_candidates(board))
+    candidates.extend(collect_board_candidates(board, audit_status=audit_status))
   if monitor_queue:
-    candidates.extend(collect_monitor_upgrades(monitor_queue))
+    candidates.extend(collect_monitor_upgrades(monitor_queue, audit_status=audit_status))
 
   seen: set[str] = set()
   deduped: List[dict] = []
@@ -175,6 +239,7 @@ def build_execution_queue(
 
   return {
     "updated": datetime.now(timezone.utc).isoformat(),
+    "audit_status": audit_status,
     "candidate_count": len(candidates),
     "deduped_count": len(deduped),
     "approved_count": len(approved),

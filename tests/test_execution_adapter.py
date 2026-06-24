@@ -60,6 +60,13 @@ def test_drain_dry_run_no_ledger(tmp_path, monkeypatch):
         "calibrated_size_pct": 25,
         "source": "board",
         "execution_tier": "probe",
+        "pipeline_status": "executable",
+        "oos_gate": "passed",
+        "oos_win_rate": 0.58,
+        "oos_trades": 18,
+        "entry_confirm_ok": True,
+        "structure_blocked": False,
+        "vp_filter_ok": True,
       }
     ]
   }

@@ -64,13 +64,19 @@ def evaluate_smc_triggers(
     "oos_win_rate": item.get("oos_win_rate"),
     "oos_trades": item.get("oos_trades", 0),
     "vp_filter_ok": tf_analysis.get("vp_filter_ok", True),
+    "entry_confirm_ok": inst.get("entry_confirm_ok") or tf_analysis.get("entry_confirm_ok", False),
+    "structure_blocked": inst.get("structure_blocked") or tf_analysis.get("structure_blocked", False),
   }
 
   cal = load_calibration()
   setup_stub["indicators"] = apply_extra_calibration_tokens(
     setup_stub["indicators"], tf_analysis.get("tags", []),
   )
-  setup_stub = resolve_live_status(setup_stub, style="smc", executive_verdict=executive_verdict, msb=msb)
+  from engine.execution_queue import load_audit_status
+  setup_stub = resolve_live_status(
+    setup_stub, style="smc", executive_verdict=executive_verdict, msb=msb,
+    audit_status=load_audit_status(),
+  )
 
   triggers_hit: List[str] = []
   if setup_stub.get("entry_signal"):
@@ -116,6 +122,9 @@ def evaluate_smc_triggers(
     "msb_pass": msb.get("pass"),
     "msb_z": msb.get("z"),
     "vp_filter_ok": tf_analysis.get("vp_filter_ok"),
+    "entry_confirm_ok": setup_stub.get("entry_confirm_ok"),
+    "structure_blocked": setup_stub.get("structure_blocked"),
+    "oos_gate": setup_stub.get("oos_gate"),
     "upgrade_note": upgrade_note,
     "setup_live": setup_stub,
   }

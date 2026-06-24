@@ -15,10 +15,24 @@ def _ohlc(n=50, close=100.0):
   return pd.DataFrame(rows, columns=["Open", "High", "Low", "Close", "Volume"])
 
 
+def _gate_ok(**kwargs):
+  base = {
+    "oos_gate": "passed",
+    "oos_win_rate": 0.62,
+    "oos_trades": 20,
+    "entry_confirm_ok": True,
+    "structure_blocked": False,
+    "vp_filter_ok": True,
+  }
+  base.update(kwargs)
+  return base
+
+
 def test_collect_board_execute_now():
   board = {
     "picks": [
       {
+        **_gate_ok(),
         "symbol": "BTC/USDT",
         "style": "smc",
         "timeframe": "15m",
@@ -67,12 +81,15 @@ def test_smc_monitor_upgrade(mock_cal, mock_msb, mock_inst):
     "entry_signal": True,
     "entry_probe": False,
     "entry_grade": "A",
+    "entry_confirm_ok": True,
+    "structure_blocked": False,
     "confluence_count": 3,
     "best_entry_tf": "15m",
     "by_tf": {
       "15m": {
         "status": "ok",
         "entry_signal": True,
+        "entry_confirm_ok": True,
         "entry_grade": "A",
         "score": 70,
         "tags": ["liquidity sweep"],
@@ -95,6 +112,8 @@ def test_smc_monitor_upgrade(mock_cal, mock_msb, mock_inst):
     "entry_zone": [99, 101],
     "stop": 95,
     "tp1": 110,
+    "oos_win_rate": 0.62,
+    "oos_trades": 20,
   }
   result = evaluate_smc_triggers(item, {"15m": df})
   assert result.get("entry_signal") is True
@@ -105,6 +124,7 @@ def test_build_execution_queue_dedupes():
   board = {
     "picks": [
       {
+        **_gate_ok(),
         "symbol": "BTC/USDT",
         "style": "smc",
         "executive_action": "EXECUTE_NOW",
@@ -133,6 +153,14 @@ def test_build_execution_queue_dedupes():
       "entry": 100,
       "stop": 95,
       "entry_signal": True,
+      "oos_win_rate": 0.62,
+      "oos_trades": 20,
+      "setup_live": {
+        "entry_confirm_ok": True,
+        "structure_blocked": False,
+        "vp_filter_ok": True,
+        "oos_gate": "passed",
+      },
     }
   ]
   eq = build_execution_queue(board=board, monitor_queue=monitor, approve=False)
