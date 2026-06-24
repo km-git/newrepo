@@ -13,6 +13,7 @@ from engine.report import save_detailed_csv, save_detailed_markdown
 from engine.outcome_report import save_outcomes_csv
 from engine.full_report import export_all_reports
 from engine.autodream import build_monitor_queue, save_monitor_queue
+from engine.limit_orders_export import export_limit_orders
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
@@ -92,6 +93,7 @@ def run_top_crypto_batch(
   full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
+  limit_meta = export_limit_orders(results, output_dir=out)
 
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}
@@ -119,6 +121,8 @@ def run_top_crypto_batch(
     "full_html": full_exports["full_html"],
     "report_md": str(markdown_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
+    "limit_orders_csv": limit_meta["latest_csv"],
+    "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
     "pairs_csv": str(pairs_csv),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
@@ -138,6 +142,7 @@ def run_top_crypto_batch(
   print(f"  Setups MD:{full_exports.get('setups_md', 'reports/TRADE_SETUPS.md')}")
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
+  print(f"  Limits:   {limit_meta['latest_csv']} ({limit_meta['row_count']} rows, tiers {limit_meta['tier_counts']})")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta
