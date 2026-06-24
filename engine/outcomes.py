@@ -98,7 +98,11 @@ def build_style_setup(
   fibs = [kz_low, kz_high] if kz_low < kz_high else []
 
   dca = build_dca_ladder(direction, entry_anchor, atr, kz_low, kz_high, fibs)
-  stop = dynamic_stop(direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"])
+  stop = dynamic_stop(
+    direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"],
+    zone_low=kz_low, zone_high=kz_high,
+    max_stop_atr={"15m": 3.0, "1h": 4.0, "4h": 4.5, "1d": 5.0, "1w": 6.0}.get(tf, 5.0),
+  )
   targets = dynamic_targets(
     direction,
     entry_anchor,

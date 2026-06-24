@@ -8,7 +8,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from core.risk import DCA_SPLITS, build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
+from core.risk import (
+  DCA_SPLITS,
+  build_dca_ladder,
+  dynamic_stop,
+  dynamic_targets,
+  risk_package,
+  stop_is_sane,
+)
 
 ALL_TIMEFRAMES = ("1w", "1d", "4h", "1h", "15m")
 
@@ -27,30 +34,35 @@ TF_CONFIG: Dict[str, dict] = {
     "atr_mult_sl": 0.8,
     "account_risk_pct": 0.5,
     "min_rr": 1.2,
+    "max_stop_atr": 3.0,
   },
   "1h": {
     "horizon": "4h–2d",
     "atr_mult_sl": 1.2,
     "account_risk_pct": 0.75,
     "min_rr": 1.3,
+    "max_stop_atr": 4.0,
   },
   "4h": {
     "horizon": "4h–3d",
     "atr_mult_sl": 1.5,
     "account_risk_pct": 0.85,
     "min_rr": 1.4,
+    "max_stop_atr": 4.5,
   },
   "1d": {
     "horizon": "2d–4w",
     "atr_mult_sl": 1.8,
     "account_risk_pct": 1.0,
     "min_rr": 1.5,
+    "max_stop_atr": 5.0,
   },
   "1w": {
     "horizon": "1w–6m",
     "atr_mult_sl": 2.5,
     "account_risk_pct": 1.5,
     "min_rr": 2.0,
+    "max_stop_atr": 6.0,
   },
 }
 
@@ -63,17 +75,48 @@ def _dir_norm(d: str) -> str:
 
 
 def _fib_levels_from_kz(kz: dict) -> Optional[List[float]]:
-  """Extract numeric fib prices from kill-zone constituent_fibs dict."""
-  raw = kz.get("constituent_fibs")
-  if not raw:
-    return None
-  if isinstance(raw, dict):
-    vals = [float(v) for v in raw.values() if v is not None]
-  elif isinstance(raw, (list, tuple)):
-    vals = [float(v) for v in raw if v is not None]
-  else:
-    return None
-  return sorted(vals) if vals else None
+  """Entry-zone fib prices only — never full HTF constituent cluster."""
+  lo = float(kz.get("price_low") or 0)
+  hi = float(kz.get("price_high") or 0)
+  if lo > 0 and hi > 0 and lo < hi:
+    return [lo, hi]
+  return None
+
+
+def _structure_bounds(wave: dict, fallback_price: float, atr: float) -> Tuple[float, float]:
+  """Local structure from the last two waves on this TF."""
+  waves = wave.get("waves_last5") or []
+  if waves:
+    pts: List[float] = []
+    for w in waves[-2:]:
+      for key in ("start", "end", "price_start", "price_end"):
+        if key in w and w[key] is not None:
+          pts.append(float(w[key]))
+    if pts:
+      return min(pts), max(pts)
+  return fallback_price - 2 * atr, fallback_price + 2 * atr
+
+
+def _resolve_stop(
+  direction: str,
+  entry: float,
+  atr: float,
+  s_low: float,
+  s_high: float,
+  cfg: dict,
+  zone_low: float,
+  zone_high: float,
+  reused: Optional[dict] = None,
+) -> dict:
+  max_stop_atr = cfg.get("max_stop_atr", 5.0)
+  if reused and isinstance(reused, dict) and reused.get("price") is not None:
+    px = float(reused["price"])
+    if stop_is_sane(direction, entry, px, atr, max_atr=max_stop_atr):
+      return reused
+  return dynamic_stop(
+    direction, entry, atr, s_low, s_high, cfg["atr_mult_sl"],
+    zone_low=zone_low, zone_high=zone_high, max_stop_atr=max_stop_atr,
+  )
 
 
 def _c_targets(result: dict) -> dict:
@@ -88,17 +131,6 @@ def _normalize_results(batch_or_results: Any) -> List[dict]:
       if key in batch_or_results and isinstance(batch_or_results[key], list):
         return batch_or_results[key]
   raise TypeError("expected list of results or batch dict with pairs/results key")
-
-
-def _structure_bounds(wave: dict, fallback_price: float, atr: float) -> Tuple[float, float]:
-  """Derive structure low/high from recent monowaves when full adaptive data unavailable."""
-  waves = wave.get("waves_last5") or []
-  if waves:
-    pts = []
-    for w in waves[-3:]:
-      pts.extend([float(w.get("start", 0)), float(w.get("end", 0))])
-    return min(pts), max(pts)
-  return fallback_price - 2 * atr, fallback_price + 2 * atr
 
 
 def _harmonic_for_tf(result: dict, tf: str) -> Optional[dict]:
@@ -198,6 +230,8 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
   current = float(wave.get("current_price") or result.get("step1_htf_bias", {}).get("wave_C_current") or 0)
   if atr <= 0 and current > 0:
     atr = current * 0.01
+  if current > 0 and atr > abs(current) * 0.15:
+    atr = abs(current) * 0.01
 
   setups = (result.get("step8_outcomes") or {}).get("setups") or {}
   mapped_style = TF_STYLE_MAP.get(tf)
@@ -212,11 +246,10 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
       direction, entry_anchor, atr, zone_low, zone_high,
       fib_levels=fib_levels,
     )
-    stop = reuse.get("stop_loss") or dynamic_stop(
-      direction, entry_anchor, atr, *_structure_bounds(wave, current, atr), cfg["atr_mult_sl"],
+    stop = _resolve_stop(
+      direction, entry_anchor, atr, *_structure_bounds(wave, current, atr), cfg,
+      zone_low, zone_high, reuse.get("stop_loss"),
     )
-    if isinstance(stop, (int, float)):
-      stop = {"price": float(stop), "rule": "from setup"}
     targets = reuse.get("targets") or dynamic_targets(
       direction, entry_anchor, atr,
       harmonic_prz=_prz_tuple(_harmonic_for_tf(result, tf)),
@@ -243,7 +276,9 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
       direction, entry_anchor, atr, zone_low, zone_high,
       fib_levels=fib_levels,
     )
-    stop = dynamic_stop(direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"])
+    stop = _resolve_stop(
+      direction, entry_anchor, atr, s_low, s_high, cfg, zone_low, zone_high,
+    )
     targets = dynamic_targets(
       direction, entry_anchor, atr,
       harmonic_prz=_prz_tuple(harm),

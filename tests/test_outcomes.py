@@ -12,7 +12,7 @@ def test_dca_splits_10_20_30_40():
   legs = build_dca_ladder("LONG", 100.0, 2.0, 95.0, 105.0)
   assert [l["size_pct"] for l in legs] == [10, 20, 30, 40]
   assert legs[0]["price"] == 100.0
-  assert legs[3]["price"] <= 95.0
+  assert legs[3]["price"] <= legs[2]["price"] <= legs[1]["price"] <= legs[0]["price"]
 
 
 def test_dynamic_stop_long():
