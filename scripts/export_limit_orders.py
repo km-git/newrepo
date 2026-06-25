@@ -66,6 +66,8 @@ def main() -> int:
         print(f"USDT.D: {result['usdt_d_pct']}% → macro {result.get('macro', {}).get('mode')}")
     if result.get("contingent_rows"):
         print(f"Contingent scenario rows: {result['contingent_rows']}")
+    if result.get("matrix_html"):
+        print(f"Matrix: {result['matrix_html']}")
     return 0
 
 

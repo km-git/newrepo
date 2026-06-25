@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import html
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -489,6 +490,151 @@ def save_limit_orders_csv(rows: List[dict], path: str | Path) -> str:
   return str(path)
 
 
+def _matrix_cell_class(row: dict) -> str:
+  if row.get("status") == "error":
+    return "err"
+  tier = row.get("gtc_tier", "")
+  honest = row.get("honest_execution_tier", "")
+  if tier == "executable" and honest == "full":
+    return "exec-full"
+  if tier == "executable":
+    return "exec-probe"
+  if tier == "monitor":
+    return "mon"
+  if tier == "watch":
+    return "watch"
+  return "na"
+
+
+def _matrix_cell_html(row: Optional[dict]) -> str:
+  if not row or row.get("status") == "error":
+    return '<td class="na"><span class="empty">—</span></td>'
+
+  def _usd(v) -> str:
+    try:
+      f = float(v)
+      return f"${f:,.0f}" if f > 0 else ""
+    except (TypeError, ValueError):
+      return ""
+
+  tier = row.get("gtc_tier", "")
+  honest = row.get("honest_execution_tier", "")
+  direction = row.get("direction", "")
+  tier_label = tier
+  if tier == "executable" and honest == "full":
+    tier_label = "FULL"
+  elif tier == "executable" and honest == "probe":
+    tier_label = "PROBE"
+
+  wae = row.get("wae", "")
+  risk = row.get("risk_budget_usd", "")
+  profile = row.get("dca_profile", "")
+
+  lines = [
+    f'<strong>{html.escape(direction)}</strong> · {html.escape(str(tier_label))}',
+    f'WAE {html.escape(str(wae))}',
+  ]
+  l1_usd = row.get("leg1_usd")
+  l1_px = row.get("dca_10pct_price")
+  if l1_usd:
+    try:
+      if float(l1_usd) > 0:
+        lines.append(html.escape(f"L1 {_usd(l1_usd)}"))
+    except (TypeError, ValueError):
+      pass
+  elif l1_px:
+    lines.append(html.escape(f"L1 @ {l1_px}"))
+  if risk:
+    lines.append(html.escape(f"Risk {_usd(risk)}"))
+  if profile and profile != "pyramid_4":
+    lines.append(f'<span class="profile">{html.escape(profile)}</span>')
+
+  cls = _matrix_cell_class(row)
+  return f'<td class="{cls}"><div class="cell">{"<br/>".join(lines)}</div></td>'
+
+
+def save_limit_orders_matrix_html(
+  rows: List[dict],
+  path: str | Path,
+  *,
+  title: str = "Trade Setups — All Pairs × Timeframes",
+  account_equity: Optional[float] = None,
+) -> str:
+  """Shaded pair×TF matrix — primary rows only, color by GTC tier."""
+  path = Path(path)
+  path.parent.mkdir(parents=True, exist_ok=True)
+
+  primary = [r for r in rows if r.get("row_type", "primary") == "primary" and r.get("symbol")]
+  if not primary:
+    path.write_text(f"<html><body><h1>{html.escape(title)}</h1><p>No data</p></body></html>")
+    return str(path)
+
+  by_sym: Dict[str, Dict[str, dict]] = {}
+  for r in primary:
+    by_sym.setdefault(r["symbol"], {})[r["timeframe"]] = r
+
+  tier_ctr: Dict[str, int] = {}
+  for r in primary:
+    key = _matrix_cell_class(r)
+    tier_ctr[key] = tier_ctr.get(key, 0) + 1
+
+  symbols = sorted(by_sym.keys())
+  tfs = list(ALL_TIMEFRAMES)
+  ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+  equity_line = f" · ${account_equity:,.0f} equity" if account_equity else ""
+
+  header = "".join(f"<th>{html.escape(tf)}</th>" for tf in tfs)
+  body_rows = []
+  for sym in symbols:
+    cells = "".join(_matrix_cell_html(by_sym[sym].get(tf)) for tf in tfs)
+    body_rows.append(
+      f'<tr><th class="sym">{html.escape(sym)}</th>{cells}</tr>'
+    )
+
+  doc = f"""<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8"/>
+<title>{html.escape(title)}</title>
+<style>
+  body {{ font-family: system-ui, -apple-system, sans-serif; margin: 1rem; background: #fafafa; }}
+  h1 {{ font-size: 1.35rem; margin-bottom: 0.25rem; }}
+  .meta {{ color: #555; margin-bottom: 1rem; font-size: 0.9rem; }}
+  .legend {{ margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }}
+  .legend span {{ padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; border: 1px solid #ccc; }}
+  .wrap {{ overflow: auto; max-width: 100%; border: 1px solid #bbb; border-radius: 6px; background: #fff; }}
+  table {{ border-collapse: collapse; font-size: 11px; width: 100%; }}
+  th, td {{ border: 1px solid #ddd; padding: 0; vertical-align: top; }}
+  th.sym {{ position: sticky; left: 0; z-index: 2; background: #1a1a2e; color: #eee; padding: 6px 8px; white-space: nowrap; min-width: 100px; }}
+  thead th {{ background: #1a1a2e; color: #eee; padding: 8px 6px; position: sticky; top: 0; z-index: 3; }}
+  thead th:first-child {{ z-index: 4; left: 0; }}
+  td .cell {{ padding: 6px 8px; line-height: 1.35; min-width: 110px; }}
+  td.exec-full {{ background: #2e7d32; color: #fff; }}
+  td.exec-probe {{ background: #c8e6c9; color: #1b5e20; }}
+  td.mon {{ background: #fff8e1; color: #5d4037; }}
+  td.watch {{ background: #f5f5f5; color: #616161; }}
+  td.err {{ background: #ffcdd2; color: #b71c1c; }}
+  td.na {{ background: #fafafa; color: #999; }}
+  .profile {{ font-size: 9px; opacity: 0.85; }}
+  .empty {{ padding: 6px 8px; display: block; text-align: center; }}
+</style>
+</head><body>
+<h1>{html.escape(title)}</h1>
+<p class="meta">{len(symbols)} pairs × {len(tfs)} timeframes = {len(primary)} cells · {ts}{equity_line}</p>
+<div class="legend">
+  <span style="background:#2e7d32;color:#fff">FULL executable ({tier_ctr.get('exec-full', 0)})</span>
+  <span style="background:#c8e6c9;color:#1b5e20">PROBE executable ({tier_ctr.get('exec-probe', 0)})</span>
+  <span style="background:#fff8e1;color:#5d4037">monitor ({tier_ctr.get('mon', 0)})</span>
+  <span style="background:#f5f5f5;color:#616161">watch ({tier_ctr.get('watch', 0)})</span>
+</div>
+<div class="wrap"><table>
+<thead><tr><th>Symbol</th>{header}</tr></thead>
+<tbody>{"".join(body_rows)}</tbody>
+</table></div>
+</body></html>"""
+  path.write_text(doc, encoding="utf-8")
+  return str(path)
+
+
 def export_limit_orders(
   batch_or_results: Any,
   output_dir: str | Path = "output",
@@ -518,6 +664,11 @@ def export_limit_orders(
   serializable = _serialize_rows_for_csv(rows)
   save_limit_orders_csv(serializable, csv_path)
   save_limit_orders_csv(serializable, stable_csv)
+  matrix_html = output_dir / "latest_trade_setups_matrix.html"
+  save_limit_orders_matrix_html(
+    rows, matrix_html, title="Trade Setups — All Pairs × Timeframes",
+    account_equity=account_equity,
+  )
 
   meta = {
     "updated": datetime.now(timezone.utc).isoformat(),
@@ -531,6 +682,7 @@ def export_limit_orders(
     "csv": str(csv_path),
     "latest_csv": str(stable_csv),
     "stable_csv": str(stable_csv),
+    "matrix_html": str(matrix_html),
     "dca_splits_pct": DCA_SPLITS,
     "account_equity": account_equity,
     "usdt_d_pct": usdt_d_pct,

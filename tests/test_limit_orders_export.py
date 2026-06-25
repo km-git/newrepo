@@ -129,6 +129,7 @@ def test_export_limit_orders_writes_csv(tmp_path: Path):
   assert meta["expected_rows"] == 250
   assert Path(meta["csv"]).exists()
   assert Path(meta["latest_csv"]).exists()
+  assert Path(meta["matrix_html"]).exists()
   assert Path(meta["json"]).exists()
   assert sum(meta["tier_counts"].values()) == meta["row_count"]
 
