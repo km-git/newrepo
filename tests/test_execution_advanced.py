@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from engine.execution_advanced import (
   ExportContext,
   MacroState,
@@ -50,7 +52,7 @@ def test_dollar_sizing_from_equity():
   sizing = compute_leg_dollars(10000, legs, wae, 90.0, 0.75, 100)
   assert sizing["risk_budget_usd"] == 75.0
   assert sizing["position_notional_usd"] > 0
-  assert sum(sizing["leg_usd"].values()) == sizing["position_notional_usd"]
+  assert sum(sizing["leg_usd"].values()) == pytest.approx(sizing["position_notional_usd"], abs=0.02)
 
 
 def test_select_correlation_cap_profile():

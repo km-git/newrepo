@@ -40,6 +40,11 @@ _DCA_RATIONALE_SHORT = [
 
 
 def _r(x: float, decimals: int = 6) -> float:
+  ax = abs(float(x))
+  if ax > 0 and ax < 0.01:
+    decimals = 10
+  elif ax > 0 and ax < 1:
+    decimals = 8
   return round(float(x), decimals)
 
 
@@ -57,6 +62,68 @@ def compute_wae(legs: List[dict]) -> float:
   return _r(total)
 
 
+def _min_leg_separation(span: float, atr: float, anchor: float) -> float:
+  """Minimum price gap between consecutive DCA legs (capped to fit 4 legs in zone)."""
+  raw = max(span * 0.08, atr * 0.05, abs(anchor) * 0.0004, 1e-9)
+  return min(raw, span / 4.5)
+
+
+def _spread_legs_from_anchor(
+  direction: str,
+  anchor: float,
+  near: float,
+  far: float,
+  min_sep: float,
+) -> List[float]:
+  """
+  Place L1 at anchor when inside zone, spread L2–L4 toward far-side.
+  Uses forward-only spacing so legs never collapse to the same price.
+  """
+  lo, hi = min(near, far), max(near, far)
+  span = hi - lo
+  if span <= 0:
+    return [_r(anchor)] * 4
+
+  min_sep = min(min_sep, span / 4.5)
+  long = _is_long(direction)
+  depths = [0.0, 0.33, 0.66, 1.0]
+
+  if long:
+    prices = [hi - d * span for d in depths]
+    far_side = lo
+  else:
+    prices = [lo + d * span for d in depths]
+    far_side = hi
+
+  if lo <= anchor <= hi:
+    rem = abs(anchor - far_side)
+    if rem >= min_sep * 3:
+      prices[0] = anchor
+      inner = [0.35, 0.65, 1.0]
+      if long:
+        prices[1:] = [anchor - d * rem for d in inner]
+      else:
+        prices[1:] = [anchor + d * rem for d in inner]
+    # else: keep evenly spaced zone depths — anchor too close to far side to pyramid from it
+
+  if long:
+    for i in range(1, len(prices)):
+      prices[i] = min(prices[i], prices[i - 1] - min_sep)
+    prices[-1] = lo
+    if len(prices) > 1:
+      prices[-2] = max(prices[-2], lo + min_sep)
+      prices[-2] = min(prices[-2], prices[-3] - min_sep) if len(prices) > 2 else prices[-2]
+  else:
+    for i in range(1, len(prices)):
+      prices[i] = max(prices[i], prices[i - 1] + min_sep)
+    prices[-1] = hi
+    if len(prices) > 1:
+      prices[-2] = min(prices[-2], hi - min_sep)
+      prices[-2] = max(prices[-2], prices[-3] + min_sep) if len(prices) > 2 else prices[-2]
+
+  return [_r(_clamp(p, lo, hi)) for p in prices]
+
+
 def _zone_pyramid_prices(
   direction: str,
   anchor: float,
@@ -68,43 +135,40 @@ def _zone_pyramid_prices(
   """
   Asymmetric pyramid ticks inside the entry zone.
   LONG: L1 highest → L4 lowest. SHORT: L1 lowest → L4 highest.
+  Each leg is a distinct price — never collapsed to the same level.
   """
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo
   if span <= 0:
     span = max(atr * 0.5, abs(anchor) * 0.002, 1e-9)
+    lo = anchor - span / 2
+    hi = anchor + span / 2
 
   long = _is_long(direction)
-  if long:
-    # Depth 0 = zone high (near side), depth 1 = zone low (max discount).
-    prices = [hi - d * span for d in _ZONE_DEPTH_RATIOS]
-    if lo <= anchor <= hi:
-      prices[0] = anchor  # first probe at anchor when inside zone
-    if harmonic_prz:
-      prz_lo, prz_hi = min(harmonic_prz), max(harmonic_prz)
-      prz_lo, prz_hi = _clamp(prz_lo, lo, hi), _clamp(prz_hi, lo, hi)
-      if prz_hi > prz_lo:
-        prices[1] = prz_hi - 0.25 * (prz_hi - prz_lo)
-        prices[2] = prz_lo + 0.25 * (prz_hi - prz_lo)
-    # Enforce strict descent: L1 ≥ L2 ≥ L3 ≥ L4.
-    for i in range(1, len(prices)):
-      prices[i] = min(prices[i], prices[i - 1])
-    prices[-1] = lo
-  else:
-    prices = [lo + d * span for d in _ZONE_DEPTH_RATIOS]
-    if lo <= anchor <= hi:
-      prices[0] = anchor
-    if harmonic_prz:
-      prz_lo, prz_hi = min(harmonic_prz), max(harmonic_prz)
-      prz_lo, prz_hi = _clamp(prz_lo, lo, hi), _clamp(prz_hi, lo, hi)
-      if prz_hi > prz_lo:
-        prices[1] = prz_lo + 0.25 * (prz_hi - prz_lo)
-        prices[2] = prz_hi - 0.25 * (prz_hi - prz_lo)
-    for i in range(1, len(prices)):
-      prices[i] = max(prices[i], prices[i - 1])
-    prices[-1] = hi
+  near = hi if long else lo
+  far = lo if long else hi
+  min_sep = _min_leg_separation(span, atr, anchor)
 
-  return [_r(p) for p in prices]
+  if lo <= anchor <= hi:
+    l1 = anchor
+  else:
+    l1 = near
+
+  prices = _spread_legs_from_anchor(direction, l1, near, far, min_sep)
+
+  if harmonic_prz:
+    prz_lo, prz_hi = min(harmonic_prz), max(harmonic_prz)
+    prz_lo, prz_hi = _clamp(prz_lo, lo, hi), _clamp(prz_hi, lo, hi)
+    if prz_hi - prz_lo >= min_sep:
+      if long:
+        prices[1] = _clamp(prz_hi - 0.25 * (prz_hi - prz_lo), lo, hi)
+        prices[2] = _clamp(prz_lo + 0.25 * (prz_hi - prz_lo), lo, hi)
+      else:
+        prices[1] = _clamp(prz_lo + 0.25 * (prz_hi - prz_lo), lo, hi)
+        prices[2] = _clamp(prz_hi - 0.25 * (prz_hi - prz_lo), lo, hi)
+      prices = _spread_legs_from_anchor(direction, prices[0], near, far, min_sep)
+
+  return prices
 
 
 def build_dca_ladder(
@@ -129,6 +193,15 @@ def build_dca_ladder(
   if lo <= 0 and hi <= 0 and anchor > 0:
     pad = anchor * 0.005
     lo, hi = anchor - pad, anchor + pad
+
+  span = hi - lo
+  min_sep = _min_leg_separation(max(span, abs(anchor) * 0.002), atr, anchor)
+  if span < min_sep * 3:
+    pad = max(min_sep * 2, atr * 0.15, abs(anchor) * 0.002, 1e-9)
+    if anchor > 0:
+      lo, hi = min(lo, anchor - pad), max(hi, anchor + pad)
+    else:
+      lo, hi = lo - pad, hi + pad
 
   pyramid_prices = _zone_pyramid_prices(direction, anchor, lo, hi, atr, harmonic_prz)
   splits = PROFILE_SPLITS.get(profile, DCA_SPLITS)

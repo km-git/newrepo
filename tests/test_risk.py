@@ -30,6 +30,19 @@ def test_wae_calculation():
   assert wae == pytest.approx(expected, rel=1e-4)
 
 
+def test_dca_no_duplicate_legs_mid_zone_anchor():
+  """Anchor mid-zone must not collapse L1 and L2 to the same price."""
+  legs = build_dca_ladder("SHORT", 73468.0, 500.0, 72842.0, 74094.0)
+  prices = [l["price"] for l in legs]
+  assert len(set(prices)) == 4
+  assert prices[0] < prices[1] < prices[2] < prices[3]
+
+  legs_long = build_dca_ladder("LONG", 100.0, 2.0, 95.0, 105.0)
+  prices_long = [l["price"] for l in legs_long]
+  assert len(set(prices_long)) == 4
+  assert prices_long[0] > prices_long[1] > prices_long[2] > prices_long[3]
+
+
 def test_dca_ignores_htf_fibs_outside_zone():
   legs = build_dca_ladder(
     "SHORT", 73468.0, 500.0, 72842.0, 74094.0,
