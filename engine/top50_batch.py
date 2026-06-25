@@ -128,6 +128,7 @@ def run_top_crypto_batch(
     "report_md": str(markdown_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
     "limit_orders_csv": limit_meta["latest_csv"],
+    "limit_orders_matrix_html": limit_meta.get("matrix_html"),
     "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
     "pairs_csv": str(pairs_csv),
   }
@@ -149,6 +150,8 @@ def run_top_crypto_batch(
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
   print(f"  Limits:   {limit_meta['latest_csv']} ({limit_meta['row_count']} rows, tiers {limit_meta['tier_counts']})")
+  if limit_meta.get("matrix_html"):
+    print(f"  Matrix:   {limit_meta['matrix_html']}")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta
