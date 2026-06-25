@@ -9,6 +9,16 @@ from typing import Any, Dict, List, Optional, Tuple
 DCA_SPLITS = [10, 20, 30, 40]
 DCA_LABELS = ["L1", "L2", "L3", "L4"]
 
+DCA_PROFILE_PYRAMID = "pyramid_4"
+DCA_PROFILE_10_90 = "two_layer_10_90"
+DCA_PROFILE_30_70 = "two_layer_30_70"
+
+PROFILE_SPLITS = {
+  DCA_PROFILE_PYRAMID: [10, 20, 30, 40],
+  DCA_PROFILE_10_90: [10, 90],
+  DCA_PROFILE_30_70: [30, 70],
+}
+
 DEFAULT_MAX_STRUCTURE_ATR = 4.0
 DEFAULT_MAX_STOP_ATR = 5.0
 
@@ -107,10 +117,11 @@ def build_dca_ladder(
   *,
   harmonic_prz: Optional[Tuple[float, float]] = None,
   gtc: bool = False,
+  profile: str = DCA_PROFILE_PYRAMID,
 ) -> List[dict]:
   """
-  Asymmetric pyramiding DCA: 10% / 20% / 30% / 40%.
-  Smallest size at highest uncertainty; largest at deepest confluence/discount.
+  Asymmetric pyramiding DCA.
+  Profiles: pyramid_4 (10/20/30/40), two_layer_10_90, two_layer_30_70.
   """
   if atr <= 0:
     atr = max(abs(anchor) * 0.01, 1e-9)
@@ -119,13 +130,31 @@ def build_dca_ladder(
     pad = anchor * 0.005
     lo, hi = anchor - pad, anchor + pad
 
-  prices = _zone_pyramid_prices(direction, anchor, lo, hi, atr, harmonic_prz)
-  rationales = _DCA_RATIONALE_LONG if _is_long(direction) else _DCA_RATIONALE_SHORT
+  pyramid_prices = _zone_pyramid_prices(direction, anchor, lo, hi, atr, harmonic_prz)
+  splits = PROFILE_SPLITS.get(profile, DCA_SPLITS)
+
+  if profile == DCA_PROFILE_PYRAMID:
+    prices = pyramid_prices
+    labels = DCA_LABELS
+    rationales = _DCA_RATIONALE_LONG if _is_long(direction) else _DCA_RATIONALE_SHORT
+  elif profile == DCA_PROFILE_10_90:
+    prices = [pyramid_prices[0], pyramid_prices[-1]]
+    labels = ["L1", "L2"]
+    rationales = [
+      "first touch — minimum probe (10%)",
+      "max confluence depth — near-full size (90%)",
+    ]
+  else:  # 30_70
+    prices = [pyramid_prices[0], pyramid_prices[-1]]
+    labels = ["L1", "L2"]
+    rationales = [
+      "hard level — elevated probe (30%)",
+      "extended floor — maximum conviction (70%)",
+    ]
 
   legs: List[dict] = []
-  for i, (label, pct, px, rationale) in enumerate(
-    zip(DCA_LABELS, DCA_SPLITS, prices, rationales)
-  ):
+  for i, (label, pct, px) in enumerate(zip(labels, splits, prices)):
+    rationale = rationales[i] if i < len(rationales) else f"layer {label} ({pct}%)"
     legs.append({
       "leg": i + 1,
       "layer": label,
@@ -135,6 +164,7 @@ def build_dca_ladder(
       "order_type": "limit" if (gtc or i > 0) else "market",
       "time_in_force": "GTC" if gtc else ("GTC" if i > 0 else "IOC"),
       "trigger": f"GTC limit @ {px}" if (gtc or i > 0) else "immediate",
+      "profile": profile,
     })
 
   wae = compute_wae(legs)

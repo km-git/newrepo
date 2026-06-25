@@ -93,7 +93,12 @@ def run_top_crypto_batch(
   full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
-  limit_meta = export_limit_orders(results, output_dir=out)
+  limit_meta = export_limit_orders(
+    results,
+    output_dir=out,
+    account_equity=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
+    usdt_d_pct=float(os.environ["USDT_D_PCT"]) if os.environ.get("USDT_D_PCT") else None,
+  )
 
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}

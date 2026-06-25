@@ -107,13 +107,13 @@ def test_build_limit_order_row_executable_and_monitor_tiers():
 
 
 def test_build_limit_order_row_has_dca_legs():
-  row = build_limit_order_row(_sample_result(), "1h")
-  assert len(row["dca_legs"]) == 4
-  assert [leg["size_pct"] for leg in row["dca_legs"]] == DCA_SPLITS
+  row = build_limit_order_row(_sample_result(), "15m")
+  assert len(row["dca_legs"]) in (2, 4)
+  assert sum(leg["size_pct"] for leg in row["dca_legs"]) == 100
   assert all(leg["order_type"] == "limit" for leg in row["dca_legs"])
   assert all(leg["time_in_force"] == "GTC" for leg in row["dca_legs"])
   assert row.get("wae")
-  assert row.get("dca_architecture") == "asymmetric_pyramid_10_20_30_40"
+  assert row.get("dca_profile")
 
 
 def test_build_all_limit_orders_row_count():
@@ -145,6 +145,7 @@ def test_export_real_batch_250_rows(tmp_path: Path):
   )[0]
   results = json.loads(latest.read_text(encoding="utf-8"))
   meta = export_limit_orders(results, output_dir=tmp_path)
-  assert meta["row_count"] == len(results) * len(ALL_TIMEFRAMES)
+  assert meta["row_count"] >= len(results) * len(ALL_TIMEFRAMES)
   if len(results) == 50:
-    assert meta["row_count"] == 250
+    assert meta["row_count"] >= 250
+    assert meta.get("contingent_rows", 0) >= 4

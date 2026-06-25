@@ -17,6 +17,15 @@ from core.risk import (
   risk_package,
   stop_is_sane,
 )
+from engine.execution_advanced import (
+  CONTINGENT_SYMBOLS,
+  ExportContext,
+  MacroState,
+  build_contingent_scenarios,
+  enrich_row_with_advanced,
+  expand_contingent_rows,
+  select_dca_profile,
+)
 
 ALL_TIMEFRAMES = ("1w", "1d", "4h", "1h", "15m")
 
@@ -169,6 +178,45 @@ def _resolve_gtc_tier(result: dict, tf: str) -> Tuple[str, str, str]:
   return "watch", "none", f"{tf} context TF — staged GTC watch tier"
 
 
+def build_export_context(
+  results: List[dict],
+  *,
+  account_equity: Optional[float] = None,
+  usdt_d_pct: Optional[float] = None,
+) -> ExportContext:
+  high_beta = []
+  for r in results:
+    mkt = r.get("step9_market_confluence") or r.get("step9_market_tools") or {}
+    bc = mkt.get("btc_correlation") or {}
+    if bc.get("high_beta"):
+      high_beta.append(r.get("symbol", "?"))
+  return ExportContext(
+    account_equity=account_equity,
+    macro=MacroState(usdt_d_pct=usdt_d_pct),
+    high_beta_symbols=high_beta,
+  )
+
+
+def _dca_to_columns(dca: List[dict]) -> Dict[str, Any]:
+  """Map leg list to dca_10/20/30/40 CSV columns (2-layer uses L1→10%, L2→40%)."""
+  cols: Dict[str, Any] = {}
+  if len(dca) == 2:
+    cols["dca_10pct_price"] = dca[0]["price"]
+    cols["dca_10pct_size"] = dca[0]["size_pct"]
+    cols["dca_20pct_price"] = ""
+    cols["dca_20pct_size"] = ""
+    cols["dca_30pct_price"] = ""
+    cols["dca_30pct_size"] = ""
+    cols["dca_40pct_price"] = dca[1]["price"]
+    cols["dca_40pct_size"] = dca[1]["size_pct"]
+    return cols
+  slots = [10, 20, 30, 40]
+  for i, leg in enumerate(dca[:4]):
+    cols[f"dca_{slots[i]}pct_price"] = leg["price"]
+    cols[f"dca_{slots[i]}pct_size"] = leg["size_pct"]
+  return cols
+
+
 def _gtc_dca_ladder(
   direction: str,
   anchor: float,
@@ -178,11 +226,12 @@ def _gtc_dca_ladder(
   fib_levels: Optional[List[float]] = None,
   *,
   harmonic_prz: Optional[Tuple[float, float]] = None,
+  profile: str = "pyramid_4",
 ) -> List[dict]:
-  """Asymmetric 10/20/30/40 pyramid — all GTC limits."""
+  """Asymmetric pyramid — all GTC limits."""
   return build_dca_ladder(
     direction, anchor, atr, zone_low, zone_high, fib_levels,
-    harmonic_prz=harmonic_prz, gtc=True,
+    harmonic_prz=harmonic_prz, gtc=True, profile=profile,
   )
 
 
@@ -193,7 +242,11 @@ def _tier_account_risk(base_pct: float, gtc_tier: str, honest_tier: str) -> floa
   return round(base_pct * mult, 3)
 
 
-def build_limit_order_row(result: dict, tf: str) -> dict:
+def build_limit_order_row(
+  result: dict,
+  tf: str,
+  ctx: Optional[ExportContext] = None,
+) -> dict:
   """One GTC limit-order plan for symbol × timeframe."""
   if result.get("status") == "incomplete":
     return {
@@ -265,10 +318,19 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
     honest_status = "staged"
     reused_stop = None
 
+  ctx = ctx or ExportContext()
+
   s_low, s_high = _structure_bounds(wave, current, atr)
+  dca_profile, profile_reason = select_dca_profile(result["symbol"], tf, result, ctx)
+  contingent = (
+    build_contingent_scenarios(result, tf, cfg, ctx)
+    if result["symbol"] in CONTINGENT_SYMBOLS and tf in ("1h", "4h")
+    else None
+  )
+
   dca = _gtc_dca_ladder(
     direction, entry_anchor, atr, zone_low, zone_high,
-    fib_levels=fib_levels, harmonic_prz=prz,
+    fib_levels=fib_levels, harmonic_prz=prz, profile=dca_profile,
   )
   wae = compute_wae(dca)
 
@@ -291,12 +353,14 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
   if gtc_tier == "executable" and honest_tier == "probe":
     size_cap = min(size_cap, 50)
 
-  return {
+  dca_cols = _dca_to_columns(dca)
+  row = {
     "symbol": result["symbol"],
     "timeframe": tf,
     "style": style,
     "horizon": cfg["horizon"],
     "direction": direction,
+    "row_type": "primary",
     "gtc_tier": gtc_tier,
     "gtc_size_cap_pct": size_cap,
     "honest_status": honest_status if mapped_style else "n/a",
@@ -315,18 +379,11 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
     "entry_zone_low": zone_low,
     "entry_zone_high": zone_high,
     "dca_legs": dca,
-    "dca_l1_rationale": dca[0].get("rationale", ""),
-    "dca_l2_rationale": dca[1].get("rationale", ""),
-    "dca_l3_rationale": dca[2].get("rationale", ""),
-    "dca_l4_rationale": dca[3].get("rationale", ""),
-    "dca_10pct_price": dca[0]["price"],
-    "dca_10pct_size": dca[0]["size_pct"],
-    "dca_20pct_price": dca[1]["price"],
-    "dca_20pct_size": dca[1]["size_pct"],
-    "dca_30pct_price": dca[2]["price"],
-    "dca_30pct_size": dca[2]["size_pct"],
-    "dca_40pct_price": dca[3]["price"],
-    "dca_40pct_size": dca[3]["size_pct"],
+    "dca_l1_rationale": dca[0].get("rationale", "") if dca else "",
+    "dca_l2_rationale": dca[1].get("rationale", "") if len(dca) > 1 else "",
+    "dca_l3_rationale": dca[2].get("rationale", "") if len(dca) > 2 else "",
+    "dca_l4_rationale": dca[3].get("rationale", "") if len(dca) > 3 else "",
+    **dca_cols,
     "stop_loss": stop["price"],
     "stop_rule": stop.get("rule"),
     "stop_distance_pct": stop.get("distance_pct"),
@@ -345,6 +402,14 @@ def build_limit_order_row(result: dict, tf: str) -> dict:
     "tier_note": tier_note,
     "playbook": _playbook_line(gtc_tier, honest_tier, direction, tf, dca, stop, targets, wae),
   }
+
+  row = enrich_row_with_advanced(row, dca, ctx, dca_profile, profile_reason, contingent)
+  if contingent:
+    row["contingent_scenarios_json"] = json.dumps(
+      [{"id": s["scenario_id"], "trigger": s["scenario_trigger"], "direction": s["direction"], "wae": s["wae"]} for s in contingent],
+      default=str,
+    )
+  return row
 
 
 def _prz_tuple(harm: Optional[dict]) -> Optional[Tuple[float, float]]:
@@ -376,14 +441,32 @@ def _playbook_line(
 def build_all_limit_orders(
   results: List[dict],
   tfs: Optional[List[str]] = None,
+  ctx: Optional[ExportContext] = None,
 ) -> List[dict]:
-  """250 rows for 50 pairs × 5 TFs (or n_pairs × len(tfs))."""
+  """250+ rows for n_pairs × 5 TFs; contingent scenarios add child rows."""
   tfs = list(tfs or ALL_TIMEFRAMES)
+  ctx = ctx or build_export_context(results)
   rows: List[dict] = []
   for result in results:
     for tf in tfs:
-      rows.append(build_limit_order_row(result, tf))
+      primary = build_limit_order_row(result, tf, ctx)
+      rows.append(primary)
+      contingent = primary.get("contingent_scenarios")
+      if contingent:
+        rows.extend(expand_contingent_rows(primary, contingent))
   return rows
+
+
+def _serialize_rows_for_csv(rows: List[dict]) -> List[dict]:
+  out = []
+  for r in rows:
+    row = dict(r)
+    if "contingent_scenarios" in row:
+      del row["contingent_scenarios"]
+    if isinstance(row.get("dca_legs"), list):
+      row["dca_legs"] = json.dumps(row["dca_legs"], default=str)
+    out.append(row)
+  return out
 
 
 def save_limit_orders_csv(rows: List[dict], path: str | Path) -> str:
@@ -412,12 +495,15 @@ def export_limit_orders(
   *,
   timestamp: Optional[str] = None,
   write_json: bool = False,
+  account_equity: Optional[float] = None,
+  usdt_d_pct: Optional[float] = None,
 ) -> dict:
   """Write pair×TF GTC limit order CSV + JSON summary."""
   output_dir = Path(output_dir)
   results = _normalize_results(batch_or_results)
+  ctx = build_export_context(results, account_equity=account_equity, usdt_d_pct=usdt_d_pct)
   ts = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-  rows = build_all_limit_orders(results)
+  rows = build_all_limit_orders(results, ctx=ctx)
 
   tier_ctr: Dict[str, int] = {}
   tf_ctr: Dict[str, int] = {}
@@ -429,8 +515,9 @@ def export_limit_orders(
 
   csv_path = output_dir / f"limit_orders_all_tf_{ts}.csv"
   stable_csv = output_dir / "latest_limit_orders_all_tf.csv"
-  save_limit_orders_csv(rows, csv_path)
-  save_limit_orders_csv(rows, stable_csv)
+  serializable = _serialize_rows_for_csv(rows)
+  save_limit_orders_csv(serializable, csv_path)
+  save_limit_orders_csv(serializable, stable_csv)
 
   meta = {
     "updated": datetime.now(timezone.utc).isoformat(),
@@ -445,6 +532,11 @@ def export_limit_orders(
     "latest_csv": str(stable_csv),
     "stable_csv": str(stable_csv),
     "dca_splits_pct": DCA_SPLITS,
+    "account_equity": account_equity,
+    "usdt_d_pct": usdt_d_pct,
+    "macro": ctx.macro_eval,
+    "high_beta_symbols": ctx.high_beta_symbols,
+    "contingent_rows": sum(1 for r in rows if r.get("row_type") == "contingent_scenario"),
   }
   meta_path = output_dir / "autodream" / "latest_limit_orders.json"
   meta_path.parent.mkdir(parents=True, exist_ok=True)

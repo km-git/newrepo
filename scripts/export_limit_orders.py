@@ -25,6 +25,8 @@ def main() -> int:
     )
     ap.add_argument("--output-dir", type=Path, default=ROOT / "output")
     ap.add_argument("--json", action="store_true", help="Also write full JSON export")
+    ap.add_argument("--equity", type=float, default=None, help="Account equity USD for leg sizing")
+    ap.add_argument("--usdt-d", type=float, default=None, dest="usdt_d", help="USDT.D %% for macro switch")
     args = ap.parse_args()
 
     if args.input is None:
@@ -43,7 +45,10 @@ def main() -> int:
         return 1
 
     batch = json.loads(args.input.read_text(encoding="utf-8"))
-    result = export_limit_orders(batch, output_dir=args.output_dir, write_json=args.json)
+    result = export_limit_orders(
+        batch, output_dir=args.output_dir, write_json=args.json,
+        account_equity=args.equity, usdt_d_pct=args.usdt_d,
+    )
 
     print(f"Input:  {args.input}")
     print(f"Rows:   {result['row_count']} (expected {result['expected_rows']})")
@@ -55,8 +60,12 @@ def main() -> int:
     print("Timeframes:")
     for tf, count in sorted(result["tf_counts"].items()):
         print(f"  {tf}: {count}")
-    if result.get("json"):
-        print(f"JSON:   {result['json']}")
+    if result.get("account_equity"):
+        print(f"Equity: ${result['account_equity']:,.2f}")
+    if result.get("usdt_d_pct") is not None:
+        print(f"USDT.D: {result['usdt_d_pct']}% → macro {result.get('macro', {}).get('mode')}")
+    if result.get("contingent_rows"):
+        print(f"Contingent scenario rows: {result['contingent_rows']}")
     return 0
 
 
