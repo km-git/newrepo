@@ -33,6 +33,9 @@ PYTHONPATH=/workspace python3 scripts/run_top50_batch.py -n 50
 # Scheduled refresh (monitor + batch every hour)
 ./scripts/run_autodream_daemon.sh
 
+# Regenerate from saved batch JSON (limit orders + matrix + markdown)
+PYTHONPATH=/workspace python3 scripts/generate_complete_analysis.py --equity 50000 --usdt-d 8.2
+
 # Show paths
 PYTHONPATH=/workspace python3 scripts/show_latest_analysis.py
 ```
