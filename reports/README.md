@@ -10,9 +10,11 @@ Open **[TRADE_SETUPS.md](./TRADE_SETUPS.md)** — markdown table with all scalp 
 
 | File | Description |
 |------|-------------|
+| `output/latest_trade_setups_matrix.html` | **Shaded 50×5 pair×TF grid** (FULL / PROBE / monitor / watch) |
 | `output/latest_analysis.html` | Full confluences + 4 setups per pair (browser) |
+| `output/latest_setups.html` | All style setups, row color-coded |
 | `output/latest_setups.csv` | One row per pair × style (Excel/Sheets) |
-| `output/latest_analysis.csv` | One wide row per pair (149 columns) |
+| `output/COMPLETE_TRADING_ANALYSIS.md` | Full markdown book with dollar-sized legs |
 
 ## Elliott Wave — always on
 

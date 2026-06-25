@@ -234,7 +234,7 @@ def main() -> int:
         args.input = candidates[0]
 
     batch = json.loads(args.input.read_text(encoding="utf-8"))
-    export_limit_orders(
+    meta = export_limit_orders(
         batch, output_dir=args.output_dir,
         account_equity=args.equity, usdt_d_pct=args.usdt_d,
     )
@@ -242,6 +242,10 @@ def main() -> int:
     md = build_markdown(args.input, limits, equity=args.equity, usdt_d=args.usdt_d)
     args.output.write_text(md, encoding="utf-8")
     print(f"Wrote {args.output} ({len(md.splitlines())} lines) @ ${args.equity:,.2f} equity")
+    if meta.get("matrix_html"):
+        print(f"Matrix: {meta['matrix_html']}")
+    if meta.get("latest_csv"):
+        print(f"Limits: {meta['latest_csv']}")
     return 0
 
 
