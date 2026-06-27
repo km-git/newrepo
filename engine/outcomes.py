@@ -73,6 +73,9 @@ def build_style_setup(
   c_targets: dict,
   executive: dict,
   market_tools: Optional[dict] = None,
+  *,
+  symbol: str = "",
+  historical_metrics: Optional[dict] = None,
 ) -> dict:
   cfg = STYLE_CONFIG[style]
   tf = cfg["primary_tf"]
@@ -121,6 +124,16 @@ def build_style_setup(
     indicators["score"] = min(100, indicators["score"] + boost)
     indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
     indicators["signals"] = list(indicators.get("signals", [])) + mkt.get("confluence_signals", [])[:2]
+  if symbol and historical_metrics:
+    from engine.outcome_tracker import readiness_adjustment, lookup_win_rate
+    delta = readiness_adjustment(symbol, tf, direction, historical_metrics)
+    if delta:
+      indicators["score"] = max(0, min(100, indicators["score"] + delta))
+      wr, n = lookup_win_rate(historical_metrics, symbol, tf, direction)
+      wr_s = f"{wr:.0%}" if wr is not None else "?"
+      indicators["signals"] = list(indicators.get("signals", [])) + [
+        f"tracked hist {wr_s} n={n} → readiness {delta:+d}"
+      ]
   status, execution_tier, reason = resolve_execution_status(
     style=style,
     direction=direction,
@@ -207,12 +220,16 @@ def build_outcomes(
 ) -> dict:
   mkt = market_tools or {}
   boost = mkt.get("confluence_boost", 0)
+  from engine.outcome_tracker import load_metrics
+  historical_metrics = load_metrics()
   setups = {}
   for style in STYLE_CONFIG:
     setups[style] = build_style_setup(
       style, data, adaptive, wave_structure, direction,
       kz_low, kz_high, harmonic_overlaps, in_zone, consensus, c_targets, executive,
       market_tools=mkt,
+      symbol=symbol,
+      historical_metrics=historical_metrics,
     )
 
   executable = [s for s in setups.values() if s.get("status") == "executable"]

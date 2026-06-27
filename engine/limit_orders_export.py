@@ -404,6 +404,10 @@ def build_limit_order_row(
     "playbook": _playbook_line(gtc_tier, honest_tier, direction, tf, dca, stop, targets, wae),
   }
 
+  if ctx and ctx.historical_metrics:
+    from engine.outcome_tracker import apply_feedback_to_row
+    row = apply_feedback_to_row(row, ctx.historical_metrics)
+
   row = enrich_row_with_advanced(row, dca, ctx, dca_profile, profile_reason, contingent)
   if contingent:
     row["contingent_scenarios_json"] = json.dumps(
@@ -647,9 +651,22 @@ def export_limit_orders(
   """Write pair×TF GTC limit order CSV + JSON summary."""
   output_dir = Path(output_dir)
   results = _normalize_results(batch_or_results)
+  from engine.outcome_tracker import resolve_open_setups, compute_metrics, save_metrics, record_setups, save_performance_report
+
+  resolved = resolve_open_setups(is_crypto=True)
+  metrics = compute_metrics()
+  metrics["last_resolved"] = resolved
+  save_metrics(metrics)
+  save_performance_report(metrics)
+
   ctx = build_export_context(results, account_equity=account_equity, usdt_d_pct=usdt_d_pct)
+  ctx.historical_metrics = metrics
   ts = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
   rows = build_all_limit_orders(results, ctx=ctx)
+
+  recorded = record_setups(rows)
+  metrics["newly_recorded"] = recorded
+  save_metrics(metrics)
 
   tier_ctr: Dict[str, int] = {}
   tf_ctr: Dict[str, int] = {}
@@ -689,6 +706,13 @@ def export_limit_orders(
     "macro": ctx.macro_eval,
     "high_beta_symbols": ctx.high_beta_symbols,
     "contingent_rows": sum(1 for r in rows if r.get("row_type") == "contingent_scenario"),
+    "historical_learning": {
+      "resolved": resolved,
+      "newly_recorded": recorded,
+      "overall_win_rate": metrics.get("overall", {}).get("win_rate"),
+      "open_tracked": metrics.get("open_count"),
+      "closed_tracked": metrics.get("closed_count"),
+    },
   }
   meta_path = output_dir / "autodream" / "latest_limit_orders.json"
   meta_path.parent.mkdir(parents=True, exist_ok=True)

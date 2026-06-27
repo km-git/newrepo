@@ -15,6 +15,7 @@ reports/*
 !reports/COMPLETE_TRADING_ANALYSIS.md
 !reports/trade_setups_matrix.html
 !reports/latest_executable_pair_tf.csv
+!reports/HISTORICAL_PERFORMANCE.md
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/

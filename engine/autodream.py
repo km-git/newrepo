@@ -165,21 +165,33 @@ def enrich_outcomes_with_autodream(
     df = _get_df(data, tf, "1d")
     autodream_styles[style] = analyze_historical(symbol, style, df)
 
-  # Apply confidence adjustment to executable setups
+  # Apply confidence adjustment to executable setups (tracked outcomes first, then bar sim)
+  from engine.outcome_tracker import load_metrics, lookup_win_rate
+  tracked = load_metrics()
+
   for style, ad in autodream_styles.items():
     setup = outcomes.get("setups", {}).get(style, {})
     if not setup or setup.get("status") == "not_actionable":
       continue
+    tf = {"scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w"}.get(style, "1d")
+    wr, n = lookup_win_rate(tracked, symbol, tf, setup.get("direction", ""))
+    if wr is not None and n >= 3:
+      adj = round((wr - 0.5) * 0.2, 3)
+      setup["historical_edge"] = wr
+      setup["confidence_note"] = f"tracked win_rate={wr:.0%} n={n} adj {adj:+.2f}"
+      if setup.get("readiness_score") is not None:
+        setup["readiness_score"] = max(0, min(100, int(setup["readiness_score"]) + round(adj * 100)))
+      continue
     adj = ad.get("confidence_adjustment", 0) or 0
     if setup.get("risk"):
       setup["historical_edge"] = ad.get("win_rate")
-      setup["confidence_note"] = f"autodream adj {adj:+.2f} from win_rate={ad.get('win_rate')}"
+      setup["confidence_note"] = f"bar-sim adj {adj:+.2f} from win_rate={ad.get('win_rate')}"
 
   outcomes["autodream"] = {
     "by_style": autodream_styles,
     "history_entries": len(_load_history()),
     "history_path": str(HISTORY_PATH),
-    "improvement_loop": "Each run logs to history.jsonl; win rates adjust confidence; monitor upgrades on trigger",
+    "improvement_loop": "Tracked setups resolve TP/SL → metrics.json feeds gates and sizing on next run",
   }
   return outcomes
 

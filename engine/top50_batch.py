@@ -35,6 +35,7 @@ def _sync_reports_from_export(output_dir: Path, limit_meta: dict) -> None:
   pairs = [
     (output_dir / "COMPLETE_TRADING_ANALYSIS.md", _REPORTS_DIR / "COMPLETE_TRADING_ANALYSIS.md"),
     (output_dir / "latest_trade_setups_matrix.html", _REPORTS_DIR / "trade_setups_matrix.html"),
+    (Path("reports/HISTORICAL_PERFORMANCE.md"), _REPORTS_DIR / "HISTORICAL_PERFORMANCE.md"),
   ]
   for src, dst in pairs:
     if src.exists():

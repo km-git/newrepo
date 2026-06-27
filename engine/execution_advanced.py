@@ -76,6 +76,7 @@ class ExportContext:
   account_equity: Optional[float] = None
   macro: MacroState = field(default_factory=MacroState)
   high_beta_symbols: List[str] = field(default_factory=list)
+  historical_metrics: Optional[dict] = None
 
   @property
   def macro_eval(self) -> dict:
