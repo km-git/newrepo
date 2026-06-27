@@ -19,6 +19,37 @@ from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
 DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
 
+_REPORTS_DIR = Path("reports")
+_EXECUTABLE_FIELDS = [
+  "symbol", "timeframe", "direction", "honest_execution_tier", "wae",
+  "risk_budget_usd", "position_notional_usd", "leg1_usd", "leg2_usd", "leg3_usd", "leg4_usd",
+  "stop_loss", "tp1", "tp2", "tp3", "dca_profile",
+]
+
+
+def _sync_reports_from_export(output_dir: Path, limit_meta: dict) -> None:
+  """Copy key artifacts from gitignored output/ into tracked reports/."""
+  import shutil
+
+  _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+  pairs = [
+    (output_dir / "COMPLETE_TRADING_ANALYSIS.md", _REPORTS_DIR / "COMPLETE_TRADING_ANALYSIS.md"),
+    (output_dir / "latest_trade_setups_matrix.html", _REPORTS_DIR / "trade_setups_matrix.html"),
+  ]
+  for src, dst in pairs:
+    if src.exists():
+      shutil.copy2(src, dst)
+
+  csv_src = Path(limit_meta.get("latest_csv", output_dir / "latest_limit_orders_all_tf.csv"))
+  if csv_src.exists():
+    rows = list(csv.DictReader(csv_src.open()))
+    exec_rows = [r for r in rows if r.get("row_type") == "primary" and r.get("gtc_tier") == "executable"]
+    dst_csv = _REPORTS_DIR / "latest_executable_pair_tf.csv"
+    with dst_csv.open("w", newline="") as f:
+      w = csv.DictWriter(f, fieldnames=_EXECUTABLE_FIELDS, extrasaction="ignore")
+      w.writeheader()
+      w.writerows(sorted(exec_rows, key=lambda x: (x["symbol"], x["timeframe"])))
+
 
 def _extract_row(result: dict) -> dict:
   sym = result.get("symbol", "?")
@@ -100,6 +131,7 @@ def run_top_crypto_batch(
     account_equity=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
     usdt_d_pct=float(os.environ["USDT_D_PCT"]) if os.environ.get("USDT_D_PCT") else None,
   )
+  _sync_reports_from_export(out, limit_meta)
 
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}

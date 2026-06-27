@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.limit_orders_export import ALL_TIMEFRAMES, export_limit_orders
+from engine.top50_batch import _sync_reports_from_export
 
 TF_ORDER = list(ALL_TIMEFRAMES)
 
@@ -241,7 +242,11 @@ def main() -> int:
     limits = list(csv.DictReader((args.output_dir / "latest_limit_orders_all_tf.csv").open()))
     md = build_markdown(args.input, limits, equity=args.equity, usdt_d=args.usdt_d)
     args.output.write_text(md, encoding="utf-8")
+    _sync_reports_from_export(args.output_dir, meta)
     print(f"Wrote {args.output} ({len(md.splitlines())} lines) @ ${args.equity:,.2f} equity")
+    print(f"Reports: {ROOT / 'reports'}/COMPLETE_TRADING_ANALYSIS.md")
+    print(f"         {ROOT / 'reports'}/trade_setups_matrix.html")
+    print(f"         {ROOT / 'reports'}/latest_executable_pair_tf.csv")
     if meta.get("matrix_html"):
         print(f"Matrix: {meta['matrix_html']}")
     if meta.get("latest_csv"):

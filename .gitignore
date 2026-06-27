@@ -12,6 +12,9 @@ output/autodream/
 reports/*
 !reports/README.md
 !reports/TRADE_SETUPS.md
+!reports/COMPLETE_TRADING_ANALYSIS.md
+!reports/trade_setups_matrix.html
+!reports/latest_executable_pair_tf.csv
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/
