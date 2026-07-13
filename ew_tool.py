@@ -26,12 +26,6 @@ def main() -> None:
   parser.add_argument("--outcomes-only", action="store_true", help="Print step8 outcomes JSON only")
   parser.add_argument("--cache-stats", action="store_true", help="Print cache stats after run")
   parser.add_argument("--clear-cache", action="store_true", help="Clear cache before run")
-  parser.add_argument(
-    "--exchange",
-    choices=["bybit", "binance", "okx", "kraken"],
-    default=None,
-    help="Prefer Bybit or Binance for live crypto OHLCV (semantic gateway cache)",
-  )
   parser.add_argument("--gateway-stats", action="store_true", help="Print semantic gateway cache stats")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
@@ -88,7 +82,7 @@ def main() -> None:
   else:
     if not args.symbol:
       parser.error("--symbol is required unless --batch is used")
-    result = adaptive_pipeline(args.symbol, tfs, args.crypto, exchange_preference=args.exchange)
+    result = adaptive_pipeline(args.symbol, tfs, args.crypto)
     validated = ElliottWaveOutput(**result)
     payload = validated.model_dump()
     elapsed = time.time() - t0

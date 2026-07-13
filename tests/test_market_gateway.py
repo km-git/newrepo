@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from cache.disk_cache import CompressedCache
 from cache.semantic_cache import SemanticOHLCVCache
-from gateway.market_gateway import MarketDataGateway
+from gateway.market_gateway import EXCHANGE_CHAIN, MarketDataGateway
 
 
 def _fake_fetch(symbol, timeframes, limit, chain):
@@ -18,16 +19,11 @@ def _fake_fetch(symbol, timeframes, limit, chain):
   return {tf: df for tf in timeframes}
 
 
-def test_bybit_first_chain():
-  chain = MarketDataGateway.chain_for_preference("bybit")
-  assert chain[0] == "bybit"
-  assert "binance" in chain
-
-
-def test_binance_first_chain():
-  chain = MarketDataGateway.chain_for_preference("binance")
-  assert chain[0] == "binance"
-  assert "bybit" in chain
+def test_okx_only_chain():
+  assert EXCHANGE_CHAIN == ("okx",)
+  assert MarketDataGateway.chain_for_preference() == ("okx",)
+  assert MarketDataGateway.chain_for_preference("bybit") == ("okx",)
+  assert MarketDataGateway.chain_for_preference("binance") == ("okx",)
 
 
 def test_gateway_semantic_cache_on_second_call(tmp_path, monkeypatch):
@@ -37,11 +33,12 @@ def test_gateway_semantic_cache_on_second_call(tmp_path, monkeypatch):
   disk = CompressedCache(cache_dir=tmp_path, ttl=3600)
   cache = SemanticOHLCVCache(disk=disk)
   gw = MarketDataGateway(semantic_cache=cache, fetch_fn=_fake_fetch)
-  r1 = gw.fetch_ohlcv("XRP/USDT", ["1h"], limit=100, exchange_preference="bybit")
+  r1 = gw.fetch_ohlcv("XRP/USDT", ["1h"], limit=100)
   assert r1.cache_hits["1h"] == "miss"
+  assert r1.exchange_used == "okx"
   assert len(r1.data["1h"]) == 100
 
-  r2 = gw.fetch_ohlcv("XRP/USDT", ["1h"], limit=80, exchange_preference="bybit")
+  r2 = gw.fetch_ohlcv("XRP/USDT", ["1h"], limit=80)
   assert r2.cache_hits["1h"] in ("exact", "semantic")
   assert len(r2.data["1h"]) == 80
   assert cache.stats.semantic_hits + cache.stats.exact_hits >= 1

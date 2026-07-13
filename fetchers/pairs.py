@@ -7,7 +7,7 @@ from typing import List
 
 import ccxt
 
-EXCHANGE_CHAIN = ["okx", "bybit", "kraken", "binance"]
+EXCHANGE_CHAIN = ["okx"]
 STABLES = {"USDT", "USDC", "DAI", "BUSD", "TUSD", "USDP", "FDUSD", "USDG", "EUR", "USD"}
 
 
@@ -22,12 +22,9 @@ def fetch_top_pairs(
   exchange_preference: str | None = None,
 ) -> List[str]:
   """
-  Return top N BASE/QUOTE spot pairs sorted by 24h quote volume.
-  Prefers bybit or binance when exchange_preference is set.
+  Return top N BASE/QUOTE spot pairs sorted by 24h quote volume (OKX only).
   """
-  from gateway.market_gateway import MarketDataGateway
-
-  chain = list(MarketDataGateway.chain_for_preference(exchange_preference))
+  chain = ["okx"]
   last_err = None
   for ex_name in chain:
     try:

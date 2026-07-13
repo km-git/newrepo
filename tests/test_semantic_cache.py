@@ -28,17 +28,17 @@ def test_normalize_symbol():
 
 
 def test_semantic_key_stable():
-  k1 = semantic_key("BTC/USDT", "1h", ("bybit", "binance"))
-  k2 = semantic_key("btc/usdt", "1h", ("bybit", "binance"))
+  k1 = semantic_key("BTC/USDT", "1h", ("okx",))
+  k2 = semantic_key("btc/usdt", "1h", ("okx",))
   assert k1 == k2
 
 
 def test_semantic_hit_serves_subset(tmp_path):
   disk = CompressedCache(cache_dir=tmp_path, ttl=3600)
   cache = SemanticOHLCVCache(disk=disk)
-  chain = ("bybit", "binance")
+  chain = ("okx",)
   df = _make_df(500)
-  cache.put("BTC/USDT", "1h", 500, chain, "bybit", df)
+  cache.put("BTC/USDT", "1h", 500, chain, "okx", df)
 
   out, hit = cache.get("BTC/USDT", "1h", 300, chain)
   assert hit == "semantic"
@@ -49,9 +49,9 @@ def test_semantic_hit_serves_subset(tmp_path):
 def test_exact_hit(tmp_path):
   disk = CompressedCache(cache_dir=tmp_path, ttl=3600)
   cache = SemanticOHLCVCache(disk=disk)
-  chain = ("bybit",)
+  chain = ("okx",)
   df = _make_df(100)
-  cache.put("ETH/USDT", "4h", 100, chain, "bybit", df)
+  cache.put("ETH/USDT", "4h", 100, chain, "okx", df)
 
   out, hit = cache.get("ETH/USDT", "4h", 100, chain)
   assert hit == "exact"
@@ -61,9 +61,9 @@ def test_exact_hit(tmp_path):
 def test_miss_when_expired(tmp_path):
   disk = CompressedCache(cache_dir=tmp_path, ttl=3600)
   cache = SemanticOHLCVCache(disk=disk)
-  chain = ("binance",)
+  chain = ("okx",)
   df = _make_df(50)
-  cache.put("SOL/USDT", "15m", 50, chain, "binance", df)
+  cache.put("SOL/USDT", "15m", 50, chain, "okx", df)
 
   # Expire on disk (in-memory index alone is not authoritative)
   sem = semantic_key("SOL/USDT", "15m", chain)

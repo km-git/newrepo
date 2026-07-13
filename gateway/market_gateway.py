@@ -1,6 +1,6 @@
-"""Cloudflare AI Gateway–style layer for live Bybit/Binance OHLCV fetches.
+"""Cloudflare AI Gateway–style layer for live OKX OHLCV fetches.
 
-- Routes to preferred exchange (bybit, binance) with fallback chain
+- Routes all live crypto OHLCV through OKX
 - Semantic cache before hitting the exchange API
 - Request log with latency + cache hit type (token-efficient agent traces)
 """
@@ -16,9 +16,8 @@ import pandas as pd
 
 from cache.semantic_cache import SemanticOHLCVCache, normalize_symbol
 
-DEFAULT_CHAIN = ("okx", "bybit", "kraken", "binance")
-LIVE_CHAIN_BYBIT_FIRST = ("bybit", "binance", "okx", "kraken")
-LIVE_CHAIN_BINANCE_FIRST = ("binance", "bybit", "okx", "kraken")
+# OKX only — reliable in restricted regions; avoids Bybit/Binance geo-blocks
+EXCHANGE_CHAIN: Tuple[str, ...] = ("okx",)
 
 
 @dataclass
@@ -59,15 +58,9 @@ class MarketDataGateway:
     self._request_log: List[dict] = []
 
   @staticmethod
-  def chain_for_preference(preference: Optional[str]) -> Tuple[str, ...]:
-    pref = (preference or "").lower().strip()
-    if pref == "bybit":
-      return LIVE_CHAIN_BYBIT_FIRST
-    if pref == "binance":
-      return LIVE_CHAIN_BINANCE_FIRST
-    if pref in LIVE_CHAIN_BYBIT_FIRST:
-      return (pref,) + tuple(x for x in DEFAULT_CHAIN if x != pref)
-    return DEFAULT_CHAIN
+  def chain_for_preference(preference: Optional[str] = None) -> Tuple[str, ...]:
+    """Always OKX. `preference` is accepted for API compatibility but ignored."""
+    return EXCHANGE_CHAIN
 
   def fetch_ohlcv(
     self,

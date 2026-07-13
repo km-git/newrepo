@@ -1,4 +1,4 @@
-"""Crypto OHLCV fetcher with exchange fallback chain + semantic gateway cache."""
+"""Crypto OHLCV fetcher via OKX + semantic gateway cache."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pandas as pd
 from cache.disk_cache import get_cache
 from gateway.market_gateway import MarketDataGateway, get_gateway
 
-EXCHANGE_CHAIN = ["okx", "bybit", "kraken", "binance"]
+EXCHANGE_CHAIN = ["okx"]
 
 TF_MAP = {
   "1w": "1w",
@@ -43,11 +43,7 @@ def fetch_ohlcv_crypto(
   exchange_preference: Optional[str] = None,
   use_gateway: bool = True,
 ) -> Dict[str, pd.DataFrame]:
-  """
-  Fetch OHLCV via MarketDataGateway (semantic cache + Bybit/Binance routing).
-
-  Set exchange_preference to 'bybit' or 'binance' for live-first routing.
-  """
+  """Fetch OHLCV via MarketDataGateway (semantic cache + OKX routing)."""
   if use_gateway:
     gw = get_gateway()
     resp = gw.fetch_ohlcv(symbol, timeframes, limit=limit, exchange_preference=exchange_preference)
