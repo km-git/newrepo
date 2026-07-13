@@ -8,6 +8,8 @@ CLI tool for Elliott Wave impulse validation (strict R1/R2/R3), ABC correction d
 - **Strict rule enforcement**: R1/R2/R3 are hard gates; no rule relaxation for standard impulses
 - **Token-saving infrastructure** for Cursor agents:
   - **Compressed disk cache** (`zstd` + `msgpack` + `diskcache`) for OHLCV, monowaves, harmonics, Monte Carlo
+  - **Semantic gateway cache** (Cloudflare AI Gateway pattern) for repetitive Bybit/Binance OHLCV queries
+  - **RepoMix export** (`--repomix`) minifies code structures for LLM agent context
   - **Deduplication** of harmonic patterns, monowaves, and tool-call logs
   - **Result hashing** in `tool_calls_log` — full payloads stored by hash, not inlined in JSON
 - **Exchange fallback**: okx → bybit → kraken → binance (avoids Binance HTTP 451)
@@ -24,8 +26,11 @@ git clone --depth 1 https://github.com/drstevendev/ElliottWaveAnalyzer.git libs/
 git clone --depth 1 https://github.com/DrEdwardPCB/python-taew.git libs/python-taew
 pip install -e libs/python-taew libs/pyharmonics
 
-# Single symbol (crypto)
-python3 ew_tool.py --symbol BTC/USDT --crypto --cache-stats
+# Single symbol (crypto) — prefer Bybit live data + semantic cache
+python3 ew_tool.py --symbol BTC/USDT --crypto --exchange bybit --gateway-stats
+
+# RepoMix-style code pack for agent context
+python3 ew_tool.py --repomix --repomix-out output/repomix_pack.xml
 
 # Batch mode
 python3 ew_tool.py --batch samples/batch_symbols.csv --crypto --save out.json

@@ -132,3 +132,4 @@ class ElliottWaveOutput(BaseModel):
   reasoning_trace: str
   monte_carlo: Optional[Dict[str, Any]] = None
   cache_stats: Optional[Dict[str, Any]] = None
+  gateway_stats: Optional[Dict[str, Any]] = None

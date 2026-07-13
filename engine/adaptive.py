@@ -142,13 +142,19 @@ def _first_usable_df(data: dict, prefer: List[str]):
   return None
 
 
-def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
+def adaptive_pipeline(
+  symbol: str,
+  tfs: List[str],
+  is_crypto: bool,
+  exchange_preference: str | None = None,
+) -> dict:
   stages: List[tuple[str, dict, Any]] = []
   tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
 
   # Fetch — always attempt all timeframes (partial OK)
-  data = fetch(symbol, tfs, is_crypto)
-  stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto},
+  data = fetch(symbol, tfs, is_crypto, exchange_preference=exchange_preference)
+  stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto,
+                            "exchange": exchange_preference},
                  {"bars": {tf: len(data[tf]) for tf in tfs if tf in data}}))
 
   htf_df = _first_usable_df(data, ["1d", "4h", "1h"])
@@ -332,7 +338,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
 
   tool_log = dedup_tool_calls(build_tool_calls_log(stages))
 
-  return {
+  result = {
     "symbol": symbol,
     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     "status": status,
@@ -389,3 +395,11 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "monte_carlo": mc_result,
     "cache_stats": get_cache().stats(),
   }
+  if is_crypto:
+    try:
+      from gateway.market_gateway import get_gateway
+
+      result["gateway_stats"] = get_gateway().stats()
+    except Exception:
+      pass
+  return result

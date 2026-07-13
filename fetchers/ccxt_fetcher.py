@@ -1,14 +1,15 @@
-"""Crypto OHLCV fetcher with exchange fallback chain."""
+"""Crypto OHLCV fetcher with exchange fallback chain + semantic gateway cache."""
 
 from __future__ import annotations
 
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 import ccxt
 import pandas as pd
 
 from cache.disk_cache import get_cache
+from gateway.market_gateway import MarketDataGateway, get_gateway
 
 EXCHANGE_CHAIN = ["okx", "bybit", "kraken", "binance"]
 
@@ -30,20 +31,37 @@ def _symbol_for_exchange(symbol: str, exchange_id: str) -> str:
   """Normalize BTC/USDT for exchange-specific formats."""
   base, quote = symbol.split("/")
   if exchange_id == "kraken":
-    # Kraken uses XBT for BTC
     if base.upper() == "BTC":
       base = "XBT"
   return f"{base}/{quote}"
 
 
-def fetch_ohlcv_crypto(symbol: str, timeframes: List[str], limit: int = 500) -> Dict[str, pd.DataFrame]:
+def fetch_ohlcv_crypto(
+  symbol: str,
+  timeframes: List[str],
+  limit: int = 500,
+  exchange_preference: Optional[str] = None,
+  use_gateway: bool = True,
+) -> Dict[str, pd.DataFrame]:
+  """
+  Fetch OHLCV via MarketDataGateway (semantic cache + Bybit/Binance routing).
+
+  Set exchange_preference to 'bybit' or 'binance' for live-first routing.
+  """
+  if use_gateway:
+    gw = get_gateway()
+    resp = gw.fetch_ohlcv(symbol, timeframes, limit=limit, exchange_preference=exchange_preference)
+    return resp.data
+
   cache = get_cache()
+  chain = MarketDataGateway.chain_for_preference(exchange_preference)
   cached, hit = cache.get_or_compute(
     "ohlcv_crypto",
-    lambda: _fetch_ohlcv_crypto_uncached(symbol, timeframes, limit),
+    lambda: _fetch_ohlcv_crypto_uncached(symbol, timeframes, limit, chain),
     symbol,
     tuple(timeframes),
     limit,
+    chain,
   )
   if hit:
     print(f"[cache] HIT ohlcv_crypto {symbol} tfs={timeframes}")
@@ -51,11 +69,14 @@ def fetch_ohlcv_crypto(symbol: str, timeframes: List[str], limit: int = 500) -> 
 
 
 def _fetch_ohlcv_crypto_uncached(
-  symbol: str, timeframes: List[str], limit: int = 500
+  symbol: str,
+  timeframes: List[str],
+  limit: int = 500,
+  exchange_chain: Tuple[str, ...] = tuple(EXCHANGE_CHAIN),
 ) -> Dict[str, pd.DataFrame]:
   last_err = None
   tf_limits = {"1w": 300, "1d": 500, "4h": 500, "1h": 500, "15m": 500}
-  for ex_name in EXCHANGE_CHAIN:
+  for ex_name in exchange_chain:
     try:
       ex = _make_exchange(ex_name)
       ex_sym = _symbol_for_exchange(symbol, ex_name)

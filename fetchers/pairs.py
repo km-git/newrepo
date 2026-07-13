@@ -19,13 +19,17 @@ def fetch_top_pairs(
   n: int = 50,
   quote: str = "USDT",
   min_volume_usd: float = 0,
+  exchange_preference: str | None = None,
 ) -> List[str]:
   """
   Return top N BASE/QUOTE spot pairs sorted by 24h quote volume.
-  Tries okx → bybit → binance.
+  Prefers bybit or binance when exchange_preference is set.
   """
+  from gateway.market_gateway import MarketDataGateway
+
+  chain = list(MarketDataGateway.chain_for_preference(exchange_preference))
   last_err = None
-  for ex_name in EXCHANGE_CHAIN:
+  for ex_name in chain:
     try:
       ex = _make_exchange(ex_name)
       ex.load_markets()
