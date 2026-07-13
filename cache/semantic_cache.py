@@ -61,7 +61,8 @@ class SemanticCacheEntry:
     return (time.time() - self.fetched_at) < ttl
 
   def can_serve(self, requested_limit: int) -> bool:
-    return len(self.df) >= requested_limit and self.is_fresh(self.timeframe)
+    # Exchanges may return fewer bars than requested (e.g. 1d cap 300); serve if fresh.
+    return len(self.df) > 0 and self.is_fresh(self.timeframe)
 
   def slice_for(self, requested_limit: int) -> pd.DataFrame:
     if len(self.df) <= requested_limit:
@@ -132,10 +133,8 @@ class SemanticOHLCVCache:
       self.stats.bytes_saved_estimate += est
       return mem.slice_for(limit), "semantic"
 
-    # Scan disk for larger limits under same semantic key
+    # Scan disk for any cached bar count under this semantic key
     for stored_limit in (500, 480, 300, 200, 100):
-      if stored_limit < limit:
-        continue
       blob = self._disk.get(NAMESPACE, self._disk_key(sem, stored_limit))
       if blob is None:
         continue

@@ -108,8 +108,9 @@ class MarketDataGateway:
         cache_hits[tf] = "miss"
         # Infer exchange from fetch logs is hard; store chain head as label
         exchange_used = chain[0]
-        self._cache.put(sym, tf, limit, chain, exchange_used, raw[tf])
-        self._log_request(sym, tf, limit, chain, "miss", 0.0, source=exchange_used)
+        bar_count = len(raw[tf])
+        self._cache.put(sym, tf, bar_count, chain, exchange_used, raw[tf])
+        self._log_request(sym, tf, bar_count, chain, "miss", 0.0, source=exchange_used)
 
     latency_ms = round((time.time() - t0) * 1000, 2)
     return GatewayResponse(
