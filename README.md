@@ -39,7 +39,7 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 
 ## Smart task routing (save tokens)
 
-**GPT is allowed — session budget enforces the limit.** Default `EW_LLM_MAX_SESSION_TOKENS=10000` caps total LLM tokens per day. All saving mechanisms stack: GitHub EW bypass (0 tokens), zstd disk cache, structure fingerprint, tiktoken estimates, compact prompts, dedup, TokenStore.
+**GPT is allowed — each model has its own 10k cap.** Default `EW_LLM_MAX_TOKENS_PER_MODEL=10000` limits each model independently (gpt-5-mini, claude-opus-4-8, etc. each get 10k). All saving mechanisms stack: GitHub EW bypass (0 tokens), zstd disk cache, structure fingerprint, tiktoken, llm-token-optimizer, tokenpruner, dedup, TokenStore.
 
 | Task | Tier | Max output | When | Cursor models (default) |
 |---|---|---:|---|---|
@@ -52,14 +52,14 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 | **synthesis** | premium | 320 | Post-batch summary | `gpt-5.6-sol` |
 
 ```bash
-python3 ew_tool.py --llm-tasks     # routing matrix + roster
-python3 ew_tool.py --llm-savers    # token-saving playbook + session budget
+python3 ew_tool.py --llm-savers              # playbook + per-model budgets
+python3 ew_tool.py --install-token-savers    # pip install missing saver libs
 ```
 
 ### Token-saving env vars
 
 ```bash
-EW_LLM_MAX_SESSION_TOKENS=10000      # hard session cap (default)
+EW_LLM_MAX_TOKENS_PER_MODEL=10000    # each model capped independently (default)
 EW_LLM_EW_BYPASS=1                     # GitHub EW consensus skips LLM (0 tokens)
 EW_LLM_EW_BYPASS_MIN_AGREEMENT=75
 EW_LLM_EW_BYPASS_MIN_ENGINES=2
@@ -68,7 +68,7 @@ EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefe
 EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
 ```
 
-**Libraries:** `tiktoken` (accurate counts) · `diskcache` + `zstandard` (compressed cache) · `cache/dedup` (dedup) · `cache/TokenStore` (hash logs not payloads).
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `diskcache` · `zstandard` · `cachetic` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
 
 ## Cursor Pro backend (default)
 

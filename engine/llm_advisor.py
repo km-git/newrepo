@@ -10,12 +10,14 @@ from typing import Any, Dict, List, Optional
 
 from cache.disk_cache import get_llm_cache
 from engine.llm_token_saver import (
+  get_model_budget,
   get_session_budget,
   should_bypass_llm_with_ew,
   structure_fingerprint,
   synthetic_panel_from_ew_consensus,
   usage_from_response,
 )
+from engine.token_saver_registry import optimize_prompt_text
 from engine.llm_token_router import (
   DEFAULT_MAX_OUTPUT_TOKENS,
   SYSTEM_PROMPT,
@@ -72,7 +74,11 @@ def build_advisory_prompt(
   payload = compact_advisory_payload(
     symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
   )
-  return build_compact_prompt(payload)
+  prompt = build_compact_prompt(payload)
+  optimized, opt_meta = optimize_prompt_text(prompt)
+  if opt_meta.get("optimized"):
+    prompt = optimized
+  return prompt
 
 
 def _http_post(url: str, headers: dict, body: dict, timeout: int = 45) -> dict:
@@ -184,21 +190,22 @@ def _call_advisory(
   max_output: int,
   prompt: str,
 ) -> dict:
-  budget = get_session_budget()
-  if budget.at_limit():
+  budget = get_model_budget()
+  if budget.at_limit(model):
+    ms = budget.model_summary(model)
     return {
       "available": False,
-      "skipped": "session_token_limit",
-      "error": f"Session token limit reached ({budget.used()}/{budget.summary()['limit']})",
+      "skipped": "model_token_limit",
+      "error": f"Model {model} token limit reached ({ms['used']}/{ms['limit']})",
       "model": model,
       "provider": provider,
     }
-  capped = budget.cap_output(prompt, max_output)
+  capped = budget.cap_output(model, prompt, max_output)
   if capped <= 0:
     return {
       "available": False,
       "skipped": "insufficient_budget",
-      "error": f"Insufficient session tokens ({budget.remaining()} remaining)",
+      "error": f"Insufficient tokens for {model} ({budget.remaining(model)} remaining)",
       "model": model,
       "provider": provider,
     }
@@ -209,7 +216,7 @@ def _call_advisory(
   else:
     resp = call_anthropic_advisory(prompt, model, capped)
   if resp.get("available") and resp.get("stance"):
-    budget.record(usage_from_response(resp, prompt, capped))
+    budget.record(model, usage_from_response(resp, prompt, capped))
   return resp
 
 
@@ -392,11 +399,11 @@ def get_llm_advisory(
   if use_cache and consulted:
     get_llm_cache().set(NAMESPACE, result, *cache_key)
 
-  session = get_session_budget().summary()
+  session = get_model_budget().summary()
   if result.get("token_budget"):
-    result["token_budget"]["session_budget"] = session
+    result["token_budget"]["model_budgets"] = session
   else:
-    result["token_budget"] = {"session_budget": session}
+    result["token_budget"] = {"model_budgets": session}
 
   return result
 

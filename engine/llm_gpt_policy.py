@@ -1,20 +1,29 @@
-"""Policy — limit LLM token usage (default 10k/session); GPT allowed but budgeted."""
+"""Policy — per-model token limits (default 10k each); GPT allowed but budgeted."""
 
 from __future__ import annotations
 
 import os
 
 
+def per_model_token_limit() -> int:
+  """Hard cap per model — default 10,000 tokens each (not shared across models)."""
+  return int(
+    os.environ.get(
+      "EW_LLM_MAX_TOKENS_PER_MODEL",
+      os.environ.get("EW_LLM_MAX_SESSION_TOKENS", "10000"),
+    )
+  )
+
+
 def session_token_limit() -> int:
-  """Hard cap on LLM tokens per session — default 10,000."""
-  return int(os.environ.get("EW_LLM_MAX_SESSION_TOKENS", "10000"))
+  """Backward-compat alias — now means per-model limit."""
+  return per_model_token_limit()
 
 
 def minimize_gpt_enabled() -> bool:
   """
   Optional preference for first-party models over GPT API.
-  Default off — GPT is allowed; session budget enforces the limit.
-  Set EW_MINIMIZE_GPT=1 to prefer Composer/Grok over GPT in roster slots.
+  Default off — GPT is allowed; per-model budget enforces the limit.
   """
   return os.environ.get("EW_MINIMIZE_GPT", "0").lower() in ("1", "true", "yes")
 

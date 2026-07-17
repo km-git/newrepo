@@ -43,7 +43,12 @@ def main() -> None:
   parser.add_argument(
     "--llm-savers",
     action="store_true",
-    help="Print token-saving playbook (EW bypass, cache, GPT policy) and exit",
+    help="Print token-saving playbook (per-model budget, cache, libraries) and exit",
+  )
+  parser.add_argument(
+    "--install-token-savers",
+    action="store_true",
+    help="pip install missing token-saving libraries (tiktoken, llm-token-optimizer, etc.)",
   )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
@@ -79,6 +84,13 @@ def main() -> None:
     from engine.llm_token_saver import token_saver_summary
 
     print(json.dumps({"savers": token_saver_summary(), "routing": routing_matrix()}, indent=2))
+    return
+
+  if args.install_token_savers:
+    from engine.token_saver_registry import install_missing_libraries, registry_summary
+
+    result = install_missing_libraries()
+    print(json.dumps({"install": result, "registry": registry_summary()}, indent=2))
     return
 
   if args.repomix:

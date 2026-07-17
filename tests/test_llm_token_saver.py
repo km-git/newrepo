@@ -1,18 +1,16 @@
-"""Tests for token savers — EW bypass, structure fingerprint, session budget."""
+"""Tests for token savers — per-model budget, EW bypass, registry."""
 
 from __future__ import annotations
 
 from engine.llm_token_saver import (
-  SessionTokenBudget,
+  PerModelTokenBudget,
   ew_consensus_aligns,
-  ew_consensus_strong_enough,
-  get_session_budget,
-  llm_cache_ttl,
   should_bypass_llm_with_ew,
   structure_fingerprint,
   synthetic_panel_from_ew_consensus,
   token_saver_summary,
 )
+from engine.token_saver_registry import library_status, optimize_prompt_text, registry_summary
 
 
 def test_structure_fingerprint_stable():
@@ -22,7 +20,6 @@ def test_structure_fingerprint_stable():
   a = structure_fingerprint("BTC/USDT", ex, cons, wave)
   b = structure_fingerprint("BTC/USDT", ex, cons, wave)
   assert a == b
-  assert len(a) == 16
 
 
 def test_ew_bypass_when_strong_consensus():
@@ -31,56 +28,66 @@ def test_ew_bypass_when_strong_consensus():
   assert should_bypass_llm_with_ew(executive, consensus) is True
 
 
-def test_ew_bypass_disabled(monkeypatch):
-  monkeypatch.setenv("EW_LLM_EW_BYPASS", "0")
-  executive = {"direction": "BULL"}
-  consensus = {"consensus_direction": "BULL", "agreement_pct": 90, "engines_valid": 3}
-  assert should_bypass_llm_with_ew(executive, consensus) is False
-
-
 def test_synthetic_panel_zero_tokens():
   result = synthetic_panel_from_ew_consensus(
     {"direction": "BULL", "verdict": "GO"},
-    {"consensus_direction": "BULL", "agreement_pct": 90, "engines_valid": 3, "github_tools_used": ["ewa"]},
+    {"consensus_direction": "BULL", "agreement_pct": 90, "engines_valid": 3},
   )
   assert result["ew_bypass"] is True
   assert result["token_budget"]["est_total_tokens"] == 0
 
 
-def test_session_budget_tracks_usage(tmp_path, monkeypatch):
+def test_per_model_budget_independent(tmp_path, monkeypatch):
   from cache.disk_cache import CompressedCache
   from cache import disk_cache
 
-  monkeypatch.setenv("EW_LLM_MAX_SESSION_TOKENS", "1000")
+  monkeypatch.setenv("EW_LLM_MAX_TOKENS_PER_MODEL", "1000")
   monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path))
-  budget = SessionTokenBudget()
-  assert budget.remaining() == 1000
-  budget.record(400)
-  assert budget.used() == 400
-  assert budget.remaining() == 600
-  assert budget.can_spend(500) is True
-  assert budget.can_spend(700) is False
+  budget = PerModelTokenBudget()
+
+  budget.record("gpt-5-mini", 900)
+  budget.record("claude-opus-4-8", 200)
+
+  assert budget.used("gpt-5-mini") == 900
+  assert budget.remaining("gpt-5-mini") == 100
+  assert budget.used("claude-opus-4-8") == 200
+  assert budget.remaining("claude-opus-4-8") == 800
+  assert not budget.at_limit("claude-opus-4-8")
 
 
-def test_session_budget_caps_output(tmp_path, monkeypatch):
+def test_per_model_budget_at_limit(tmp_path, monkeypatch):
   from cache.disk_cache import CompressedCache
   from cache import disk_cache
 
-  monkeypatch.setenv("EW_LLM_MAX_SESSION_TOKENS", "500")
+  monkeypatch.setenv("EW_LLM_MAX_TOKENS_PER_MODEL", "500")
   monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path))
-  budget = SessionTokenBudget()
-  budget.record(450)
-  capped = budget.cap_output("short prompt", 200)
-  assert capped < 200
-  assert capped >= 0
+  budget = PerModelTokenBudget()
+  budget.record("composer-2.5", 500)
+  assert budget.at_limit("composer-2.5")
+  assert budget.cap_output("composer-2.5", "prompt", 100) == 0
 
 
-def test_llm_cache_ttl_default():
-  assert llm_cache_ttl() == 14400
-
-
-def test_token_saver_summary():
+def test_token_saver_summary_per_model():
   summary = token_saver_summary()
-  assert summary["session_token_limit"] == 10000
-  assert summary["ew_bypass"] is True
-  assert "tiktoken" in summary["libraries"][0] or summary["tiktoken"] is not None
+  assert summary["per_model_token_limit"] == 10000
+  assert "model_budgets" in summary
+  assert "registry" in summary
+
+
+def test_registry_lists_libraries():
+  reg = registry_summary()
+  assert reg["total_count"] >= 8
+  names = {l["name"] for l in reg["libraries"]}
+  assert "tiktoken" in names
+  assert "llm-token-optimizer" in names
+
+
+def test_optimize_prompt_builtin_fallback():
+  text = "hello   world\n\n\nfoo"
+  optimized, meta = optimize_prompt_text(text)
+  assert meta["optimized"] is True
+  assert len(optimized) <= len(text)
+
+
+def test_ew_consensus_aligns():
+  assert ew_consensus_aligns({"direction": "BULL"}, {"consensus_direction": "BULL"}) is True

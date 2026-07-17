@@ -230,12 +230,12 @@ def roster_summary() -> Dict[str, Any]:
     "resolved": dict(MODEL),
     "assignments": assignments,
     "efficiency_rules": [
-      "EW_LLM_MAX_SESSION_TOKENS=10000 — hard session cap (GPT allowed, budget-limited)",
+      "EW_LLM_MAX_TOKENS_PER_MODEL=10000 — each model capped independently",
       "EW_LLM_EW_BYPASS=1 — GitHub EW consensus = 0 LLM tokens",
-      "tiktoken + zstd diskcache (4h) + structure fingerprint + dedup",
-      "screen: Grok High + gpt-5-mini (Composer if EW_MINIMIZE_GPT=1)",
-      "escalation: Terra/Luna/Sol/Opus only when crucial",
-      "per-task output caps: workhorse 120, screen 150",
+      "tiktoken + llm-token-optimizer + tokenpruner — prompt compression",
+      "diskcache + zstandard + cachetic — compressed persistent cache",
+      "joblib memoize — deduplicate repeated LLM calls",
       "TokenStore — pipeline logs store hashes not full payloads",
+      "per-task output caps: workhorse 120, screen 150",
     ],
   }

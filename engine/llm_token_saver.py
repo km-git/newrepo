@@ -1,4 +1,4 @@
-"""Token savers — tiktoken, EW/GitHub bypass, zstd cache, dedup, session budget."""
+"""Token savers — per-model budget, tiktoken, EW bypass, zstd cache, library registry."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import os
 from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
-from engine.llm_gpt_policy import session_token_limit
+from engine.llm_gpt_policy import per_model_token_limit
 
 # Optional accurate token counting (pip install tiktoken)
 try:
@@ -159,74 +159,103 @@ def compress_prompt_payload(payload: dict) -> str:
   return json.dumps(payload, separators=(",", ":"), default=str)
 
 
-class SessionTokenBudget:
+class PerModelTokenBudget:
   """
-  Persistent session token tracker (diskcache + zstd).
-  Enforces EW_LLM_MAX_SESSION_TOKENS (default 10,000).
+  Per-model token tracker (diskcache + zstd).
+  Each model gets EW_LLM_MAX_TOKENS_PER_MODEL (default 10,000) — independent caps.
   """
 
-  NAMESPACE = "llm_session_budget"
+  NAMESPACE = "llm_model_budget"
 
   def __init__(self) -> None:
     from cache.disk_cache import get_llm_cache
 
     self._cache = get_llm_cache()
-    self._limit = session_token_limit()
-    self._key = ("session", date.today().isoformat())
+    self._limit = per_model_token_limit()
+    self._key = ("per_model", date.today().isoformat())
 
-  def _state(self) -> dict:
-    return self._cache.get(self.NAMESPACE, *self._key) or {"used": 0, "calls": 0}
+  def _all_models(self) -> dict:
+    return self._cache.get(self.NAMESPACE, *self._key) or {}
 
-  def used(self) -> int:
-    return int(self._state().get("used", 0))
+  def _model_entry(self, model: str) -> dict:
+    return dict(self._all_models().get(model, {"used": 0, "calls": 0}))
 
-  def remaining(self) -> int:
-    return max(0, self._limit - self.used())
+  def used(self, model: str) -> int:
+    return int(self._model_entry(model).get("used", 0))
 
-  def at_limit(self) -> bool:
-    return self.remaining() <= 0
+  def remaining(self, model: str) -> int:
+    return max(0, self._limit - self.used(model))
 
-  def can_spend(self, estimated: int) -> bool:
-    return self.remaining() >= max(0, estimated)
+  def at_limit(self, model: str) -> bool:
+    return self.remaining(model) <= 0
 
-  def record(self, tokens: int) -> int:
-    state = self._state()
-    state["used"] = int(state.get("used", 0)) + max(0, tokens)
-    state["calls"] = int(state.get("calls", 0)) + 1
+  def can_spend(self, model: str, estimated: int) -> bool:
+    return self.remaining(model) >= max(0, estimated)
+
+  def record(self, model: str, tokens: int) -> int:
+    state = self._all_models()
+    entry = self._model_entry(model)
+    entry["used"] = int(entry.get("used", 0)) + max(0, tokens)
+    entry["calls"] = int(entry.get("calls", 0)) + 1
+    state[model] = entry
     self._cache.set(self.NAMESPACE, state, *self._key)
-    return state["used"]
+    return entry["used"]
 
-  def cap_output(self, prompt: str, requested: int) -> int:
-    """Shrink max_output to fit remaining session budget."""
+  def cap_output(self, model: str, prompt: str, requested: int) -> int:
+    """Shrink max_output to fit this model's remaining budget."""
     input_est = estimate_tokens(prompt) + estimate_tokens(
       os.environ.get("EW_LLM_SYSTEM_PROMPT_EST", "120")
     )
-    room = self.remaining() - input_est
+    room = self.remaining(model) - input_est
     if room <= 0:
       return 0
     return max(0, min(requested, room))
 
-  def estimate_call_cost(self, prompt: str, max_output: int) -> int:
-    return estimate_tokens(prompt) + max_output
+  def model_summary(self, model: str) -> Dict[str, Any]:
+    entry = self._model_entry(model)
+    used = int(entry.get("used", 0))
+    return {
+      "model": model,
+      "limit": self._limit,
+      "used": used,
+      "remaining": max(0, self._limit - used),
+      "calls": int(entry.get("calls", 0)),
+    }
 
   def summary(self) -> Dict[str, Any]:
+    state = self._all_models()
+    models = {
+      m: {
+        "limit": self._limit,
+        "used": int(e.get("used", 0)),
+        "remaining": max(0, self._limit - int(e.get("used", 0))),
+        "calls": int(e.get("calls", 0)),
+      }
+      for m, e in state.items()
+    }
     return {
-      "limit": self._limit,
-      "used": self.used(),
-      "remaining": self.remaining(),
-      "calls": self._state().get("calls", 0),
+      "per_model_limit": self._limit,
+      "models": models,
       "session_date": self._key[1],
     }
 
 
-_budget: Optional[SessionTokenBudget] = None
+# Backward-compat alias
+SessionTokenBudget = PerModelTokenBudget
+
+_budget: Optional[PerModelTokenBudget] = None
 
 
-def get_session_budget() -> SessionTokenBudget:
+def get_model_budget() -> PerModelTokenBudget:
   global _budget
   if _budget is None:
-    _budget = SessionTokenBudget()
+    _budget = PerModelTokenBudget()
   return _budget
+
+
+def get_session_budget() -> PerModelTokenBudget:
+  """Backward-compat — now tracks per-model limits."""
+  return get_model_budget()
 
 
 def usage_from_response(resp: dict, prompt: str, max_output: int) -> int:
@@ -243,25 +272,27 @@ def usage_from_response(resp: dict, prompt: str, max_output: int) -> int:
 
 
 def token_saver_summary() -> Dict[str, Any]:
-  budget = get_session_budget()
+  from engine.token_saver_registry import registry_summary
+
+  budget = get_model_budget()
+  reg = registry_summary()
   return {
-    "session_token_limit": session_token_limit(),
-    "session_budget": budget.summary(),
+    "per_model_token_limit": per_model_token_limit(),
+    "model_budgets": budget.summary(),
     "minimize_gpt_preference": os.environ.get("EW_MINIMIZE_GPT", "0"),
     "ew_bypass": ew_bypass_enabled(),
     "llm_cache_ttl_sec": llm_cache_ttl(),
     "tiktoken": _tiktoken_available(),
-    "libraries": ["tiktoken", "diskcache", "zstandard", "cache/dedup", "cache/TokenStore"],
+    "registry": reg,
     "rules": [
-      f"EW_LLM_MAX_SESSION_TOKENS={session_token_limit()} — hard session cap",
+      f"EW_LLM_MAX_TOKENS_PER_MODEL={per_model_token_limit()} — each model capped independently",
       "EW_LLM_EW_BYPASS=1 — skip LLM when GitHub EW consensus ≥75% + 2 engines",
       "EW_LLM_CACHE_TTL — structure-keyed zstd disk cache (default 4h)",
-      "tiktoken — accurate pre-call estimates",
-      "zstd + diskcache — compressed advisory blobs with dedup keys",
-      "TokenStore — pipeline logs store hashes not full payloads",
-      "compact JSON prompts — ~60% fewer input tokens",
-      "per-task output caps — workhorse 120, screen 150",
-      "EW_MINIMIZE_GPT=0 (default) — GPT allowed, budget-limited not blocked",
+      "tiktoken + llm-token-optimizer + tokenpruner — prompt compression",
+      "diskcache + zstandard + cachetic — compressed persistent cache",
+      "joblib memoize — deduplicate repeated LLM calls",
+      "TokenStore + dedup — pipeline logs store hashes not payloads",
+      "EW_MINIMIZE_GPT=0 (default) — GPT allowed, per-model budget-limited",
     ],
   }
 
