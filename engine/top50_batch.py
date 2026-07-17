@@ -186,6 +186,14 @@ def run_top_crypto_batch(
   meta["monitor_html"] = mon["monitor_html"]
   meta["dashboard_state"] = mon["dashboard_state"]
 
+  if os.environ.get("EW_IMPROVEMENT_CYCLE", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.improvement_cycle import run_improvement_cycle
+      rows = list(csv.DictReader(Path(limit_meta["latest_csv"]).open())) if Path(limit_meta["latest_csv"]).exists() else []
+      meta["improvement"] = run_improvement_cycle(is_crypto=True, record_rows=rows)
+    except Exception as exc:
+      meta["improvement_error"] = str(exc)
+
   print(f"\n[batch] DONE — {len(results)} instruments")
   print(f"  JSON:    {json_path}")
   print(f"  Summary:  {summary_path}")

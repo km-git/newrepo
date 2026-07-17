@@ -1,0 +1,46 @@
+name: E2E Improvement Cycle
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  improvement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Clone external libs
+        run: |
+          mkdir -p libs
+          git clone --depth 1 https://github.com/niall-oc/pyharmonics.git libs/pyharmonics
+          git clone --depth 1 https://github.com/drstevendev/ElliottWaveAnalyzer.git libs/ElliottWaveAnalyzer
+          git clone --depth 1 https://github.com/DrEdwardPCB/python-taew.git libs/python-taew
+          pip install -e libs/python-taew libs/pyharmonics
+
+      - name: Run tests
+        run: python -m pytest tests/ -q --tb=line -x
+
+      - name: Learning phase (offline metrics)
+        run: python -c "from engine.improvement_cycle import run_improvement_cycle; print(run_improvement_cycle())"
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci
+          EW_WEB_INTEL: "0"
+          EW_WS_ENABLED: "0"
+
+      - name: System health
+        run: python scripts/e2e_trading_cycle.py --health
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci

@@ -202,5 +202,12 @@ def run_scheduler_cycle(
     }
     result["monitor"] = monitor
 
+  if os.environ.get("EW_E2E_AFTER_MONITOR", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.improvement_cycle import run_improvement_cycle
+      result["improvement"] = run_improvement_cycle(is_crypto=is_crypto)
+    except Exception as exc:
+      result["improvement_error"] = str(exc)
+
   save_state(state)
   return result

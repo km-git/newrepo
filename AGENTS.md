@@ -47,3 +47,7 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   `EW_EXECUTE_CONFIRM=1` + `KRAKEN_API_KEY`/`KRAKEN_API_SECRET`. Status: `--execution-status`.
   Data hub: WebSocket tickers (`EW_WS_ENABLED=1`), rotating proxies (`EW_PROXY_LIST`), web intel
   (`--data-intel BTC/USDT`). Script: `python3 scripts/execute_limit_orders.py --status`.
+- **E2E continuous improvement:** Full cycle: learn → analyze → export → execute → improve.
+  `python3 ew_tool.py --e2e-cycle --e2e-batch 50` or `python3 scripts/e2e_trading_cycle.py`.
+  Daemon: `./scripts/run_e2e_daemon.sh`. Status: `--e2e-status`, `--health`.
+  CI: `.github/workflows/ci.yml` + scheduled `.github/workflows/e2e-improvement.yml`.

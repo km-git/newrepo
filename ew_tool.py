@@ -107,6 +107,14 @@ def main() -> None:
     action="store_true",
     help="Cancel all orders and halt (dry-run unless --execute-live)",
   )
+  parser.add_argument(
+    "--e2e-cycle",
+    action="store_true",
+    help="Full E2E: learn → analyze → export → improve",
+  )
+  parser.add_argument("--e2e-batch", type=int, default=50, metavar="N", help="With --e2e-cycle: top N pairs")
+  parser.add_argument("--e2e-status", action="store_true", help="E2E pipeline status")
+  parser.add_argument("--health", action="store_true", help="System health checks")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -206,6 +214,29 @@ def main() -> None:
     if args.execute_live:
       os.environ["EW_EXECUTION_MODE"] = "live"
     result = execute_from_csv(dry_run=not args.execute_live)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.health:
+    from engine.system_health import run_health_checks, save_health
+    h = run_health_checks()
+    print(json.dumps(h, indent=2, default=str))
+    print(f"[health] saved {save_health(h)}", file=sys.stderr)
+    return
+
+  if args.e2e_status:
+    from engine.e2e_pipeline import e2e_status
+    print(json.dumps(e2e_status(), indent=2, default=str))
+    return
+
+  if args.e2e_cycle:
+    from engine.e2e_pipeline import run_e2e_cycle
+    result = run_e2e_cycle(
+      batch_n=args.e2e_batch,
+      execute=args.execute,
+      execute_live=args.execute_live,
+      llm_advisory=args.llm_advisory,
+    )
     print(json.dumps(result, indent=2, default=str))
     return
 
