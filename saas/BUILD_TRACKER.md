@@ -6,7 +6,7 @@ Build order follows `discovery-output.md` global ranks. Status: **not started** 
 |---|------|---------|----------|--------|------|
 | 1 | 1 | MissedCall Rescue | AI Receptionist | mvp | `products/01-missed-call-rescue` |
 | 2 | 2 | SWMS Studio | Tradie/NDIS | mvp | `products/02-swms-studio` |
-| 3 | 3 | InvoiceChase Copilot | AI Workflow | not started | `products/03-invoicechase-copilot` |
+| 3 | 3 | InvoiceChase Copilot | AI Workflow | mvp | `products/03-invoicechase-copilot` |
 | 4 | 4 | Inbox2Job | AI Workflow | not started | `products/04-inbox2job` |
 | 5 | 5 | AuditReady | Tradie/NDIS | not started | `products/05-auditready` |
 | 6 | 6 | SubbieCheck | Service Platforms | not started | `products/06-subbiecheck` |
