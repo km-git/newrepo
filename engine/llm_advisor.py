@@ -27,7 +27,7 @@ from engine.llm_panel import (
 from engine.llm_cost import attach_cost_estimate
 from engine.llm_backend import advisory_credentials_available, credentials_hint, llm_backend
 from engine.llm_cursor import call_cursor_provider_advisory
-from engine.llm_task_router import TaskKind, max_output_for_task, resolve_model, screen_task_for_mode
+from engine.llm_task_router import TaskKind, max_output_for_task, provider_for_task, resolve_model, screen_task_for_mode
 
 NAMESPACE = "llm_advisory"
 CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
@@ -189,8 +189,8 @@ def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai") -> dict
   Run a named task (architect, planning, synthesis, etc.) with correct tier + token cap.
   Use for RepoMix review, batch synthesis, executive planning — not routine screen.
   """
-  model, tier, max_out = resolve_model(provider, task)  # type: ignore[arg-type]
-  return _call_advisory(provider, model, tier, task, max_out, prompt)
+  model, tier, max_out = resolve_model(provider_for_task(task), task)  # type: ignore[arg-type]
+  return _call_advisory(provider_for_task(task), model, tier, task, max_out, prompt)
 
 
 def get_llm_advisory(

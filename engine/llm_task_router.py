@@ -49,7 +49,12 @@ TASK_TIER: Dict[TaskKind, Tier] = {
   "synthesis": "premium",
 }
 
-# Cursor Pro model menu (first-party cheap, API premium)
+# Crucial-tier Cursor models — Opus / Fable / GPT-5.6 Sol (override via env)
+CURSOR_OPUS = os.environ.get("EW_CURSOR_OPUS", "claude-opus-4-8")
+CURSOR_FABLE = os.environ.get("EW_CURSOR_FABLE", "claude-fable-5")
+CURSOR_SOL = os.environ.get("EW_CURSOR_SOL", "gpt-5.6-sol")
+
+# Cursor Pro model menu (first-party cheap, crucial premium)
 CURSOR_MODELS: Dict[Tier, Dict[str, str]] = {
   "cheap": {
     "openai": os.environ.get("EW_CURSOR_CHEAP_OPENAI", "gpt-5-mini"),
@@ -57,13 +62,34 @@ CURSOR_MODELS: Dict[Tier, Dict[str, str]] = {
     "workhorse": os.environ.get("EW_CURSOR_WORKHORSE", "composer-2.5"),
   },
   "premium": {
-    "openai": os.environ.get("EW_CURSOR_PREMIUM_OPENAI", "gpt-5.2"),
-    "anthropic": os.environ.get("EW_CURSOR_PREMIUM_ANTHROPIC", "claude-4.5-sonnet"),
-    "executive": os.environ.get("EW_CURSOR_EXECUTIVE", "claude-4.5-sonnet"),
-    "planning": os.environ.get("EW_CURSOR_PLANNING", "gpt-5.2"),
-    "architect": os.environ.get("EW_CURSOR_ARCHITECT", "claude-4.5-sonnet"),
-    "synthesis": os.environ.get("EW_CURSOR_SYNTHESIS", "gpt-5.2"),
+    "openai": CURSOR_SOL,
+    "anthropic": CURSOR_OPUS,
+    "executive": CURSOR_OPUS,
+    "planning": CURSOR_SOL,
+    "architect": CURSOR_FABLE,
+    "synthesis": CURSOR_SOL,
+    "tiebreaker": CURSOR_SOL,
   },
+}
+
+# Per-task crucial model (cursor backend) — cheap tasks use provider slots above
+TASK_MODEL_CURSOR: Dict[TaskKind, str] = {
+  "workhorse": os.environ.get("EW_CURSOR_WORKHORSE", "composer-2.5"),
+  "screen": "",  # resolved per provider slot
+  "tiebreaker": CURSOR_SOL,
+  "executive": CURSOR_OPUS,
+  "planning": CURSOR_SOL,
+  "architect": CURSOR_FABLE,
+  "synthesis": CURSOR_SOL,
+}
+
+# Direct API crucial fallbacks when not on Cursor
+DIRECT_CRUCIAL: Dict[TaskKind, str] = {
+  "tiebreaker": os.environ.get("EW_DIRECT_SOL", STANDARD_OPENAI),
+  "executive": os.environ.get("EW_DIRECT_OPUS", STANDARD_ANTHROPIC),
+  "planning": os.environ.get("EW_DIRECT_SOL", STANDARD_OPENAI),
+  "architect": os.environ.get("EW_DIRECT_FABLE", STANDARD_ANTHROPIC),
+  "synthesis": os.environ.get("EW_DIRECT_SOL", STANDARD_OPENAI),
 }
 
 DIRECT_MODELS: Dict[Tier, Dict[str, str]] = {
@@ -74,12 +100,28 @@ DIRECT_MODELS: Dict[Tier, Dict[str, str]] = {
 TASK_DESCRIPTIONS: Dict[TaskKind, str] = {
   "workhorse": "High-volume cheap screen (batch --llm-advisory-max)",
   "screen": "Dual cheap parallel review before escalation",
-  "tiebreaker": "Premium call when cheap models disagree",
-  "executive": "GO + high conviction final risk decision",
-  "planning": "CONDITIONAL_GO / staged entry planning",
-  "architect": "RepoMix / multi-file pipeline design",
-  "synthesis": "Post-batch executive summary across top setups",
+  "tiebreaker": "GPT-5.6 Sol when cheap models disagree",
+  "executive": "Claude Opus — GO + high conviction final risk decision",
+  "planning": "GPT-5.6 Sol — CONDITIONAL_GO / staged entry planning",
+  "architect": "Claude Fable — RepoMix / multi-file pipeline design",
+  "synthesis": "GPT-5.6 Sol — post-batch executive summary across top setups",
 }
+
+
+def crucial_model_for_task(task: TaskKind) -> str:
+  """Model id for a crucial (premium) task."""
+  if llm_backend() == "cursor":
+    return TASK_MODEL_CURSOR[task]
+  return DIRECT_CRUCIAL.get(task, model_for("openai", "standard"))
+
+
+def provider_for_task(task: TaskKind) -> Provider:
+  """Anthropic slot for Opus/Fable; OpenAI slot for Sol."""
+  if task in ("executive", "architect"):
+    return "anthropic"
+  if task in ("planning", "synthesis", "tiebreaker"):
+    return "openai"
+  return "openai"
 
 
 def max_output_for_task(task: TaskKind) -> int:
@@ -106,23 +148,19 @@ def screen_task_for_mode(mode: str) -> TaskKind:
 def resolve_model(provider: Provider, task: TaskKind) -> Tuple[str, Tier, int]:
   """
   Resolve (model_id, tier, max_output_tokens) for a task.
-  Cheap tasks always use workhorse/screen tier — never premium unless task says so.
+  Cheap: workhorse/screen only. Crucial: Opus / Fable / GPT-5.6 Sol.
   """
   tier = tier_for_task(task)
   max_out = max_output_for_task(task)
 
+  if tier == "premium":
+    model = crucial_model_for_task(task)
+    return model, tier, max_out
+
   if llm_backend() == "cursor":
-    menu = CURSOR_MODELS[tier]
+    menu = CURSOR_MODELS["cheap"]
     if task == "workhorse":
       model = menu.get("workhorse") or menu.get("anthropic") or menu["openai"]
-    elif task == "executive":
-      model = menu.get("executive") or menu["anthropic"]
-    elif task == "planning":
-      model = menu.get("planning") or menu["openai"]
-    elif task == "architect":
-      model = menu.get("architect") or menu["anthropic"]
-    elif task == "synthesis":
-      model = menu.get("synthesis") or menu["openai"]
     else:
       model = menu.get(provider) or menu["openai"]
     return model, tier, max_out
@@ -158,14 +196,15 @@ def screen_routes(mode: str) -> List[Tuple[Provider, str, Tier, TaskKind, int]]:
 
 def tiebreaker_route(verdict: str, conviction: str = "") -> Optional[Tuple[Provider, str, Tier, TaskKind, int]]:
   task = tiebreaker_task(verdict, conviction)
-  provider: Provider = "openai"
+  provider = provider_for_task(task)
   if llm_backend() == "direct":
-    if os.environ.get("OPENAI_API_KEY", "").strip():
-      provider = "openai"
-    elif os.environ.get("ANTHROPIC_API_KEY", "").strip():
-      provider = "anthropic"
-    else:
-      return None
+    key = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+    if not os.environ.get(key, "").strip():
+      alt: Provider = "anthropic" if provider == "openai" else "openai"
+      if os.environ.get("OPENAI_API_KEY" if alt == "openai" else "ANTHROPIC_API_KEY", "").strip():
+        provider = alt
+      else:
+        return None
   model, tier, max_out = resolve_model(provider, task)
   return provider, model, tier, task, max_out
 
@@ -177,9 +216,13 @@ def routing_matrix() -> Dict[str, Any]:
     tier = tier_for_task(task)
     max_out = max_output_for_task(task)
     if llm_backend() == "cursor":
-      m_o, _, _ = resolve_model("openai", task)  # type: ignore[arg-type]
-      m_a, _, _ = resolve_model("anthropic", task)  # type: ignore[arg-type]
-      models = f"{m_a} + {m_o}" if task == "screen" else (m_a if task in ("executive", "architect") else m_o)
+      model = crucial_model_for_task(task) if tier == "premium" else resolve_model("openai", task)[0]
+      if task == "screen":
+        m_a, _, _ = resolve_model("anthropic", task)
+        m_o, _, _ = resolve_model("openai", task)
+        models = f"{m_a} + {m_o}"
+      else:
+        models = model
     else:
       models = f"{DIRECT_MODELS[tier]['anthropic']} / {DIRECT_MODELS[tier]['openai']}"
     rows.append(
@@ -194,7 +237,15 @@ def routing_matrix() -> Dict[str, Any]:
     )
   return {
     "backend": llm_backend(),
-    "principle": "Cheap workhorses for volume; premium only for executive, planning, architect, synthesis.",
+    "principle": (
+      "Cheap workhorses (composer-2.5, gpt-5-mini) for volume. "
+      "Crucial only: Opus (executive), Fable (architect), GPT-5.6 Sol (planning/synthesis/tiebreaker)."
+    ),
+    "crucial_models": {
+      "opus": CURSOR_OPUS,
+      "fable": CURSOR_FABLE,
+      "sol": CURSOR_SOL,
+    },
     "tasks": rows,
     "token_savers": [
       "Critical-only gate (~90% batch pairs skip LLM)",

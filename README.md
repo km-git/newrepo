@@ -45,11 +45,13 @@ Every LLM call is classified by **task** — cheap workhorses for volume, premiu
 |---|---|---:|---|---|
 | **workhorse** | cheap | 180 | `single` mode, batch caps | `composer-2.5` |
 | **screen** | cheap | 200 | Ensemble phase 1 (parallel) | `composer-2.5` + `gpt-5-mini` |
-| **tiebreaker** | premium | 240 | Cheap models disagree | `gpt-5.2` |
-| **planning** | premium | 320 | CONDITIONAL_GO / staged | `gpt-5.2` |
-| **executive** | premium | 280 | GO + high conviction | `claude-4.5-sonnet` |
-| **architect** | premium | 600 | RepoMix / pipeline design | `claude-4.5-sonnet` |
-| **synthesis** | premium | 500 | Post-batch top-setup summary | `gpt-5.2` |
+| **tiebreaker** | premium | 240 | Cheap models disagree | `gpt-5.6-sol` |
+| **planning** | premium | 320 | CONDITIONAL_GO / staged | `gpt-5.6-sol` |
+| **executive** | premium | 280 | GO + high conviction | `claude-opus-4-8` |
+| **architect** | premium | 600 | RepoMix / pipeline design | `claude-fable-5` |
+| **synthesis** | premium | 500 | Post-batch summary | `gpt-5.6-sol` |
+
+Crucial models override: `EW_CURSOR_OPUS`, `EW_CURSOR_FABLE`, `EW_CURSOR_SOL`.
 
 ```bash
 python3 ew_tool.py --llm-tasks    # print full routing matrix
@@ -68,12 +70,14 @@ export EW_LLM_INTELLIGENCE=ensemble     # composer-2.5 + gpt-5-mini screen, prem
 python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 ```
 
-| Screen (cheap) | Tiebreaker (premium) | Pool |
-|---|---|---|
-| `composer-2.5` | `claude-4.5-sonnet` | First-party + API |
-| `gpt-5-mini` | `gpt-5.2` | API |
+| Role | Cheap (workhorse) | Crucial (escalation) | Pool |
+|---|---|---|---|
+| Screen | `composer-2.5` + `gpt-5-mini` | — | First-party + API |
+| Executive | — | `claude-opus-4-8` | API |
+| Architect | — | `claude-fable-5` | API |
+| Planning / synthesis / tiebreaker | — | `gpt-5.6-sol` | API |
 
-Override models: `EW_CURSOR_CHEAP_OPENAI`, `EW_CURSOR_CHEAP_ANTHROPIC`, `EW_CURSOR_PREMIUM_OPENAI`, `EW_CURSOR_PREMIUM_ANTHROPIC`.
+Override: `EW_CURSOR_OPUS`, `EW_CURSOR_FABLE`, `EW_CURSOR_SOL` (cheap: `EW_CURSOR_CHEAP_*`).
 
 Direct API fallback: `export EW_LLM_BACKEND=direct` + `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
 
@@ -83,9 +87,9 @@ When `--llm-advisory` is enabled, the tool uses **ensemble mode** by default —
 
 | Phase | Models | When |
 |---|---|---|
-| **1. Cheap screen** | `gpt-4o-mini` + `claude-3-5-haiku` in parallel | Both API keys present |
-| **2. Premium tiebreaker** | `gpt-4o` or `claude-sonnet` (one call) | Cheap models disagree |
-| **3. Confidence apply** | Panel adjustment applied to `trade_setup.confidence` | Always (audit trail preserved) |
+| **1. Cheap screen** | `composer-2.5` + `gpt-5-mini` in parallel | Always (workhorse tier) |
+| **2. Crucial escalation** | Opus (executive) · Fable (architect) · GPT-5.6 Sol (planning/tiebreaker) | Disagreement or high-stakes verdict |
+| **3. Confidence apply** | Panel adjustment on `trade_setup.confidence` | Always (audit trail preserved) |
 
 Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.
 
@@ -101,7 +105,7 @@ python3 ew_tool.py --llm-cost
 |---|---|---:|---:|---|
 | **Single cheap** | `gpt-4o-mini` | 1 | ~$0.0002 | High-volume batch, `--llm-advisory-max` caps |
 | **Ensemble agree** | mini + haiku | 2 | ~$0.0013 | Default — dual cheap screen, unanimous |
-| **Ensemble disagree** | mini + haiku + `gpt-4o` | 3 | ~$0.0042 | Hard decisions — premium tiebreaker only |
+| **Ensemble disagree** | mini + haiku + Sol/Opus | 3 | ~$0.004+ | Hard decisions — crucial model only |
 | **Ensemble blended** (~30% disagree) | conditional | 2–3 | ~$0.0021 | Expected real-world cost |
 | **Dual premium** ❌ | `gpt-4o` + sonnet | 2 | ~$0.0070 | Avoid — ~3× ensemble cost |
 | **Cache hit** | — | 0 | $0 | Same symbol/verdict/price within 1h |
@@ -110,10 +114,10 @@ python3 ew_tool.py --llm-cost
 
 | Task | Tier | Models |
 |---|---|---|
-| Advisory screen | cheap | `gpt-4o-mini`, `claude-3-5-haiku` |
-| Tiebreaker (disagreement) | standard | `gpt-4o` or `claude-sonnet` |
-| Architect / RepoMix review | standard | premium — complex multi-file reasoning |
-| Post-batch synthesis | standard | premium — cross-pair executive summary |
+| Advisory screen | cheap | `composer-2.5`, `gpt-5-mini` |
+| Tiebreaker / planning / synthesis | crucial | `gpt-5.6-sol` |
+| Executive decision | crucial | `claude-opus-4-8` |
+| Architect / RepoMix | crucial | `claude-fable-5` |
 
 Ensemble saves **~70%** vs dual premium while still using two cheap models + conditional premium.
 

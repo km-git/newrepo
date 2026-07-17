@@ -15,6 +15,9 @@ from engine.llm_token_router import (
   model_for,
 )
 from engine.llm_task_router import (
+  CURSOR_FABLE,
+  CURSOR_OPUS,
+  CURSOR_SOL,
   max_output_for_task,
   screen_routes,
   tiebreaker_route,
@@ -234,8 +237,9 @@ def run_panel(
     "models_used": {
       "cheap_openai": cursor_model_for("openai", "cheap") if llm_backend() == "cursor" else CHEAP_OPENAI,
       "cheap_anthropic": cursor_model_for("anthropic", "cheap") if llm_backend() == "cursor" else CHEAP_ANTHROPIC,
-      "premium_openai": cursor_model_for("openai", "standard") if llm_backend() == "cursor" else STANDARD_OPENAI,
-      "premium_anthropic": cursor_model_for("anthropic", "standard") if llm_backend() == "cursor" else STANDARD_ANTHROPIC,
+      "crucial_opus": CURSOR_OPUS,
+      "crucial_fable": CURSOR_FABLE,
+      "crucial_sol": CURSOR_SOL,
       "backend": llm_backend(),
     },
   }

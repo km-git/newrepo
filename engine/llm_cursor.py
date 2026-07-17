@@ -30,6 +30,8 @@ def cursor_available() -> bool:
 
 def cursor_model_for(provider: str, tier: str = "cheap") -> str:
   """Backward-compat shim — prefer resolve_model(task=...)."""
+  from engine.llm_task_router import TaskKind
+
   task: TaskKind = "screen" if tier == "cheap" else "executive"
   model, _, _ = resolve_model(provider, task)  # type: ignore[arg-type]
   return model
