@@ -8,8 +8,6 @@ import json
 import sys
 import time
 
-from engine.adaptive import adaptive_pipeline
-from engine.batch import run_batch, save_batch_json
 from schemas.models import ElliottWaveOutput
 
 
@@ -32,9 +30,44 @@ def main() -> None:
     action="store_true",
     help="Consult Claude + GPT on critical decisions (GO/CONDITIONAL_GO/executable); needs API keys",
   )
+  parser.add_argument(
+    "--llm-cost",
+    action="store_true",
+    help="Print typical critical-advisory cost comparison and exit",
+  )
+  parser.add_argument(
+    "--llm-tasks",
+    action="store_true",
+    help="Print task→model→token routing matrix and exit",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
+  parser.add_argument(
+    "--monitor",
+    action="store_true",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765)",
+  )
+  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor")
   args = parser.parse_args()
+
+  if args.monitor:
+    from scripts.serve_monitor import run as run_monitor
+
+    run(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+    return
+
+  if args.llm_cost:
+    from engine.llm_cost import advisory_scenario_comparison
+
+    comp = advisory_scenario_comparison()
+    print(json.dumps(comp, indent=2))
+    return
+
+  if args.llm_tasks:
+    from engine.llm_task_router import routing_matrix
+
+    print(json.dumps(routing_matrix(), indent=2))
+    return
 
   if args.repomix:
     from gateway.repomix_export import pack_repository
@@ -80,6 +113,8 @@ def main() -> None:
         from cache.disk_cache import get_cache
         print(f"[cache] {get_cache().stats()}", file=sys.stderr)
     else:
+      from engine.batch import run_batch, save_batch_json
+
       results = run_batch(args.batch, tfs, args.crypto, llm_advisory=args.llm_advisory)
       if args.save:
         save_batch_json(results, args.save)
@@ -88,6 +123,8 @@ def main() -> None:
   else:
     if not args.symbol:
       parser.error("--symbol is required unless --batch is used")
+    from engine.adaptive import adaptive_pipeline
+
     result = adaptive_pipeline(args.symbol, tfs, args.crypto, llm_advisory=args.llm_advisory)
     validated = ElliottWaveOutput(**result)
     payload = validated.model_dump()

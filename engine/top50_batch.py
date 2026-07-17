@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -132,6 +133,9 @@ def run_top_crypto_batch(
   full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
+
+  stable_summary = out / "latest_summary.csv"
+  shutil.copy2(summary_path, stable_summary)
   limit_meta = export_limit_orders(
     results,
     output_dir=out,
@@ -170,10 +174,17 @@ def run_top_crypto_batch(
     "limit_orders_matrix_html": limit_meta.get("matrix_html"),
     "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
     "pairs_csv": str(pairs_csv),
+    "summary_csv": str(stable_summary),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
   with open(meta_path, "w") as f:
     json.dump(meta, f, indent=2)
+
+  from engine.monitor_dashboard import publish_monitor
+
+  mon = publish_monitor(str(out))
+  meta["monitor_html"] = mon["monitor_html"]
+  meta["dashboard_state"] = mon["dashboard_state"]
 
   print(f"\n[batch] DONE — {len(results)} instruments")
   print(f"  JSON:    {json_path}")
@@ -191,6 +202,8 @@ def run_top_crypto_batch(
   print(f"  Limits:   {limit_meta['latest_csv']} ({limit_meta['row_count']} rows, tiers {limit_meta['tier_counts']})")
   if limit_meta.get("matrix_html"):
     print(f"  Matrix:   {limit_meta['matrix_html']}")
+  if meta.get("monitor_html"):
+    print(f"  Monitor:  {meta['monitor_html']}  (python3 scripts/serve_monitor.py)")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta
