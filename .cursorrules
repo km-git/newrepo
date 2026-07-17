@@ -1,0 +1,37 @@
+# Project rules - Elliott Wave analysis agent
+
+## Stack
+- Python 3 CLI entrypoint in `ew_tool.py`.
+- Core logic lives in `core/`, `engine/`, `fetchers/`, `gateway/`, and `schemas/`.
+- Validation uses Pydantic v2. Tests use pytest.
+- Live crypto OHLCV uses OKX-first fetch paths and repo caching layers.
+
+## Domain rules
+- Elliott Wave impulse validation keeps R1/R2/R3 strict; do not relax hard rules silently.
+- Prefer deterministic analysis first; use LLM advisory only when the code path already supports it.
+- Preserve honest abstention and explicit risk signaling in generated trade setups.
+- Keep output schemas backward compatible unless the task explicitly calls for a schema change.
+
+## Conventions
+- Put boundary validation in `schemas/` or at ingestion edges, not deep in business logic.
+- Keep fetchers side-effect light and isolate provider-specific behavior inside `fetchers/`.
+- Reuse cache utilities instead of adding ad hoc file caches.
+- Add new CLI flags in `ew_tool.py` or the relevant script with clear help text.
+
+## Style
+- Make the smallest change that satisfies the task.
+- Prefer small pure functions and typed helpers over broad rewrites.
+- Avoid comments unless the intent is non-obvious.
+- Do not add dependencies when existing stdlib or current packages are enough.
+
+## Testing
+- Run targeted pytest modules for the files or flows you changed.
+- For CLI behavior, prefer direct command checks against `ew_tool.py` or the relevant script.
+- Every bug fix should include a focused regression test when practical.
+- Report test limits honestly if a live dependency or credential blocks full verification.
+
+## Agent behaviour
+- Do not touch secrets, `.env`, or provider credentials unless explicitly asked.
+- Do not weaken risk logic, execution guards, or compliance wording just to make tests pass.
+- Do not refactor unrelated files while implementing a scoped task.
+- After each task, run the narrowest high-signal checks and summarize the results clearly.
