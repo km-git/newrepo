@@ -33,3 +33,6 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   HTTP 451; the fallback handles it.
 - Output/cache dirs (`output/`, `.cache/ew_tool`) are gitignored. Override cache location
   with `EW_CACHE_DIR`.
+- **Token budget is critical.** Each model capped at 10,000 tokens/day (`EW_LLM_MAX_TOKENS_PER_MODEL`).
+  Install saver libraries: `python3 ew_tool.py --install-token-savers` or `python3 scripts/install_token_savers.py`.
+  Inspect: `python3 ew_tool.py --llm-savers`.

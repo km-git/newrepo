@@ -39,27 +39,36 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 
 ## Smart task routing (save tokens)
 
-Every LLM call is classified by **task** — the full Cursor roster is used smartly: cheap workhorses for volume, mid-tier only when disagreement is mild, premium only when crucial.
+**GPT is allowed — each model has its own 10k cap.** Default `EW_LLM_MAX_TOKENS_PER_MODEL=10000` limits each model independently (gpt-5-mini, claude-opus-4-8, etc. each get 10k). All saving mechanisms stack: GitHub EW bypass (0 tokens), zstd disk cache, structure fingerprint, tiktoken, llm-token-optimizer, tokenpruner, dedup, TokenStore.
 
-| Task | Tier | Max output | When | Cursor models |
+| Task | Tier | Max output | When | Cursor models (default) |
 |---|---|---:|---|---|
-| **workhorse** | cheap | 180 | `single` mode, batch caps | `composer-2.5` or `gpt-5.4-nano` |
-| **screen** | cheap | 200 | Ensemble phase 1 (parallel) | `cursor-grok-4.5-high` + `gpt-5-mini` |
-| **tiebreaker** | standard/premium | 240 | Mild disagree → Grok High; hard → Sol/Opus | `cursor-grok-4.5-high` / `gpt-5.6-sol` / `claude-opus-4-8` |
-| **planning** | standard/premium | 320 | CONDITIONAL_GO → Luna; GO → Sol | `gpt-5.6-luna` / `gpt-5.6-sol` |
-| **executive** | premium | 280 | GO + high conviction + hard disagree | `claude-opus-4-8` |
-| **architect** | premium | 600 | RepoMix / pipeline design | `claude-fable-5` |
-| **synthesis** | premium | 500 | Post-batch summary | `gpt-5.6-sol` |
-
-**Efficiency rules:** mild disagreement (agree vs caution) → Grok High (first-party), not Sol/Opus · hard disagreement → Sol · executive GO only on hard disagree · `CONDITIONAL_GO` planning → Luna.
-
-Model overrides: `EW_MODEL_GROK_HIGH`, `EW_USE_GROK_HIGH=0` (fall back to composer/Terra), `EW_MODEL_NANO`, `EW_MODEL_MILD_TB`, `EW_MODEL_LIGHT_PLAN`, `EW_MODEL_OPUS`, `EW_MODEL_FABLE`, `EW_MODEL_SOL`.
+| **workhorse** | cheap | 120 | `single` mode, batch caps | `composer-2.5` |
+| **screen** | cheap | 150 | Ensemble phase 1 (parallel) | `cursor-grok-4.5-high` + `gpt-5-mini` |
+| **tiebreaker** | standard/premium | 180 | Mild → Grok High; hard → Sol/Opus | `cursor-grok-4.5-high` / `gpt-5.6-sol` / `claude-opus-4-8` |
+| **planning** | standard/premium | 240 | CONDITIONAL_GO → Luna; GO → Sol | `gpt-5.6-luna` / `gpt-5.6-sol` |
+| **executive** | premium | 220 | GO + high conviction + hard disagree | `claude-opus-4-8` |
+| **architect** | premium | 400 | RepoMix / pipeline design | `claude-fable-5` |
+| **synthesis** | premium | 320 | Post-batch summary | `gpt-5.6-sol` |
 
 ```bash
-python3 ew_tool.py --llm-tasks    # print full routing matrix + roster
+python3 ew_tool.py --llm-savers              # playbook + per-model budgets
+python3 ew_tool.py --install-token-savers    # pip install missing saver libs
 ```
 
-Token savers: critical-only gate · compact JSON prompts · per-task output caps · disk cache · premium only on hard disagreement · `--llm-advisory-max 5`.
+### Token-saving env vars
+
+```bash
+EW_LLM_MAX_TOKENS_PER_MODEL=10000    # each model capped independently (default)
+EW_LLM_EW_BYPASS=1                     # GitHub EW consensus skips LLM (0 tokens)
+EW_LLM_EW_BYPASS_MIN_AGREEMENT=75
+EW_LLM_EW_BYPASS_MIN_ENGINES=2
+EW_LLM_CACHE_TTL=14400               # 4h structure-keyed zstd disk cache
+EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefer Composer
+EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
+```
+
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `diskcache` · `zstandard` · `cachetic` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
 
 ## Cursor Pro backend (default)
 
@@ -68,33 +77,34 @@ When `CURSOR_API_KEY` is set, `--llm-advisory` uses **Cursor's Cloud Agents API*
 ```bash
 export CURSOR_API_KEY=crsr_...          # cursor.com/dashboard → API Keys
 export EW_LLM_BACKEND=cursor            # default when CURSOR_API_KEY is set
-export EW_LLM_INTELLIGENCE=ensemble     # composer-2.5 + gpt-5-mini screen, premium tiebreaker
+export EW_LLM_INTELLIGENCE=ensemble     # Grok High + gpt-5-mini screen, premium tiebreaker
 python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 ```
 
 | Role | Cheap (workhorse) | Mid (mild escalation) | Crucial (hard escalation) | Pool |
 |---|---|---|---|---|
 | Screen | `cursor-grok-4.5-high` + `gpt-5-mini` | — | — | First-party + API |
-| Tiebreaker | — | `cursor-grok-4.5-high` (mild) | `gpt-5.6-sol` / `claude-opus-4-8` | First-party / API |
+| Tiebreaker | — | `cursor-grok-4.5-high` (mild) | `gpt-5.6-sol` / `claude-opus-4-8` | Mixed |
 | Planning | — | `gpt-5.6-luna` (CONDITIONAL_GO) | `gpt-5.6-sol` | API |
 | Executive | — | — | `claude-opus-4-8` | API |
 | Architect | — | — | `claude-fable-5` | API |
 | Synthesis | — | — | `gpt-5.6-sol` | API |
 
-Optional diverse screen: `EW_LLM_SCREEN_DIVERSE=1` swaps slot A for base `grok-4.5`. Disable Grok High: `EW_USE_GROK_HIGH=0` (composer + Terra fallbacks). Workhorse pool: `EW_LLM_WORKHORSE_POOL=api` uses `gpt-5.4-nano`.
+Optional: `EW_MINIMIZE_GPT=1` swaps GPT slots for Composer/Grok (preference, not block). `EW_LLM_SCREEN_DIVERSE=1` swaps slot A for `grok-4.5`.
 
 Override: `EW_MODEL_*` or legacy `EW_CURSOR_OPUS`, `EW_CURSOR_FABLE`, `EW_CURSOR_SOL`.
 
 Direct API fallback: `export EW_LLM_BACKEND=direct` + `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
 
-## Multi-model intelligence panel (default with `--llm-advisory`)
+## Multi-model intelligence panel (`--llm-advisory`)
 
-When `--llm-advisory` is enabled, the tool uses **ensemble mode** by default — similar to Cursor's multi-model approach:
+When `--llm-advisory` is enabled, **ensemble mode is default** — dual cheap screen + tiebreaker on disagreement. Session budget (10k tokens/day) limits total spend; GPT is not blocked.
 
 | Phase | Models | When |
 |---|---|---|
-| **1. Cheap screen** | `cursor-grok-4.5-high` + `gpt-5-mini` in parallel | Always (Grok High + OpenAI) |
-| **2. Smart escalation** | Grok High (mild) · Luna (light plan) · Sol (hard) · Opus (executive GO) · Fable (architect) | Disagreement severity + verdict |
+| **0. EW bypass** | GitHub EW consensus (0 tokens) | Agreement ≥75%, ≥2 engines |
+| **1. Cheap screen** | Grok High + gpt-5-mini in parallel | When bypass does not apply |
+| **2. Smart escalation** | Grok High (mild) · Luna (light) · Sol (hard) · Opus (executive GO) | Disagreement severity + verdict |
 | **3. Confidence apply** | Panel adjustment on `trade_setup.confidence` | Always (audit trail preserved) |
 
 With `--llm-advisory`, the **final executive verdict** is set by multi-model AI consensus (default on):
@@ -124,7 +134,8 @@ python3 ew_tool.py --llm-cost
 | **Ensemble disagree** | mini + haiku + Sol/Opus | 3 | ~$0.004+ | Hard decisions — crucial model only |
 | **Ensemble blended** (~30% disagree) | conditional | 2–3 | ~$0.0021 | Expected real-world cost |
 | **Dual premium** ❌ | `gpt-4o` + sonnet | 2 | ~$0.0070 | Avoid — ~3× ensemble cost |
-| **Cache hit** | — | 0 | $0 | Same symbol/verdict/price within 1h |
+| **Cache hit** | — | 0 | $0 | Same symbol/structure within 4h |
+| **EW bypass** | GitHub EW consensus | 0 | $0 | Agreement ≥75%, ≥2 engines |
 
 **Task → model tier** (cheap wherever possible):
 

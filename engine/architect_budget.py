@@ -10,12 +10,14 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 from cachetools import TTLCache
 
 from cache.disk_cache import CompressedCache, get_cache
+from engine.llm_gpt_policy import per_model_token_limit
 from engine.llm_model_roster import MODEL, escalate_task_model
+from engine.llm_token_saver import estimate_tokens as count_tokens
 
 DecisionTask = Literal["advise", "decision", "architect", "planning", "tiebreaker", "executive"]
 
 GPT56_DECISION_MODEL = os.environ.get("EW_MODEL_SOL", MODEL["sol"])
-ARCHITECT_TOKEN_CEILING = int(os.environ.get("EW_ARCHITECT_TOKEN_CEILING", "10000"))
+ARCHITECT_TOKEN_CEILING = per_model_token_limit()
 ARCHITECT_CACHE_NS = "architect_decision_v1"
 ARCHITECT_CACHE_TTL = int(os.environ.get("EW_ARCHITECT_CACHE_TTL", "86400"))
 
@@ -33,40 +35,19 @@ SYSTEM_PROMPTS: Dict[DecisionTask, str] = {
 }
 
 
-def _tiktoken_count(text: str, model: str = "gpt-4o") -> Optional[int]:
-  try:
-    import tiktoken
-
-    try:
-      enc = tiktoken.encoding_for_model(model)
-    except KeyError:
-      enc = tiktoken.get_encoding("cl100k_base")
-    return len(enc.encode(text))
-  except Exception:
-    return None
-
-
-def count_tokens(text: str, model: str = GPT56_DECISION_MODEL) -> int:
-  """Accurate tiktoken count with chars/4 fallback."""
-  n = _tiktoken_count(text, model)
-  if n is not None:
-    return max(1, n)
-  return max(1, len(text) // 4)
-
-
 def compact_json(data: Any) -> str:
   return json.dumps(data, separators=(",", ":"), default=str)
 
 
 def trim_context(text: str, max_tokens: int, model: str = GPT56_DECISION_MODEL) -> Tuple[str, bool]:
   """Trim text to fit token budget. Returns (trimmed, was_trimmed)."""
-  if count_tokens(text, model) <= max_tokens:
+  if count_tokens(text) <= max_tokens:
     return text, False
   # Binary search by char slice
   lo, hi = 0, len(text)
   while lo < hi:
     mid = (lo + hi + 1) // 2
-    if count_tokens(text[:mid], model) <= max_tokens:
+    if count_tokens(text[:mid]) <= max_tokens:
       lo = mid
     else:
       hi = mid - 1
@@ -252,16 +233,18 @@ def prepare_decision_call(
 
 
 def token_saver_checklist() -> List[str]:
-  return [
+  base = [
     "compact JSON (no indent)",
     "short system prompt",
     "diskcache architect decisions (24h TTL)",
-    "tiktoken accurate counting",
-    "10K ceiling per decision call",
+    "llm_token_saver tiktoken counting",
+    f"{ARCHITECT_TOKEN_CEILING} token ceiling per model (llm_gpt_policy)",
     "trim context before send",
     "cachetools LRU for hot keys",
+    "token_saver_registry (llm-token-optimizer, tokenpruner, cachetic)",
     "Cmd+K workhorse for implementation (not GPT)",
   ]
+  return base
 
 
 def store_decision_result(

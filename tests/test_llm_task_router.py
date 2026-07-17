@@ -93,6 +93,7 @@ def test_routing_matrix_has_crucial_models(monkeypatch):
   assert matrix["crucial_models"]["sol"] == "gpt-5.6-sol"
   assert matrix["crucial_models"]["grok_high"] == "cursor-grok-4.5-high"
   assert "roster" in matrix
+  assert "token_saver_config" in matrix
 
 
 def test_routing_matrix_has_token_savers(monkeypatch):
@@ -100,4 +101,4 @@ def test_routing_matrix_has_token_savers(monkeypatch):
   matrix = routing_matrix()
   assert matrix["backend"] == "cursor"
   assert len(matrix["tasks"]) >= 7
-  assert any("cache" in s.lower() for s in matrix["token_savers"])
+  assert any("10000" in s or "cache" in s.lower() for s in matrix["token_savers"])

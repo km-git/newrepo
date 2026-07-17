@@ -53,6 +53,30 @@ def test_maybe_advise_skips_non_critical():
   ) is None
 
 
+@patch("engine.llm_advisor._call_advisory")
+def test_get_llm_advisory_ew_bypass_zero_tokens(mock_call, monkeypatch, tmp_path):
+  from cache.disk_cache import CompressedCache
+  from cache import disk_cache
+
+  monkeypatch.setenv("EW_LLM_EW_BYPASS", "1")
+  monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path / "llm"))
+
+  result = get_llm_advisory(
+    "BTC/USDT",
+    {"verdict": "GO", "direction": "BULL", "conviction": "high", "playbook": "enter", "structural_gaps": []},
+    {"action": "execute_long", "entry_zone": [100, 101], "stop_loss": 95, "risk_reward": 2.0, "confidence": 0.7},
+    {"1d": {"structure": "bull_impulse_5"}},
+    {"consensus_direction": "BULL", "agreement_pct": 85, "engines_valid": 3, "github_tools_used": ["ewa"]},
+    {"honest_summary": {"truth": "1 full executable", "full_executable_count": 1}},
+    use_cache=False,
+  )
+
+  assert result["ew_bypass"] is True
+  assert result["token_budget"]["est_total_tokens"] == 0
+  assert result["consulted"] == ["ew_github_consensus"]
+  mock_call.assert_not_called()
+
+
 @patch("engine.llm_advisor.call_openai_advisory")
 @patch("engine.llm_advisor.call_anthropic_advisory")
 @patch("engine.llm_advisor.routing_plan")
@@ -61,7 +85,7 @@ def test_get_llm_advisory_blends(mock_routes, mock_anthropic, mock_openai, monke
   from cache import disk_cache
 
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "single")
-  monkeypatch.setattr(disk_cache, "_global_cache", CompressedCache(cache_dir=tmp_path))
+  monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path))
   mock_routes.return_value = [
     ("openai", "gpt-4o-mini", "cheap"),
     ("anthropic", "claude-3-5-haiku-20241022", "cheap"),
@@ -107,7 +131,7 @@ def test_get_llm_advisory_ensemble_panel(mock_call, monkeypatch, tmp_path):
   monkeypatch.setenv("EW_LLM_BACKEND", "direct")
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-  monkeypatch.setattr(disk_cache, "_global_cache", CompressedCache(cache_dir=tmp_path))
+  monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path))
   mock_call.side_effect = lambda *a, **k: {
     "available": True,
     "stance": "agree",
@@ -138,7 +162,7 @@ def test_get_llm_advisory_cursor_ensemble(mock_call, monkeypatch, tmp_path):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
-  monkeypatch.setattr(disk_cache, "_global_cache", CompressedCache(cache_dir=tmp_path))
+  monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path))
 
   def _fake(*args, **kwargs):
     provider = args[0]

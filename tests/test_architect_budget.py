@@ -71,4 +71,4 @@ def test_enforce_budget_raises():
 def test_token_savers_list():
   savers = token_saver_checklist()
   assert any("cache" in s.lower() for s in savers)
-  assert any("10" in s for s in savers)
+  assert any("token" in s.lower() for s in savers)

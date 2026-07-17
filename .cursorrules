@@ -1,58 +1,32 @@
-# AU Micro-SaaS Portfolio — Cursor Pro + GPT-5.6 Decision Layer
-# A$20/mo Cursor Pro | cheap workhorse + GPT-5.6 for decisions (<10K tok)
+# Consolidated — merged from main + GPT-5.6 Sol High discovery branch
+# See MERGE-CONSOLIDATION.md for sources
 
 ## Two-Pillar Foundation
 
-### Pillar 1 — WORKHORSE (60-70% execution)
-Haiku 4.5, Gemini Flash, Grok, DeepSeek — all implementation and Cmd+K edits.
-Never GPT. Never Sonnet/Opus for inline edits.
+### Workhorse (60-70% execution)
+Haiku 4.5, Gemini Flash, Grok, Composer — Cmd+K edits, boilerplate, implementation.
+Never GPT-5.6 for inline edits.
 
-### Pillar 2 — DECISION / ADVISE / ARCHITECT (<10,000 tokens per call)
-**GPT-5.6 Sol** for decision-making, advice, and architect planning ONLY when:
-- Call fits under **10,000 tokens** total (input + output)
-- Token savers are active (see below)
-- Task is plan / decide / advise / architect — not implementation
+### Decision / Advise / Architect (<10K tokens per model)
+GPT-5.6 Sol for decision-making, advice, architect planning — budgeted via `llm_gpt_policy`.
+Opus 4.8 / Fable 5 for compliance-heavy architect. Sonnet 5 for verify.
 
-For compliance-heavy architect: Opus 4.8 or Fable 5 (Claude) when GPT budget insufficient.
-For verify: Sonnet 5.
-
-## GPT-5.6 Token Budget Rules
-- Hard ceiling: **10,000 tokens** per decision/advise/architect call
-- Run `python scripts/architect_budget_check.py` before large architect chats
-- Compact JSON prompts (no indent) — see `engine/architect_budget.py`
-- Cache architect decisions: diskcache + cachetools LRU (24h TTL)
-- tiktoken for accurate counting
-- Trim context before send — max 2-3 @file references
-- GitHub context via `tools/github_context.py` (cached, compact)
-
-## Task → Model Map
-
-| Phase | Model | Token cap |
-|-------|-------|-----------|
-| Architect / plan | GPT-5.6 Sol | <10K |
-| Advise / decision | GPT-5.6 Sol | <10K |
-| Compliance architect | Fable 5 / Opus 4.8 | <10K |
-| Implement / edit | Haiku 4.5 (Cmd+K) | n/a |
-| Boilerplate | Flash / Grok | n/a |
-| Verify | Sonnet 5 | <5K |
-| Debug | BugBot | n/a |
-
-## Python Tooling (installed)
-- `tiktoken` — accurate GPT token counts
-- `diskcache` + `cachetools` — architect decision cache
-- `transformers` + `huggingface-hub` — tokenizer fallback / future semantic cache
-- `PyGithub` — compact repo context for architect prompts
-- `engine/architect_budget.py` — budget enforcement
+## Token Stack (from main)
+- `engine/llm_token_saver.py` — tiktoken, zstd cache, EW bypass
+- `engine/llm_gpt_policy.py` — 10K cap per model, GPT allowed
+- `engine/token_saver_registry.py` — llm-token-optimizer, tokenpruner, cachetic
+- `engine/architect_budget.py` — SaaS architect/decision prompts
 - `tools/github_context.py` — cached GitHub summaries
 
-## Build Loop
-1. PLAN — GPT-5.6 Sol (<10K) or Opus 4.8 for compliance
-2. SCAFFOLD — Composer Auto
-3. BUILD — Haiku Cmd+K + Flash/Grok
-4. ADVISE — GPT-5.6 Sol (<10K) if blocked
-5. TEST — no AI
-6. VERIFY — Sonnet 5
-7. FINALIZE — document, cut or continue
+## Install token savers
+```bash
+.venv/bin/python scripts/install_token_savers.py
+.venv/bin/python scripts/architect_budget_check.py --task architect
+```
+
+## Discovery
+Full 56-idea portfolio: `discovery-output.md` (from cursor/micro-saas-discovery-65ba)
+Model routing rules: `.cursor/rules/model-routing.mdc`
 
 ## Portfolio Rules
-- 50-55 bets | 7-day cut rule | Friday review | /reports/
+50-55 bets | 7-day cut rule | Friday review | BUILD not just plan
