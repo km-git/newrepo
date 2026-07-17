@@ -8,7 +8,14 @@ import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional
 
-from cache.disk_cache import get_cache
+from cache.disk_cache import get_llm_cache
+from engine.llm_token_saver import (
+  get_session_budget,
+  should_bypass_llm_with_ew,
+  structure_fingerprint,
+  synthetic_panel_from_ew_consensus,
+  usage_from_response,
+)
 from engine.llm_token_router import (
   DEFAULT_MAX_OUTPUT_TOKENS,
   SYSTEM_PROMPT,
@@ -177,11 +184,33 @@ def _call_advisory(
   max_output: int,
   prompt: str,
 ) -> dict:
+  budget = get_session_budget()
+  if budget.at_limit():
+    return {
+      "available": False,
+      "skipped": "session_token_limit",
+      "error": f"Session token limit reached ({budget.used()}/{budget.summary()['limit']})",
+      "model": model,
+      "provider": provider,
+    }
+  capped = budget.cap_output(prompt, max_output)
+  if capped <= 0:
+    return {
+      "available": False,
+      "skipped": "insufficient_budget",
+      "error": f"Insufficient session tokens ({budget.remaining()} remaining)",
+      "model": model,
+      "provider": provider,
+    }
   if llm_backend() == "cursor":
-    return call_cursor_provider_advisory(provider, model, tier, prompt, task=task, max_output=max_output)
-  if provider == "openai":
-    return call_openai_advisory(prompt, model, max_output)
-  return call_anthropic_advisory(prompt, model, max_output)
+    resp = call_cursor_provider_advisory(provider, model, tier, prompt, task=task, max_output=capped)
+  elif provider == "openai":
+    resp = call_openai_advisory(prompt, model, capped)
+  else:
+    resp = call_anthropic_advisory(prompt, model, capped)
+  if resp.get("available") and resp.get("stance"):
+    budget.record(usage_from_response(resp, prompt, capped))
+  return resp
 
 
 def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai") -> dict:
@@ -205,7 +234,7 @@ def get_llm_advisory(
 ) -> dict:
   verdict = executive.get("verdict", "")
   conviction = executive.get("conviction", "")
-  price = round(float(trade_setup.get("entry_zone", [0])[0] if trade_setup.get("entry_zone") else 0), 0)
+  fp = structure_fingerprint(symbol, executive, consensus, wave_structure)
   mode = effective_intelligence_mode()
   routes = cheap_screen_routes(verdict, conviction) if mode in ("ensemble", "dual") else routing_plan(verdict, conviction)
   cache_key = (
@@ -214,12 +243,31 @@ def get_llm_advisory(
     symbol,
     verdict,
     executive.get("direction"),
-    price,
+    fp,
     tuple((p, m) for p, m, _ in routes),
   )
 
+  if should_bypass_llm_with_ew(executive, consensus):
+    bypass_key = ("ew_bypass", symbol, verdict, fp)
+    if use_cache:
+      cached = get_llm_cache().get(NAMESPACE, *bypass_key)
+      if cached is not None:
+        cached = dict(cached)
+        cached["cache_hit"] = True
+        if cached.get("token_budget"):
+          cached["token_budget"]["cache_hit"] = True
+        return cached
+    result = synthetic_panel_from_ew_consensus(executive, consensus)
+    print(
+      f"[llm] EW bypass {symbol}: 0 tokens, stance={result['consensus_stance']} "
+      f"agreement={consensus.get('agreement_pct')}%"
+    )
+    if use_cache:
+      get_llm_cache().set(NAMESPACE, result, *bypass_key)
+    return result
+
   if use_cache:
-    cached = get_cache().get(NAMESPACE, *cache_key)
+    cached = get_llm_cache().get(NAMESPACE, *cache_key)
     if cached is not None:
       cached = dict(cached)
       cached["cache_hit"] = True
@@ -342,7 +390,13 @@ def get_llm_advisory(
     )
 
   if use_cache and consulted:
-    get_cache().set(NAMESPACE, result, *cache_key)
+    get_llm_cache().set(NAMESPACE, result, *cache_key)
+
+  session = get_session_budget().summary()
+  if result.get("token_budget"):
+    result["token_budget"]["session_budget"] = session
+  else:
+    result["token_budget"] = {"session_budget": session}
 
   return result
 

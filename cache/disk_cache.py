@@ -104,6 +104,7 @@ class CompressedCache:
 
 # Module-level singleton for pipeline reuse across batch instruments
 _global_cache: Optional[CompressedCache] = None
+_llm_cache: Optional[CompressedCache] = None
 
 
 def get_cache() -> CompressedCache:
@@ -111,3 +112,13 @@ def get_cache() -> CompressedCache:
   if _global_cache is None:
     _global_cache = CompressedCache()
   return _global_cache
+
+
+def get_llm_cache() -> CompressedCache:
+  """LLM advisory cache — longer TTL, structure-keyed (see llm_token_saver)."""
+  global _llm_cache
+  if _llm_cache is None:
+    from engine.llm_token_saver import llm_cache_ttl
+
+    _llm_cache = CompressedCache(ttl=llm_cache_ttl())
+  return _llm_cache

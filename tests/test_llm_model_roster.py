@@ -83,4 +83,4 @@ def test_screen_slots_falls_back_to_composer_without_grok(monkeypatch):
 def test_roster_summary_has_efficiency_rules():
   summary = roster_summary()
   assert len(summary["models"]) >= 10
-  assert any("Grok High" in r for r in summary["efficiency_rules"])
+  assert any("10000" in r for r in summary["efficiency_rules"])

@@ -5,10 +5,13 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
+from engine.llm_gpt_policy import gpt_replacement_for, minimize_gpt_enabled
+
 ModelTier = Literal["nano", "workhorse", "standard", "crucial", "flagship"]
 ModelPool = Literal["first_party", "api"]
+DisagreementSeverity = Literal["none", "mild", "hard"]
 
-# Env overrides for the full roster
+
 def _m(key: str, default: str) -> str:
   return os.environ.get(key, default)
 
@@ -30,37 +33,37 @@ ROSTER: Dict[str, Dict[str, Any]] = {
     "tier": "standard",
     "pool": "first_party",
     "family": "cursor",
-    "strength": "Cursor Grok High — reasoning screen, mild tiebreaker, light review",
+    "strength": "Cursor Grok High — reasoning screen, mild tiebreaker",
   },
   "gpt-5.4-nano": {
     "tier": "nano",
     "pool": "api",
     "family": "openai",
-    "strength": "Ultra-cheap batch workhorse",
+    "strength": "High-volume cheap screen — budget-limited",
   },
   "gpt-5-mini": {
     "tier": "workhorse",
     "pool": "api",
     "family": "openai",
-    "strength": "OpenAI cheap screen / JSON",
+    "strength": "Dual screen slot B — budget-limited",
   },
   "gpt-5.6-luna": {
     "tier": "standard",
     "pool": "api",
     "family": "openai",
-    "strength": "Light planning — mid cost",
+    "strength": "Light planning — CONDITIONAL_GO",
   },
   "gpt-5.6-terra": {
     "tier": "standard",
     "pool": "api",
     "family": "openai",
-    "strength": "Mild disagreement tiebreaker",
+    "strength": "Mild tiebreaker when Grok High disabled",
   },
   "gpt-5.6-sol": {
     "tier": "crucial",
     "pool": "api",
     "family": "openai",
-    "strength": "Planning, synthesis, hard tiebreaker",
+    "strength": "Hard disagreement + full planning — budget-limited",
   },
   "claude-4.5-sonnet": {
     "tier": "standard",
@@ -72,45 +75,41 @@ ROSTER: Dict[str, Dict[str, Any]] = {
     "tier": "flagship",
     "pool": "api",
     "family": "anthropic",
-    "strength": "Executive GO + high conviction",
+    "strength": "Executive GO + hard disagreement",
   },
   "claude-fable-5": {
     "tier": "flagship",
     "pool": "api",
     "family": "anthropic",
-    "strength": "Architect — multi-file deep reasoning",
+    "strength": "Architect / synthesis",
   },
   "gemini-3-flash": {
     "tier": "workhorse",
     "pool": "api",
     "family": "google",
-    "strength": "Optional alt screen — Google fast",
+    "strength": "Optional alt screen",
   },
 }
 
-# Resolved model IDs (override any via EW_MODEL_<slug>)
 MODEL = {
-  "nano": _m("EW_MODEL_NANO", "gpt-5.4-nano"),
+  "nano": gpt_replacement_for("nano", _m("EW_MODEL_NANO", "gpt-5.4-nano")),
   "workhorse_fp": _m("EW_MODEL_WORKHORSE_FP", "composer-2.5"),
-  "workhorse_api": _m("EW_MODEL_WORKHORSE_API", "gpt-5.4-nano"),
+  "workhorse_api": gpt_replacement_for("workhorse_api", _m("EW_MODEL_WORKHORSE_API", "gpt-5-mini")),
   "grok_high": _m("EW_MODEL_GROK_HIGH", "cursor-grok-4.5-high"),
   "screen_a": _m("EW_MODEL_SCREEN_A", "cursor-grok-4.5-high"),
-  "screen_b": _m("EW_MODEL_SCREEN_B", "gpt-5-mini"),
+  "screen_b": gpt_replacement_for("screen_b", _m("EW_MODEL_SCREEN_B", "gpt-5-mini")),
   "screen_alt": _m("EW_MODEL_SCREEN_ALT", "grok-4.5"),
   "screen_c": _m("EW_MODEL_SCREEN_C", "gemini-3-flash"),
-  "review": _m("EW_MODEL_REVIEW", "claude-4.5-sonnet"),
-  "mild_tb": _m("EW_MODEL_MILD_TB", "gpt-5.6-terra"),
-  "light_plan": _m("EW_MODEL_LIGHT_PLAN", "gpt-5.6-luna"),
-  "sol": _m("EW_MODEL_SOL", "gpt-5.6-sol"),
+  "review": _m("EW_MODEL_REVIEW", "cursor-grok-4.5-high"),
+  "mild_tb": gpt_replacement_for("mild_tb", _m("EW_MODEL_MILD_TB", "gpt-5.6-terra")),
+  "light_plan": gpt_replacement_for("light_plan", _m("EW_MODEL_LIGHT_PLAN", "gpt-5.6-luna")),
+  "sol": gpt_replacement_for("sol", _m("EW_MODEL_SOL", "gpt-5.6-sol")),
   "opus": _m("EW_MODEL_OPUS", "claude-opus-4-8"),
   "fable": _m("EW_MODEL_FABLE", "claude-fable-5"),
 }
 
-DisagreementSeverity = Literal["none", "mild", "hard"]
-
 
 def grok_high_enabled() -> bool:
-  """Default on — set EW_USE_GROK_HIGH=0 to fall back to composer/Terra/Sonnet."""
   return os.environ.get("EW_USE_GROK_HIGH", "1").lower() not in ("0", "false", "no")
 
 
@@ -118,8 +117,17 @@ def grok_high_model() -> str:
   return MODEL["grok_high"]
 
 
+def mild_tb_model() -> str:
+  """Runtime mild tiebreaker — respects EW_USE_GROK_HIGH and EW_MODEL_MILD_TB."""
+  if grok_high_enabled():
+    return grok_high_model()
+  if minimize_gpt_enabled():
+    return gpt_replacement_for("mild_tb", "composer-2.5")
+  return _m("EW_MODEL_MILD_TB", "gpt-5.6-terra")
+
+
 def workhorse_model() -> str:
-  """Cheapest path: nano (API) or composer (first-party Pro pool)."""
+  """Prefer first-party composer; API workhorse when EW_LLM_WORKHORSE_POOL=api."""
   pool = os.environ.get("EW_LLM_WORKHORSE_POOL", "first_party").lower()
   if pool == "api":
     return MODEL["workhorse_api"]
@@ -127,18 +135,17 @@ def workhorse_model() -> str:
 
 
 def screen_model_slots() -> List[Tuple[str, str]]:
-  """
-  Dual screen — Grok High (cursor) + gpt-5-mini (openai) by default.
-  EW_LLM_SCREEN_DIVERSE=1 swaps slot A for base grok-4.5.
-  EW_USE_GROK_HIGH=0 falls back to composer-2.5 slot A.
-  """
+  """Dual screen — Grok High + GPT-mini (or Composer when EW_MINIMIZE_GPT=1)."""
   if os.environ.get("EW_LLM_SCREEN_DIVERSE", "").lower() in ("1", "true"):
     a = MODEL["screen_alt"]
   elif grok_high_enabled():
     a = grok_high_model()
   else:
     a = MODEL["workhorse_fp"]
-  return [("cursor", a), ("openai", MODEL["screen_b"])]
+  b = MODEL["screen_b"]
+  if minimize_gpt_enabled():
+    return [("cursor", a), ("composer", b)]
+  return [("cursor", a), ("openai", b)]
 
 
 def disagreement_severity(stances: List[str]) -> DisagreementSeverity:
@@ -160,18 +167,13 @@ def escalate_task_model(
   conviction: str = "",
   stances: Optional[List[str]] = None,
 ) -> Tuple[str, str, str]:
-  """
-  Smart model pick for a task. Returns (model_id, tier_label, reason).
-  Escalates only as far as disagreement + verdict require.
-  """
   sev = disagreement_severity(stances or [])
 
   if task == "workhorse":
-    m = workhorse_model()
-    return m, "workhorse", "single cheap call — batch cap"
+    return workhorse_model(), "workhorse", "composer — cheapest"
 
   if task == "screen":
-    return "", "workhorse", "dual parallel — see screen_model_slots()"
+    return "", "workhorse", "Grok+Composer parallel — no GPT"
 
   if task == "architect":
     return MODEL["fable"], "flagship", "multi-file deep reasoning"
@@ -180,47 +182,39 @@ def escalate_task_model(
     return MODEL["opus"], "flagship", "GO + high conviction"
 
   if task == "synthesis":
-    return MODEL["sol"], "crucial", "cross-pair executive summary"
+    return MODEL["sol"], "crucial", "Sol synthesis — budget-limited"
 
   if task == "planning":
     if verdict == "CONDITIONAL_GO" and conviction != "high":
-      return MODEL["light_plan"], "standard", "staged plan — luna saves tokens vs Sol"
-    return MODEL["sol"], "crucial", "GO / staged planning"
+      return MODEL["light_plan"], "standard", "Luna light plan"
+    return MODEL["sol"], "crucial", "Sol full plan"
 
   if task in ("tiebreaker", "review"):
     if sev == "mild":
       if grok_high_enabled():
-        return grok_high_model(), "standard", "caution-only disagreement — Grok High not Sol/Opus"
-      return MODEL["mild_tb"], "standard", "caution-only disagreement — Terra not Sol/Opus"
+        return grok_high_model(), "standard", "mild — Grok High only"
+      return mild_tb_model(), "standard", "mild — Terra fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
-      return MODEL["opus"], "flagship", "hard disagree on executive GO"
+      return MODEL["opus"], "flagship", "hard disagree executive GO"
     if sev == "hard":
-      return MODEL["sol"], "crucial", "hard disagreement"
+      return MODEL["sol"], "crucial", "hard disagreement — Sol"
     if grok_high_enabled():
-      return grok_high_model(), "standard", "default mid review — Grok High"
-    return MODEL["review"], "standard", "default mid review — Sonnet"
+      return grok_high_model(), "standard", "mid review — Grok High"
+    return mild_tb_model(), "standard", "mid review — Terra fallback"
 
-  return MODEL["sol"], "crucial", "fallback"
+  return workhorse_model(), "workhorse", "fallback composer"
 
 
 def roster_summary() -> Dict[str, Any]:
-  """Full roster for --llm-tasks / docs."""
   assignments = []
   for task in (
-    "workhorse",
-    "screen",
-    "tiebreaker_mild",
-    "tiebreaker",
-    "planning_light",
-    "planning",
-    "executive",
-    "architect",
-    "synthesis",
+    "workhorse", "screen", "tiebreaker_mild", "tiebreaker",
+    "planning_light", "planning", "executive", "architect", "synthesis",
   ):
     if task == "screen":
       slots = screen_model_slots()
       model = " + ".join(m for _, m in slots)
-      reason = "dual diverse families — parallel"
+      reason = "Grok High + GPT-mini screen"
       tier = "workhorse"
     elif task == "tiebreaker_mild":
       model, tier, reason = escalate_task_model("tiebreaker", stances=["agree", "caution"])
@@ -236,12 +230,12 @@ def roster_summary() -> Dict[str, Any]:
     "resolved": dict(MODEL),
     "assignments": assignments,
     "efficiency_rules": [
-      "nano/composer for workhorse — never premium on batch",
-      "dual screen: Grok High (cursor) + gpt-5-mini — diverse families",
-      "mild disagree (caution vs agree) → Grok High (first-party), not Sol/Opus",
-      "hard disagree → Sol; executive GO → Opus",
-      "CONDITIONAL_GO planning → Luna; GO planning → Sol",
-      "architect → Fable only; synthesis → Sol",
-      "disk cache + critical-only gate + per-task output caps",
+      "EW_LLM_MAX_SESSION_TOKENS=10000 — hard session cap (GPT allowed, budget-limited)",
+      "EW_LLM_EW_BYPASS=1 — GitHub EW consensus = 0 LLM tokens",
+      "tiktoken + zstd diskcache (4h) + structure fingerprint + dedup",
+      "screen: Grok High + gpt-5-mini (Composer if EW_MINIMIZE_GPT=1)",
+      "escalation: Terra/Luna/Sol/Opus only when crucial",
+      "per-task output caps: workhorse 120, screen 150",
+      "TokenStore — pipeline logs store hashes not full payloads",
     ],
   }

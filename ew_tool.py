@@ -40,6 +40,11 @@ def main() -> None:
     action="store_true",
     help="Print task→model→token routing matrix and exit",
   )
+  parser.add_argument(
+    "--llm-savers",
+    action="store_true",
+    help="Print token-saving playbook (EW bypass, cache, GPT policy) and exit",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -67,6 +72,13 @@ def main() -> None:
     from engine.llm_task_router import routing_matrix
 
     print(json.dumps(routing_matrix(), indent=2))
+    return
+
+  if args.llm_savers:
+    from engine.llm_task_router import routing_matrix
+    from engine.llm_token_saver import token_saver_summary
+
+    print(json.dumps({"savers": token_saver_summary(), "routing": routing_matrix()}, indent=2))
     return
 
   if args.repomix:

@@ -33,3 +33,6 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   HTTP 451; the fallback handles it.
 - Output/cache dirs (`output/`, `.cache/ew_tool`) are gitignored. Override cache location
   with `EW_CACHE_DIR`.
+- **Token budget is critical.** Session cap defaults to 10,000 tokens/day (`EW_LLM_MAX_SESSION_TOKENS`).
+  GPT is allowed but budget-limited. Stack: EW bypass, zstd cache, tiktoken, dedup, TokenStore.
+  Run `python3 ew_tool.py --llm-savers` to inspect the playbook.

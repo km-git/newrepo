@@ -39,13 +39,13 @@ Tier = Literal["cheap", "standard", "premium"]
 
 # Token caps per task — workhorse/screen stay minimal
 TASK_OUTPUT_TOKENS: Dict[TaskKind, int] = {
-  "workhorse": int(os.environ.get("EW_LLM_MAX_OUTPUT_WORKHORSE", "180")),
-  "screen": int(os.environ.get("EW_LLM_MAX_OUTPUT_SCREEN", "200")),
-  "tiebreaker": int(os.environ.get("EW_LLM_MAX_OUTPUT_TIEBREAKER", "240")),
-  "executive": int(os.environ.get("EW_LLM_MAX_OUTPUT_EXECUTIVE", "280")),
-  "planning": int(os.environ.get("EW_LLM_MAX_OUTPUT_PLANNING", "320")),
-  "architect": int(os.environ.get("EW_LLM_MAX_OUTPUT_ARCHITECT", "600")),
-  "synthesis": int(os.environ.get("EW_LLM_MAX_OUTPUT_SYNTHESIS", "500")),
+  "workhorse": int(os.environ.get("EW_LLM_MAX_OUTPUT_WORKHORSE", "120")),
+  "screen": int(os.environ.get("EW_LLM_MAX_OUTPUT_SCREEN", "150")),
+  "tiebreaker": int(os.environ.get("EW_LLM_MAX_OUTPUT_TIEBREAKER", "180")),
+  "executive": int(os.environ.get("EW_LLM_MAX_OUTPUT_EXECUTIVE", "220")),
+  "planning": int(os.environ.get("EW_LLM_MAX_OUTPUT_PLANNING", "240")),
+  "architect": int(os.environ.get("EW_LLM_MAX_OUTPUT_ARCHITECT", "400")),
+  "synthesis": int(os.environ.get("EW_LLM_MAX_OUTPUT_SYNTHESIS", "320")),
 }
 
 TASK_TIER: Dict[TaskKind, Tier] = {
@@ -221,7 +221,10 @@ def screen_routes(mode: str) -> List[Tuple[Provider, str, Tier, TaskKind, int]]:
   routes: List[Tuple[Provider, str, Tier, TaskKind, int]] = []
   if llm_backend() == "cursor":
     for slot_label, model in screen_model_slots():
-      provider: Provider = "openai" if slot_label == "openai" else "anthropic"
+      if slot_label in ("openai", "composer"):
+        provider = "openai"
+      else:
+        provider = "anthropic"
       tier: Tier = "cheap"
       max_out = max_output_for_task(task)
       routes.append((provider, model, tier, task, max_out))
@@ -265,6 +268,8 @@ def tiebreaker_route(
 
 def routing_matrix() -> Dict[str, Any]:
   """Human-readable task → model → token matrix for --llm-tasks."""
+  from engine.llm_token_saver import token_saver_summary
+
   roster = roster_summary()
   rows = []
   for task in TASK_DESCRIPTIONS:
@@ -314,4 +319,5 @@ def routing_matrix() -> Dict[str, Any]:
     "tasks": rows,
     "roster": roster,
     "token_savers": roster["efficiency_rules"],
+    "token_saver_config": token_saver_summary(),
   }
