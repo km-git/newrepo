@@ -1,0 +1,53 @@
+# Cursor v4 Frontier Routing Rules
+# Operator: AU 1–2 person firm · Cursor Pro · token-efficient · outcome velocity
+# Source: discovery-output.md (v4 frontier prompt Turn 49)
+
+## Mission
+Optimise for token efficiency and shippable MVPs (7–30 days). Every frontier call must unlock architecture; every workhorse call must move code.
+
+## Model routing (mandatory)
+
+### Tier 1 — Frontier architect (5–10 calls/month total)
+- Claude Fable 5: hardest architect, autonomous multi-file, 1000+ LOC refactors, complex security
+- Claude Opus 4.8: standard architect, schema, audit, complex logic, parallel subagents
+- GPT-5.6 Sol: UI architecture, function-calling design, multi-agent orchestration
+NEVER use Tier 1 for boilerplate, docstrings, renames, or simple fixes.
+
+### Tier 2 — Balanced heavy (~20–30% of work)
+- Claude Sonnet 5: default for daily coding, refactor, debug, review (≈90% of daily coding)
+- GPT-5.6 Terra: OpenAI balanced alternative
+- Gemini 3.1 Pro: long-context docs, multimodal, AU-specific research
+- Legacy Opus 4.5/4.6/4.7: when available/free in Cursor
+
+### Tier 3 — Cheap workhorse (60–70% of work)
+- Claude Haiku 4.5: preferred Cmd+K / inline edits, simple refactors, docstrings
+- GPT-5.6 Luna / Gemini Flash / Grok 4.5 / DeepSeek: boilerplate and trivial completion
+
+### Tier 4 — Cursor built-in
+- Auto: when unsure which model to pick
+- Max Mode: big-context refactors only
+- Composer 1: multi-file scaffold / batched refactor
+- BugBot: debugging (prefer over frontier for bug hunts)
+
+## Continuous testing loop (every MVP/feature)
+1. PLAN (Tier 1): ISC in 1–2 sentences + schema + file plan
+2. BUILD (Tier 2–3): Composer scaffold → Sonnet/Sol UI → Haiku Cmd+K
+3. TEST: unit + smoke (minimise AI)
+4. VERIFY (Sonnet 5): ISC met? if no → rebuild (cheap for simple, frontier for complex)
+5. ITERATE: max 3–5 cycles; cut bet if still failing
+6. FINALIZE: document outcome
+
+## Token discipline
+- Prefer Cmd+K for ~70% of edits (does not bloat chat context)
+- Keep prompts compact; cite files instead of pasting walls of code
+- One job per request; no drive-by refactors unrelated to ISC
+- No PII in prompts; no regulated financial/NDIS/legal advice as product claims
+- Compliance: AU Privacy Act + AU Consumer Law awareness for AU-facing apps
+
+## Stack defaults (new MVPs)
+Next.js + Supabase + Stripe (+ Twilio when messaging). Prefer OKX-only for crypto data if trading-adjacent. Pydantic v2 for Python CLIs.
+
+## Output expectations
+- Prefer diffs and concrete file edits over essays
+- State ISC before scaffolding
+- When abstaining from a trade/decision, say so honestly
