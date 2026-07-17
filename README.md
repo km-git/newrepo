@@ -125,6 +125,7 @@ python3 ew_tool.py --llm-cost
 # export CURSOR_API_KEY=...   # from cursor.com/dashboard
 ```
 
+## Token-efficient LLM advisory
 
 LLM calls are gated to **critical decisions only** and use these token-saving mechanisms:
 
