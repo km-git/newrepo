@@ -10,6 +10,7 @@ The **trade setups table** is generated when you run a batch or the autodream da
 | **[COMPLETE_TRADING_ANALYSIS.md](./COMPLETE_TRADING_ANALYSIS.md)** | Full pair×TF book with dollar legs @ equity |
 | **[trade_setups_matrix.html](./trade_setups_matrix.html)** | Shaded 50×5 grid — open in browser |
 | **[HISTORICAL_PERFORMANCE.md](./HISTORICAL_PERFORMANCE.md)** | Tracked TP/SL outcomes and win rates (feeds next run) |
+| **[PAPER_PNL.md](./PAPER_PNL.md)** | OHLC paper execution P&L (limit fills, fees, max 3 positions) |
 | **[latest_executable_pair_tf.csv](./latest_executable_pair_tf.csv)** | 61 executable rows only (Excel/Sheets) |
 
 ## Full interactive table (local, after batch)
@@ -41,6 +42,9 @@ PYTHONPATH=/workspace python3 scripts/run_top50_batch.py -n 50
 
 # Regenerate from saved batch JSON (limit orders + matrix + markdown)
 PYTHONPATH=/workspace python3 scripts/generate_complete_analysis.py --equity 50000 --usdt-d 8.2
+
+# Paper simulate executable rows on OHLC (limit fills + fees, max 3 positions)
+PYTHONPATH=/workspace python3 scripts/run_paper_simulation.py --equity 50000
 
 # Show paths
 PYTHONPATH=/workspace python3 scripts/show_latest_analysis.py
