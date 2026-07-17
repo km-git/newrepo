@@ -44,16 +44,16 @@ Every LLM call is classified by **task** — the full Cursor roster is used smar
 | Task | Tier | Max output | When | Cursor models |
 |---|---|---:|---|---|
 | **workhorse** | cheap | 180 | `single` mode, batch caps | `composer-2.5` or `gpt-5.4-nano` |
-| **screen** | cheap | 200 | Ensemble phase 1 (parallel) | `composer-2.5` + `gpt-5-mini` |
-| **tiebreaker** | standard/premium | 240 | Mild disagree → Terra; hard → Sol/Opus | `gpt-5.6-terra` / `gpt-5.6-sol` / `claude-opus-4-8` |
+| **screen** | cheap | 200 | Ensemble phase 1 (parallel) | `cursor-grok-4.5-high` + `gpt-5-mini` |
+| **tiebreaker** | standard/premium | 240 | Mild disagree → Grok High; hard → Sol/Opus | `cursor-grok-4.5-high` / `gpt-5.6-sol` / `claude-opus-4-8` |
 | **planning** | standard/premium | 320 | CONDITIONAL_GO → Luna; GO → Sol | `gpt-5.6-luna` / `gpt-5.6-sol` |
 | **executive** | premium | 280 | GO + high conviction + hard disagree | `claude-opus-4-8` |
 | **architect** | premium | 600 | RepoMix / pipeline design | `claude-fable-5` |
 | **synthesis** | premium | 500 | Post-batch summary | `gpt-5.6-sol` |
 
-**Efficiency rules:** mild disagreement (agree vs caution) → Terra, not Sol/Opus · hard disagreement → Sol · executive GO only on hard disagree · `CONDITIONAL_GO` planning → Luna.
+**Efficiency rules:** mild disagreement (agree vs caution) → Grok High (first-party), not Sol/Opus · hard disagreement → Sol · executive GO only on hard disagree · `CONDITIONAL_GO` planning → Luna.
 
-Model overrides: `EW_MODEL_NANO`, `EW_MODEL_MILD_TB`, `EW_MODEL_LIGHT_PLAN`, `EW_MODEL_OPUS`, `EW_MODEL_FABLE`, `EW_MODEL_SOL` (legacy: `EW_CURSOR_OPUS`, `EW_CURSOR_FABLE`, `EW_CURSOR_SOL`).
+Model overrides: `EW_MODEL_GROK_HIGH`, `EW_USE_GROK_HIGH=0` (fall back to composer/Terra), `EW_MODEL_NANO`, `EW_MODEL_MILD_TB`, `EW_MODEL_LIGHT_PLAN`, `EW_MODEL_OPUS`, `EW_MODEL_FABLE`, `EW_MODEL_SOL`.
 
 ```bash
 python3 ew_tool.py --llm-tasks    # print full routing matrix + roster
@@ -74,14 +74,14 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 
 | Role | Cheap (workhorse) | Mid (mild escalation) | Crucial (hard escalation) | Pool |
 |---|---|---|---|---|
-| Screen | `composer-2.5` + `gpt-5-mini` | — | — | First-party + API |
-| Tiebreaker | — | `gpt-5.6-terra` (mild) | `gpt-5.6-sol` / `claude-opus-4-8` | API |
+| Screen | `cursor-grok-4.5-high` + `gpt-5-mini` | — | — | First-party + API |
+| Tiebreaker | — | `cursor-grok-4.5-high` (mild) | `gpt-5.6-sol` / `claude-opus-4-8` | First-party / API |
 | Planning | — | `gpt-5.6-luna` (CONDITIONAL_GO) | `gpt-5.6-sol` | API |
 | Executive | — | — | `claude-opus-4-8` | API |
 | Architect | — | — | `claude-fable-5` | API |
 | Synthesis | — | — | `gpt-5.6-sol` | API |
 
-Optional diverse screen: `EW_LLM_SCREEN_DIVERSE=1` swaps slot A for `grok-4.5`. Workhorse pool: `EW_LLM_WORKHORSE_POOL=api` uses `gpt-5.4-nano`.
+Optional diverse screen: `EW_LLM_SCREEN_DIVERSE=1` swaps slot A for base `grok-4.5`. Disable Grok High: `EW_USE_GROK_HIGH=0` (composer + Terra fallbacks). Workhorse pool: `EW_LLM_WORKHORSE_POOL=api` uses `gpt-5.4-nano`.
 
 Override: `EW_MODEL_*` or legacy `EW_CURSOR_OPUS`, `EW_CURSOR_FABLE`, `EW_CURSOR_SOL`.
 
@@ -93,8 +93,8 @@ When `--llm-advisory` is enabled, the tool uses **ensemble mode** by default —
 
 | Phase | Models | When |
 |---|---|---|
-| **1. Cheap screen** | `composer-2.5` + `gpt-5-mini` in parallel | Always (workhorse tier) |
-| **2. Smart escalation** | Terra (mild) · Luna (light plan) · Sol (hard) · Opus (executive GO) · Fable (architect) | Disagreement severity + verdict |
+| **1. Cheap screen** | `cursor-grok-4.5-high` + `gpt-5-mini` in parallel | Always (Grok High + OpenAI) |
+| **2. Smart escalation** | Grok High (mild) · Luna (light plan) · Sol (hard) · Opus (executive GO) · Fable (architect) | Disagreement severity + verdict |
 | **3. Confidence apply** | Panel adjustment on `trade_setup.confidence` | Always (audit trail preserved) |
 
 Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.

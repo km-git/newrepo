@@ -81,7 +81,7 @@ DIRECT_MODELS: Dict[str, Dict[str, str]] = {
 TASK_DESCRIPTIONS: Dict[TaskKind, str] = {
   "workhorse": "High-volume cheap screen (batch --llm-advisory-max)",
   "screen": "Dual cheap parallel review before escalation",
-  "tiebreaker": "Terra (mild) or Sol/Opus (hard) when cheap models disagree",
+  "tiebreaker": "Grok High (mild) or Sol/Opus (hard) when cheap models disagree",
   "executive": "Claude Opus — GO + high conviction + hard disagreement",
   "planning": "Luna (light) or Sol (full) — CONDITIONAL_GO / staged entry",
   "architect": "Claude Fable — RepoMix / multi-file pipeline design",
@@ -181,12 +181,11 @@ def resolve_model(
       if task == "workhorse":
         return workhorse_model(), "cheap", max_out
       for slot_provider, model in screen_model_slots():
-        if slot_provider == provider or provider in ("openai", "anthropic"):
-          if task == "screen":
-            if (provider == "anthropic" and slot_provider == "anthropic") or (
-              provider == "openai" and slot_provider == "openai"
-            ):
-              return model, "cheap", max_out
+        if task == "screen":
+          if (provider == "anthropic" and slot_provider in ("anthropic", "cursor")) or (
+            provider == "openai" and slot_provider == "openai"
+          ):
+            return model, "cheap", max_out
       slots = screen_model_slots()
       if provider == "anthropic" and slots:
         return slots[0][1], "cheap", max_out
@@ -222,9 +221,7 @@ def screen_routes(mode: str) -> List[Tuple[Provider, str, Tier, TaskKind, int]]:
   routes: List[Tuple[Provider, str, Tier, TaskKind, int]] = []
   if llm_backend() == "cursor":
     for slot_label, model in screen_model_slots():
-      provider = slot_label if slot_label in ("openai", "anthropic") else "anthropic"
-      if slot_label == "openai":
-        provider = "openai"
+      provider: Provider = "openai" if slot_label == "openai" else "anthropic"
       tier: Tier = "cheap"
       max_out = max_output_for_task(task)
       routes.append((provider, model, tier, task, max_out))
@@ -303,13 +300,14 @@ def routing_matrix() -> Dict[str, Any]:
   return {
     "backend": llm_backend(),
     "principle": (
-      "Every model in the roster — cheap nano/composer for volume, "
-      "Terra/Luna for mid escalation, Opus/Fable/Sol only when crucial."
+      "Every model in the roster — Grok High for screen/mild review (first-party), "
+      "Terra/Luna for API mid-tier, Opus/Fable/Sol only when crucial."
     ),
     "crucial_models": {
       "opus": CURSOR_OPUS,
       "fable": CURSOR_FABLE,
       "sol": CURSOR_SOL,
+      "grok_high": MODEL["grok_high"],
       "terra": MODEL["mild_tb"],
       "luna": MODEL["light_plan"],
     },

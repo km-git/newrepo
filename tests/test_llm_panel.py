@@ -108,7 +108,7 @@ def test_run_panel_mild_disagreement_uses_standard_tier(monkeypatch):
   assert panel["escalated_to_premium"] is True
   tb_calls = [c for c in calls if c[3] == "tiebreaker"]
   assert len(tb_calls) == 1
-  assert tb_calls[0][1] == "gpt-5.6-terra"
+  assert tb_calls[0][1] == "cursor-grok-4.5-high"
   assert tb_calls[0][2] == "standard"
 
 

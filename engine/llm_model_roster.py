@@ -26,6 +26,12 @@ ROSTER: Dict[str, Dict[str, Any]] = {
     "family": "cursor",
     "strength": "Alt screen — long-context reasoning",
   },
+  "cursor-grok-4.5-high": {
+    "tier": "standard",
+    "pool": "first_party",
+    "family": "cursor",
+    "strength": "Cursor Grok High — reasoning screen, mild tiebreaker, light review",
+  },
   "gpt-5.4-nano": {
     "tier": "nano",
     "pool": "api",
@@ -87,7 +93,8 @@ MODEL = {
   "nano": _m("EW_MODEL_NANO", "gpt-5.4-nano"),
   "workhorse_fp": _m("EW_MODEL_WORKHORSE_FP", "composer-2.5"),
   "workhorse_api": _m("EW_MODEL_WORKHORSE_API", "gpt-5.4-nano"),
-  "screen_a": _m("EW_MODEL_SCREEN_A", "composer-2.5"),
+  "grok_high": _m("EW_MODEL_GROK_HIGH", "cursor-grok-4.5-high"),
+  "screen_a": _m("EW_MODEL_SCREEN_A", "cursor-grok-4.5-high"),
   "screen_b": _m("EW_MODEL_SCREEN_B", "gpt-5-mini"),
   "screen_alt": _m("EW_MODEL_SCREEN_ALT", "grok-4.5"),
   "screen_c": _m("EW_MODEL_SCREEN_C", "gemini-3-flash"),
@@ -102,6 +109,15 @@ MODEL = {
 DisagreementSeverity = Literal["none", "mild", "hard"]
 
 
+def grok_high_enabled() -> bool:
+  """Default on — set EW_USE_GROK_HIGH=0 to fall back to composer/Terra/Sonnet."""
+  return os.environ.get("EW_USE_GROK_HIGH", "1").lower() not in ("0", "false", "no")
+
+
+def grok_high_model() -> str:
+  return MODEL["grok_high"]
+
+
 def workhorse_model() -> str:
   """Cheapest path: nano (API) or composer (first-party Pro pool)."""
   pool = os.environ.get("EW_LLM_WORKHORSE_POOL", "first_party").lower()
@@ -112,11 +128,17 @@ def workhorse_model() -> str:
 
 def screen_model_slots() -> List[Tuple[str, str]]:
   """
-  Dual screen — diverse families for intelligence, both workhorse tier.
-  Optional: EW_LLM_SCREEN_DIVERSE=1 swaps slot A for grok-4.5.
+  Dual screen — Grok High (cursor) + gpt-5-mini (openai) by default.
+  EW_LLM_SCREEN_DIVERSE=1 swaps slot A for base grok-4.5.
+  EW_USE_GROK_HIGH=0 falls back to composer-2.5 slot A.
   """
-  a = MODEL["screen_alt"] if os.environ.get("EW_LLM_SCREEN_DIVERSE", "").lower() in ("1", "true") else MODEL["screen_a"]
-  return [("anthropic", a), ("openai", MODEL["screen_b"])]
+  if os.environ.get("EW_LLM_SCREEN_DIVERSE", "").lower() in ("1", "true"):
+    a = MODEL["screen_alt"]
+  elif grok_high_enabled():
+    a = grok_high_model()
+  else:
+    a = MODEL["workhorse_fp"]
+  return [("cursor", a), ("openai", MODEL["screen_b"])]
 
 
 def disagreement_severity(stances: List[str]) -> DisagreementSeverity:
@@ -167,11 +189,15 @@ def escalate_task_model(
 
   if task in ("tiebreaker", "review"):
     if sev == "mild":
-      return MODEL["mild_tb"], "standard", "caution-only disagreement — Terra not Sol"
+      if grok_high_enabled():
+        return grok_high_model(), "standard", "caution-only disagreement — Grok High not Sol/Opus"
+      return MODEL["mild_tb"], "standard", "caution-only disagreement — Terra not Sol/Opus"
     if sev == "hard" and verdict == "GO" and conviction == "high":
       return MODEL["opus"], "flagship", "hard disagree on executive GO"
     if sev == "hard":
       return MODEL["sol"], "crucial", "hard disagreement"
+    if grok_high_enabled():
+      return grok_high_model(), "standard", "default mid review — Grok High"
     return MODEL["review"], "standard", "default mid review — Sonnet"
 
   return MODEL["sol"], "crucial", "fallback"
@@ -211,8 +237,8 @@ def roster_summary() -> Dict[str, Any]:
     "assignments": assignments,
     "efficiency_rules": [
       "nano/composer for workhorse — never premium on batch",
-      "dual screen: 2 cheap models, different families (composer + mini)",
-      "mild disagree (caution vs agree) → Terra, not Sol/Opus",
+      "dual screen: Grok High (cursor) + gpt-5-mini — diverse families",
+      "mild disagree (caution vs agree) → Grok High (first-party), not Sol/Opus",
       "hard disagree → Sol; executive GO → Opus",
       "CONDITIONAL_GO planning → Luna; GO planning → Sol",
       "architect → Fable only; synthesis → Sol",

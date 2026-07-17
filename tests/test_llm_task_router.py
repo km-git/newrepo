@@ -66,12 +66,12 @@ def test_tiebreaker_route_planning_uses_luna_for_conditional(monkeypatch):
   assert route[3] == "planning"
 
 
-def test_tiebreaker_route_mild_uses_terra_not_opus(monkeypatch):
+def test_tiebreaker_route_mild_uses_grok_high_not_opus(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
   route = tiebreaker_route("GO", "high", stances=["agree", "caution"])
   assert route is not None
-  assert route[1] == "gpt-5.6-terra"
+  assert route[1] == "cursor-grok-4.5-high"
   assert route[2] == "standard"
   assert route[3] == "tiebreaker"
 
@@ -91,7 +91,7 @@ def test_routing_matrix_has_crucial_models(monkeypatch):
   assert matrix["crucial_models"]["opus"] == "claude-opus-4-8"
   assert matrix["crucial_models"]["fable"] == "claude-fable-5"
   assert matrix["crucial_models"]["sol"] == "gpt-5.6-sol"
-  assert matrix["crucial_models"]["terra"] == "gpt-5.6-terra"
+  assert matrix["crucial_models"]["grok_high"] == "cursor-grok-4.5-high"
   assert "roster" in matrix
 
 

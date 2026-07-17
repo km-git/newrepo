@@ -251,6 +251,7 @@ def run_panel(
       "crucial_fable": CURSOR_FABLE,
       "crucial_sol": CURSOR_SOL,
       "mild_tiebreaker": MODEL["mild_tb"],
+      "grok_high": MODEL["grok_high"],
       "light_planning": MODEL["light_plan"],
       "backend": llm_backend(),
     },

@@ -21,10 +21,18 @@ def test_disagreement_severity_hard():
   assert disagreement_severity(["caution", "reject"]) == "hard"
 
 
-def test_mild_disagreement_uses_terra_not_sol():
+def test_mild_disagreement_uses_grok_high_not_sol():
+  model, tier, reason = escalate_task_model("tiebreaker", "GO", "high", ["agree", "caution"])
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
+  assert "Grok High" in reason
+
+
+def test_mild_disagreement_falls_back_to_terra_when_grok_disabled(monkeypatch):
+  monkeypatch.setenv("EW_USE_GROK_HIGH", "0")
+  monkeypatch.setenv("EW_MODEL_MILD_TB", "gpt-5.6-terra")
   model, tier, reason = escalate_task_model("tiebreaker", "GO", "high", ["agree", "caution"])
   assert model == "gpt-5.6-terra"
-  assert tier == "standard"
   assert "Terra" in reason
 
 
@@ -57,15 +65,22 @@ def test_workhorse_defaults_composer(monkeypatch):
   assert workhorse_model() == "composer-2.5"
 
 
-def test_screen_slots_dual_cheap():
+def test_screen_slots_default_grok_high_plus_mini():
   slots = screen_model_slots()
   assert len(slots) == 2
   models = {m for _, m in slots}
-  assert "composer-2.5" in models
+  assert "cursor-grok-4.5-high" in models
   assert "gpt-5-mini" in models
+
+
+def test_screen_slots_falls_back_to_composer_without_grok(monkeypatch):
+  monkeypatch.setenv("EW_USE_GROK_HIGH", "0")
+  slots = screen_model_slots()
+  models = {m for _, m in slots}
+  assert "composer-2.5" in models
 
 
 def test_roster_summary_has_efficiency_rules():
   summary = roster_summary()
   assert len(summary["models"]) >= 10
-  assert any("Terra" in r for r in summary["efficiency_rules"])
+  assert any("Grok High" in r for r in summary["efficiency_rules"])
