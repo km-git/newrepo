@@ -13,7 +13,7 @@ Build order follows `discovery-output.md` global ranks. Status: **not started** 
 | 7 | 7 | SnapReport | AI Workflow | mvp | `products/07-snapreport` |
 | 8 | 8 | AreaPages | AI Content+SEO | mvp | `products/08-areapages` |
 | 9 | 9 | ReviewReply Desk | AI Tools SMB | mvp | `products/09-reviewreply-desk` |
-| 10 | 10 | AfterHours Voice Agent | AI Receptionist | not started | `products/10-afterhours-voice` |
+| 10 | 10 | AfterHours Voice Agent | AI Receptionist | mvp | `products/10-afterhours-voice` |
 | 11 | 11 | WinRate Lens | Analytics | not started | `products/11-winrate-lens` |
 | 12 | 12 | QuoteChaser | AI Tools SMB | not started | `products/12-quotechaser` |
 | 13 | 13 | DA Lead Miner | Lead Gen | not started | `products/13-da-lead-miner` |
