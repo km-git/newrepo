@@ -1,0 +1,30 @@
+# .cursorrules - AU micro-SaaS defaults
+
+## Stack
+- Next.js (App Router) + TypeScript strict; Supabase (Postgres + RLS); Tailwind; Stripe for billing.
+- Prefer server components; API routes only when necessary.
+
+## Code style
+- Small, single-purpose functions. No premature abstraction.
+- Zod validation at every external boundary (user input, webhooks, third-party APIs).
+- Errors: fail loudly in dev, degrade gracefully in prod, always log with context.
+
+## AI features
+- All LLM calls go through /lib/ai/client.ts - never inline API calls.
+- Default model: cheapest that passes evals (Haiku 4.5 / Luna). Document any escalation.
+- Every prompt has a versioned file in /prompts with expected-output examples.
+
+## Compliance (Australia)
+- Privacy Act 1988 / APPs: collect minimum data; document purpose per field; delete-on-request path required.
+- Australian Consumer Law: no misleading claims in generated copy; refunds honour statutory guarantees.
+- Health/NDIS data: encrypt at rest, AU-region hosting, no data in prompts to third-party models without de-identification.
+- Spam Act 2003: consent + working unsubscribe on every outbound message feature.
+
+## Testing
+- Every feature ships with at least one happy-path test and one failure-path test.
+- AI outputs need an eval file with 5+ graded examples before merge.
+
+## Never
+- Never commit secrets.
+- Never bypass RLS.
+- Never claim legal/financial advice in UI copy.
