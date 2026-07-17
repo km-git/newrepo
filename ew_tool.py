@@ -50,6 +50,17 @@ def main() -> None:
     action="store_true",
     help="pip install missing token-saving libraries (tiktoken, llm-token-optimizer, etc.)",
   )
+  parser.add_argument(
+    "--pr-approve",
+    type=int,
+    metavar="N",
+    help="Run multi-model executive consensus on PR N — auto-approve/merge when GO",
+  )
+  parser.add_argument(
+    "--pr-dry-run",
+    action="store_true",
+    help="With --pr-approve: decision only, no GitHub approve/merge",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -91,6 +102,13 @@ def main() -> None:
 
     result = install_missing_libraries()
     print(json.dumps({"install": result, "registry": registry_summary()}, indent=2))
+    return
+
+  if args.pr_approve is not None:
+    from engine.pr_consensus import run_pr_executive_consensus
+
+    result = run_pr_executive_consensus(args.pr_approve, dry_run=args.pr_dry_run)
+    print(json.dumps(result, indent=2, default=str))
     return
 
   if args.repomix:

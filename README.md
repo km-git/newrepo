@@ -117,6 +117,35 @@ With `--llm-advisory`, the **final executive verdict** is set by multi-model AI 
 
 Disable: `EW_LLM_EXECUTIVE_CONSENSUS=0` (confidence-only mode).
 
+## PR auto-approve (multi-model executive consensus)
+
+Auto-approve and merge pull requests using the same multi-model panel as trading executive decisions:
+
+```bash
+# Dry-run — see verdict without GitHub actions
+python3 ew_tool.py --pr-approve 5 --pr-dry-run
+
+# Live — approve + merge when panel agrees (APPROVE_MERGE + stance=agree)
+python3 scripts/pr_executive_consensus.py 5
+
+# GitHub Action runs on every PR (non-draft): .github/workflows/pr-executive-consensus.yml
+```
+
+| PR verdict | Panel stance | Action |
+|---|---|---|
+| `APPROVE_MERGE` | agree | Approve + merge (if `EW_PR_AUTO_MERGE=1`) |
+| `CONDITIONAL_MERGE` | agree/caution | Approve with comment |
+| `REQUEST_CHANGES` | reject/caution | Request changes |
+| `REJECT` | any | Request changes (CI fail, etc.) |
+
+```bash
+EW_PR_AUTO_APPROVE=1           # default — post GitHub review
+EW_PR_AUTO_MERGE=1             # merge on APPROVE_MERGE + agree
+EW_PR_EXECUTIVE_CONSENSUS=1    # AI panel shapes final verdict
+EW_PR_LLM_ADVISORY=1           # run multi-model panel
+EW_PR_REQUIRE_CI=1             # reject if CI failed
+```
+
 Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.
 
 ### Cost comparison (typical critical advisory)

@@ -1,0 +1,52 @@
+name: PR Executive Consensus
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to review
+        required: true
+        type: number
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  executive-consensus:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          bash scripts/setup_libs.sh || true
+
+      - name: Install token savers
+        run: python ew_tool.py --install-token-savers || true
+
+      - name: PR executive consensus
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EW_PR_AUTO_APPROVE: "1"
+          EW_PR_AUTO_MERGE: "1"
+          EW_PR_EXECUTIVE_CONSENSUS: "1"
+          EW_PR_LLM_ADVISORY: "1"
+          EW_LLM_BACKEND: cursor
+          EW_LLM_INTELLIGENCE: ensemble
+        run: |
+          PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
+          python scripts/pr_executive_consensus.py "$PR_NUM" --repo "${{ github.repository }}"
