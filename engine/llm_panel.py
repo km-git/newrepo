@@ -13,8 +13,8 @@ from engine.llm_token_router import (
   STANDARD_OPENAI,
   Provider,
   model_for,
-  tier_for_verdict,
 )
+from engine.llm_cost import model_for_task, task_tier
 
 IntelligenceMode = Literal["ensemble", "single", "dual"]
 Stance = Literal["agree", "caution", "reject", "unknown"]
@@ -68,18 +68,16 @@ def cheap_screen_routes(verdict: str, conviction: str = "") -> List[Tuple[Provid
     if os.environ.get("ANTHROPIC_API_KEY", "").strip():
       routes.append(("anthropic", model_for("anthropic", tier), tier))
     return routes
-  return [(p, model_for(p, tier), tier) for p in providers]
+  return []
 
 
 def tiebreaker_routes(verdict: str, conviction: str = "") -> List[Tuple[Provider, str, str]]:
-  """One premium model to break disagreement — OpenAI preferred."""
-  tier = tier_for_verdict(verdict, conviction)
-  if tier == "cheap":
-    tier = "standard"
+  """One premium model to break disagreement — complex decision task."""
+  tier = task_tier("tiebreaker")
   if os.environ.get("OPENAI_API_KEY", "").strip():
-    return [("openai", model_for("openai", tier), tier)]
+    return [("openai", model_for_task("openai", "tiebreaker"), tier)]
   if os.environ.get("ANTHROPIC_API_KEY", "").strip():
-    return [("anthropic", model_for("anthropic", tier), tier)]
+    return [("anthropic", model_for_task("anthropic", "tiebreaker"), tier)]
   return []
 
 

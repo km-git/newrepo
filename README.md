@@ -45,6 +45,34 @@ When `--llm-advisory` is enabled, the tool uses **ensemble mode** by default —
 
 Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.
 
+### Cost comparison (typical critical advisory)
+
+Assumes ~450 input tokens + ~180 output tokens per call (compact advisory JSON). Run live numbers:
+
+```bash
+python3 ew_tool.py --llm-cost
+```
+
+| Scenario | Models | Calls | Est. cost | When to use |
+|---|---|---:|---:|---|
+| **Single cheap** | `gpt-4o-mini` | 1 | ~$0.0002 | High-volume batch, `--llm-advisory-max` caps |
+| **Ensemble agree** | mini + haiku | 2 | ~$0.0010 | Default — dual cheap screen, unanimous |
+| **Ensemble disagree** | mini + haiku + `gpt-4o` | 3 | ~$0.0020 | Hard decisions — premium tiebreaker only |
+| **Ensemble blended** (~30% disagree) | conditional | 2–3 | ~$0.0013 | Expected real-world cost |
+| **Dual premium** ❌ | `gpt-4o` + sonnet | 2 | ~$0.0040 | Avoid — ~3× ensemble cost |
+| **Cache hit** | — | 0 | $0 | Same symbol/verdict/price within 1h |
+
+**Task → model tier** (cheap wherever possible):
+
+| Task | Tier | Models |
+|---|---|---|
+| Advisory screen | cheap | `gpt-4o-mini`, `claude-3-5-haiku` |
+| Tiebreaker (disagreement) | standard | `gpt-4o` or `claude-sonnet` |
+| Architect / RepoMix review | standard | premium — complex multi-file reasoning |
+| Post-batch synthesis | standard | premium — cross-pair executive summary |
+
+Ensemble saves **~65%** vs dual premium while still using two cheap models + conditional premium.
+
 ## Token-efficient LLM advisory
 
 LLM calls are gated to **critical decisions only** and use these token-saving mechanisms:

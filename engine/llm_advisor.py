@@ -24,6 +24,7 @@ from engine.llm_panel import (
   effective_intelligence_mode,
   run_panel,
 )
+from engine.llm_cost import attach_cost_estimate
 
 NAMESPACE = "llm_advisory"
 CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
@@ -226,6 +227,18 @@ def get_llm_advisory(
       tb = panel.get("tiebreaker_route") or {}
       budget["routes"].append(tb)
       budget["est_total_tokens"] += budget.get("max_output_tokens", DEFAULT_MAX_OUTPUT_TOKENS)
+    tb_route = None
+    if panel.get("tiebreaker_route"):
+      tr = panel["tiebreaker_route"]
+      tb_route = (tr["provider"], tr["model"], tr["tier"])
+    budget = attach_cost_estimate(
+      budget,
+      routes,
+      escalated=bool(panel.get("escalated_to_premium")),
+      tiebreaker_route=tb_route,
+    )
+    panel["cost_estimate"] = budget.get("cost_estimate")
+    result["token_budget"] = budget
   else:
     responses: Dict[str, dict] = {}
     for provider, model, tier in routes:
@@ -272,6 +285,9 @@ def get_llm_advisory(
       result["avg_confidence_adjustment"] = adj
       result["confidence_adjustment"] = adj
 
+    budget = attach_cost_estimate(budget, routes)
+    result["token_budget"] = budget
+
   consulted = result.get("consulted") or []
   if not consulted:
     if not select_providers():
@@ -281,10 +297,12 @@ def get_llm_advisory(
     print(f"[llm] advisory skipped for {symbol}: {result['skipped_reason']}")
   else:
     escalated = (result.get("intelligence_panel") or {}).get("escalated_to_premium", False)
+    cost = (result.get("token_budget") or {}).get("cost_estimate", {}).get("est_total_usd")
+    cost_s = f" ~${cost:.5f}" if isinstance(cost, (int, float)) else ""
     print(
       f"[llm] advisory {symbol}: mode={mode} consulted={consulted} "
       f"stance={result['consensus_stance']} escalated={escalated} "
-      f"~{budget['est_total_tokens']}tok"
+      f"~{budget['est_total_tokens']}tok{cost_s}"
     )
 
   if use_cache and consulted:
