@@ -325,10 +325,11 @@ def adaptive_pipeline(
   hs = outcomes["honest_summary"]
   print(f"[step8] outcomes: {hs['truth']}")
 
-  # Optional: Claude + GPT second opinion on critical decisions
+  # Optional: multi-model intelligence panel on critical decisions
   llm_advisory_result = None
   if llm_advisory:
     from engine.llm_advisor import maybe_advise_critical
+    from engine.llm_panel import apply_panel_to_trade
 
     llm_advisory_result = maybe_advise_critical(
       symbol=symbol,
@@ -341,6 +342,8 @@ def adaptive_pipeline(
       enabled=True,
     )
     if llm_advisory_result:
+      trade = apply_panel_to_trade(trade, llm_advisory_result)
+      decision["trade_setup"] = trade
       stages.append(("llm_advisory", {"symbol": symbol}, compact_summary(llm_advisory_result)))
 
   reasoning = (
@@ -354,6 +357,16 @@ def adaptive_pipeline(
     f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))} | "
     f"Outcomes: {hs['truth']}"
   )
+  if llm_advisory_result and llm_advisory_result.get("consensus_stance"):
+    panel = llm_advisory_result.get("intelligence_panel") or {}
+    escalated = panel.get("escalated_to_premium", False)
+    reasoning += (
+      f" | LLM panel: {llm_advisory_result['consensus_stance']}"
+      f" (mode={llm_advisory_result.get('intelligence_mode', panel.get('intelligence_mode', 'ensemble'))}"
+      f"{', premium tiebreaker' if escalated else ''})"
+    )
+    if trade.get("panel_confidence_adjustment") is not None:
+      reasoning += f", conf_adj={trade['panel_confidence_adjustment']:+.3f}"
 
   tool_log = dedup_tool_calls(build_tool_calls_log(stages))
 

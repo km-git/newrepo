@@ -33,15 +33,28 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --gateway-stats
 export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
 python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 
-## Token-efficient LLM advisory (default)
+## Multi-model intelligence panel (default with `--llm-advisory`)
+
+When `--llm-advisory` is enabled, the tool uses **ensemble mode** by default — similar to Cursor's multi-model approach:
+
+| Phase | Models | When |
+|---|---|---|
+| **1. Cheap screen** | `gpt-4o-mini` + `claude-3-5-haiku` in parallel | Both API keys present |
+| **2. Premium tiebreaker** | `gpt-4o` or `claude-sonnet` (one call) | Cheap models disagree |
+| **3. Confidence apply** | Panel adjustment applied to `trade_setup.confidence` | Always (audit trail preserved) |
+
+Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.
+
+## Token-efficient LLM advisory
 
 LLM calls are gated to **critical decisions only** and use these token-saving mechanisms:
 
 | Mechanism | What it does |
 |---|---|
 | **Critical-only gate** | Skips LLM for monitor/STANDBY setups (~90% of batch pairs) |
-| **Single provider (auto)** | `EW_LLM_PROVIDER=auto` calls **one** model, not two (50% cost vs dual) |
-| **Cheap tier default** | `gpt-4o-mini` / `claude-3-5-haiku` — not Sonnet/GPT-4o unless `EW_LLM_PREMIUM_GO=1` |
+| **Ensemble default** | `EW_LLM_INTELLIGENCE=ensemble` — dual cheap screen, premium only on disagreement |
+| **Single provider fallback** | Falls back to one model when only one API key is set |
+| **Cheap tier default** | Screen uses mini/haiku — premium only for tiebreaker |
 | **Compact prompts** | Short JSON keys (`sym`, `v`, `dir`) — ~60% fewer input tokens |
 | **Output cap** | `EW_LLM_MAX_OUTPUT=280` (default) — advisory JSON is small |
 | **Anthropic prompt cache** | System prompt uses `cache_control: ephemeral` on repeat calls |
@@ -52,17 +65,18 @@ LLM calls are gated to **critical decisions only** and use these token-saving me
 | **RepoMix export** | `--repomix` minifies codebase for agent context |
 
 ```bash
-# Default: one cheap model (OpenAI mini if key present)
+# Default with --llm-advisory: ensemble (dual cheap + premium tiebreaker)
+export EW_LLM_INTELLIGENCE=ensemble   # ensemble | single | dual
+export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+
+# Token-minimal: one cheap model
+export EW_LLM_INTELLIGENCE=single
 export EW_LLM_PROVIDER=auto          # auto | openai | anthropic | dual
 export EW_LLM_TIER=cheap             # cheap | standard
 export EW_LLM_MAX_OUTPUT=280
 
-# Dual second opinion (2× tokens — use sparingly)
-export EW_LLM_PROVIDER=dual
-
-# Premium models only for high-conviction GO
-export EW_LLM_PREMIUM_GO=1
-export EW_LLM_TIER=standard
+# Legacy dual without tiebreaker
+export EW_LLM_INTELLIGENCE=dual
 ```
 
 # Batch with up to 5 LLM consultations on GO / CONDITIONAL_GO pairs

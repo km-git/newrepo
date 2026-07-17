@@ -18,6 +18,12 @@ from engine.llm_token_router import (
   select_providers,
   token_budget_report,
 )
+from engine.llm_panel import (
+  apply_panel_to_trade,
+  cheap_screen_routes,
+  effective_intelligence_mode,
+  run_panel,
+)
 
 NAMESPACE = "llm_advisory"
 CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
@@ -172,8 +178,9 @@ def get_llm_advisory(
   verdict = executive.get("verdict", "")
   conviction = executive.get("conviction", "")
   price = round(float(trade_setup.get("entry_zone", [0])[0] if trade_setup.get("entry_zone") else 0), 0)
-  routes = routing_plan(verdict, conviction)
-  cache_key = (symbol, verdict, executive.get("direction"), price, tuple((p, m) for p, m, _ in routes))
+  mode = effective_intelligence_mode()
+  routes = cheap_screen_routes(verdict, conviction) if mode in ("ensemble", "dual") else routing_plan(verdict, conviction)
+  cache_key = (mode, symbol, verdict, executive.get("direction"), price, tuple((p, m) for p, m, _ in routes))
 
   if use_cache:
     cached = get_cache().get(NAMESPACE, *cache_key)
@@ -188,50 +195,84 @@ def get_llm_advisory(
     symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
   )
   budget = token_budget_report(prompt, routes)
+  budget["intelligence_mode"] = mode
 
-  responses: Dict[str, dict] = {}
-  for provider, model, tier in routes:
-    if provider == "openai":
-      responses["openai"] = call_openai_advisory(prompt, model)
-    else:
-      responses["anthropic"] = call_anthropic_advisory(prompt, model)
+  if mode in ("ensemble", "dual"):
 
-  # Fill unavailable providers for API compatibility
-  if "openai" not in responses:
-    responses["openai"] = {"available": False, "error": "not selected (EW_LLM_PROVIDER)"}
-  if "anthropic" not in responses:
-    responses["anthropic"] = {"available": False, "error": "not selected (EW_LLM_PROVIDER)"}
+    def _call_provider(provider: str, model: str, tier: str) -> dict:
+      if provider == "openai":
+        return call_openai_advisory(prompt, model)
+      return call_anthropic_advisory(prompt, model)
 
-  consulted = []
-  ok_responses = []
-  for label in ("openai", "anthropic"):
-    resp = responses[label]
-    if resp.get("available") and resp.get("stance"):
-      consulted.append(label)
-      ok_responses.append(resp)
+    panel = run_panel(prompt, verdict, conviction, _call_provider)
+    responses = panel["screen"]
+    result = {
+      "critical": True,
+      "consulted": panel["consulted"],
+      "openai": responses["openai"],
+      "anthropic": responses["anthropic"],
+      "consensus_stance": panel["consensus_stance"],
+      "confidence_adjustment": panel.get("confidence_adjustment"),
+      "intelligence_panel": panel,
+      "intelligence_mode": mode,
+      "cache_hit": False,
+      "token_budget": budget,
+    }
+    if panel.get("blended_summary"):
+      result["blended_summary"] = panel["blended_summary"]
+    if panel.get("confidence_adjustment") is not None:
+      result["avg_confidence_adjustment"] = panel["confidence_adjustment"]
+    if panel.get("escalated_to_premium"):
+      tb = panel.get("tiebreaker_route") or {}
+      budget["routes"].append(tb)
+      budget["est_total_tokens"] += budget.get("max_output_tokens", DEFAULT_MAX_OUTPUT_TOKENS)
+  else:
+    responses: Dict[str, dict] = {}
+    for provider, model, tier in routes:
+      if provider == "openai":
+        responses["openai"] = call_openai_advisory(prompt, model)
+      else:
+        responses["anthropic"] = call_anthropic_advisory(prompt, model)
 
-  result = {
-    "critical": True,
-    "consulted": consulted,
-    "openai": responses["openai"],
-    "anthropic": responses["anthropic"],
-    "consensus_stance": _blend_stances(ok_responses),
-    "cache_hit": False,
-    "token_budget": budget,
-  }
+    if "openai" not in responses:
+      responses["openai"] = {"available": False, "error": "not selected (EW_LLM_INTELLIGENCE=single)"}
+    if "anthropic" not in responses:
+      responses["anthropic"] = {"available": False, "error": "not selected (EW_LLM_INTELLIGENCE=single)"}
 
-  summaries = [r.get("summary") for r in ok_responses if r.get("summary")]
-  if summaries:
-    result["blended_summary"] = " | ".join(summaries)
+    consulted = []
+    ok_responses = []
+    for label in ("openai", "anthropic"):
+      resp = responses[label]
+      if resp.get("available") and resp.get("stance"):
+        consulted.append(label)
+        ok_responses.append(resp)
 
-  adjustments = [
-    r.get("confidence_adjustment")
-    for r in ok_responses
-    if isinstance(r.get("confidence_adjustment"), (int, float))
-  ]
-  if adjustments:
-    result["avg_confidence_adjustment"] = round(sum(adjustments) / len(adjustments), 3)
+    result = {
+      "critical": True,
+      "consulted": consulted,
+      "openai": responses["openai"],
+      "anthropic": responses["anthropic"],
+      "consensus_stance": _blend_stances(ok_responses),
+      "cache_hit": False,
+      "token_budget": budget,
+      "intelligence_mode": mode,
+    }
 
+    summaries = [r.get("summary") for r in ok_responses if r.get("summary")]
+    if summaries:
+      result["blended_summary"] = " | ".join(summaries)
+
+    adjustments = [
+      r.get("confidence_adjustment")
+      for r in ok_responses
+      if isinstance(r.get("confidence_adjustment"), (int, float))
+    ]
+    if adjustments:
+      adj = round(sum(adjustments) / len(adjustments), 3)
+      result["avg_confidence_adjustment"] = adj
+      result["confidence_adjustment"] = adj
+
+  consulted = result.get("consulted") or []
   if not consulted:
     if not select_providers():
       result["skipped_reason"] = "No API keys (OPENAI_API_KEY or ANTHROPIC_API_KEY)"
@@ -239,10 +280,11 @@ def get_llm_advisory(
       result["skipped_reason"] = "Consultation failed — check API errors in openai/anthropic fields"
     print(f"[llm] advisory skipped for {symbol}: {result['skipped_reason']}")
   else:
+    escalated = (result.get("intelligence_panel") or {}).get("escalated_to_premium", False)
     print(
-      f"[llm] advisory {symbol}: consulted={consulted} "
-      f"stance={result['consensus_stance']} "
-      f"~{budget['est_total_tokens']}tok routes={budget['routes']}"
+      f"[llm] advisory {symbol}: mode={mode} consulted={consulted} "
+      f"stance={result['consensus_stance']} escalated={escalated} "
+      f"~{budget['est_total_tokens']}tok"
     )
 
   if use_cache and consulted:
