@@ -70,7 +70,7 @@ Operator profile: AU-based, 1–2 people, 25+ years in IT services, AI consultin
 | 54 | Testimonial Wall | AI Personalisation | Service SMBs | Social proof is scattered | Consent-based collection and embeddable verified wall | GPT-5.6 Sol | Haiku 4.5 | Verify attribution; deletion and embed tests | Next.js, embeddable JS | 10 | 150 | A$25/mo | 13K | 24 | Web-design agency | ACL claims and fake reviews |
 | 55 | Recurring Service Scheduler | Service Platforms | Lawn, pool and cleaning operators | Repeat visits and rebooking are manual | Simple recurring schedule, transactional reminders and rebook link | Opus 4.8 | Sonnet 5 | Calendar-state tests; separate service from marketing messages | Next.js, Postgres, SMS | 14 | 350 | A$39/mo | 18K | 21 | Local operator group | Calendar edge cases and messaging rules |
 
-Category coverage: AI Tools SMB (4), Micro-SaaS Vertical (4), Vertical AI Agents (4), AI Content+SEO (4), Dev Tools (5), AI Workflow (4), Lead Gen (4), Analytics (4), Service Platforms (5), Tradie/NDIS (5), AI Receptionist (4), AI Compliance (5), AI Localisation (3), AI Personalisation (4).
+Category coverage: AI Tools SMB (4), Micro-SaaS Vertical (4), Vertical AI Agents (4), AI Content+SEO (4), Dev Tools (4), AI Workflow (4), Lead Gen (3), Analytics (3), Service Platforms (5), Tradie/NDIS (4), AI Receptionist (4), AI Compliance (5), AI Localisation (3), AI Personalisation (4).
 
 ## Top 10 to validate first
 
