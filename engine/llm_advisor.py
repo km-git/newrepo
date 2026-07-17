@@ -69,10 +69,11 @@ def build_advisory_prompt(
   consensus: dict,
   outcomes: dict,
   market_tools: Optional[dict] = None,
+  brain_lessons: Optional[List[str]] = None,
 ) -> str:
   """Compact prompt — ~60% fewer input tokens vs indented JSON block."""
   payload = compact_advisory_payload(
-    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
+    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools, brain_lessons
   )
   prompt = build_compact_prompt(payload)
   optimized, opt_meta = optimize_prompt_text(prompt)
@@ -238,6 +239,7 @@ def get_llm_advisory(
   outcomes: dict,
   market_tools: Optional[dict] = None,
   use_cache: bool = True,
+  brain_lessons: Optional[List[str]] = None,
 ) -> dict:
   verdict = executive.get("verdict", "")
   conviction = executive.get("conviction", "")
@@ -283,7 +285,7 @@ def get_llm_advisory(
       return cached
 
   prompt = build_advisory_prompt(
-    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
+    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools, brain_lessons
   )
   budget = token_budget_report(prompt, routes)
   budget["intelligence_mode"] = mode
@@ -418,11 +420,13 @@ def maybe_advise_critical(
   outcomes: dict,
   market_tools: Optional[dict] = None,
   enabled: bool = False,
+  brain_lessons: Optional[List[str]] = None,
 ) -> Optional[dict]:
   if not enabled:
     return None
   if not is_critical_decision(executive.get("verdict", ""), outcomes):
     return None
   return get_llm_advisory(
-    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
+    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools,
+    brain_lessons=brain_lessons,
   )

@@ -105,6 +105,22 @@ def run_pr_executive_consensus(
     print(f"[pr] GitHub action failed: {e}")
 
   set_cached_review(pr_number, slug, head_sha, result)
+
+  try:
+    from engine.brain_consensus import record_decision
+
+    result["okf_brain"] = record_decision(
+      domain="pr",
+      subject=f"PR #{pr_number}: {pr.get('title', '')[:80]}",
+      verdict=executive["verdict"],
+      stance=panel.get("consensus_stance", "unknown"),
+      panel=panel,
+      executive=executive,
+      context={"head_sha": head_sha, "repo": pr.get("repo"), "actions": actions},
+    )
+  except Exception as exc:
+    result["okf_brain"] = {"persisted": False, "error": str(exc)}
+
   return result
 
 

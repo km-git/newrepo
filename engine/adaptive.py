@@ -306,9 +306,13 @@ def adaptive_pipeline(
 
   # STEP 7b: Multi-model AI consensus → final executive decision
   llm_advisory_result = None
+  brain_lessons: List[str] = []
   if llm_advisory:
+    from engine.brain_self_improve import recall_lessons
     from engine.llm_advisor import maybe_advise_critical
     from engine.llm_executive import apply_ai_consensus_to_decision, executive_consensus_enabled
+
+    brain_lessons = recall_lessons(symbol)
 
     llm_advisory_result = maybe_advise_critical(
       symbol=symbol,
@@ -319,6 +323,7 @@ def adaptive_pipeline(
       outcomes=None,
       market_tools=market_tools,
       enabled=True,
+      brain_lessons=brain_lessons or None,
     )
     if llm_advisory_result and llm_advisory_result.get("consensus_stance"):
       if executive_consensus_enabled():
@@ -454,4 +459,22 @@ def adaptive_pipeline(
       result["gateway_stats"] = get_gateway().stats()
     except Exception:
       pass
+
+  try:
+    from engine.brain_self_improve import persist_trading_cycle, self_improve_enabled
+
+    if self_improve_enabled():
+      result["okf_brain"] = persist_trading_cycle(
+        symbol=symbol,
+        executive=executive,
+        outcomes=outcomes,
+        honesty_audit=result["honesty_audit"],
+        panel=llm_advisory_result,
+        pipeline_status=status,
+      )
+      if brain_lessons:
+        result["okf_brain"]["recalled_lessons"] = brain_lessons
+  except Exception as exc:
+    result["okf_brain"] = {"persisted": False, "error": str(exc)}
+
   return result

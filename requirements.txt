@@ -17,4 +17,5 @@ tokenpruner[tiktoken]>=1.0.0
 cachetic>=0.6.0
 foldback-ai>=0.1.0
 pytest>=8.0.0
+PyYAML>=6.0.0
 numba>=0.58.0

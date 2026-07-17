@@ -66,6 +66,21 @@ def main() -> None:
     action="store_true",
     help="Run executive consensus on all open PRs",
   )
+  parser.add_argument(
+    "--brain-ask",
+    metavar="QUESTION",
+    help="Query OKF secondary brain with multi-model consensus",
+  )
+  parser.add_argument(
+    "--brain-search",
+    metavar="QUERY",
+    help="Search OKF brain concepts",
+  )
+  parser.add_argument(
+    "--brain-status",
+    action="store_true",
+    help="Show OKF secondary brain index and concept counts",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -118,6 +133,30 @@ def main() -> None:
       approve_all=args.pr_approve_all,
     )
     print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.brain_ask:
+    from engine.brain_consensus import ask_brain
+
+    result = ask_brain(args.brain_ask, use_llm=False)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.brain_search:
+    from engine.okf_brain import search_concepts
+
+    hits = search_concepts(args.brain_search, limit=20)
+    print(json.dumps(hits, indent=2, default=str))
+    return
+
+  if args.brain_status:
+    from engine.brain_consensus import brain_status
+    from engine.brain_self_improve import improvement_summary
+
+    print(json.dumps({
+      "brain": brain_status(),
+      "self_improve": improvement_summary(),
+    }, indent=2, default=str))
     return
 
   if args.repomix:

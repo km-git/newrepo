@@ -83,6 +83,7 @@ def compact_advisory_payload(
   consensus: dict,
   outcomes: dict,
   market_tools: Optional[dict] = None,
+  brain_lessons: Optional[List[str]] = None,
 ) -> dict:
   """Minified trade packet — short keys, no prose, no indent."""
   hs = (outcomes or {}).get("honest_summary") or {}
@@ -90,7 +91,7 @@ def compact_advisory_payload(
     tf: (wave_structure.get(tf) or {}).get("structure", "?")[:40]
     for tf in sorted(wave_structure.keys())
   }
-  return {
+  payload = {
     "sym": symbol,
     "v": executive.get("verdict"),
     "dir": executive.get("direction"),
@@ -111,6 +112,9 @@ def compact_advisory_payload(
     "prb": hs.get("probe_executable_count", 0),
     "sig": ((market_tools or {}).get("confluence_signals") or [])[:3],
   }
+  if brain_lessons:
+    payload["brain"] = brain_lessons[:5]
+  return payload
 
 
 def build_compact_prompt(payload: dict) -> str:

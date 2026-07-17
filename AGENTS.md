@@ -39,3 +39,7 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - **PR auto-approve:** `python3 ew_tool.py --pr-approve <N>` or `--pr-approve-all`.
   Agent: `python3 scripts/pr_executive_consensus.py`. 5/7 model consensus rule.
   GitHub Action: `.github/workflows/pr-executive-consensus.yml`. Results in `output/pr_reviews/`.
+- **OKF secondary brain:** Multi-model consensus persisted as OKF v0.1 concepts in `okf/brain/`.
+  Self-improvement loop writes autodream lessons + honesty audits after each run.
+  CLI: `--brain-ask "..."`, `--brain-search "..."`, `--brain-status`.
+  Env: `EW_OKF_BRAIN=1`, `EW_BRAIN_CONSENSUS=1`, `EW_BRAIN_SELF_IMPROVE=1`, `EW_OKF_BRAIN_DIR` (optional).
