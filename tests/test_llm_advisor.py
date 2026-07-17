@@ -98,27 +98,21 @@ def test_get_llm_advisory_blends(mock_routes, mock_anthropic, mock_openai, monke
   assert "token_budget" in result
 
 
-@patch("engine.llm_advisor.call_openai_advisory")
-@patch("engine.llm_advisor.call_anthropic_advisory")
-def test_get_llm_advisory_ensemble_panel(mock_anthropic, mock_openai, monkeypatch, tmp_path):
+@patch("engine.llm_advisor._call_advisory")
+def test_get_llm_advisory_ensemble_panel(mock_call, monkeypatch, tmp_path):
   from cache.disk_cache import CompressedCache
   from cache import disk_cache
 
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
+  monkeypatch.setenv("EW_LLM_BACKEND", "direct")
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
   monkeypatch.setattr(disk_cache, "_global_cache", CompressedCache(cache_dir=tmp_path))
-  mock_openai.return_value = {
+  mock_call.side_effect = lambda *a, **k: {
     "available": True,
     "stance": "agree",
     "confidence_adjustment": 0.02,
-    "summary": "Aligned.",
-  }
-  mock_anthropic.return_value = {
-    "available": True,
-    "stance": "agree",
-    "confidence_adjustment": 0.01,
-    "summary": "Good structure.",
+    "summary": a[0],
   }
 
   result = get_llm_advisory(
@@ -146,7 +140,8 @@ def test_get_llm_advisory_cursor_ensemble(mock_call, monkeypatch, tmp_path):
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
   monkeypatch.setattr(disk_cache, "_global_cache", CompressedCache(cache_dir=tmp_path))
 
-  def _fake(provider, model, tier, prompt):
+  def _fake(*args, **kwargs):
+    provider = args[0]
     return {
       "available": True,
       "backend": "cursor",

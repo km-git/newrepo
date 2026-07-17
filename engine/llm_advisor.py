@@ -27,6 +27,7 @@ from engine.llm_panel import (
 from engine.llm_cost import attach_cost_estimate
 from engine.llm_backend import advisory_credentials_available, credentials_hint, llm_backend
 from engine.llm_cursor import call_cursor_provider_advisory
+from engine.llm_task_router import TaskKind, max_output_for_task, resolve_model, screen_task_for_mode
 
 NAMESPACE = "llm_advisory"
 CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
@@ -83,7 +84,7 @@ def _parse_json_response(text: str) -> dict:
   return json.loads(text.strip())
 
 
-def call_openai_advisory(prompt: str, model: str) -> dict:
+def call_openai_advisory(prompt: str, model: str, max_tokens: Optional[int] = None) -> dict:
   key = os.environ.get("OPENAI_API_KEY", "").strip()
   if not key:
     return {"available": False, "error": "OPENAI_API_KEY not set"}
@@ -94,7 +95,7 @@ def call_openai_advisory(prompt: str, model: str) -> dict:
       {
         "model": model,
         "temperature": 0.2,
-        "max_tokens": DEFAULT_MAX_OUTPUT_TOKENS,
+        "max_tokens": max_tokens or DEFAULT_MAX_OUTPUT_TOKENS,
         "response_format": {"type": "json_object"},
         "messages": [
           {"role": "system", "content": SYSTEM_PROMPT},
@@ -116,7 +117,7 @@ def call_openai_advisory(prompt: str, model: str) -> dict:
     return {"available": True, "provider": "openai", "model": model, "error": str(e)}
 
 
-def call_anthropic_advisory(prompt: str, model: str) -> dict:
+def call_anthropic_advisory(prompt: str, model: str, max_tokens: Optional[int] = None) -> dict:
   key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
   if not key:
     return {"available": False, "error": "ANTHROPIC_API_KEY not set"}
@@ -131,7 +132,7 @@ def call_anthropic_advisory(prompt: str, model: str) -> dict:
       },
       {
         "model": model,
-        "max_tokens": DEFAULT_MAX_OUTPUT_TOKENS,
+        "max_tokens": max_tokens or DEFAULT_MAX_OUTPUT_TOKENS,
         "temperature": 0.2,
         "system": [
           {
@@ -168,12 +169,28 @@ def _blend_stances(responses: List[dict]) -> str:
   return "caution"
 
 
-def _call_advisory(provider: str, model: str, tier: str, prompt: str) -> dict:
+def _call_advisory(
+  provider: str,
+  model: str,
+  tier: str,
+  task: str,
+  max_output: int,
+  prompt: str,
+) -> dict:
   if llm_backend() == "cursor":
-    return call_cursor_provider_advisory(provider, model, tier, prompt)
+    return call_cursor_provider_advisory(provider, model, tier, prompt, task=task, max_output=max_output)
   if provider == "openai":
-    return call_openai_advisory(prompt, model)
-  return call_anthropic_advisory(prompt, model)
+    return call_openai_advisory(prompt, model, max_output)
+  return call_anthropic_advisory(prompt, model, max_output)
+
+
+def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai") -> dict:
+  """
+  Run a named task (architect, planning, synthesis, etc.) with correct tier + token cap.
+  Use for RepoMix review, batch synthesis, executive planning — not routine screen.
+  """
+  model, tier, max_out = resolve_model(provider, task)  # type: ignore[arg-type]
+  return _call_advisory(provider, model, tier, task, max_out, prompt)
 
 
 def get_llm_advisory(
@@ -219,8 +236,8 @@ def get_llm_advisory(
 
   if mode in ("ensemble", "dual"):
 
-    def _call_provider(provider: str, model: str, tier: str) -> dict:
-      return _call_advisory(provider, model, tier, prompt)
+    def _call_provider(provider: str, model: str, tier: str, task: str, max_output: int) -> dict:
+      return _call_advisory(provider, model, tier, task, max_output, prompt)
 
     panel = run_panel(prompt, verdict, conviction, _call_provider)
     responses = panel["screen"]
@@ -259,8 +276,10 @@ def get_llm_advisory(
     result["token_budget"] = budget
   else:
     responses: Dict[str, dict] = {}
+    task = screen_task_for_mode(mode)
+    max_out = max_output_for_task(task)
     for provider, model, tier in routes:
-      responses[provider] = _call_advisory(provider, model, tier, prompt)
+      responses[provider] = _call_advisory(provider, model, tier, task, max_out, prompt)
 
     if "openai" not in responses:
       responses["openai"] = {"available": False, "error": "not selected (EW_LLM_INTELLIGENCE=single)"}

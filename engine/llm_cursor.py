@@ -1,4 +1,4 @@
-"""Cursor Cloud Agents API — advisory via Pro plan models (no direct OpenAI/Anthropic keys)."""
+"""Cursor Cloud Agents API — task-aware routing via Cursor Pro pools."""
 
 from __future__ import annotations
 
@@ -8,17 +8,12 @@ import os
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from engine.llm_token_router import DEFAULT_MAX_OUTPUT_TOKENS, SYSTEM_PROMPT
+from engine.llm_task_router import TaskKind, max_output_for_task, resolve_model
+from engine.llm_token_router import SYSTEM_PROMPT
 
 CURSOR_API_BASE = os.environ.get("EW_CURSOR_API_BASE", "https://api.cursor.com").rstrip("/")
-
-# Cursor model IDs — cheap screen vs premium tiebreaker (override via env)
-CURSOR_CHEAP_OPENAI = os.environ.get("EW_CURSOR_CHEAP_OPENAI", "gpt-5-mini")
-CURSOR_CHEAP_ANTHROPIC = os.environ.get("EW_CURSOR_CHEAP_ANTHROPIC", "composer-2.5")
-CURSOR_PREMIUM_OPENAI = os.environ.get("EW_CURSOR_PREMIUM_OPENAI", "gpt-5.2")
-CURSOR_PREMIUM_ANTHROPIC = os.environ.get("EW_CURSOR_PREMIUM_ANTHROPIC", "claude-4.5-sonnet")
 
 TERMINAL_RUN_STATUSES = frozenset({"FINISHED", "ERROR", "CANCELLED", "EXPIRED"})
 
@@ -28,14 +23,16 @@ def cursor_api_key() -> str:
 
 
 def cursor_available() -> bool:
-  return bool(cursor_api_key())
+  from engine.llm_backend import cursor_available as _avail
+
+  return _avail()
 
 
 def cursor_model_for(provider: str, tier: str = "cheap") -> str:
-  """Map logical provider slot → Cursor model id."""
-  if tier == "standard":
-    return CURSOR_PREMIUM_OPENAI if provider == "openai" else CURSOR_PREMIUM_ANTHROPIC
-  return CURSOR_CHEAP_OPENAI if provider == "openai" else CURSOR_CHEAP_ANTHROPIC
+  """Backward-compat shim — prefer resolve_model(task=...)."""
+  task: TaskKind = "screen" if tier == "cheap" else "executive"
+  model, _, _ = resolve_model(provider, task)  # type: ignore[arg-type]
+  return model
 
 
 def _auth_header() -> dict:
@@ -61,13 +58,13 @@ def _parse_json_response(text: str) -> dict:
   return json.loads(text.strip())
 
 
-def _build_cursor_prompt(prompt: str) -> str:
+def _build_cursor_prompt(prompt: str, task: TaskKind) -> str:
   user = prompt.split("\n\nDATA:", 1)[-1] if "DATA:" in prompt else prompt
-  return (
-    f"{SYSTEM_PROMPT}\n"
-    "Reply with a single JSON object only. No markdown fences. No tools. No prose.\n\n"
-    f"{user}\n\nJSON:"
-  )
+  if task in ("architect", "synthesis", "planning"):
+    header = f"{SYSTEM_PROMPT}\nTask: {task}. Be thorough but concise.\n"
+  else:
+    header = f"{SYSTEM_PROMPT}\nReply with a single JSON object only. No markdown. No tools.\n"
+  return f"{header}{user}\n\nJSON:"
 
 
 def _poll_run(agent_id: str, run_id: str) -> dict:
@@ -91,15 +88,20 @@ def _archive_agent(agent_id: str) -> None:
     pass
 
 
-def call_cursor_advisory(prompt: str, model_id: str, provider: str = "cursor") -> dict:
-  """
-  One-shot no-repo cloud agent run for compact advisory JSON.
-  Bills against Cursor Pro pools (model-dependent).
-  """
+def call_cursor_advisory(
+  prompt: str,
+  model_id: str,
+  provider: str = "cursor",
+  *,
+  task: TaskKind = "screen",
+  max_output: Optional[int] = None,
+) -> dict:
+  """One-shot no-repo cloud agent run — task sets token budget and prompt shape."""
   if not cursor_available():
     return {"available": False, "error": "CURSOR_API_KEY not set"}
 
-  full_prompt = _build_cursor_prompt(prompt)
+  max_out = max_output or max_output_for_task(task)
+  full_prompt = _build_cursor_prompt(prompt, task)
   agent_id = None
   try:
     created = _http(
@@ -108,7 +110,7 @@ def call_cursor_advisory(prompt: str, model_id: str, provider: str = "cursor") -
       {
         "prompt": {"text": full_prompt},
         "model": {"id": model_id},
-        "name": f"ew-advisory-{model_id}"[:100],
+        "name": f"ew-{task}-{model_id}"[:100],
       },
       timeout=90,
     )
@@ -122,6 +124,7 @@ def call_cursor_advisory(prompt: str, model_id: str, provider: str = "cursor") -
         "provider": provider,
         "model": model_id,
         "backend": "cursor",
+        "task": task,
         "error": f"unexpected create response: {created!r}",
       }
 
@@ -133,16 +136,19 @@ def call_cursor_advisory(prompt: str, model_id: str, provider: str = "cursor") -
         "provider": provider,
         "model": model_id,
         "backend": "cursor",
+        "task": task,
         "error": f"run {status}: {finished.get('result', '')[:200]}",
       }
 
     raw = finished.get("result") or ""
-    parsed = _parse_json_response(raw)
+    parsed = _parse_json_response(raw) if task not in ("architect", "synthesis") else {"summary": raw[:2000]}
     return {
       "available": True,
       "model": model_id,
       "provider": provider,
       "backend": "cursor",
+      "task": task,
+      "max_output": max_out,
       "duration_ms": finished.get("durationMs"),
       **parsed,
     }
@@ -152,6 +158,7 @@ def call_cursor_advisory(prompt: str, model_id: str, provider: str = "cursor") -
       "provider": provider,
       "model": model_id,
       "backend": "cursor",
+      "task": task,
       "error": str(e),
     }
   finally:
@@ -159,14 +166,28 @@ def call_cursor_advisory(prompt: str, model_id: str, provider: str = "cursor") -
       _archive_agent(agent_id)
 
 
-def call_cursor_provider_advisory(provider: str, model: str, tier: str, prompt: str) -> dict:
-  """Panel hook — provider slot maps to Cursor model id."""
-  model_id = model if model and not model.startswith("gpt-4o") else cursor_model_for(provider, tier)
-  return call_cursor_advisory(prompt, model_id, provider=provider)
+def call_cursor_provider_advisory(
+  provider: str,
+  model: str,
+  tier: str,
+  prompt: str,
+  *,
+  task: TaskKind = "screen",
+  max_output: Optional[int] = None,
+) -> dict:
+  model_id, _tier, max_out = resolve_model(provider, task)  # type: ignore[arg-type]
+  if model and not model.startswith("gpt-4o"):
+    model_id = model
+  return call_cursor_advisory(
+    prompt,
+    model_id,
+    provider=provider,
+    task=task,
+    max_output=max_output or max_out,
+  )
 
 
 def list_cursor_models() -> List[dict]:
-  """GET /v1/models — models available on the account."""
   if not cursor_available():
     return []
   try:

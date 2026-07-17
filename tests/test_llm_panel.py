@@ -46,9 +46,9 @@ def test_run_panel_escalates_on_disagreement(monkeypatch):
 
   calls = []
 
-  def fake_call(provider, model, tier):
-    calls.append((provider, model, tier))
-    if tier == "cheap":
+  def fake_call(provider, model, tier, task, max_output):
+    calls.append((provider, model, tier, task))
+    if tier == "cheap" or task in ("screen", "workhorse"):
       stance = "agree" if provider == "openai" else "reject"
       return {"available": True, "stance": stance, "confidence_adjustment": 0.0, "summary": provider}
     return {"available": True, "stance": "caution", "confidence_adjustment": -0.03, "summary": "tiebreak"}
@@ -59,8 +59,8 @@ def test_run_panel_escalates_on_disagreement(monkeypatch):
   assert panel["escalated_to_premium"] is True
   assert panel["consensus_stance"] == "caution"
   assert panel["tiebreaker"] is not None
-  assert len([c for c in calls if c[2] == "cheap"]) == 2
-  assert len([c for c in calls if c[2] == "standard"]) == 1
+  assert len([c for c in calls if c[2] == "cheap" or c[3] in ("screen", "workhorse")]) == 2
+  assert len([c for c in calls if c[3] in ("executive", "planning", "tiebreaker")]) == 1
 
 
 def test_run_panel_no_escalation_when_unanimous(monkeypatch):
@@ -68,7 +68,7 @@ def test_run_panel_no_escalation_when_unanimous(monkeypatch):
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
 
-  def fake_call(provider, model, tier):
+  def fake_call(provider, model, tier, task, max_out):
     return {"available": True, "stance": "agree", "confidence_adjustment": 0.02, "summary": "ok"}
 
   panel = run_panel("prompt", "GO", "medium", fake_call)

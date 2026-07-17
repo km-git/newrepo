@@ -5,9 +5,11 @@ from __future__ import annotations
 import os
 from typing import Literal
 
-from engine.llm_cursor import cursor_available
-
 Backend = Literal["cursor", "direct"]
+
+
+def cursor_available() -> bool:
+  return bool(os.environ.get("CURSOR_API_KEY", "").strip())
 
 
 def llm_backend() -> Backend:

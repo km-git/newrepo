@@ -35,6 +35,11 @@ def main() -> None:
     action="store_true",
     help="Print typical critical-advisory cost comparison and exit",
   )
+  parser.add_argument(
+    "--llm-tasks",
+    action="store_true",
+    help="Print task→model→token routing matrix and exit",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   args = parser.parse_args()
@@ -44,6 +49,12 @@ def main() -> None:
 
     comp = advisory_scenario_comparison()
     print(json.dumps(comp, indent=2))
+    return
+
+  if args.llm_tasks:
+    from engine.llm_task_router import routing_matrix
+
+    print(json.dumps(routing_matrix(), indent=2))
     return
 
   if args.repomix:

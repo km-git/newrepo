@@ -37,6 +37,26 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 # export EW_LLM_BACKEND=direct
 # export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
 
+## Smart task routing (save tokens)
+
+Every LLM call is classified by **task** — cheap workhorses for volume, premium only when the work demands it:
+
+| Task | Tier | Max output | When | Cursor models |
+|---|---|---:|---|---|
+| **workhorse** | cheap | 180 | `single` mode, batch caps | `composer-2.5` |
+| **screen** | cheap | 200 | Ensemble phase 1 (parallel) | `composer-2.5` + `gpt-5-mini` |
+| **tiebreaker** | premium | 240 | Cheap models disagree | `gpt-5.2` |
+| **planning** | premium | 320 | CONDITIONAL_GO / staged | `gpt-5.2` |
+| **executive** | premium | 280 | GO + high conviction | `claude-4.5-sonnet` |
+| **architect** | premium | 600 | RepoMix / pipeline design | `claude-4.5-sonnet` |
+| **synthesis** | premium | 500 | Post-batch top-setup summary | `gpt-5.2` |
+
+```bash
+python3 ew_tool.py --llm-tasks    # print full routing matrix
+```
+
+Token savers: critical-only gate · compact JSON prompts · per-task output caps · disk cache · premium only on disagreement · `--llm-advisory-max 5`.
+
 ## Cursor Pro backend (default)
 
 When `CURSOR_API_KEY` is set, `--llm-advisory` uses **Cursor's Cloud Agents API** and bills against your **Pro plan pools** — no separate OpenAI/Anthropic keys required.

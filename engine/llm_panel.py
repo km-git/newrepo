@@ -14,7 +14,12 @@ from engine.llm_token_router import (
   Provider,
   model_for,
 )
-from engine.llm_cost import model_for_task, task_tier
+from engine.llm_task_router import (
+  max_output_for_task,
+  screen_routes,
+  tiebreaker_route,
+  tiebreaker_task,
+)
 from engine.llm_backend import llm_backend
 from engine.llm_cursor import cursor_available, cursor_model_for
 
@@ -53,44 +58,23 @@ def effective_intelligence_mode() -> IntelligenceMode:
 
 
 def cheap_screen_routes(verdict: str, conviction: str = "") -> List[Tuple[Provider, str, str]]:
-  """Always use cheap tier for the initial screen."""
-  tier = "cheap"
+  """Always cheap tier — workhorse (single) or dual screen (ensemble)."""
   mode = effective_intelligence_mode()
+  return [(p, m, t) for p, m, t, _task, _out in screen_routes(mode)]
 
-  if llm_backend() == "cursor" and cursor_available():
-    return [
-      ("openai", cursor_model_for("openai", tier), tier),
-      ("anthropic", cursor_model_for("anthropic", tier), tier),
-    ]
 
-  if mode == "single":
-    providers: List[Provider] = []
-    if os.environ.get("OPENAI_API_KEY", "").strip():
-      providers.append("openai")
-    elif os.environ.get("ANTHROPIC_API_KEY", "").strip():
-      providers.append("anthropic")
-    return [(providers[0], model_for(providers[0], tier), tier)] if providers else []
-  if mode in ("ensemble", "dual"):
-    # Force both providers when keys exist
-    routes: List[Tuple[Provider, str, str]] = []
-    if os.environ.get("OPENAI_API_KEY", "").strip():
-      routes.append(("openai", model_for("openai", tier), tier))
-    if os.environ.get("ANTHROPIC_API_KEY", "").strip():
-      routes.append(("anthropic", model_for("anthropic", tier), tier))
-    return routes
-  return []
+def screen_route_details(verdict: str, conviction: str = "") -> List[tuple]:
+  """Full route tuples including task + max_output for panel execution."""
+  return screen_routes(effective_intelligence_mode())
 
 
 def tiebreaker_routes(verdict: str, conviction: str = "") -> List[Tuple[Provider, str, str]]:
-  """One premium model to break disagreement — complex decision task."""
-  tier = task_tier("tiebreaker")
-  if llm_backend() == "cursor" and cursor_available():
-    return [("openai", cursor_model_for("openai", tier), tier)]
-  if os.environ.get("OPENAI_API_KEY", "").strip():
-    return [("openai", model_for_task("openai", "tiebreaker"), tier)]
-  if os.environ.get("ANTHROPIC_API_KEY", "").strip():
-    return [("anthropic", model_for_task("anthropic", "tiebreaker"), tier)]
-  return []
+  """Premium escalation — executive / planning / tiebreaker by verdict."""
+  route = tiebreaker_route(verdict, conviction)
+  if not route:
+    return []
+  p, m, t, _task, _out = route
+  return [(p, m, t)]
 
 
 def _stance_values(responses: List[dict]) -> List[str]:
@@ -169,7 +153,7 @@ def run_panel(
   prompt: str,
   verdict: str,
   conviction: str,
-  call_provider: Callable[[Provider, str, str], dict],
+  call_provider: Callable[..., dict],
 ) -> dict:
   """
   Execute intelligence panel:
@@ -177,21 +161,21 @@ def run_panel(
   2. Premium tiebreaker on disagreement (ensemble only)
   """
   mode = effective_intelligence_mode()
-  screen_routes = cheap_screen_routes(verdict, conviction)
+  screen_detail = screen_route_details(verdict, conviction)
   responses: Dict[str, dict] = {}
 
-  def _invoke(route: Tuple[Provider, str, str]) -> Tuple[str, dict]:
-    provider, model, tier = route
-    return provider, call_provider(provider, model, tier)
+  def _invoke(route: tuple) -> Tuple[str, dict]:
+    provider, model, tier, task, max_out = route
+    return provider, call_provider(provider, model, tier, task, max_out)
 
-  if len(screen_routes) > 1:
-    with ThreadPoolExecutor(max_workers=len(screen_routes)) as pool:
-      futures = {pool.submit(_invoke, r): r for r in screen_routes}
+  if len(screen_detail) > 1:
+    with ThreadPoolExecutor(max_workers=len(screen_detail)) as pool:
+      futures = {pool.submit(_invoke, r): r for r in screen_detail}
       for fut in as_completed(futures):
         provider, resp = fut.result()
         responses[provider] = resp
   else:
-    for route in screen_routes:
+    for route in screen_detail:
       provider, resp = _invoke(route)
       responses[provider] = resp
 
@@ -206,17 +190,17 @@ def run_panel(
   ]
 
   tiebreaker: Optional[dict] = None
-  tiebreaker_route: Optional[Tuple[Provider, str, str]] = None
+  tiebreaker_route_meta: Optional[dict] = None
   escalated = False
 
   if mode == "ensemble" and models_disagree(ok_screen):
-    tb_routes = tiebreaker_routes(verdict, conviction)
-    if tb_routes:
+    tb = tiebreaker_route(verdict, conviction)
+    if tb:
       escalated = True
-      tiebreaker_route = tb_routes[0]
-      provider, model, tier = tiebreaker_route
-      tiebreaker = call_provider(provider, model, tier)
-      tiebreaker["role"] = "tiebreaker"
+      provider, model, tier, task, max_out = tb
+      tiebreaker_route_meta = {"provider": provider, "model": model, "tier": tier, "task": task}
+      tiebreaker = call_provider(provider, model, tier, task, max_out)
+      tiebreaker["role"] = task
 
   consensus = blend_stances(ok_screen, tiebreaker)
   conf_adj = avg_confidence_adjustment(ok_screen, tiebreaker)
@@ -234,16 +218,16 @@ def run_panel(
     "screen": {
       "openai": responses["openai"],
       "anthropic": responses["anthropic"],
-      "routes": [{"provider": p, "model": m, "tier": t} for p, m, t in screen_routes],
+      "routes": [
+        {"provider": p, "model": m, "tier": t, "task": task, "max_output": out}
+        for p, m, t, task, out in screen_detail
+      ],
     },
     "disagreement": models_disagree(ok_screen),
     "escalated_to_premium": escalated,
     "tiebreaker": tiebreaker,
-    "tiebreaker_route": (
-      {"provider": tiebreaker_route[0], "model": tiebreaker_route[1], "tier": tiebreaker_route[2]}
-      if tiebreaker_route
-      else None
-    ),
+    "tiebreaker_route": tiebreaker_route_meta if escalated else None,
+    "tiebreaker_task": tiebreaker_task(verdict, conviction) if escalated else None,
     "consensus_stance": consensus,
     "confidence_adjustment": conf_adj,
     "consulted": consulted,
