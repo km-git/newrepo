@@ -78,6 +78,9 @@ class ExecutiveDecision(BaseModel):
   scale_legs: Optional[List[Dict[str, Any]]] = None
   alternative_path: Optional[Dict[str, Any]] = None
   consensus_summary: Optional[Dict[str, Any]] = None
+  draft_verdict: Optional[str] = None
+  verdict_source: Optional[str] = None
+  llm_consensus: Optional[Dict[str, Any]] = None
 
 
 class EngineVote(BaseModel):

@@ -97,6 +97,16 @@ When `--llm-advisory` is enabled, the tool uses **ensemble mode** by default —
 | **2. Smart escalation** | Grok High (mild) · Luna (light plan) · Sol (hard) · Opus (executive GO) · Fable (architect) | Disagreement severity + verdict |
 | **3. Confidence apply** | Panel adjustment on `trade_setup.confidence` | Always (audit trail preserved) |
 
+With `--llm-advisory`, the **final executive verdict** is set by multi-model AI consensus (default on):
+
+| Panel stance | Effect on draft verdict |
+|---|---|
+| **agree** | Endorse draft (CONDITIONAL→GO if premium tiebreaker agrees) |
+| **caution** | Downgrade one tier, halve position size |
+| **reject** | Downgrade two tiers, probe size only |
+
+Disable: `EW_LLM_EXECUTIVE_CONSENSUS=0` (confidence-only mode).
+
 Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.
 
 ### Cost comparison (typical critical advisory)

@@ -269,7 +269,7 @@ def adaptive_pipeline(
   consensus = build_consensus(data, adaptive, symbol, timeframes=["1d", "4h", "15m"])
   stages.append(("wave_consensus", {"symbol": symbol}, compact_summary(consensus)))
 
-  # STEP 7: Executive decision — expert trader always finds a path
+  # STEP 7: Executive decision — rule-based draft (refined by AI panel when enabled)
   decision = executive_decide(
     symbol=symbol,
     data=data,
@@ -290,10 +290,10 @@ def adaptive_pipeline(
   status = decision["status"]
   trade = decision["trade_setup"]
   executive = decision["executive_decision"]
-  print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
-  stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
+  print(f"[step7] draft verdict={executive['verdict']} status={status} action={trade['action']}")
+  stages.append(("executive_decide", {"verdict": executive["verdict"], "draft": True}, compact_summary(executive)))
 
-  # STEP 9: Supplementary market tools (EW always primary)
+  # STEP 9: Supplementary market tools (EW always primary) — before outcomes for LLM context
   btc_1d = None
   if is_crypto and not symbol.upper().startswith("BTC"):
     try:
@@ -304,7 +304,44 @@ def adaptive_pipeline(
   stages.append(("market_confluence", {"symbol": symbol},
                  {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
 
-  # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
+  # STEP 7b: Multi-model AI consensus → final executive decision
+  llm_advisory_result = None
+  if llm_advisory:
+    from engine.llm_advisor import maybe_advise_critical
+    from engine.llm_executive import apply_ai_consensus_to_decision, executive_consensus_enabled
+
+    llm_advisory_result = maybe_advise_critical(
+      symbol=symbol,
+      executive=executive,
+      trade_setup=trade,
+      wave_structure=wave_structure,
+      consensus=consensus,
+      outcomes=None,
+      market_tools=market_tools,
+      enabled=True,
+    )
+    if llm_advisory_result and llm_advisory_result.get("consensus_stance"):
+      if executive_consensus_enabled():
+        decision = apply_ai_consensus_to_decision(decision, llm_advisory_result)
+        executive = decision["executive_decision"]
+        trade = decision["trade_setup"]
+        status = decision["status"]
+        print(
+          f"[step7b] AI consensus final={executive['verdict']} "
+          f"(draft={executive.get('draft_verdict')}, stance={llm_advisory_result['consensus_stance']})"
+        )
+        stages.append((
+          "llm_executive_consensus",
+          {"stance": llm_advisory_result["consensus_stance"], "final": executive["verdict"]},
+          compact_summary(executive.get("llm_consensus") or {}),
+        ))
+      else:
+        from engine.llm_panel import apply_panel_to_trade
+        trade = apply_panel_to_trade(trade, llm_advisory_result)
+        decision["trade_setup"] = trade
+      stages.append(("llm_advisory", {"symbol": symbol}, compact_summary(llm_advisory_result)))
+
+  # STEP 8: Outcome-driven setups — uses final executive verdict
   outcomes = build_outcomes(
     symbol=symbol,
     data=data,
@@ -325,27 +362,6 @@ def adaptive_pipeline(
   hs = outcomes["honest_summary"]
   print(f"[step8] outcomes: {hs['truth']}")
 
-  # Optional: multi-model intelligence panel on critical decisions
-  llm_advisory_result = None
-  if llm_advisory:
-    from engine.llm_advisor import maybe_advise_critical
-    from engine.llm_panel import apply_panel_to_trade
-
-    llm_advisory_result = maybe_advise_critical(
-      symbol=symbol,
-      executive=executive,
-      trade_setup=trade,
-      wave_structure=wave_structure,
-      consensus=consensus,
-      outcomes=outcomes,
-      market_tools=market_tools,
-      enabled=True,
-    )
-    if llm_advisory_result:
-      trade = apply_panel_to_trade(trade, llm_advisory_result)
-      decision["trade_setup"] = trade
-      stages.append(("llm_advisory", {"symbol": symbol}, compact_summary(llm_advisory_result)))
-
   reasoning = (
     f"EXECUTIVE CALL [{executive['verdict']}]: {executive['playbook']} "
     f"{symbol} @ {current_price:.2f}, {executive['direction']} bias, "
@@ -360,8 +376,10 @@ def adaptive_pipeline(
   if llm_advisory_result and llm_advisory_result.get("consensus_stance"):
     panel = llm_advisory_result.get("intelligence_panel") or {}
     escalated = panel.get("escalated_to_premium", False)
+    draft = executive.get("draft_verdict", executive.get("verdict"))
     reasoning += (
-      f" | LLM panel: {llm_advisory_result['consensus_stance']}"
+      f" | AI executive: {draft}→{executive['verdict']} "
+      f"stance={llm_advisory_result['consensus_stance']}"
       f" (mode={llm_advisory_result.get('intelligence_mode', panel.get('intelligence_mode', 'ensemble'))}"
       f"{', premium tiebreaker' if escalated else ''})"
     )
@@ -418,6 +436,7 @@ def adaptive_pipeline(
       "confidence_cap": 0.85,
       "no_rule_relaxation": True,
       "executive_mode": True,
+      "ai_executive_consensus": llm_advisory_result is not None and executive.get("verdict_source") == "ai_consensus",
       "always_actionable": True,
       "structural_gaps_disclosed": executive.get("structural_gaps", []),
       "computational_provenance": "core/consensus.py, engine/executive.py, github EW tools",
