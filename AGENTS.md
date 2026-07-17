@@ -43,3 +43,7 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Self-improvement loop writes autodream lessons + honesty audits after each run.
   CLI: `--brain-ask "..."`, `--brain-search "..."`, `--brain-status`.
   Env: `EW_OKF_BRAIN=1`, `EW_BRAIN_CONSENSUS=1`, `EW_BRAIN_SELF_IMPROVE=1`, `EW_OKF_BRAIN_DIR` (optional).
+- **Live execution stack:** Paper default. `python3 ew_tool.py --execute` (dry/paper) or `--execute-live` with
+  `EW_EXECUTE_CONFIRM=1` + `KRAKEN_API_KEY`/`KRAKEN_API_SECRET`. Status: `--execution-status`.
+  Data hub: WebSocket tickers (`EW_WS_ENABLED=1`), rotating proxies (`EW_PROXY_LIST`), web intel
+  (`--data-intel BTC/USDT`). Script: `python3 scripts/execute_limit_orders.py --status`.

@@ -11,7 +11,11 @@ import pandas as pd
 from cache.disk_cache import get_cache
 from gateway.market_gateway import MarketDataGateway, get_gateway
 
-EXCHANGE_CHAIN = ["okx"]
+EXCHANGE_CHAIN = tuple(
+  x.strip()
+  for x in os.environ.get("EW_OHLCV_CHAIN", "okx").split(",")
+  if x.strip()
+) or ("okx",)
 
 TF_MAP = {
   "1w": "1w",

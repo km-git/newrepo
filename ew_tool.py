@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 
@@ -80,6 +81,31 @@ def main() -> None:
     "--brain-status",
     action="store_true",
     help="Show OKF secondary brain index and concept counts",
+  )
+  parser.add_argument(
+    "--execute",
+    action="store_true",
+    help="Execute executable limit orders from export CSV (paper default)",
+  )
+  parser.add_argument(
+    "--execute-live",
+    action="store_true",
+    help="Live execution (requires EW_EXECUTE_CONFIRM=1 + API keys)",
+  )
+  parser.add_argument(
+    "--execution-status",
+    action="store_true",
+    help="Show broker, proxy, WS, risk halt status",
+  )
+  parser.add_argument(
+    "--data-intel",
+    metavar="SYMBOL",
+    help="Fetch WS + web intel snapshot for symbol",
+  )
+  parser.add_argument(
+    "--emergency-flatten",
+    action="store_true",
+    help="Cancel all orders and halt (dry-run unless --execute-live)",
   )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
@@ -157,6 +183,30 @@ def main() -> None:
       "brain": brain_status(),
       "self_improve": improvement_summary(),
     }, indent=2, default=str))
+    return
+
+  if args.execution_status:
+    from engine.execution_agent import execution_status
+    print(json.dumps(execution_status(), indent=2, default=str))
+    return
+
+  if args.data_intel:
+    from gateway.data_hub import live_market_state
+    print(json.dumps(live_market_state(args.data_intel), indent=2, default=str))
+    return
+
+  if args.emergency_flatten:
+    from engine.risk_ops import emergency_flatten
+    dry = not args.execute_live
+    print(json.dumps(emergency_flatten(dry_run=dry), indent=2, default=str))
+    return
+
+  if args.execute or args.execute_live:
+    from engine.execution_agent import execute_from_csv
+    if args.execute_live:
+      os.environ["EW_EXECUTION_MODE"] = "live"
+    result = execute_from_csv(dry_run=not args.execute_live)
+    print(json.dumps(result, indent=2, default=str))
     return
 
   if args.repomix:

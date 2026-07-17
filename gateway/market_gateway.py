@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -16,8 +17,12 @@ import pandas as pd
 
 from cache.semantic_cache import SemanticOHLCVCache, normalize_symbol
 
-# OKX only — reliable in restricted regions; avoids Bybit/Binance geo-blocks
-EXCHANGE_CHAIN: Tuple[str, ...] = ("okx",)
+# OKX primary; extend via EW_OHLCV_CHAIN=okx,kraken,binance
+EXCHANGE_CHAIN: Tuple[str, ...] = tuple(
+  x.strip()
+  for x in os.environ.get("EW_OHLCV_CHAIN", "okx").split(",")
+  if x.strip()
+) or ("okx",)
 
 
 @dataclass

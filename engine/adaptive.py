@@ -301,6 +301,11 @@ def adaptive_pipeline(
     except Exception:
       pass
   market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
+  try:
+    from gateway.data_hub import enrich_market_tools
+    market_tools = enrich_market_tools(symbol, data, market_tools)
+  except Exception:
+    pass
   stages.append(("market_confluence", {"symbol": symbol},
                  {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
 
