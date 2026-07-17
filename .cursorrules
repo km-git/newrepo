@@ -1,0 +1,18 @@
+# Project execution defaults
+model_routing=tiered
+
+# Tier policy
+tier1_models=claude-fable-5-thinking-xhigh,claude-opus-4-8-thinking-high,gpt-5.6-sol-xhigh
+tier2_models=claude-4.6-sonnet-high-thinking,gpt-5.5-high,gemini-3.1-pro
+tier3_models=claude-haiku-4.5,gpt-5.6-luna,gemini-3.5-flash
+
+# Rules
+use_tier1_for=architecture,security,complex-refactor
+use_tier2_for=default-dev,review,integration
+use_tier3_for=boilerplate,small-edits,docstrings
+
+# Workflow
+default_cycle=plan->build->test->verify->iterate
+max_iterations=5
+prefer_cmdk=true
+prefer_composer_for_multifile=true
