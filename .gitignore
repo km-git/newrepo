@@ -26,4 +26,6 @@ libs/python-taew/
 venv/
 .pytest_cache/
 .mypy_cache/
+node_modules/
+.next/
 *.log
