@@ -1,108 +1,58 @@
-# AU Micro-SaaS Portfolio — Cursor Pro Models Only (No GPT)
-# A$20/mo Cursor Pro | 50-55 bets | cheap workhorse + high-end architect
-
-## Constraint: Cursor Pro models only — NO GPT models
-All development AI runs through the Cursor IDE model picker.
-**Do not use GPT models** (GPT-5.6 Sol, Luna, Terra, GPT-5.x) — they burn tokens fast.
-Use Claude + Gemini + Grok + DeepSeek only. Stay within A$20/mo pool.
-
-## Cursor Pro Model Inventory (No GPT)
-
-### Workhorse — cheap (60-70% of volume, execution)
-| Model | Cost | Use for |
-|-------|------|---------|
-| Haiku 4.5 | $0.80/$4 per M | Cmd+K edits, implementation, refactors |
-| Gemini 3.5 Flash | $0.30/$2.50 per M | Boilerplate, config, trivial edits |
-| Grok 4.5 | cheap | General workhorse, fast completions |
-| DeepSeek V3/R1 | cheap | Specialised code |
-| Opus 4.5/4.6/4.7 | FREE in Cursor | Free escalation for schema |
-
-### Architect — high-end (planning + decisions, 5-15 calls/MVP)
-| Model | Cost | Use for |
-|-------|------|---------|
-| Opus 4.8 | $5/$25 per M | Standard architect, schema, fork decisions |
-| Fable 5 | $10/$50 per M | Hardest architect, compliance, security audits |
-| Sonnet 5 | $2-$3/$10-$15 per M | UI design, agents, complex logic, ISC verify |
-| Gemini 3.1 Pro | $2/$12 per M | Long-context docs, multimodal (when needed) |
-
-### Cursor built-in
-| Feature | Use for |
-|---------|---------|
-| Auto mode | Routine ops — ensure Auto doesn't route to GPT |
-| Composer 1 | Multi-file scaffold — one session per MVP |
-| BugBot | Debugging — 22% cheaper than chat |
-| Tab autocomplete | Free routine completions |
-
-### Banned (token-heavy — do not select)
-- GPT-5.6 Sol, GPT-5.6 Luna, GPT-5.6 Terra, GPT-5.5, GPT-4o in Cursor picker
+# AU Micro-SaaS Portfolio — Cursor Pro + GPT-5.6 Decision Layer
+# A$20/mo Cursor Pro | cheap workhorse + GPT-5.6 for decisions (<10K tok)
 
 ## Two-Pillar Foundation
 
-### Pillar 1 — CHEAP WORKHORSE (do the work)
-Haiku 4.5, Gemini Flash, Grok, DeepSeek via Cursor model picker.
-- Cmd+K + Haiku 4.5 for 70%+ of code changes
-- Flash/Grok for boilerplate and config
-- BugBot for debugging
-- Never use Fable/Opus 4.8/Sonnet for inline edits
+### Pillar 1 — WORKHORSE (60-70% execution)
+Haiku 4.5, Gemini Flash, Grok, DeepSeek — all implementation and Cmd+K edits.
+Never GPT. Never Sonnet/Opus for inline edits.
 
-### Pillar 2 — HIGH-END ARCHITECT (think and decide)
-Opus 4.8, Fable 5, Sonnet 5 via Cursor model picker.
-- PLAN: schema, ISC, file structure (Opus 4.8 or Fable 5)
-- DECIDE: architecture forks, security, cut/continue (Opus 4.8 or Fable 5)
-- UI/VOICE/AGENT DESIGN: Sonnet 5 (not GPT Sol)
-- VERIFY: ISC check before ship (Sonnet 5)
-- LONG CONTEXT: Gemini 3.1 Pro only when reading 100K+ docs
-- Never use Haiku for architecture decisions
+### Pillar 2 — DECISION / ADVISE / ARCHITECT (<10,000 tokens per call)
+**GPT-5.6 Sol** for decision-making, advice, and architect planning ONLY when:
+- Call fits under **10,000 tokens** total (input + output)
+- Token savers are active (see below)
+- Task is plan / decide / advise / architect — not implementation
 
-## Task → Cursor Pro Model Map (No GPT)
+For compliance-heavy architect: Opus 4.8 or Fable 5 (Claude) when GPT budget insufficient.
+For verify: Sonnet 5.
 
-| Phase | Select in Cursor | Pillar |
-|-------|------------------|--------|
-| Architect plan | Opus 4.8 (Fable 5 if complex) | High-end |
-| UI / voice / agent design | Sonnet 5 | High-end |
-| Fork decision / security | Opus 4.8 or Fable 5 | High-end |
-| Multi-file scaffold | Composer (Auto mode) | Built-in |
-| Implement features | Haiku 4.5 | Workhorse |
-| Inline edits | Cmd+K + Haiku 4.5 | Workhorse |
-| Boilerplate | Gemini Flash or Grok 4.5 | Workhorse |
-| ISC verify | Sonnet 5 | High-end |
-| Long doc read | Gemini 3.1 Pro | High-end |
-| Debug | BugBot | Workhorse |
-| Unsure | Auto mode (watch it doesn't pick GPT) | Built-in |
+## GPT-5.6 Token Budget Rules
+- Hard ceiling: **10,000 tokens** per decision/advise/architect call
+- Run `python scripts/architect_budget_check.py` before large architect chats
+- Compact JSON prompts (no indent) — see `engine/architect_budget.py`
+- Cache architect decisions: diskcache + cachetools LRU (24h TTL)
+- tiktoken for accurate counting
+- Trim context before send — max 2-3 @file references
+- GitHub context via `tools/github_context.py` (cached, compact)
 
-## Per-MVP Budget (within A$20/mo pool)
+## Task → Model Map
 
-| Phase | Cursor Pro Model | Calls | ~Tokens |
-|-------|------------------|-------|---------|
-| Plan + architect | Opus 4.8 / Fable 5 | 1-2 | 5-10K |
-| Feature / UI design | Sonnet 5 | 3-8 | 10-20K |
-| Scaffold | Composer (Auto) | 1-2 | 5-10K |
-| Build + edits | Haiku Cmd+K + Flash/Grok | 30-60 | 10-25K |
-| Verify | Sonnet 5 | 1-3 | 2-5K |
+| Phase | Model | Token cap |
+|-------|-------|-----------|
+| Architect / plan | GPT-5.6 Sol | <10K |
+| Advise / decision | GPT-5.6 Sol | <10K |
+| Compliance architect | Fable 5 / Opus 4.8 | <10K |
+| Implement / edit | Haiku 4.5 (Cmd+K) | n/a |
+| Boilerplate | Flash / Grok | n/a |
+| Verify | Sonnet 5 | <5K |
+| Debug | BugBot | n/a |
 
-5-10% high-end calls. 60-70% workhorse calls. Zero GPT.
-
-## Token Rules
-- **Never select GPT models in Cursor picker** — biggest token drain
-- Select model per phase — don't leave on Sonnet while doing Cmd+K
-- High-end for thinking. Workhorse for doing.
-- Cmd+K + Haiku = no chat context cost
-- @ mention 2-3 files max
-- 7-day cut rule on failing bets
+## Python Tooling (installed)
+- `tiktoken` — accurate GPT token counts
+- `diskcache` + `cachetools` — architect decision cache
+- `transformers` + `huggingface-hub` — tokenizer fallback / future semantic cache
+- `PyGithub` — compact repo context for architect prompts
+- `engine/architect_budget.py` — budget enforcement
+- `tools/github_context.py` — cached GitHub summaries
 
 ## Build Loop
-1. PLAN — Opus 4.8 / Fable 5
+1. PLAN — GPT-5.6 Sol (<10K) or Opus 4.8 for compliance
 2. SCAFFOLD — Composer Auto
-3. BUILD — Haiku 4.5 Cmd+K + Flash/Grok
-4. DECIDE — Opus 4.8 if blocked
+3. BUILD — Haiku Cmd+K + Flash/Grok
+4. ADVISE — GPT-5.6 Sol (<10K) if blocked
 5. TEST — no AI
 6. VERIFY — Sonnet 5
 7. FINALIZE — document, cut or continue
 
-## Stack Defaults (product infra, separate from Cursor Pro)
-- Next.js 14+, Tailwind, shadcn/ui, Supabase, Stripe, Vercel
-- AU dates DD/MM/YYYY, currency AUD, timezone Australia/Sydney
-
 ## Portfolio Rules
-- 50-55 bets, 1-2 winners expected (2.5% rule)
-- 7-day cut rule | Friday review | Document in /reports/
+- 50-55 bets | 7-day cut rule | Friday review | /reports/
