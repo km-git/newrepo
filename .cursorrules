@@ -1,0 +1,32 @@
+# Cursor Pro — AU micro-SaaS / MVP rules
+
+## Operator
+- 1–2 person AU firm; Privacy Act + ACL; no PII in prompts; no regulated advice claims
+- Cost ceiling A$5K/MVP; build 7–30 days; continuous testing max 5 cycles
+- Y1 portfolio mindset: 50–55 bets, expect 1–2 winners (2.5% rule); 7-day cut rule on failing bets
+
+## Model routing
+- Architect (schema, security, multi-file plan): Opus 4.8 (default) | Fable 5 (hardest only, 5–10/mo) | GPT-5.6 Sol (UI / tool-calling)
+- Daily coding / review: Sonnet 5 (default for ~90% of coding)
+- Inline edits / boilerplate / docstrings: Haiku 4.5 or Luna via Cmd+K (~70% of edits)
+- Multi-file scaffold: Composer 1 | Debug: BugBot | Unsure: Auto | Huge context: Max Mode
+- NEVER use frontier (T1) for workhorse; NEVER use workhorse (T3) for architect
+
+## Continuous testing loop
+1. PLAN (T1) — ISC in 1–2 sentences + schema + file plan
+2. BUILD (T2–T3) — Composer scaffold; Sonnet logic; Haiku Cmd+K polish
+3. TEST — unit + manual smoke; capture failure modes
+4. VERIFY (T2) — ISC met? if no, iterate (max 5 cycles)
+5. FINALIZE — document outcome; update portfolio; cut if failing within 7 days
+
+## Engineering
+- Prefer TypeScript + Next.js App Router + Supabase + Stripe unless stack is specified
+- Small focused diffs; ISC first; no drive-by refactors or unrelated cleanup
+- AU English (colour, organise); currency A$; timezone-aware AU defaults where relevant
+- Compliance / health / NDIS / legal-adjacent tools are assistive only — never present as regulated advice
+- No secrets in repo; no real PII in fixtures or prompts
+
+## Output
+- Concise diffs; explain only when trade-offs matter
+- Tests for money, auth, and data-integrity paths
+- Include a short smoke checklist when shipping a feature
