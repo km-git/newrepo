@@ -1,0 +1,77 @@
+# Cursor v4 Frontier Rules — AU Micro-SaaS Portfolio
+# Operator: 1-2 person firm, AU-based, ABN/ACN, Cursor Pro A$20/mo
+
+## Model Routing (4-Tier)
+
+### Tier 1 — Frontier Architect (5-10 calls/month ONLY)
+- Fable 5: hardest architect, 1000+ line refactors, complex security, compliance schemas
+- Opus 4.8: standard architect, schema design, security review, parallel subagents
+- GPT-5.6 Sol: UI architecture, voice agents, function calling, multi-agent design
+
+### Tier 2 — Balanced Heavy (20-30% of work)
+- Sonnet 5: daily coding default, agent processing, code review
+- GPT-5.6 Terra: OpenAI alternative for standard builds
+- Gemini 3.1 Pro: long-context docs, multimodal, AU research
+
+### Tier 3 — Cheap Workhorse (60-70% of work)
+- Haiku 4.5: Cmd+K inline edits, docstrings, simple refactors
+- GPT-5.6 Luna: boilerplate, config, simple completions
+- Gemini 3.5 Flash / Grok 4.5: trivial edits, background tasks
+
+### Tier 4 — Cursor Built-In
+- Auto mode: routine ops when unsure
+- Max Mode: big-context refactors (1M tokens)
+- Composer 1: multi-file scaffold and batched refactors
+- BugBot: debugging (3x faster, 22% cheaper)
+
+## Routing Rules
+- NEVER Tier 1 for workhorse edits
+- NEVER Tier 3 for architect decisions
+- 1-2 Fable 5 calls per MVP (initial plan only)
+- 90% of daily coding on Sonnet 5
+- 70% of inline edits via Cmd+K with Haiku 4.5
+
+## Build Constraints
+- Build ceiling: 7-30 days per MVP
+- Cost ceiling: A$5K/MVP setup, A$0-500/mo recurring
+- No PII storage without AU Privacy Act compliance
+- No regulated financial/legal advice — tools assist, humans decide
+- Compliance: AU Privacy Act 1988 + AU Consumer Law
+
+## Stack Defaults
+- Frontend: Next.js 14+ (App Router), Tailwind CSS, shadcn/ui
+- Backend: Supabase (Postgres + Auth + Storage) or FastAPI
+- Payments: Stripe (AU)
+- Hosting: Vercel (frontend) + Supabase (backend)
+- Email: Resend or Postmark
+- AI: OpenAI API (GPT-4o for vision, embeddings for RAG)
+
+## Code Conventions
+- TypeScript strict mode
+- Server components by default, client only when needed
+- Zod for validation
+- Error boundaries on all routes
+- AU date format: DD/MM/YYYY
+- Currency: AUD with 2 decimal places
+- Timezone: Australia/Sydney default
+
+## Continuous Testing Loop
+1. PLAN (Tier 1): Define ISC in 1-2 sentences, schema, file plan
+2. BUILD (Tier 2-3): Composer scaffold → Sonnet logic → Haiku polish
+3. TEST: Unit tests + manual smoke test
+4. VERIFY (Tier 2): ISC met? If no → back to BUILD (max 5 cycles)
+5. FINALIZE: Document outcome. Cut bet if no traction after 7 days post-launch
+
+## Token Efficiency
+- Use Cmd+K (Haiku 4.5) for 70% of edits — does not add to chat context
+- Reference specific files with @ mentions, never dump full codebase
+- Use snippets for Stripe, Supabase, auth boilerplate
+- One chat session per feature, not per file
+- Composer for day-1 scaffold only
+
+## Portfolio Rules
+- 50-55 diverse bets, expect 1-2 winners (2.5% rule)
+- Y1 target: A$220K (1p) / A$330K (2p)
+- Friday portfolio review every week
+- 7-day cut rule for failing bets
+- Document every MVP outcome in /reports/
