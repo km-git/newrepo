@@ -1038,4 +1038,53 @@
 
 ---
 
-*All revenue figures, probabilities and rankings in this document are the author's estimates for planning purposes, not market research or guarantees. Verify current AI-provider model availability, terms and pricing, platform API partner requirements (Xero, ServiceM8, Google Business Profile), and SMS/telephony compliance obligations before committing to any build.*
+## Four-Tier Routing Pattern
+
+Use task shape, not prestige, to select a model. The example names below are documented by Cursor as of July 2026, but availability varies by account and can change.
+
+| Tier | Use it for | Current examples | Guardrail |
+|---|---|---|---|
+| Frontier architect | Architecture, threat modelling, difficult migrations, eval design | Claude Fable 5, Claude Opus 4.8, GPT-5.6 Sol | Use for the few decisions where deeper reasoning changes the design |
+| Balanced implementation | Multi-file features, complex debugging, code review | The best currently available balanced coding model | Require focused tests; do not use model reputation as evidence |
+| Fast workhorse | Bounded edits, extraction, fixtures, formatting, repetitive tests | Auto, Composer 2.5, or another currently available fast model | Keep prompts narrow and outputs schema-constrained |
+| Built-in workflow | Routine routing and genuinely large-context work | Auto; Max Mode when larger context materially helps | Auto's underlying model is not disclosed; Max Mode is context, not guaranteed intelligence |
+
+For this opportunity portfolio: use one frontier pass to define the product boundary, data model, abuse cases, and evaluation set; use balanced/workhorse models for implementation; use deterministic code and human approval for money, safety, compliance, and external publishing.
+
+## Token-Saving Cheat Sheet
+
+- Give Agent only the relevant files, acceptance criteria, and failing evidence; avoid repeatedly attaching the whole repository.
+- Use Inline Edit for self-contained changes and include all required local context in that prompt. It is a separate workflow, but no blanket “zero context cost” claim is made.
+- Reuse stable project instructions in `.cursor/rules/*.mdc`; keep task-specific detail in the task prompt.
+- Prefer schemas, fixtures, and compact structured payloads over prose-heavy runtime prompts.
+- Cache safe, repeatable results; hash large payloads in logs; cap output by task.
+- Use Auto for routine work and Max Mode only when the larger context window is necessary.
+
+## Continuous Testing Loop
+
+1. **Plan:** define one measurable initial success criterion, product boundary, data-minimisation rule, and failure modes.
+2. **Build:** implement the smallest end-to-end slice with provider adapters and deterministic business rules.
+3. **Test:** run unit/integration tests, a real workflow smoke test, and adversarial cases for prompt injection, hallucinated facts, and unsafe automation.
+4. **Verify:** compare evidence with the success criterion; require human approval for outbound messages, prices, safety/compliance drafts, and publishing.
+5. **Iterate:** fix the highest-signal failure and repeat, with a maximum of five cycles before narrowing or stopping the bet.
+6. **Finalise:** record conversion, retention, support burden, model cost, and the decision to scale, revise, or stop.
+
+## Project Rule
+
+The executable project guidance is in `.cursor/rules/model-routing.mdc`. The linked page's suggested root `.cursorrules` format is outdated; current Cursor documentation recommends `.cursor/rules/*.mdc` or `AGENTS.md`.
+
+## Cursor Pro Power-User Tips
+
+1. Use Auto for routine work; explicitly select a frontier model only when the decision is architecture- or risk-sensitive.
+2. Keep model identifiers configurable and discover API identifiers at runtime. IDE display names are not a stable API contract.
+3. Turn on Max Mode only for work that truly needs a larger context window.
+4. Put repeatable repository constraints in project rules, but remember those rules do not apply to Cursor Tab or Inline Edit.
+5. Treat Bugbot and model reviews as advisory; reproduce findings and verify fixes with tests.
+
+## AU Validation Guardrails
+
+- The [OAIC's commercial AI guidance](https://www.oaic.gov.au/privacy/privacy-guidance-for-organisations-and-government-agencies/guidance-on-privacy-and-the-use-of-commercially-available-ai-products) says privacy obligations can apply to both personal information entered into an AI system and personal information in its outputs. Conduct due diligence, minimise data, define retention, and embed human oversight.
+- The [NDIS Commission](https://www.ndiscommission.gov.au/rules-and-standards/reportable-incidents-and-incident-management/incident-management) requires registered providers to maintain incident-management systems and protect the privacy and confidentiality of records. Products handling participant content need a separate privacy/security assessment; “transient processing” alone does not remove the risk.
+- The [ACCC](https://www.accc.gov.au/consumers/advertising-and-promotions/false-or-misleading-claims) requires business claims to be truthful, accurate, and based on reasonable grounds. AI-generated marketing, review replies, and local pages need human approval and evidence for factual claims.
+
+*All revenue figures, probabilities and rankings in this document are planning estimates, not market research or guarantees. Validate the top idea with five problem interviews and three paid pilots before building the broader portfolio. Verify current AI-provider terms, platform API requirements, and SMS/telephony obligations before committing to a build.*

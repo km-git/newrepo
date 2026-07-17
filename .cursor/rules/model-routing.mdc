@@ -1,0 +1,21 @@
+---
+description: Route AI work by task complexity and verify all generated trading output
+alwaysApply: true
+---
+
+# Model routing
+
+- Treat model names, availability, pricing, usage limits, and routing as changeable product configuration.
+- Prefer the currently available model appropriate to the task. Use Auto for routine work unless explicit model control is materially useful.
+- Reserve frontier reasoning models for architecture, security, high-risk decisions, and hard disagreements. Use fast workhorse models for bounded edits, extraction, formatting, and repetitive test generation.
+- Enable Max Mode only when the larger context window materially helps.
+- Discover API model identifiers at runtime; do not assume IDE display names are valid API identifiers.
+- Do not claim or infer Auto's underlying model.
+
+# Repository safeguards
+
+- Keep Elliott Wave rules, risk calculations, price levels, and confidence adjustments deterministic and covered by tests.
+- Use LLM output as advisory input only. Validate it against schemas, preserve an audit trail, and retain an honest abstention path.
+- Minimise prompts and personal data. Never include credentials, account identifiers, or unnecessary raw payloads in model calls or logs.
+- Run focused tests for changed modules, then the full test suite for routing, risk, execution, or schema changes.
+- For Inline Edit, provide all selection-specific context in the prompt. Use Agent with explicit context for multi-file or conversation-dependent work.
