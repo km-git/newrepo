@@ -4,6 +4,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH="${PYTHONPATH:-}:$(pwd)"
 
+PY="${PYTHON:-.venv/bin/python}"
+if [ ! -x "$PY" ]; then
+  PY="python3"
+fi
+
 INTERVAL="${E2E_INTERVAL:-3600}"
 BATCH_N="${EW_E2E_BATCH_N:-50}"
 EXECUTE="${EW_E2E_EXECUTE:-1}"
@@ -15,6 +20,6 @@ while true; do
   if [[ "$EXECUTE" == "1" ]]; then
     ARGS+=(--execute)
   fi
-  python3 scripts/e2e_trading_cycle.py "${ARGS[@]}" || echo "[e2e-daemon] cycle failed — retry next interval"
+  "$PY" scripts/e2e_trading_cycle.py "${ARGS[@]}" || echo "[e2e-daemon] cycle failed — retry next interval"
   sleep "$INTERVAL"
 done

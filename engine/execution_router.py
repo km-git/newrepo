@@ -8,6 +8,21 @@ from typing import Any, Dict, List, Optional
 from engine.broker.symbol_map import client_order_id, for_kraken_cli
 
 
+def _parse_dca_legs(raw: Any) -> List[dict]:
+  if not raw:
+    return []
+  if isinstance(raw, list):
+    return [leg for leg in raw if isinstance(leg, dict)]
+  if isinstance(raw, str):
+    try:
+      parsed = json.loads(raw)
+      if isinstance(parsed, list):
+        return [leg for leg in parsed if isinstance(leg, dict)]
+    except (json.JSONDecodeError, TypeError):
+      return []
+  return []
+
+
 def row_to_orders(row: dict) -> List[Dict[str, Any]]:
   """Convert one export row to a list of limit leg orders + optional stop/TP."""
   if row.get("status") == "error":
@@ -22,7 +37,7 @@ def row_to_orders(row: dict) -> List[Dict[str, Any]]:
   if honest == "probe":
     cap = min(cap, 0.5)
 
-  legs = row.get("dca_legs") or []
+  legs = _parse_dca_legs(row.get("dca_legs"))
   for leg in legs:
     leg_n = int(leg.get("leg") or 1)
     price = float(leg.get("price") or 0)

@@ -44,6 +44,13 @@ def test_row_to_orders_produces_legs():
   assert limits[0]["client_id"].startswith("ew-")
 
 
+def test_row_to_orders_parses_json_dca_legs():
+  import json
+  legs = [{"leg": 1, "price": 100000, "size_pct": 10}]
+  orders = row_to_orders(_row(dca_legs=json.dumps(legs), leg1_usd=100))
+  assert len([o for o in orders if o["type"] == "limit"]) == 1
+
+
 def test_gate_blocks_nuke():
   ok, reasons = gate_row(_row(macro_mode="NUKE"))
   assert ok is False

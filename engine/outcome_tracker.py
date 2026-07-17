@@ -374,14 +374,59 @@ def readiness_adjustment(symbol: str, timeframe: str, direction: str, metrics: O
   return int(fb.get("readiness_delta") or 0)
 
 
+def resolve_from_live_fills() -> int:
+  """Close open setups when live stop/TP fills are recorded."""
+  from engine.fill_tracker import reconcile_live_fills
+
+  state = _load_state()
+  if not state["open"]:
+    return 0
+
+  matches = reconcile_live_fills(open_setups=state["open"])
+  if not matches:
+    return 0
+
+  resolved = 0
+  still_open: List[dict] = []
+  resolved_ids = set()
+  for match in matches:
+    outcome = (match.get("parsed") or {}).get("outcome")
+    if outcome:
+      resolved_ids.add(match.get("setup_id"))
+
+  for setup in state["open"]:
+    sid = setup.get("id")
+    if sid in resolved_ids:
+      outcome = "tp1_hit"
+      for match in matches:
+        if match.get("setup_id") == sid:
+          outcome = (match.get("parsed") or {}).get("outcome") or outcome
+          break
+      setup["status"] = outcome
+      setup["resolved_at"] = _utcnow()
+      setup["resolution_source"] = "live_fill"
+      state["closed"].append(setup)
+      resolved += 1
+    else:
+      still_open.append(setup)
+
+  if resolved:
+    state["open"] = still_open
+    state["closed"] = state["closed"][-3000:]
+    _save_state(state)
+  return resolved
+
+
 def run_learning_phase(*, is_crypto: bool = True, record_rows: Optional[List[dict]] = None) -> dict:
   """
   Full loop: resolve open → compute metrics → save → optional record new setups.
   Returns metrics dict for export pipeline.
   """
+  fill_resolved = resolve_from_live_fills()
   resolved = resolve_open_setups(is_crypto=is_crypto)
   metrics = compute_metrics()
   metrics["last_resolved"] = resolved
+  metrics["fill_resolved"] = fill_resolved
   save_metrics(metrics)
   save_performance_report(metrics)
 

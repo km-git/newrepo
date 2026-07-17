@@ -99,6 +99,7 @@ def run_e2e_cycle(
       quote=quote,
       force_batch=False,
       skip_monitor=False,
+      llm_advisory=llm_advisory,
     )
     batch_meta = sched.get("batch")
     monitor = sched.get("monitor")

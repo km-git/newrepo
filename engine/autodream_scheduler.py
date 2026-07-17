@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -141,9 +142,12 @@ def run_batch_refresh(
   output_dir: str = "output",
   quote: str = "USDT",
   tfs: Optional[list] = None,
+  llm_advisory: bool = False,
 ) -> dict:
   """Run full top-N batch and publish stable latest_* paths."""
-  meta = run_top_crypto_batch(n=n, tfs=tfs or DEFAULT_TFS, output_dir=output_dir, quote=quote)
+  meta = run_top_crypto_batch(
+    n=n, tfs=tfs or DEFAULT_TFS, output_dir=output_dir, quote=quote, llm_advisory=llm_advisory,
+  )
   latest = publish_latest(meta, output_dir=output_dir)
   meta["latest"] = latest
   return meta
@@ -159,6 +163,7 @@ def run_scheduler_cycle(
   is_crypto: bool = True,
   force_batch: bool = False,
   skip_monitor: bool = False,
+  llm_advisory: bool = False,
 ) -> dict:
   """
   One scheduler tick:
@@ -179,7 +184,7 @@ def run_scheduler_cycle(
   )
   if run_batch:
     print(f"[scheduler] running top-{batch_n} batch refresh")
-    meta = run_batch_refresh(n=batch_n, output_dir=output_dir, quote=quote)
+    meta = run_batch_refresh(n=batch_n, output_dir=output_dir, quote=quote, llm_advisory=llm_advisory)
     state["last_batch_utc"] = _iso(_utcnow())
     state["latest"] = meta.get("latest")
     state["last_batch_meta"] = {
