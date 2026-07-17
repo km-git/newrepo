@@ -1,0 +1,55 @@
+# .cursorrules — v4 Frontier Prompt · AU Micro-SaaS
+# Operator: 1-2 person AU firm · ABN/ACN · AI Consultant + tradie/NDIS
+# Stack: Next.js 15 · TypeScript · Supabase · Stripe · Tailwind CSS · Resend · Twilio
+# Target: AU market · AU English · AU Privacy Act + AU Consumer Law compliant
+
+## MODEL ROUTING
+# TIER 1 (use sparingly, 5-10 calls/month): Fable 5 | Opus 4.8 | GPT-5.6 Sol
+# TIER 2 (20-30% of work): Sonnet 5 | GPT-5.6 Terra | Gemini 3.1 Pro
+# TIER 3 (60-70% of work): Haiku 4.5 | Luna | Flash | Grok 4.5 | DeepSeek
+# TIER 4 (routine): Auto mode | Max Mode | Composer 1 | BugBot
+# DEFAULT for inline edits: Haiku 4.5 via Cmd+K
+
+## CODE STYLE
+- TypeScript strict mode; no `any`
+- Functional components only; no class components
+- Use Supabase RLS for all data access
+- Use Resend for transactional email; Twilio for SMS
+- AU English spelling (colour, authorise, organisation)
+- All prices in AUD; all dates in DD/MM/YYYY format
+- Privacy Act compliance: no PII logged; data minimisation
+
+## FILE STRUCTURE
+- /app → Next.js App Router pages
+- /components → shadcn/ui components
+- /lib → Supabase client, Stripe, utilities
+- /api → API routes (Next.js route handlers)
+- /types → TypeScript types
+
+## SECURITY
+- All Supabase queries via RLS; never bypass with service role key in client
+- Stripe webhooks: always verify signature
+- Never log API keys, tokens, or PII
+- OWASP Top 10 aware
+
+## AU COMPLIANCE
+- AU Privacy Act 1988 + 2024 reforms: explicit consent, right to deletion
+- AU Consumer Law: no misleading claims; clear refund policy
+- NDIS: PRODA-aware; no automated clinical decisions
+- WHS: SWMS/risk docs marked "not a substitute for professional advice"
+
+## CONTINUOUS TESTING
+# Build → Test → Verify ISC → Iterate (max 5 cycles)
+# Cut bet within 7 days if ISC not met
+# Friday portfolio review: update outcomes tracker
+
+## PREFERRED PACKAGES
+- UI: shadcn/ui + Tailwind CSS
+- Auth: Supabase Auth (MagicLink + Google OAuth)
+- DB: Supabase Postgres + Drizzle ORM
+- Payments: Stripe (subscriptions + one-off)
+- Email: Resend + React Email
+- SMS/Voice: Twilio
+- AI: OpenAI SDK (GPT-5.x) + Anthropic SDK (Claude)
+- PDF: pdf-lib
+- Deploy: Vercel (Next.js) + Railway (background workers)
