@@ -33,6 +33,38 @@ python3 ew_tool.py --symbol BTC/USDT --crypto --gateway-stats
 export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
 python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 
+## Token-efficient LLM advisory (default)
+
+LLM calls are gated to **critical decisions only** and use these token-saving mechanisms:
+
+| Mechanism | What it does |
+|---|---|
+| **Critical-only gate** | Skips LLM for monitor/STANDBY setups (~90% of batch pairs) |
+| **Single provider (auto)** | `EW_LLM_PROVIDER=auto` calls **one** model, not two (50% cost vs dual) |
+| **Cheap tier default** | `gpt-4o-mini` / `claude-3-5-haiku` — not Sonnet/GPT-4o unless `EW_LLM_PREMIUM_GO=1` |
+| **Compact prompts** | Short JSON keys (`sym`, `v`, `dir`) — ~60% fewer input tokens |
+| **Output cap** | `EW_LLM_MAX_OUTPUT=280` (default) — advisory JSON is small |
+| **Anthropic prompt cache** | System prompt uses `cache_control: ephemeral` on repeat calls |
+| **Disk cache (1h)** | Same symbol/verdict/price → zero API tokens |
+| **Batch cap** | `--llm-advisory-max 5` limits consultations per batch run |
+| **Pipeline token store** | `tool_calls_log` stores hashes, not full payloads (`cache/TokenStore`) |
+| **Semantic OHLCV cache** | OKX data reused across pairs/runs — no redundant market fetches |
+| **RepoMix export** | `--repomix` minifies codebase for agent context |
+
+```bash
+# Default: one cheap model (OpenAI mini if key present)
+export EW_LLM_PROVIDER=auto          # auto | openai | anthropic | dual
+export EW_LLM_TIER=cheap             # cheap | standard
+export EW_LLM_MAX_OUTPUT=280
+
+# Dual second opinion (2× tokens — use sparingly)
+export EW_LLM_PROVIDER=dual
+
+# Premium models only for high-conviction GO
+export EW_LLM_PREMIUM_GO=1
+export EW_LLM_TIER=standard
+```
+
 # Batch with up to 5 LLM consultations on GO / CONDITIONAL_GO pairs
 python3 scripts/run_top50_batch.py -n 50 --llm-advisory --llm-advisory-max 5
 

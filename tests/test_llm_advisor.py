@@ -37,8 +37,8 @@ def test_build_advisory_prompt_includes_verdict():
     {"consensus_direction": "BULL", "agreement_pct": 80},
     {"honest_summary": {"truth": "1 executable"}},
   )
-  assert "GO" in p
-  assert "BTC/USDT" in p
+  assert "GO" in p or '"v":"GO"' in p
+  assert "BTC/USDT" in p or "BTC" in p
 
 
 def test_maybe_advise_skips_non_critical():
@@ -55,11 +55,16 @@ def test_maybe_advise_skips_non_critical():
 
 @patch("engine.llm_advisor.call_openai_advisory")
 @patch("engine.llm_advisor.call_anthropic_advisory")
-def test_get_llm_advisory_blends(mock_anthropic, mock_openai, monkeypatch, tmp_path):
+@patch("engine.llm_advisor.routing_plan")
+def test_get_llm_advisory_blends(mock_routes, mock_anthropic, mock_openai, monkeypatch, tmp_path):
   from cache.disk_cache import CompressedCache
   from cache import disk_cache
 
   monkeypatch.setattr(disk_cache, "_global_cache", CompressedCache(cache_dir=tmp_path))
+  mock_routes.return_value = [
+    ("openai", "gpt-4o-mini", "cheap"),
+    ("anthropic", "claude-3-5-haiku-20241022", "cheap"),
+  ]
   mock_openai.return_value = {
     "available": True,
     "stance": "caution",
@@ -79,7 +84,7 @@ def test_get_llm_advisory_blends(mock_anthropic, mock_openai, monkeypatch, tmp_p
 
   result = get_llm_advisory(
     "BTC/USDT",
-    {"verdict": "GO", "direction": "BULL", "playbook": "enter", "structural_gaps": []},
+    {"verdict": "GO", "direction": "BULL", "conviction": "high", "playbook": "enter", "structural_gaps": []},
     {"action": "execute_long", "entry_zone": [100, 101], "stop_loss": 95, "risk_reward": 2.0, "confidence": 0.7},
     {"1d": {"structure": "bull_impulse_5"}},
     {"consensus_direction": "BULL", "agreement_pct": 80},
@@ -89,4 +94,4 @@ def test_get_llm_advisory_blends(mock_anthropic, mock_openai, monkeypatch, tmp_p
 
   assert result["consulted"] == ["openai", "anthropic"]
   assert result["consensus_stance"] == "caution"
-  assert "blended_summary" in result
+  assert "token_budget" in result

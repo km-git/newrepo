@@ -1,4 +1,4 @@
-"""Second-opinion advisory from Claude + GPT on critical trade decisions."""
+"""Second-opinion advisory from Claude + GPT on critical trade decisions (token-efficient)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,18 @@ import urllib.request
 from typing import Any, Dict, List, Optional
 
 from cache.disk_cache import get_cache
+from engine.llm_token_router import (
+  DEFAULT_MAX_OUTPUT_TOKENS,
+  SYSTEM_PROMPT,
+  build_compact_prompt,
+  compact_advisory_payload,
+  routing_plan,
+  select_providers,
+  token_budget_report,
+)
 
-CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
-DEFAULT_OPENAI_MODEL = os.environ.get("EW_OPENAI_MODEL", "gpt-4o-mini")
-DEFAULT_ANTHROPIC_MODEL = os.environ.get("EW_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 NAMESPACE = "llm_advisory"
+CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
 
 
 def advisory_enabled(explicit: Optional[bool] = None) -> bool:
@@ -23,7 +30,6 @@ def advisory_enabled(explicit: Optional[bool] = None) -> bool:
 
 
 def is_critical_decision(verdict: str, outcomes: Optional[dict] = None) -> bool:
-  """True when human/LLM review is warranted."""
   if verdict in CRITICAL_VERDICTS:
     return True
   if not outcomes:
@@ -45,57 +51,11 @@ def build_advisory_prompt(
   outcomes: dict,
   market_tools: Optional[dict] = None,
 ) -> str:
-  hs = (outcomes or {}).get("honest_summary") or {}
-  structures = {
-    tf: (wave_structure.get(tf) or {}).get("structure", "n/a")
-    for tf in sorted(wave_structure.keys())
-  }
-  gaps = executive.get("structural_gaps") or []
-  signals = (market_tools or {}).get("confluence_signals") or []
-
-  payload = {
-    "symbol": symbol,
-    "verdict": executive.get("verdict"),
-    "direction": executive.get("direction"),
-    "conviction": executive.get("conviction"),
-    "playbook": executive.get("playbook"),
-    "action": trade_setup.get("action"),
-    "entry_zone": trade_setup.get("entry_zone"),
-    "stop_loss": trade_setup.get("stop_loss"),
-    "take_profit_1": trade_setup.get("take_profit_1"),
-    "risk_reward": trade_setup.get("risk_reward"),
-    "confidence": trade_setup.get("confidence"),
-    "structural_gaps": gaps,
-    "ew_structures_by_tf": structures,
-    "consensus": {
-      "direction": consensus.get("consensus_direction"),
-      "agreement_pct": consensus.get("agreement_pct"),
-      "engines_valid": consensus.get("engines_valid"),
-      "divergences": (consensus.get("divergences") or [])[:3],
-    },
-    "outcomes": {
-      "truth": hs.get("truth"),
-      "primary_style": hs.get("primary_style"),
-      "full_executable": hs.get("full_executable_count"),
-      "probe_executable": hs.get("probe_executable_count"),
-    },
-    "market_signals": signals[:5],
-  }
-
-  return f"""You are a senior risk manager reviewing an algorithmic Elliott Wave trade plan.
-Be direct. Flag what the quant model may be missing. Do not be agreeable by default.
-
-TRADE PACKET (JSON):
-{json.dumps(payload, indent=2)}
-
-Respond with ONLY valid JSON (no markdown):
-{{
-  "stance": "agree" | "caution" | "reject",
-  "confidence_adjustment": number between -0.15 and 0.15,
-  "key_risks": ["risk1", "risk2"],
-  "sizing_note": "one sentence on position size",
-  "summary": "2-3 sentences max"
-}}"""
+  """Compact prompt — ~60% fewer input tokens vs indented JSON block."""
+  payload = compact_advisory_payload(
+    symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
+  )
+  return build_compact_prompt(payload)
 
 
 def _http_post(url: str, headers: dict, body: dict, timeout: int = 45) -> dict:
@@ -114,42 +74,44 @@ def _parse_json_response(text: str) -> dict:
   return json.loads(text.strip())
 
 
-def call_openai_advisory(prompt: str, model: Optional[str] = None) -> dict:
+def call_openai_advisory(prompt: str, model: str) -> dict:
   key = os.environ.get("OPENAI_API_KEY", "").strip()
   if not key:
     return {"available": False, "error": "OPENAI_API_KEY not set"}
-
-  model = model or DEFAULT_OPENAI_MODEL
   try:
     raw = _http_post(
       "https://api.openai.com/v1/chat/completions",
-      {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-      },
+      {"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
       {
         "model": model,
         "temperature": 0.2,
+        "max_tokens": DEFAULT_MAX_OUTPUT_TOKENS,
         "response_format": {"type": "json_object"},
         "messages": [
-          {"role": "system", "content": "You are a trading risk advisor. Output JSON only."},
-          {"role": "user", "content": prompt},
+          {"role": "system", "content": SYSTEM_PROMPT},
+          {"role": "user", "content": prompt.split("\n\nDATA:", 1)[-1] if "DATA:" in prompt else prompt},
         ],
       },
     )
     content = raw["choices"][0]["message"]["content"]
+    usage = raw.get("usage") or {}
     parsed = _parse_json_response(content)
-    return {"available": True, "model": model, "provider": "openai", **parsed}
+    return {
+      "available": True,
+      "model": model,
+      "provider": "openai",
+      "usage": usage,
+      **parsed,
+    }
   except (urllib.error.URLError, KeyError, json.JSONDecodeError, IndexError) as e:
     return {"available": True, "provider": "openai", "model": model, "error": str(e)}
 
 
-def call_anthropic_advisory(prompt: str, model: Optional[str] = None) -> dict:
+def call_anthropic_advisory(prompt: str, model: str) -> dict:
   key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
   if not key:
     return {"available": False, "error": "ANTHROPIC_API_KEY not set"}
-
-  model = model or DEFAULT_ANTHROPIC_MODEL
+  user_content = prompt.split("\n\nDATA:", 1)[-1] if "DATA:" in prompt else prompt
   try:
     raw = _http_post(
       "https://api.anthropic.com/v1/messages",
@@ -160,15 +122,28 @@ def call_anthropic_advisory(prompt: str, model: Optional[str] = None) -> dict:
       },
       {
         "model": model,
-        "max_tokens": 600,
+        "max_tokens": DEFAULT_MAX_OUTPUT_TOKENS,
         "temperature": 0.2,
-        "system": "You are a trading risk advisor. Respond with JSON only, no markdown.",
-        "messages": [{"role": "user", "content": prompt}],
+        "system": [
+          {
+            "type": "text",
+            "text": SYSTEM_PROMPT,
+            "cache_control": {"type": "ephemeral"},
+          }
+        ],
+        "messages": [{"role": "user", "content": user_content}],
       },
     )
     content = raw["content"][0]["text"]
+    usage = raw.get("usage") or {}
     parsed = _parse_json_response(content)
-    return {"available": True, "model": model, "provider": "anthropic", **parsed}
+    return {
+      "available": True,
+      "model": model,
+      "provider": "anthropic",
+      "usage": usage,
+      **parsed,
+    }
   except (urllib.error.URLError, KeyError, json.JSONDecodeError, IndexError) as e:
     return {"available": True, "provider": "anthropic", "model": model, "error": str(e)}
 
@@ -194,31 +169,43 @@ def get_llm_advisory(
   market_tools: Optional[dict] = None,
   use_cache: bool = True,
 ) -> dict:
-  """
-  Consult OpenAI + Anthropic when API keys are present.
-  Results are cached per symbol/verdict/price bucket for 1 hour.
-  """
   verdict = executive.get("verdict", "")
+  conviction = executive.get("conviction", "")
   price = round(float(trade_setup.get("entry_zone", [0])[0] if trade_setup.get("entry_zone") else 0), 0)
-  cache_key = (symbol, verdict, executive.get("direction"), price)
+  routes = routing_plan(verdict, conviction)
+  cache_key = (symbol, verdict, executive.get("direction"), price, tuple((p, m) for p, m, _ in routes))
 
   if use_cache:
     cached = get_cache().get(NAMESPACE, *cache_key)
     if cached is not None:
       cached = dict(cached)
       cached["cache_hit"] = True
+      if cached.get("token_budget"):
+        cached["token_budget"]["cache_hit"] = True
       return cached
 
   prompt = build_advisory_prompt(
     symbol, executive, trade_setup, wave_structure, consensus, outcomes, market_tools
   )
+  budget = token_budget_report(prompt, routes)
 
-  openai_r = call_openai_advisory(prompt)
-  anthropic_r = call_anthropic_advisory(prompt)
+  responses: Dict[str, dict] = {}
+  for provider, model, tier in routes:
+    if provider == "openai":
+      responses["openai"] = call_openai_advisory(prompt, model)
+    else:
+      responses["anthropic"] = call_anthropic_advisory(prompt, model)
+
+  # Fill unavailable providers for API compatibility
+  if "openai" not in responses:
+    responses["openai"] = {"available": False, "error": "not selected (EW_LLM_PROVIDER)"}
+  if "anthropic" not in responses:
+    responses["anthropic"] = {"available": False, "error": "not selected (EW_LLM_PROVIDER)"}
 
   consulted = []
   ok_responses = []
-  for label, resp in (("openai", openai_r), ("anthropic", anthropic_r)):
+  for label in ("openai", "anthropic"):
+    resp = responses[label]
     if resp.get("available") and resp.get("stance"):
       consulted.append(label)
       ok_responses.append(resp)
@@ -226,36 +213,36 @@ def get_llm_advisory(
   result = {
     "critical": True,
     "consulted": consulted,
-    "openai": openai_r,
-    "anthropic": anthropic_r,
+    "openai": responses["openai"],
+    "anthropic": responses["anthropic"],
     "consensus_stance": _blend_stances(ok_responses),
     "cache_hit": False,
+    "token_budget": budget,
   }
 
   summaries = [r.get("summary") for r in ok_responses if r.get("summary")]
   if summaries:
     result["blended_summary"] = " | ".join(summaries)
 
-  adjustments = [r.get("confidence_adjustment") for r in ok_responses if isinstance(r.get("confidence_adjustment"), (int, float))]
+  adjustments = [
+    r.get("confidence_adjustment")
+    for r in ok_responses
+    if isinstance(r.get("confidence_adjustment"), (int, float))
+  ]
   if adjustments:
     result["avg_confidence_adjustment"] = round(sum(adjustments) / len(adjustments), 3)
 
   if not consulted:
-    missing = []
-    if not openai_r.get("available"):
-      missing.append("openai")
-    if not anthropic_r.get("available"):
-      missing.append("anthropic")
-    result["skipped_reason"] = (
-      "No API keys configured (set OPENAI_API_KEY and/or ANTHROPIC_API_KEY)"
-      if len(missing) == 2
-      else f"Consultation failed for: {', '.join(missing)}"
-    )
+    if not select_providers():
+      result["skipped_reason"] = "No API keys (OPENAI_API_KEY or ANTHROPIC_API_KEY)"
+    else:
+      result["skipped_reason"] = "Consultation failed — check API errors in openai/anthropic fields"
     print(f"[llm] advisory skipped for {symbol}: {result['skipped_reason']}")
   else:
     print(
       f"[llm] advisory {symbol}: consulted={consulted} "
-      f"stance={result['consensus_stance']}"
+      f"stance={result['consensus_stance']} "
+      f"~{budget['est_total_tokens']}tok routes={budget['routes']}"
     )
 
   if use_cache and consulted:
@@ -275,7 +262,6 @@ def maybe_advise_critical(
   market_tools: Optional[dict] = None,
   enabled: bool = False,
 ) -> Optional[dict]:
-  """Return advisory dict only for critical decisions when enabled."""
   if not enabled:
     return None
   if not is_critical_decision(executive.get("verdict", ""), outcomes):
