@@ -29,9 +29,33 @@ pip install -e libs/python-taew libs/pyharmonics
 # Single symbol (crypto) — OKX live data + semantic gateway cache
 python3 ew_tool.py --symbol BTC/USDT --crypto --gateway-stats
 
-# Critical decision: second opinion from Claude + GPT (requires API keys)
-export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+# Critical decision: multi-model advisory via Cursor Pro (recommended)
+export CURSOR_API_KEY=...   # cursor.com/dashboard → API Keys
 python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
+
+# Legacy: direct OpenAI/Anthropic API keys
+# export EW_LLM_BACKEND=direct
+# export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+
+## Cursor Pro backend (default)
+
+When `CURSOR_API_KEY` is set, `--llm-advisory` uses **Cursor's Cloud Agents API** and bills against your **Pro plan pools** — no separate OpenAI/Anthropic keys required.
+
+```bash
+export CURSOR_API_KEY=crsr_...          # cursor.com/dashboard → API Keys
+export EW_LLM_BACKEND=cursor            # default when CURSOR_API_KEY is set
+export EW_LLM_INTELLIGENCE=ensemble     # composer-2.5 + gpt-5-mini screen, premium tiebreaker
+python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
+```
+
+| Screen (cheap) | Tiebreaker (premium) | Pool |
+|---|---|---|
+| `composer-2.5` | `claude-4.5-sonnet` | First-party + API |
+| `gpt-5-mini` | `gpt-5.2` | API |
+
+Override models: `EW_CURSOR_CHEAP_OPENAI`, `EW_CURSOR_CHEAP_ANTHROPIC`, `EW_CURSOR_PREMIUM_OPENAI`, `EW_CURSOR_PREMIUM_ANTHROPIC`.
+
+Direct API fallback: `export EW_LLM_BACKEND=direct` + `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
 
 ## Multi-model intelligence panel (default with `--llm-advisory`)
 
@@ -75,12 +99,13 @@ Ensemble saves **~70%** vs dual premium while still using two cheap models + con
 
 ## Cursor Pro vs direct API keys
 
-**Important:** Cursor Pro model access and `ew_tool --llm-advisory` are **not the same billing path** today.
+With **`EW_LLM_BACKEND=cursor`** (default when `CURSOR_API_KEY` is set), advisory runs entirely on Cursor Pro — ensemble panel included.
 
-| Where models run | What you use | Billed from |
+| Where | Backend | Credentials |
 |---|---|---|
-| **Cursor IDE / Cloud Agent** (this session) | Agent, Composer, Claude, GPT, Grok, etc. | Your **Cursor Pro** plan |
-| **`ew_tool.py --llm-advisory`** (terminal/batch) | `OPENAI_API_KEY` + `ANTHROPIC_API_KEY` | **Direct API** (separate from Pro) |
+| **`ew_tool --llm-advisory`** | Cursor Cloud Agents API | `CURSOR_API_KEY` |
+| **This Cloud Agent session** | Cursor IDE/agent runtime | Pro subscription |
+| **Direct API (legacy)** | OpenAI + Anthropic HTTP | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` |
 
 ### What Cursor Pro includes ([docs](https://cursor.com/docs/models-and-pricing))
 
@@ -114,15 +139,17 @@ For a typical advisory (~450 in / ~180 out tokens):
 | Cursor API pool | Claude Sonnet | ~$0.003 | Pro $20 API allowance |
 | This Cloud Agent session | Multi-model panel | Included in Pro | IDE/agent usage |
 
-**Practical takeaway:** Use **Cursor agents** (like this session) for architecture, batch review, and complex multi-model decisions — that is what Pro is for. Use **`ew_tool --llm-advisory`** only when you need unattended/automated advisory in CI or cron; then either bring your own API keys (cheap models) or we wire `EW_LLM_BACKEND=cursor` via the Cursor SDK (future).
+**Practical takeaway:** Set `CURSOR_API_KEY` once — batch and single-symbol advisory use the same multi-model ensemble on your Pro plan. Use `EW_LLM_BACKEND=direct` only if you need standalone API keys (CI without Cursor).
 
 ```bash
-# Check direct-API cost estimates (does not use Cursor Pro)
-python3 ew_tool.py --llm-cost
+# Cursor Pro (default)
+export CURSOR_API_KEY=crsr_...
+python3 ew_tool.py --llm-cost              # direct-API estimates
+python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
 
-# Cursor SDK path (future) — would use CURSOR_API_KEY + Pro pools
-# export EW_LLM_BACKEND=cursor
-# export CURSOR_API_KEY=...   # from cursor.com/dashboard
+# Direct API legacy
+# export EW_LLM_BACKEND=direct
+# export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
 ```
 
 ## Token-efficient LLM advisory
@@ -145,9 +172,13 @@ LLM calls are gated to **critical decisions only** and use these token-saving me
 | **RepoMix export** | `--repomix` minifies codebase for agent context |
 
 ```bash
-# Default with --llm-advisory: ensemble (dual cheap + premium tiebreaker)
+# Default: Cursor Pro backend when CURSOR_API_KEY is set
+export CURSOR_API_KEY=crsr_...
 export EW_LLM_INTELLIGENCE=ensemble   # ensemble | single | dual
-export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+
+# Direct API (optional legacy)
+# export EW_LLM_BACKEND=direct
+# export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
 
 # Token-minimal: one cheap model
 export EW_LLM_INTELLIGENCE=single

@@ -25,6 +25,8 @@ from engine.llm_panel import (
   run_panel,
 )
 from engine.llm_cost import attach_cost_estimate
+from engine.llm_backend import advisory_credentials_available, credentials_hint, llm_backend
+from engine.llm_cursor import call_cursor_provider_advisory
 
 NAMESPACE = "llm_advisory"
 CRITICAL_VERDICTS = frozenset({"GO", "CONDITIONAL_GO"})
@@ -166,6 +168,14 @@ def _blend_stances(responses: List[dict]) -> str:
   return "caution"
 
 
+def _call_advisory(provider: str, model: str, tier: str, prompt: str) -> dict:
+  if llm_backend() == "cursor":
+    return call_cursor_provider_advisory(provider, model, tier, prompt)
+  if provider == "openai":
+    return call_openai_advisory(prompt, model)
+  return call_anthropic_advisory(prompt, model)
+
+
 def get_llm_advisory(
   symbol: str,
   executive: dict,
@@ -181,7 +191,15 @@ def get_llm_advisory(
   price = round(float(trade_setup.get("entry_zone", [0])[0] if trade_setup.get("entry_zone") else 0), 0)
   mode = effective_intelligence_mode()
   routes = cheap_screen_routes(verdict, conviction) if mode in ("ensemble", "dual") else routing_plan(verdict, conviction)
-  cache_key = (mode, symbol, verdict, executive.get("direction"), price, tuple((p, m) for p, m, _ in routes))
+  cache_key = (
+    llm_backend(),
+    mode,
+    symbol,
+    verdict,
+    executive.get("direction"),
+    price,
+    tuple((p, m) for p, m, _ in routes),
+  )
 
   if use_cache:
     cached = get_cache().get(NAMESPACE, *cache_key)
@@ -197,13 +215,12 @@ def get_llm_advisory(
   )
   budget = token_budget_report(prompt, routes)
   budget["intelligence_mode"] = mode
+  budget["llm_backend"] = llm_backend()
 
   if mode in ("ensemble", "dual"):
 
     def _call_provider(provider: str, model: str, tier: str) -> dict:
-      if provider == "openai":
-        return call_openai_advisory(prompt, model)
-      return call_anthropic_advisory(prompt, model)
+      return _call_advisory(provider, model, tier, prompt)
 
     panel = run_panel(prompt, verdict, conviction, _call_provider)
     responses = panel["screen"]
@@ -216,6 +233,7 @@ def get_llm_advisory(
       "confidence_adjustment": panel.get("confidence_adjustment"),
       "intelligence_panel": panel,
       "intelligence_mode": mode,
+      "llm_backend": llm_backend(),
       "cache_hit": False,
       "token_budget": budget,
     }
@@ -242,10 +260,7 @@ def get_llm_advisory(
   else:
     responses: Dict[str, dict] = {}
     for provider, model, tier in routes:
-      if provider == "openai":
-        responses["openai"] = call_openai_advisory(prompt, model)
-      else:
-        responses["anthropic"] = call_anthropic_advisory(prompt, model)
+      responses[provider] = _call_advisory(provider, model, tier, prompt)
 
     if "openai" not in responses:
       responses["openai"] = {"available": False, "error": "not selected (EW_LLM_INTELLIGENCE=single)"}
@@ -269,6 +284,7 @@ def get_llm_advisory(
       "cache_hit": False,
       "token_budget": budget,
       "intelligence_mode": mode,
+      "llm_backend": llm_backend(),
     }
 
     summaries = [r.get("summary") for r in ok_responses if r.get("summary")]
@@ -290,17 +306,18 @@ def get_llm_advisory(
 
   consulted = result.get("consulted") or []
   if not consulted:
-    if not select_providers():
-      result["skipped_reason"] = "No API keys (OPENAI_API_KEY or ANTHROPIC_API_KEY)"
+    if not advisory_credentials_available():
+      result["skipped_reason"] = f"No credentials ({credentials_hint()})"
     else:
-      result["skipped_reason"] = "Consultation failed — check API errors in openai/anthropic fields"
+      result["skipped_reason"] = "Consultation failed — check errors in openai/anthropic fields"
     print(f"[llm] advisory skipped for {symbol}: {result['skipped_reason']}")
   else:
     escalated = (result.get("intelligence_panel") or {}).get("escalated_to_premium", False)
     cost = (result.get("token_budget") or {}).get("cost_estimate", {}).get("est_total_usd")
     cost_s = f" ~${cost:.5f}" if isinstance(cost, (int, float)) else ""
+    pool_s = " cursor-pro" if llm_backend() == "cursor" else ""
     print(
-      f"[llm] advisory {symbol}: mode={mode} consulted={consulted} "
+      f"[llm] advisory {symbol}: backend={llm_backend()}{pool_s} mode={mode} consulted={consulted} "
       f"stance={result['consensus_stance']} escalated={escalated} "
       f"~{budget['est_total_tokens']}tok{cost_s}"
     )

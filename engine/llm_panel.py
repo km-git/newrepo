@@ -15,6 +15,8 @@ from engine.llm_token_router import (
   model_for,
 )
 from engine.llm_cost import model_for_task, task_tier
+from engine.llm_backend import llm_backend
+from engine.llm_cursor import cursor_available, cursor_model_for
 
 IntelligenceMode = Literal["ensemble", "single", "dual"]
 Stance = Literal["agree", "caution", "reject", "unknown"]
@@ -43,6 +45,8 @@ def _has_both_keys() -> bool:
 
 def effective_intelligence_mode() -> IntelligenceMode:
   mode = intelligence_mode()
+  if mode == "ensemble" and llm_backend() == "cursor" and cursor_available():
+    return "ensemble"
   if mode == "ensemble" and not _has_both_keys():
     return "single"
   return mode
@@ -52,6 +56,12 @@ def cheap_screen_routes(verdict: str, conviction: str = "") -> List[Tuple[Provid
   """Always use cheap tier for the initial screen."""
   tier = "cheap"
   mode = effective_intelligence_mode()
+
+  if llm_backend() == "cursor" and cursor_available():
+    return [
+      ("openai", cursor_model_for("openai", tier), tier),
+      ("anthropic", cursor_model_for("anthropic", tier), tier),
+    ]
 
   if mode == "single":
     providers: List[Provider] = []
@@ -74,6 +84,8 @@ def cheap_screen_routes(verdict: str, conviction: str = "") -> List[Tuple[Provid
 def tiebreaker_routes(verdict: str, conviction: str = "") -> List[Tuple[Provider, str, str]]:
   """One premium model to break disagreement — complex decision task."""
   tier = task_tier("tiebreaker")
+  if llm_backend() == "cursor" and cursor_available():
+    return [("openai", cursor_model_for("openai", tier), tier)]
   if os.environ.get("OPENAI_API_KEY", "").strip():
     return [("openai", model_for_task("openai", "tiebreaker"), tier)]
   if os.environ.get("ANTHROPIC_API_KEY", "").strip():
@@ -236,10 +248,11 @@ def run_panel(
     "confidence_adjustment": conf_adj,
     "consulted": consulted,
     "models_used": {
-      "cheap_openai": CHEAP_OPENAI,
-      "cheap_anthropic": CHEAP_ANTHROPIC,
-      "premium_openai": STANDARD_OPENAI,
-      "premium_anthropic": STANDARD_ANTHROPIC,
+      "cheap_openai": cursor_model_for("openai", "cheap") if llm_backend() == "cursor" else CHEAP_OPENAI,
+      "cheap_anthropic": cursor_model_for("anthropic", "cheap") if llm_backend() == "cursor" else CHEAP_ANTHROPIC,
+      "premium_openai": cursor_model_for("openai", "standard") if llm_backend() == "cursor" else STANDARD_OPENAI,
+      "premium_anthropic": cursor_model_for("anthropic", "standard") if llm_backend() == "cursor" else STANDARD_ANTHROPIC,
+      "backend": llm_backend(),
     },
   }
   if summaries:
