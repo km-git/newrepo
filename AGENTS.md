@@ -10,6 +10,9 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - Use the project virtualenv at `.venv` (created during setup). Run Python via
   `.venv/bin/python` / `.venv/bin/pip`. The system Python is externally managed
   (PEP 668), so do not `pip install` into it.
+- **One-shot bootstrap:** `bash scripts/setup_environment.sh` or
+  `.venv/bin/python ew_tool.py --setup` — creates venv, installs `requirements.txt`,
+  clones GitHub EW libs into `libs/`, installs token savers, and installs `gh` CLI.
 - Three runtime dependencies are external GitHub repos cloned into `libs/`
   (`pyharmonics`, `ElliottWaveAnalyzer`, `python-taew`). They are gitignored and
   installed by the startup/update script — do not commit them.

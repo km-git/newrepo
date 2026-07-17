@@ -52,6 +52,11 @@ def main() -> None:
     help="pip install missing token-saving libraries (tiktoken, llm-token-optimizer, etc.)",
   )
   parser.add_argument(
+    "--setup",
+    action="store_true",
+    help="Auto-install Python libs, GitHub EW tools, token savers, and gh CLI",
+  )
+  parser.add_argument(
     "--pr-approve",
     type=int,
     metavar="N",
@@ -156,6 +161,15 @@ def main() -> None:
 
     result = install_missing_libraries()
     print(json.dumps({"install": result, "registry": registry_summary()}, indent=2))
+    return
+
+  if args.setup:
+    from engine.setup_environment import setup_environment
+
+    result = setup_environment()
+    print(json.dumps(result, indent=2))
+    if not result.get("ok"):
+      sys.exit(1)
     return
 
   if args.pr_approve is not None or args.pr_approve_all:
