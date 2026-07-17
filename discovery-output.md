@@ -1,6 +1,6 @@
 # AU Micro-SaaS Discovery Portfolio
 
-Research date: 17 July 2026  
+Research date: 17 July 2026
 Operator profile: AU-based, 1–2 people, 25+ years in IT services, AI consulting and tradie/NDIS familiarity.
 
 ## Read this first
