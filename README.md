@@ -73,7 +73,58 @@ python3 ew_tool.py --llm-cost
 
 Ensemble saves **~70%** vs dual premium while still using two cheap models + conditional premium.
 
-## Token-efficient LLM advisory
+## Cursor Pro vs direct API keys
+
+**Important:** Cursor Pro model access and `ew_tool --llm-advisory` are **not the same billing path** today.
+
+| Where models run | What you use | Billed from |
+|---|---|---|
+| **Cursor IDE / Cloud Agent** (this session) | Agent, Composer, Claude, GPT, Grok, etc. | Your **Cursor Pro** plan |
+| **`ew_tool.py --llm-advisory`** (terminal/batch) | `OPENAI_API_KEY` + `ANTHROPIC_API_KEY` | **Direct API** (separate from Pro) |
+
+### What Cursor Pro includes ([docs](https://cursor.com/docs/models-and-pricing))
+
+Pro ($20/mo) gives **two usage pools** that reset monthly:
+
+| Pool | Models | Good for |
+|---|---|---|
+| **First-party** (generous) | Auto, **Composer 2.5**, **Grok 4.5** | Cheap/high-volume — screen tasks, code, routine review |
+| **API** ($20/mo included) | Claude, GPT, Gemini, etc. (frontier) | Tiebreakers, architect review, complex synthesis |
+
+You can pick most frontier models in the IDE/agent UI. That access does **not** automatically flow into `ew_tool` Python scripts — those still need direct API keys unless we add a **Cursor SDK** backend (`CURSOR_API_KEY`).
+
+### Recommended split (cheap vs premium)
+
+| Task | Best runtime | Model tier |
+|---|---|---|
+| Run analysis pipeline (OKX fetch, EW, harmonics) | `ew_tool.py` | No LLM — deterministic |
+| Advisory screen on GO setups | Cursor agent **or** `ew_tool --llm-advisory` | **Cheap** — Composer 2.5 / mini / haiku |
+| Tiebreaker when models disagree | Cursor agent **or** ensemble tiebreaker | **Premium** — Sonnet / GPT-4o |
+| Architect / RepoMix / multi-file design | **Cursor Cloud Agent** (here) | **Premium** — uses Pro pools |
+| Top-50 batch + review top 5 GO setups | Cursor agent on batch JSON | **Premium** — one session, Pro pool |
+
+### Cost mental model on Pro
+
+For a typical advisory (~450 in / ~180 out tokens):
+
+| Backend | Example model | Est. per call | Pool |
+|---|---|---:|---|
+| Cursor first-party | Composer 2.5 | ~$0.0007 | First-party (generous) |
+| Direct API (current `ew_tool`) | gpt-4o-mini | ~$0.0002 | Your OpenAI bill |
+| Cursor API pool | Claude Sonnet | ~$0.003 | Pro $20 API allowance |
+| This Cloud Agent session | Multi-model panel | Included in Pro | IDE/agent usage |
+
+**Practical takeaway:** Use **Cursor agents** (like this session) for architecture, batch review, and complex multi-model decisions — that is what Pro is for. Use **`ew_tool --llm-advisory`** only when you need unattended/automated advisory in CI or cron; then either bring your own API keys (cheap models) or we wire `EW_LLM_BACKEND=cursor` via the Cursor SDK (future).
+
+```bash
+# Check direct-API cost estimates (does not use Cursor Pro)
+python3 ew_tool.py --llm-cost
+
+# Cursor SDK path (future) — would use CURSOR_API_KEY + Pro pools
+# export EW_LLM_BACKEND=cursor
+# export CURSOR_API_KEY=...   # from cursor.com/dashboard
+```
+
 
 LLM calls are gated to **critical decisions only** and use these token-saving mechanisms:
 
