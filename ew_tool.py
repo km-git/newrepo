@@ -61,6 +61,11 @@ def main() -> None:
     action="store_true",
     help="With --pr-approve: decision only, no GitHub approve/merge",
   )
+  parser.add_argument(
+    "--pr-approve-all",
+    action="store_true",
+    help="Run executive consensus on all open PRs",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -104,10 +109,14 @@ def main() -> None:
     print(json.dumps({"install": result, "registry": registry_summary()}, indent=2))
     return
 
-  if args.pr_approve is not None:
-    from engine.pr_consensus import run_pr_executive_consensus
+  if args.pr_approve is not None or args.pr_approve_all:
+    from engine.pr_agent import run_pr_agent
 
-    result = run_pr_executive_consensus(args.pr_approve, dry_run=args.pr_dry_run)
+    result = run_pr_agent(
+      pr_number=args.pr_approve,
+      dry_run=args.pr_dry_run,
+      approve_all=args.pr_approve_all,
+    )
     print(json.dumps(result, indent=2, default=str))
     return
 

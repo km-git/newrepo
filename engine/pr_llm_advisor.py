@@ -10,6 +10,7 @@ from engine.llm_advisor import _call_advisory
 from engine.llm_backend import advisory_credentials_available, credentials_hint, llm_backend
 from engine.llm_panel import effective_intelligence_mode, run_panel
 from engine.llm_token_saver import get_model_budget
+from engine.pr_panel import pr_expanded_panel_enabled, run_expanded_pr_panel
 from engine.token_saver_registry import optimize_prompt_text
 
 PR_SYSTEM_PROMPT = (
@@ -61,7 +62,18 @@ def get_pr_llm_advisory(
   def _call(provider, model, tier, task, max_output):
     return _call_advisory(provider, model, tier, task, max_output, prompt)
 
-  if mode in ("ensemble", "dual"):
+  if pr_expanded_panel_enabled():
+    panel = run_expanded_pr_panel(prompt, verdict, conviction, _call)
+    result = {
+      "consulted": panel.get("consulted", []),
+      "consensus_stance": panel.get("consensus_stance"),
+      "vote_tally": panel.get("vote_tally"),
+      "intelligence_panel": panel.get("intelligence_panel"),
+      "intelligence_mode": panel.get("intelligence_mode"),
+      "llm_backend": llm_backend(),
+      "blended_summary": panel.get("blended_summary"),
+    }
+  elif mode in ("ensemble", "dual"):
     panel = run_panel(prompt, verdict, conviction, _call)
     result = {
       "consulted": panel.get("consulted", []),

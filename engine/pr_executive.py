@@ -136,6 +136,7 @@ def apply_pr_ai_consensus(
   exec_out["llm_consensus"] = {
     "stance": stance,
     "consulted": consulted,
+    "vote_tally": panel.get("vote_tally"),
     "intelligence_mode": panel.get("intelligence_mode") or intel.get("intelligence_mode"),
     "escalated_to_premium": escalated,
     "disagreement_severity": intel.get("disagreement_severity"),
@@ -204,6 +205,12 @@ def _build_review_comment(executive: Dict[str, Any]) -> str:
     f"**Source:** {executive.get('verdict_source')}",
     "",
   ]
+  if llm.get("vote_tally"):
+    t = llm["vote_tally"]
+    lines.append(
+      f"**Vote tally:** {t.get('agree', 0)}/{t.get('panel_size', '?')} agree "
+      f"(need {t.get('min_approvals', 5)})"
+    )
   if llm.get("blended_summary"):
     lines.extend(["**Summary:**", llm["blended_summary"], ""])
   gaps = executive.get("structural_gaps") or []

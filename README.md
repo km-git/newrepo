@@ -125,7 +125,10 @@ Auto-approve and merge pull requests using the same multi-model panel as trading
 # Dry-run — see verdict without GitHub actions
 python3 ew_tool.py --pr-approve 5 --pr-dry-run
 
-# Live — approve + merge when panel agrees (APPROVE_MERGE + stance=agree)
+# Review all open PRs
+python3 ew_tool.py --pr-approve-all --pr-dry-run
+
+# Live — approve + merge when 5/7 models agree
 python3 scripts/pr_executive_consensus.py 5
 
 # GitHub Action runs on every PR (non-draft): .github/workflows/pr-executive-consensus.yml
@@ -143,6 +146,9 @@ EW_PR_AUTO_APPROVE=1           # default — post GitHub review
 EW_PR_AUTO_MERGE=1             # merge on APPROVE_MERGE + agree
 EW_PR_EXECUTIVE_CONSENSUS=1    # AI panel shapes final verdict
 EW_PR_LLM_ADVISORY=1           # run multi-model panel
+EW_PR_EXPANDED_PANEL=1         # 7-model specialist panel (default)
+EW_PR_MIN_APPROVALS=5          # approve when 5/7 agree
+EW_PR_PANEL_SIZE=7
 EW_PR_REQUIRE_CI=1             # reject if CI failed
 ```
 

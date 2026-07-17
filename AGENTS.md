@@ -36,6 +36,6 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - **Token budget is critical.** Each model capped at 10,000 tokens/day (`EW_LLM_MAX_TOKENS_PER_MODEL`).
   Install saver libraries: `python3 ew_tool.py --install-token-savers` or `python3 scripts/install_token_savers.py`.
   Inspect: `python3 ew_tool.py --llm-savers`.
-- **PR auto-approve:** `python3 ew_tool.py --pr-approve <N> --pr-dry-run` uses multi-model
-  executive consensus (same panel as trading). Live: `python3 scripts/pr_executive_consensus.py <N>`.
-  GitHub Action: `.github/workflows/pr-executive-consensus.yml`. Requires `gh` auth.
+- **PR auto-approve:** `python3 ew_tool.py --pr-approve <N>` or `--pr-approve-all`.
+  Agent: `python3 scripts/pr_executive_consensus.py`. 5/7 model consensus rule.
+  GitHub Action: `.github/workflows/pr-executive-consensus.yml`. Results in `output/pr_reviews/`.

@@ -35,16 +35,26 @@ jobs:
       - name: Install token savers
         run: python ew_tool.py --install-token-savers || true
 
-      - name: PR executive consensus
+      - name: Configure gh CLI
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | gh auth login --with-token
+
+      - name: PR executive consensus agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EW_PR_AUTO_APPROVE: "1"
           EW_PR_AUTO_MERGE: "1"
           EW_PR_EXECUTIVE_CONSENSUS: "1"
           EW_PR_LLM_ADVISORY: "1"
+          EW_PR_EXPANDED_PANEL: "1"
+          EW_PR_MIN_APPROVALS: "5"
+          EW_PR_PANEL_SIZE: "7"
           EW_LLM_BACKEND: cursor
           EW_LLM_INTELLIGENCE: ensemble
         run: |

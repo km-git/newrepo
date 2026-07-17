@@ -22,15 +22,47 @@ def _repo_slug() -> str:
   return ""
 
 
+def _gh_env() -> dict:
+  env = os.environ.copy()
+  token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+  if token:
+    env["GH_TOKEN"] = token
+    env["GITHUB_TOKEN"] = token
+  return env
+
+
+def ensure_gh_auth() -> bool:
+  """Authenticate gh CLI from GITHUB_TOKEN (GitHub Actions / cloud agents)."""
+  token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+  if not token:
+    return False
+  proc = subprocess.run(
+    ["gh", "auth", "status"],
+    capture_output=True,
+    text=True,
+    env=_gh_env(),
+  )
+  if proc.returncode == 0:
+    return True
+  login = subprocess.run(
+    ["gh", "auth", "login", "--with-token"],
+    input=token,
+    capture_output=True,
+    text=True,
+    env=_gh_env(),
+  )
+  return login.returncode == 0
+
+
 def _gh_json(args: List[str]) -> Any:
-  proc = subprocess.run(["gh"] + args, capture_output=True, text=True)
+  proc = subprocess.run(["gh"] + args, capture_output=True, text=True, env=_gh_env())
   if proc.returncode != 0:
     raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or "gh command failed")
   return json.loads(proc.stdout) if proc.stdout.strip() else {}
 
 
 def _gh_run(args: List[str]) -> str:
-  proc = subprocess.run(["gh"] + args, capture_output=True, text=True)
+  proc = subprocess.run(["gh"] + args, capture_output=True, text=True, env=_gh_env())
   if proc.returncode != 0:
     raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or "gh command failed")
   return proc.stdout.strip()
@@ -102,6 +134,7 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
     "author": (pr.get("user") or {}).get("login", ""),
     "base": (pr.get("base") or {}).get("ref", ""),
     "head": (pr.get("head") or {}).get("ref", ""),
+    "head_sha": (pr.get("head") or {}).get("sha", ""),
     "files": [
       {"path": f.get("filename"), "status": f.get("status"), "add": f.get("additions"), "del": f.get("deletions")}
       for f in files[:40]
@@ -147,3 +180,11 @@ def merge_pr(pr_number: int, repo: str = "", method: str = "") -> Dict[str, Any]
   merge_method = method or os.environ.get("EW_PR_MERGE_METHOD", "squash")
   out = _gh_run(["pr", "merge", str(pr_number), "--repo", slug, f"--{merge_method}"])
   return {"action": "merge", "method": merge_method, "output": out}
+
+
+def list_open_prs(repo: str = "", limit: int = 20) -> List[Dict[str, Any]]:
+  slug = repo or _repo_slug()
+  raw = _gh_json(["pr", "list", "--repo", slug, "--state", "open", "--limit", str(limit), "--json", "number,title,draft,headRefName,url"])
+  if isinstance(raw, list):
+    return raw
+  return []
