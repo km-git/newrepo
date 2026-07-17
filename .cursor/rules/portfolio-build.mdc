@@ -1,0 +1,17 @@
+---
+description: Guardrails for validating and building micro-SaaS portfolio bets
+alwaysApply: true
+---
+
+# Portfolio build guardrails
+
+- Define one measurable intended-success criterion before implementation.
+- Prefer the thinnest end-to-end MVP that can validate willingness to pay.
+- Label market size, revenue, cost, timeline, and probability figures as estimates unless a source is cited.
+- Prefer primary Australian government, regulator, and platform documentation for load-bearing claims.
+- Minimise personal information; do not add health, financial, identity, or participant data unless explicitly required and reviewed.
+- Treat compliance output as decision support, not legal, financial, clinical, or safety advice.
+- Verify current API access, platform terms, pricing, and legislation before depending on them.
+- Add automated tests where conventions support them and run the changed flow end to end.
+- For UI work, test the rendered flow and capture concise walkthrough evidence.
+- Iterate against the success criterion for at most five cycles; narrow or stop weak bets instead of expanding scope.
