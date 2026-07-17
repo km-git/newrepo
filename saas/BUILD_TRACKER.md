@@ -15,7 +15,7 @@ Build order follows `discovery-output.md` global ranks. Status: **not started** 
 | 9 | 9 | ReviewReply Desk | AI Tools SMB | mvp | `products/09-reviewreply-desk` |
 | 10 | 10 | AfterHours Voice Agent | AI Receptionist | mvp | `products/10-afterhours-voice` |
 | 11 | 11 | WinRate Lens | Analytics | mvp | `products/11-winrate-lens` |
-| 12 | 12 | QuoteChaser | AI Tools SMB | not started | `products/12-quotechaser` |
+| 12 | 12 | QuoteChaser | AI Tools SMB | mvp | `products/12-quotechaser` |
 | 13 | 13 | DA Lead Miner | Lead Gen | not started | `products/13-da-lead-miner` |
 | 14 | 14 | DocChaser for Bookkeepers | Micro-SaaS Vertical | not started | `products/14-docchaser` |
 | 15 | 15 | JobProfit Board | Analytics | not started | `products/15-jobprofit-board` |
