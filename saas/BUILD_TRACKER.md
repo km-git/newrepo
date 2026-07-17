@@ -11,7 +11,7 @@ Build order follows `discovery-output.md` global ranks. Status: **not started** 
 | 5 | 5 | AuditReady | Tradie/NDIS | mvp | `products/05-auditready` |
 | 6 | 6 | SubbieCheck | Service Platforms | mvp | `products/06-subbiecheck` |
 | 7 | 7 | SnapReport | AI Workflow | mvp | `products/07-snapreport` |
-| 8 | 8 | AreaPages | AI Content+SEO | not started | `products/08-areapages` |
+| 8 | 8 | AreaPages | AI Content+SEO | mvp | `products/08-areapages` |
 | 9 | 9 | ReviewReply Desk | AI Tools SMB | not started | `products/09-reviewreply-desk` |
 | 10 | 10 | AfterHours Voice Agent | AI Receptionist | not started | `products/10-afterhours-voice` |
 | 11 | 11 | WinRate Lens | Analytics | not started | `products/11-winrate-lens` |
