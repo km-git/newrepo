@@ -38,7 +38,7 @@ def _sync_reports_from_export(output_dir: Path, limit_meta: dict) -> None:
     (Path("reports/HISTORICAL_PERFORMANCE.md"), _REPORTS_DIR / "HISTORICAL_PERFORMANCE.md"),
   ]
   for src, dst in pairs:
-    if src.exists():
+    if src.exists() and src.resolve() != dst.resolve():
       shutil.copy2(src, dst)
 
   csv_src = Path(limit_meta.get("latest_csv", output_dir / "latest_limit_orders_all_tf.csv"))
