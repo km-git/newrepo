@@ -24,6 +24,18 @@ jobs:
       - name: Run pytest
         run: python -m pytest tests/ -q --tb=short
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: coordinator/go.sum
+
+      - name: Coordinator unit tests
+        working-directory: coordinator
+        run: GOTOOLCHAIN=local go test ./... -v
+        env:
+          COORDINATOR_REDIS_DISABLED: "1"
+
       - name: E2E health (offline)
         run: |
           EW_WEB_INTEL=0 EW_WS_ENABLED=0 python scripts/e2e_trading_cycle.py --health
