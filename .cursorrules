@@ -1,0 +1,35 @@
+# .cursorrules — AU micro-SaaS MVP (1-2 person firm)
+
+## Project context
+- Micro-SaaS MVP for an AU-based solo firm. Target build: 7-30 days. Keep it shippable, not perfect.
+- Stack: Next.js (App Router) + TypeScript + Supabase (Sydney region) + Stripe + Tailwind, unless PLAN.md says otherwise.
+- Read PLAN.md before any multi-file change. If a change contradicts PLAN.md, stop and flag it instead of improvising.
+
+## Code style
+- TypeScript strict mode. No `any` without an inline justification comment.
+- Small, single-purpose functions. Prefer server components; client components only for interactivity.
+- No new dependencies without asking — every dep must earn its place in a 7-30 day MVP.
+- Environment variables documented in .env.example the moment they are introduced.
+
+## Australian requirements
+- Currency: AUD, format A$X,XXX.XX. All prices GST-inclusive unless labelled "ex GST"; show GST as a separate line on invoices/quotes.
+- Dates: DD/MM/YYYY. Timezone: Australia/Sydney default, configurable per account.
+- Spelling: Australian English (organise, colour, licence/license distinction).
+- Legal footer copy must reference Australian Consumer Law where refunds/guarantees are mentioned.
+
+## Privacy & compliance (hard rules)
+- No PII in logs, error messages, analytics events, or LLM prompts. Redact names, emails, phone numbers before any model call.
+- Data stored in AU-region infrastructure only. No PII to third parties without an explicit, documented purpose.
+- Any generated compliance/legal-adjacent content MUST carry: "General information only, not legal/financial advice."
+- Collect the minimum data needed. Every new stored field needs a one-line justification comment in the schema.
+
+## Testing
+- Every feature slice ships with: (1) unit tests for logic, (2) one happy-path integration test, (3) explicit error-path handling.
+- Money math is tested to the cent, including GST rounding.
+- Never mark a task complete without running the tests and pasting the result.
+
+## Workflow
+- One feature per branch. Conventional commits (feat:, fix:, chore:).
+- Before writing code for a task, restate the acceptance criteria in one sentence.
+- If a fix attempt fails twice, stop and explain the root-cause hypothesis before trying again.
+- Prefer editing existing files over creating new ones. No dead code, no TODO-littered stubs.
