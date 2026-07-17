@@ -133,3 +133,4 @@ class ElliottWaveOutput(BaseModel):
   monte_carlo: Optional[Dict[str, Any]] = None
   cache_stats: Optional[Dict[str, Any]] = None
   gateway_stats: Optional[Dict[str, Any]] = None
+  llm_advisory: Optional[Dict[str, Any]] = None

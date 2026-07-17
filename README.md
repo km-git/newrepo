@@ -29,6 +29,13 @@ pip install -e libs/python-taew libs/pyharmonics
 # Single symbol (crypto) — OKX live data + semantic gateway cache
 python3 ew_tool.py --symbol BTC/USDT --crypto --gateway-stats
 
+# Critical decision: second opinion from Claude + GPT (requires API keys)
+export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
+
+# Batch with up to 5 LLM consultations on GO / CONDITIONAL_GO pairs
+python3 scripts/run_top50_batch.py -n 50 --llm-advisory --llm-advisory-max 5
+
 # RepoMix-style code pack for agent context
 python3 ew_tool.py --repomix --repomix-out output/repomix_pack.xml
 

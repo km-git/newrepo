@@ -98,6 +98,8 @@ def run_top_crypto_batch(
   tfs: List[str] | None = None,
   output_dir: str = "output",
   quote: str = "USDT",
+  llm_advisory: bool = False,
+  llm_advisory_max: int = 5,
 ) -> Dict[str, Any]:
   """Fetch top N pairs and run full EW pipeline on all timeframes."""
   tfs = tfs or DEFAULT_TFS
@@ -117,7 +119,11 @@ def run_top_crypto_batch(
   write_pairs_csv(pairs, str(pairs_csv))
 
   print(f"\n[batch] Running {len(pairs)} pairs × timeframes {tfs}")
-  results = run_batch(str(pairs_csv), tfs, is_crypto=True)
+  results = run_batch(
+    str(pairs_csv), tfs, is_crypto=True,
+    llm_advisory=llm_advisory,
+    llm_advisory_max=llm_advisory_max,
+  )
   save_batch_json(results, str(json_path))
   save_batch_summary_csv(results, str(summary_path))
   save_detailed_csv(results, str(detailed_path))

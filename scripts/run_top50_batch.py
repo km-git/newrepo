@@ -20,6 +20,12 @@ def main() -> None:
   p.add_argument("--tfs", default=",".join(DEFAULT_TFS), help="Comma-separated timeframes")
   p.add_argument("--quote", default="USDT", help="Quote currency")
   p.add_argument("--output-dir", default="output", help="Output directory")
+  p.add_argument(
+    "--llm-advisory",
+    action="store_true",
+    help="Consult Claude+GPT on up to 5 most critical pairs (needs API keys)",
+  )
+  p.add_argument("--llm-advisory-max", type=int, default=5, help="Max LLM consultations per batch")
   args = p.parse_args()
 
   tfs = [t.strip() for t in args.tfs.split(",")]
@@ -29,6 +35,8 @@ def main() -> None:
     tfs=tfs,
     output_dir=args.output_dir,
     quote=args.quote,
+    llm_advisory=args.llm_advisory,
+    llm_advisory_max=args.llm_advisory_max,
   )
   elapsed = time.time() - t0
   print(f"\n[done] {meta['pairs_count']} pairs in {elapsed:.0f}s ({elapsed/60:.1f} min)", file=sys.stderr)

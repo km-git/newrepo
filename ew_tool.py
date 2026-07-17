@@ -27,6 +27,11 @@ def main() -> None:
   parser.add_argument("--cache-stats", action="store_true", help="Print cache stats after run")
   parser.add_argument("--clear-cache", action="store_true", help="Clear cache before run")
   parser.add_argument("--gateway-stats", action="store_true", help="Print semantic gateway cache stats")
+  parser.add_argument(
+    "--llm-advisory",
+    action="store_true",
+    help="Consult Claude + GPT on critical decisions (GO/CONDITIONAL_GO/executable); needs API keys",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   args = parser.parse_args()
@@ -64,6 +69,7 @@ def main() -> None:
         tfs=tfs,
         output_dir=args.output_dir,
         quote=args.quote,
+        llm_advisory=args.llm_advisory,
       )
       if args.save:
         import shutil
@@ -74,7 +80,7 @@ def main() -> None:
         from cache.disk_cache import get_cache
         print(f"[cache] {get_cache().stats()}", file=sys.stderr)
     else:
-      results = run_batch(args.batch, tfs, args.crypto)
+      results = run_batch(args.batch, tfs, args.crypto, llm_advisory=args.llm_advisory)
       if args.save:
         save_batch_json(results, args.save)
       else:
@@ -82,7 +88,7 @@ def main() -> None:
   else:
     if not args.symbol:
       parser.error("--symbol is required unless --batch is used")
-    result = adaptive_pipeline(args.symbol, tfs, args.crypto)
+    result = adaptive_pipeline(args.symbol, tfs, args.crypto, llm_advisory=args.llm_advisory)
     validated = ElliottWaveOutput(**result)
     payload = validated.model_dump()
     elapsed = time.time() - t0

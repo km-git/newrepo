@@ -12,7 +12,13 @@ from engine.adaptive import adaptive_pipeline
 from schemas.models import ElliottWaveOutput
 
 
-def run_batch(csv_path: str, tfs: List[str], is_crypto: bool) -> List[dict]:
+def run_batch(
+  csv_path: str,
+  tfs: List[str],
+  is_crypto: bool,
+  llm_advisory: bool = False,
+  llm_advisory_max: int = 5,
+) -> List[dict]:
   path = Path(csv_path)
   if not path.exists():
     raise FileNotFoundError(csv_path)
@@ -28,10 +34,14 @@ def run_batch(csv_path: str, tfs: List[str], is_crypto: bool) -> List[dict]:
       symbols.append((sym.strip(), crypto_flag if row.get("crypto") else is_crypto))
 
   results: List[dict] = []
+  llm_slots = llm_advisory_max if llm_advisory else 0
   for symbol, crypto in symbols:
     print(f"\n[batch] === {symbol} (crypto={crypto}) ===")
     try:
-      raw = adaptive_pipeline(symbol, tfs, crypto)
+      use_llm = llm_advisory and llm_slots > 0
+      raw = adaptive_pipeline(symbol, tfs, crypto, llm_advisory=use_llm)
+      if use_llm and raw.get("llm_advisory"):
+        llm_slots -= 1
       validated = ElliottWaveOutput(**raw)
       results.append(validated.model_dump())
     except Exception as e:

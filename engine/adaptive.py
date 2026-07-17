@@ -147,6 +147,7 @@ def adaptive_pipeline(
   tfs: List[str],
   is_crypto: bool,
   exchange_preference: str | None = None,
+  llm_advisory: bool = False,
 ) -> dict:
   stages: List[tuple[str, dict, Any]] = []
   tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
@@ -324,6 +325,24 @@ def adaptive_pipeline(
   hs = outcomes["honest_summary"]
   print(f"[step8] outcomes: {hs['truth']}")
 
+  # Optional: Claude + GPT second opinion on critical decisions
+  llm_advisory_result = None
+  if llm_advisory:
+    from engine.llm_advisor import maybe_advise_critical
+
+    llm_advisory_result = maybe_advise_critical(
+      symbol=symbol,
+      executive=executive,
+      trade_setup=trade,
+      wave_structure=wave_structure,
+      consensus=consensus,
+      outcomes=outcomes,
+      market_tools=market_tools,
+      enabled=True,
+    )
+    if llm_advisory_result:
+      stages.append(("llm_advisory", {"symbol": symbol}, compact_summary(llm_advisory_result)))
+
   reasoning = (
     f"EXECUTIVE CALL [{executive['verdict']}]: {executive['playbook']} "
     f"{symbol} @ {current_price:.2f}, {executive['direction']} bias, "
@@ -394,6 +413,7 @@ def adaptive_pipeline(
     "reasoning_trace": reasoning,
     "monte_carlo": mc_result,
     "cache_stats": get_cache().stats(),
+    "llm_advisory": llm_advisory_result,
   }
   if is_crypto:
     try:
