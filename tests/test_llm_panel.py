@@ -87,6 +87,31 @@ def test_apply_panel_to_trade_adjusts_confidence():
   assert trade["panel_note"]
 
 
+def test_run_panel_mild_disagreement_uses_standard_tier(monkeypatch):
+  monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+
+  calls = []
+
+  def fake_call(provider, model, tier, task, max_output):
+    calls.append((provider, model, tier, task))
+    if task in ("screen", "workhorse"):
+      stance = "agree" if provider == "openai" else "caution"
+      return {"available": True, "stance": stance, "confidence_adjustment": 0.0, "summary": provider}
+    return {"available": True, "stance": "caution", "confidence_adjustment": -0.02, "summary": "terra"}
+
+  panel = run_panel("prompt", "GO", "high", fake_call)
+
+  assert panel["disagreement"] is True
+  assert panel["disagreement_severity"] == "mild"
+  assert panel["escalated_to_premium"] is True
+  tb_calls = [c for c in calls if c[3] == "tiebreaker"]
+  assert len(tb_calls) == 1
+  assert tb_calls[0][1] == "gpt-5.6-terra"
+  assert tb_calls[0][2] == "standard"
+
+
 def test_apply_panel_reject_warning():
   trade = apply_panel_to_trade(
     {"confidence": 0.6},

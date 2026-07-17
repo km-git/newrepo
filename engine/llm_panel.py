@@ -14,11 +14,11 @@ from engine.llm_token_router import (
   Provider,
   model_for,
 )
+from engine.llm_model_roster import MODEL, disagreement_severity
 from engine.llm_task_router import (
   CURSOR_FABLE,
   CURSOR_OPUS,
   CURSOR_SOL,
-  max_output_for_task,
   screen_routes,
   tiebreaker_route,
   tiebreaker_task,
@@ -196,12 +196,21 @@ def run_panel(
   tiebreaker_route_meta: Optional[dict] = None
   escalated = False
 
+  stances = _stance_values(ok_screen)
+  severity = disagreement_severity(stances)
+
   if mode == "ensemble" and models_disagree(ok_screen):
-    tb = tiebreaker_route(verdict, conviction)
+    tb = tiebreaker_route(verdict, conviction, stances=stances)
     if tb:
       escalated = True
       provider, model, tier, task, max_out = tb
-      tiebreaker_route_meta = {"provider": provider, "model": model, "tier": tier, "task": task}
+      tiebreaker_route_meta = {
+        "provider": provider,
+        "model": model,
+        "tier": tier,
+        "task": task,
+        "disagreement_severity": severity,
+      }
       tiebreaker = call_provider(provider, model, tier, task, max_out)
       tiebreaker["role"] = task
 
@@ -227,10 +236,11 @@ def run_panel(
       ],
     },
     "disagreement": models_disagree(ok_screen),
+    "disagreement_severity": severity if models_disagree(ok_screen) else "none",
     "escalated_to_premium": escalated,
     "tiebreaker": tiebreaker,
     "tiebreaker_route": tiebreaker_route_meta if escalated else None,
-    "tiebreaker_task": tiebreaker_task(verdict, conviction) if escalated else None,
+    "tiebreaker_task": tiebreaker_task(verdict, conviction, stances) if escalated else None,
     "consensus_stance": consensus,
     "confidence_adjustment": conf_adj,
     "consulted": consulted,
@@ -240,6 +250,8 @@ def run_panel(
       "crucial_opus": CURSOR_OPUS,
       "crucial_fable": CURSOR_FABLE,
       "crucial_sol": CURSOR_SOL,
+      "mild_tiebreaker": MODEL["mild_tb"],
+      "light_planning": MODEL["light_plan"],
       "backend": llm_backend(),
     },
   }
