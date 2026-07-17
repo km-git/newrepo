@@ -193,6 +193,20 @@ def pr_actions_for_verdict(
   return actions
 
 
+def _format_consulted(consulted: Any) -> str:
+  """Normalize consulted list (strings or role/model dicts) for review comments."""
+  labels: List[str] = []
+  for item in consulted or []:
+    if isinstance(item, dict):
+      role = item.get("role") or item.get("provider") or ""
+      model = item.get("model") or ""
+      label = f"{role}:{model}".strip(":") if role or model else str(item)
+      labels.append(label)
+    else:
+      labels.append(str(item))
+  return ", ".join(labels) if labels else "none"
+
+
 def _build_review_comment(executive: Dict[str, Any]) -> str:
   llm = executive.get("llm_consensus") or {}
   lines = [
@@ -201,7 +215,7 @@ def _build_review_comment(executive: Dict[str, Any]) -> str:
     f"**Final verdict:** `{executive.get('verdict')}`",
     f"**Draft verdict:** `{executive.get('draft_verdict', executive.get('verdict'))}`",
     f"**Panel stance:** `{llm.get('stance', 'n/a')}`",
-    f"**Models consulted:** {', '.join(llm.get('consulted') or []) or 'none'}",
+    f"**Models consulted:** {_format_consulted(llm.get('consulted'))}",
     f"**Source:** {executive.get('verdict_source')}",
     "",
   ]

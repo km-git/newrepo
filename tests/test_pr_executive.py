@@ -81,5 +81,22 @@ def test_actions_no_merge_on_caution(monkeypatch):
   assert actions["merge"] is False
 
 
+def test_ai_consensus_dict_consulted_formats_comment(monkeypatch):
+  monkeypatch.setenv("EW_PR_EXECUTIVE_CONSENSUS", "1")
+  monkeypatch.setenv("EW_PR_AUTO_APPROVE", "1")
+  monkeypatch.setenv("EW_PR_AUTO_MERGE", "1")
+  executive = {"verdict": "APPROVE_MERGE", "playbook": "PR #0", "structural_gaps": []}
+  panel = {
+    "consensus_stance": "agree",
+    "blended_summary": "ok",
+    "consulted": [{"role": "architect", "model": "claude-opus-4-8"}],
+    "intelligence_panel": {},
+  }
+  out, actions = apply_pr_ai_consensus(executive, panel)
+  assert out["verdict"] == "APPROVE_MERGE"
+  assert "architect:claude-opus-4-8" in actions["comment_body"]
+  assert actions["approve"] is True
+
+
 def test_executive_consensus_enabled_default():
   assert pr_executive_consensus_enabled() is True
