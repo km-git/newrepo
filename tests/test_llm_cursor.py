@@ -26,7 +26,7 @@ def test_cursor_model_mapping(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
   assert cursor_model_for("openai", "cheap") == "gpt-5-mini"
-  assert cursor_model_for("anthropic", "cheap") == "composer-2.5"
+  assert cursor_model_for("anthropic", "cheap") == "cursor-grok-4.5-high"
   assert "claude" in cursor_model_for("anthropic", "standard")
 
 

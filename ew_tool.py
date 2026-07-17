@@ -42,7 +42,19 @@ def main() -> None:
   )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
+  parser.add_argument(
+    "--monitor",
+    action="store_true",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765)",
+  )
+  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor")
   args = parser.parse_args()
+
+  if args.monitor:
+    from scripts.serve_monitor import run as run_monitor
+
+    run(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+    return
 
   if args.llm_cost:
     from engine.llm_cost import advisory_scenario_comparison

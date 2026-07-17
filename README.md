@@ -233,6 +233,29 @@ python3 ew_tool.py --batch samples/batch_symbols.csv --crypto --save out.json
 python3 -m pytest tests/ -v
 ```
 
+## Browser monitor
+
+Live dashboard for batch results, monitor queue, win rates, and the trade matrix.
+
+```bash
+# After a batch (or anytime output/ has data):
+python3 scripts/serve_monitor.py
+# or
+python3 ew_tool.py --monitor
+
+# Open http://127.0.0.1:8765/
+```
+
+The page auto-refreshes every 30s and polls `/api/dashboard` for:
+
+- Executive verdict breakdown (GO, CONDITIONAL_GO, STANDBY, STAGED)
+- Autodream win rates (overall, by direction, by timeframe)
+- Pair summary table with symbol filter
+- Executable monitor queue
+- Embedded trade setups matrix iframe
+
+Artifacts: `output/monitor.html`, `output/autodream/dashboard_state.json` (regenerated on batch + server start).
+
 ## Architecture
 
 ```

@@ -120,11 +120,19 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
     "json": meta.get("json"),
     "monitor_queue": meta.get("monitor_queue"),
     "by_verdict": meta.get("by_verdict"),
+    "by_status": meta.get("by_status"),
+    "summary_csv": str(Path(output_dir) / "latest_summary.csv"),
+    "monitor_html": str(Path(output_dir) / "monitor.html"),
+    "dashboard_state": str(Path(output_dir) / "autodream" / "dashboard_state.json"),
   }
 
   latest_file = _latest_paths_file(output_dir)
   latest_file.parent.mkdir(parents=True, exist_ok=True)
   latest_file.write_text(json.dumps(paths_doc, indent=2))
+
+  from engine.monitor_dashboard import publish_monitor
+
+  publish_monitor(output_dir)
   return paths_doc
 
 
