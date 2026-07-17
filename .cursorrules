@@ -1,77 +1,56 @@
-# Cursor v4 Frontier Rules — AU Micro-SaaS Portfolio
-# Operator: 1-2 person firm, AU-based, ABN/ACN, Cursor Pro A$20/mo
+# AU Micro-SaaS Portfolio — Smart Token + Multi-Model Rules
+# Cursor Pro A$20/mo | 50-55 bets | cheap-first, escalate only when stuck
 
-## Model Routing (4-Tier)
+## Default Model (start here every time)
+- Auto mode OR Haiku 4.5 — pick one, don't jump to premium
+- Cmd+K + Haiku 4.5 for 80%+ of edits (no chat context cost)
+- Tab autocomplete for routine typing (essentially free)
 
-### Tier 1 — Frontier Architect (5-10 calls/month ONLY)
-- Fable 5: hardest architect, 1000+ line refactors, complex security, compliance schemas
-- Opus 4.8: standard architect, schema design, security review, parallel subagents
-- GPT-5.6 Sol: UI architecture, voice agents, function calling, multi-agent design
+## Smart Multi-Model Escalation Ladder
+Use the cheapest step that works. Never skip steps.
 
-### Tier 2 — Balanced Heavy (20-30% of work)
-- Sonnet 5: daily coding default, agent processing, code review
-- GPT-5.6 Terra: OpenAI alternative for standard builds
-- Gemini 3.1 Pro: long-context docs, multimodal, AU research
+1. Haiku 4.5 / Luna / Flash — plan, schema, code, fixes, prompts (90%+ of work)
+2. Opus 4.5/4.6/4.7 (FREE) — complex schema or security review when Haiku fails
+3. Sonnet 5 — complex logic after free Opus fails (max 5-10 calls/month)
+4. Frontier (Fable 5 / Opus 4.8 / GPT-5.6 Sol) — LAST RESORT, 1-2 calls/month TOTAL across all bets, only for bets with paying customers
 
-### Tier 3 — Cheap Workhorse (60-70% of work)
-- Haiku 4.5: Cmd+K inline edits, docstrings, simple refactors
-- GPT-5.6 Luna: boilerplate, config, simple completions
-- Gemini 3.5 Flash / Grok 4.5: trivial edits, background tasks
+## Task → Model Map
+| Task | Model | Why |
+|------|-------|-----|
+| Inline edit, rename, docstring | Cmd+K + Haiku 4.5 | Cheapest, no chat context |
+| Boilerplate, config, types | Luna or Flash | Trivial generation |
+| Day-1 scaffold (multi-file) | Composer (Auto) | One session per MVP |
+| Schema, file plan, ISC | Haiku 4.5 | Cheap enough for planning |
+| Complex schema / security | Opus 4.5 free | Free escalation |
+| Stuck on hard logic | Sonnet 5 | Paid escalation |
+| Debug specific bug | BugBot | 22% cheaper than chat |
+| Unsure which model | Auto mode | Cursor picks cheapest adequate |
+| Big codebase read (100K+) | Gemini 3.1 Pro | Long context only when needed |
 
-### Tier 4 — Cursor Built-In
-- Auto mode: routine ops when unsure
-- Max Mode: big-context refactors (1M tokens)
-- Composer 1: multi-file scaffold and batched refactors
-- BugBot: debugging (3x faster, 22% cheaper)
+## Token Rules (non-negotiable)
+- One chat per feature — don't open new chats per file
+- @ mention 2-3 files max — never dump whole codebase
+- .cursorrules = free instructions (this file) — don't repeat in prompts
+- Snippets for Stripe, Supabase, auth — saves 200+ tokens per use
+- Composer once per MVP for scaffold — then Cmd+K only
+- Cut failing bets at 7 days — don't pour tokens into dead experiments
+- Frontier models ONLY on bets with revenue signal
 
-## Routing Rules
-- NEVER Tier 1 for workhorse edits
-- NEVER Tier 3 for architect decisions
-- 1-2 Fable 5 calls per MVP (initial plan only)
-- 90% of daily coding on Sonnet 5
-- 70% of inline edits via Cmd+K with Haiku 4.5
-
-## Build Constraints
-- Build ceiling: 7-30 days per MVP
-- Cost ceiling: A$5K/MVP setup, A$0-500/mo recurring
-- No PII storage without AU Privacy Act compliance
-- No regulated financial/legal advice — tools assist, humans decide
-- Compliance: AU Privacy Act 1988 + AU Consumer Law
+## Build Loop (token-budgeted)
+1. PLAN — Haiku 4.5, 1 call, 2-5K tokens
+2. BUILD — Composer (Auto) scaffold + Haiku Cmd+K edits, 10-25K tokens
+3. TEST — no AI
+4. VERIFY — Haiku 4.5, 1-2K tokens; escalate only if stuck
+5. FINALIZE — document, cut or continue
 
 ## Stack Defaults
-- Frontend: Next.js 14+ (App Router), Tailwind CSS, shadcn/ui
-- Backend: Supabase (Postgres + Auth + Storage) or FastAPI
-- Payments: Stripe (AU)
-- Hosting: Vercel (frontend) + Supabase (backend)
-- Email: Resend or Postmark
-- AI: OpenAI API (GPT-4o for vision, embeddings for RAG)
-
-## Code Conventions
-- TypeScript strict mode
-- Server components by default, client only when needed
-- Zod for validation
-- Error boundaries on all routes
-- AU date format: DD/MM/YYYY
-- Currency: AUD with 2 decimal places
-- Timezone: Australia/Sydney default
-
-## Continuous Testing Loop
-1. PLAN (Tier 1): Define ISC in 1-2 sentences, schema, file plan
-2. BUILD (Tier 2-3): Composer scaffold → Sonnet logic → Haiku polish
-3. TEST: Unit tests + manual smoke test
-4. VERIFY (Tier 2): ISC met? If no → back to BUILD (max 5 cycles)
-5. FINALIZE: Document outcome. Cut bet if no traction after 7 days post-launch
-
-## Token Efficiency
-- Use Cmd+K (Haiku 4.5) for 70% of edits — does not add to chat context
-- Reference specific files with @ mentions, never dump full codebase
-- Use snippets for Stripe, Supabase, auth boilerplate
-- One chat session per feature, not per file
-- Composer for day-1 scaffold only
+- Next.js 14+ (App Router), Tailwind, shadcn/ui
+- Supabase (Postgres + Auth) or FastAPI
+- Stripe (AU), Vercel, Resend
+- AU dates DD/MM/YYYY, currency AUD, timezone Australia/Sydney
 
 ## Portfolio Rules
-- 50-55 diverse bets, expect 1-2 winners (2.5% rule)
-- Y1 target: A$220K (1p) / A$330K (2p)
-- Friday portfolio review every week
-- 7-day cut rule for failing bets
-- Document every MVP outcome in /reports/
+- 50-55 bets, expect 1-2 winners (2.5% rule)
+- 7-day cut rule for zero-traction bets
+- Friday portfolio review
+- Document outcomes in /reports/
