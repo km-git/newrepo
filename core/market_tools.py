@@ -132,6 +132,16 @@ def build_market_confluence(
     "raw_indicators": raw,
   }
 
+  # TV OSS indicators (Supertrend, Bollinger, ADX)
+  if df_p is not None and len(df_p) >= 30:
+    from core.tv_indicators import compute_tv_signals, score_tv_confluence
+
+    tools["tv_signals"] = compute_tv_signals(df_p)
+    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG")  # default; per-setup scored in outcomes
+  else:
+    tools["tv_signals"] = {"available": False}
+    tools["tv_confluence"] = {"score": 0, "aligned": False, "signals": []}
+
   if exchange is not None:
     tools["orderbook"] = orderbook_imbalance(exchange, symbol)
     tools["funding"] = funding_rate_snapshot(exchange, symbol)
@@ -165,6 +175,14 @@ def build_market_confluence(
   fr = tools.get("funding", {})
   if fr.get("available") and abs(fr.get("rate", 0)) > 0.0001:
     signals.append(f"funding {fr.get('rate_pct')}% ({fr.get('bias')})")
+
+  tv = tools.get("tv_signals", {})
+  if tv.get("supertrend", {}).get("available"):
+    st = tv["supertrend"]
+    signals.append(f"supertrend {st.get('signal')}")
+  if tv.get("adx", {}).get("trend") == "strong":
+    boost += 5
+    signals.append(f"ADX {tv['adx'].get('adx', 0):.0f} strong trend")
 
   tools["confluence_boost"] = min(boost, 20)
   tools["confluence_signals"] = signals

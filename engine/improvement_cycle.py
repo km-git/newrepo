@@ -52,8 +52,18 @@ def run_improvement_cycle(
     "okf": okf,
     "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
   }
+
+  try:
+    from engine.risk_consensus import run_risk_consensus
+
+    risk_consensus = run_risk_consensus(metrics, use_llm=False)
+    cycle["risk_consensus"] = risk_consensus
+  except Exception as exc:
+    cycle["risk_consensus_error"] = str(exc)
+    risk_consensus = {"error": str(exc)}
+
   _append_cycle_log(cycle)
-  return {"metrics": metrics, "okf": okf, "health": health, "cycle": cycle}
+  return {"metrics": metrics, "okf": okf, "health": health, "cycle": cycle, "risk_consensus": cycle.get("risk_consensus")}
 
 
 def _persist_metrics_lessons(metrics: dict) -> Dict[str, Any]:

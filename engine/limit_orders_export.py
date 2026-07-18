@@ -236,10 +236,20 @@ def _gtc_dca_ladder(
   )
 
 
-def _tier_account_risk(base_pct: float, gtc_tier: str, honest_tier: str) -> float:
+def _tier_account_risk(
+  base_pct: float,
+  gtc_tier: str,
+  honest_tier: str,
+  *,
+  risk_ctx: Optional[dict] = None,
+) -> float:
   mult = TIER_RISK_MULT.get(gtc_tier, 0.25)
   if gtc_tier == "executable" and honest_tier == "probe":
     mult *= 0.5
+  if risk_ctx and risk_ctx.get("enabled"):
+    from engine.dynamic_risk import apply_dynamic_account_risk
+
+    return apply_dynamic_account_risk(base_pct * mult, risk_ctx)
   return round(base_pct * mult, 3)
 
 
@@ -348,7 +358,28 @@ def build_limit_order_row(
   while len(targets) < 3:
     targets.append(targets[-1] if targets else {"price": wae, "exit_pct": 0, "rr": 0})
   rr = targets[1].get("rr", 0) if len(targets) > 1 else 0
-  acct_risk = _tier_account_risk(cfg["account_risk_pct"], gtc_tier, honest_tier)
+
+  risk_ctx: dict = {}
+  try:
+    from engine.dynamic_risk import compute_risk_multiplier
+    from engine.outcome_tracker import load_metrics, lookup_win_rate
+
+    metrics = load_metrics()
+    wr, n = lookup_win_rate(metrics, result["symbol"], tf, direction)
+    risk_ctx = compute_risk_multiplier(
+      symbol=result["symbol"],
+      timeframe=tf,
+      direction=direction,
+      readiness_score=int(readiness) if readiness is not None else None,
+      hist_win_rate=wr,
+      hist_n=n,
+      gtc_tier=gtc_tier,
+      honest_tier=honest_tier,
+    )
+  except Exception:
+    pass
+
+  acct_risk = _tier_account_risk(cfg["account_risk_pct"], gtc_tier, honest_tier, risk_ctx=risk_ctx)
   risk = risk_package(wae, stop["price"], acct_risk)
   size_cap = TIER_SIZE_CAP[gtc_tier]
   if gtc_tier == "executable" and honest_tier == "probe":
@@ -397,6 +428,8 @@ def build_limit_order_row(
     "rr_tp2": rr,
     "min_rr": cfg["min_rr"],
     "account_risk_pct": acct_risk,
+    "dynamic_risk_mult": risk_ctx.get("mult"),
+    "dynamic_risk_factors": "; ".join(risk_ctx.get("factors", [])),
     "risk_sizing_rule": risk["sizing_rule"],
     "order_type": "limit",
     "time_in_force": "GTC",
