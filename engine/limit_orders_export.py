@@ -375,6 +375,7 @@ def build_limit_order_row(
       hist_n=n,
       gtc_tier=gtc_tier,
       honest_tier=honest_tier,
+      wave_structure=str(wave.get("structure") or ""),
     )
   except Exception:
     pass

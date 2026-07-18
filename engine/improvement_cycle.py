@@ -39,6 +39,15 @@ def run_improvement_cycle(
   if persist_okf:
     okf = _persist_metrics_lessons(metrics)
 
+  impact_report = {}
+  if os.environ.get("EW_IMPACT_DISCOVERY", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.impact_discovery import run_impact_discovery
+
+      impact_report = run_impact_discovery()
+    except Exception as exc:
+      impact_report = {"error": str(exc)}
+
   from engine.system_health import run_health_checks, save_health
   health = run_health_checks()
   save_health(health)
@@ -50,6 +59,10 @@ def run_improvement_cycle(
     "overall_win_rate": (metrics.get("overall") or {}).get("win_rate"),
     "newly_recorded": metrics.get("newly_recorded", 0),
     "okf": okf,
+    "impact": {
+      "recommendations": impact_report.get("recommendations", []) if impact_report else [],
+      "top_boosts": (impact_report.get("discovery") or {}).get("top_boosts", [])[:3] if impact_report else [],
+    },
     "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
   }
 
@@ -63,7 +76,7 @@ def run_improvement_cycle(
     risk_consensus = {"error": str(exc)}
 
   _append_cycle_log(cycle)
-  return {"metrics": metrics, "okf": okf, "health": health, "cycle": cycle, "risk_consensus": cycle.get("risk_consensus")}
+  return {"metrics": metrics, "okf": okf, "health": health, "cycle": cycle, "risk_consensus": cycle.get("risk_consensus"), "impact": impact_report}
 
 
 def _persist_metrics_lessons(metrics: dict) -> Dict[str, Any]:
