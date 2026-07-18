@@ -36,6 +36,22 @@ FORUM_STRATEGY_CATALOG: Tuple[Dict[str, Any], ...] = (
     "skeptic_q": "Is Supertrend alignment already captured in our TV confluence score?",
   },
   {
+    "id": "chandelier_exit",
+    "name": "Chandelier Exit Trail",
+    "category": "tv_oss",
+    "keywords": ("chandelier exit", "chandelier stop", "atr trailing stop"),
+    "our_signal": "chandelier_aligned",
+    "skeptic_q": "Does Chandelier add edge beyond Supertrend alone?",
+  },
+  {
+    "id": "ttm_squeeze_release",
+    "name": "TTM Squeeze Release",
+    "category": "tv_oss",
+    "keywords": ("ttm squeeze", "squeeze release", "momentum histogram", "lazybear squeeze"),
+    "our_signal": "ttm_squeeze_release",
+    "skeptic_q": "Does squeeze release timing align with EW wave-3 entries?",
+  },
+  {
     "id": "funding_squeeze",
     "name": "Funding Rate Squeeze",
     "category": "derivatives",

@@ -57,6 +57,15 @@ def run_improvement_cycle(
     except Exception as exc:
       social_validation = {"error": str(exc)}
 
+  tv_oss = {}
+  if os.environ.get("EW_TV_OSS_CONSENSUS", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.tv_oss_consensus import run_tv_oss_consensus
+
+      tv_oss = run_tv_oss_consensus(use_llm=False)
+    except Exception as exc:
+      tv_oss = {"error": str(exc)}
+
   from engine.system_health import run_health_checks, save_health
   health = run_health_checks()
   save_health(health)
@@ -76,6 +85,11 @@ def run_improvement_cycle(
       "stance": social_validation.get("consensus_stance") if social_validation else None,
       "validated": social_validation.get("validated_strategies", [])[:3] if social_validation else [],
       "rejected": social_validation.get("rejected_strategies", [])[:3] if social_validation else [],
+    },
+    "tv_oss": {
+      "stance": tv_oss.get("consensus_stance") if tv_oss else None,
+      "active": tv_oss.get("active_indicators", [])[:5] if tv_oss else [],
+      "layer_weights": tv_oss.get("layer_weights") if tv_oss else {},
     },
     "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
   }
@@ -98,6 +112,7 @@ def run_improvement_cycle(
     "risk_consensus": cycle.get("risk_consensus"),
     "impact": impact_report,
     "social_validation": social_validation,
+    "tv_oss": tv_oss,
   }
 
 

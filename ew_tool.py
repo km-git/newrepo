@@ -120,6 +120,16 @@ def main() -> None:
     help="With --social-validate: use multi-AI brain panel (requires API keys)",
   )
   parser.add_argument(
+    "--tv-oss",
+    action="store_true",
+    help="Run TV OSS complementary stack executive consensus",
+  )
+  parser.add_argument(
+    "--tv-oss-llm",
+    action="store_true",
+    help="With --tv-oss: use multi-AI brain panel",
+  )
+  parser.add_argument(
     "--emergency-flatten",
     action="store_true",
     help="Cancel all orders and halt (dry-run unless --execute-live)",
@@ -236,6 +246,13 @@ def main() -> None:
       symbol=args.social_validate or "",
       use_llm=args.social_validate_llm,
     )
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.tv_oss:
+    from engine.tv_oss_consensus import run_tv_oss_consensus
+
+    result = run_tv_oss_consensus(use_llm=args.tv_oss_llm)
     print(json.dumps(result, indent=2, default=str))
     return
 

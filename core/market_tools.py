@@ -180,6 +180,14 @@ def build_market_confluence(
   if tv.get("supertrend", {}).get("available"):
     st = tv["supertrend"]
     signals.append(f"supertrend {st.get('signal')}")
+  if tv.get("chandelier", {}).get("available"):
+    ch = tv["chandelier"]
+    signals.append(f"chandelier {ch.get('signal')}")
+  if tv.get("ttm_squeeze", {}).get("squeeze_on"):
+    signals.append("TTM squeeze on")
+  elif tv.get("ttm_squeeze", {}).get("release"):
+    boost += 3
+    signals.append("TTM squeeze release")
   if tv.get("adx", {}).get("trend") == "strong":
     boost += 5
     signals.append(f"ADX {tv['adx'].get('adx', 0):.0f} strong trend")
