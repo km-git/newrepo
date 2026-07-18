@@ -30,6 +30,8 @@ CANDIDATE_SOURCES: Tuple[Dict[str, str], ...] = (
   {"id": "rsi_stack_bias", "category": "indicator", "desc": "Multi-TF RSI stack agrees"},
   {"id": "funding_carry", "category": "derivatives", "desc": "Funding rate favors direction"},
   {"id": "fear_greed_contrarian", "category": "sentiment", "desc": "Extreme fear long / greed short"},
+  {"id": "social_forum_validated", "category": "sentiment", "desc": "Forum strategy passed executive validation"},
+  {"id": "social_forum_rejected", "category": "sentiment", "desc": "Forum hype rejected by consensus"},
   {"id": "btc_correlation_filter", "category": "macro", "desc": "BTC correlation alignment"},
   {"id": "orderbook_imbalance", "category": "microstructure", "desc": "Bid/ask imbalance supports trade"},
   {"id": "hist_pair_tf_boost", "category": "feedback", "desc": "Strong tracked pair×TF history"},
@@ -249,6 +251,19 @@ def rank_data_sources(discovery: dict, metrics: Optional[dict] = None) -> List[d
     if src["id"] == "fear_greed_contrarian":
       evidence = "web_intel — contrarian at extremes"
       inferred_lift = 0.04
+    if src["id"] == "social_forum_validated":
+      try:
+        from engine.social_strategy_validation import load_social_validation
+
+        sv = load_social_validation()
+        if sv.get("validated_strategies"):
+          evidence = "social validation consensus — promoted strategies"
+          inferred_lift = 0.07
+      except Exception:
+        pass
+    if src["id"] == "social_forum_rejected":
+      evidence = "social validation — hype filtered out"
+      inferred_lift = -0.02
 
     for f in discovery.get("top_boosts", []):
       if src["category"] in f.get("factor", "") or src["id"].split("_")[0] in f.get("factor", ""):

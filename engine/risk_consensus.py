@@ -21,7 +21,7 @@ def risk_consensus_enabled() -> bool:
   return os.environ.get("EW_RISK_CONSENSUS", "1").lower() not in ("0", "false", "no")
 
 
-def _build_review_prompt(metrics: dict, tv_summary: dict, impact: Optional[dict] = None) -> str:
+def _build_review_prompt(metrics: dict, tv_summary: dict, impact: Optional[dict] = None, social: Optional[dict] = None) -> str:
   overall = metrics.get("overall") or {}
   wr = overall.get("win_rate")
   wr_s = f"{wr:.1%}" if wr is not None else "n/a"
@@ -56,6 +56,14 @@ def _build_review_prompt(metrics: dict, tv_summary: dict, impact: Optional[dict]
         for b in impact.get("discovery", {}).get("top_boosts", [])[:5]
       ),
       "recommendations: " + "; ".join(impact.get("recommendations", [])[:4]),
+    ])
+  if social and not social.get("skipped"):
+    lines.extend([
+      "",
+      "SOCIAL STRATEGY VALIDATION (forum/CT executive review):",
+      f"stance={social.get('consensus_stance')} validated={social.get('validated_strategies', [])[:3]}",
+      f"rejected={social.get('rejected_strategies', [])[:3]}",
+      f"summary: {(social.get('summary') or '')[:300]}",
     ])
   lines.extend([
     "",
@@ -116,7 +124,17 @@ def run_risk_consensus(
     impact = run_impact_discovery()
   except Exception as exc:
     impact = {"error": str(exc)}
-  prompt = _build_review_prompt(metrics, tv_summary, impact)
+
+  social_validation = {}
+  if os.environ.get("EW_SOCIAL_VALIDATION", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.social_strategy_validation import run_social_strategy_validation
+
+      social_validation = run_social_strategy_validation(use_llm=use_llm)
+    except Exception as exc:
+      social_validation = {"error": str(exc)}
+
+  prompt = _build_review_prompt(metrics, tv_summary, impact, social_validation)
 
   panel: Dict[str, Any] = {
     "consensus_stance": "caution",
@@ -171,6 +189,8 @@ def run_risk_consensus(
     "risk_adjustment": risk_adj,
     "tv_summary": tv_summary,
     "impact_discovery": impact.get("recommendations", []) if isinstance(impact, dict) else [],
+    "social_validation": social_validation.get("summary") if isinstance(social_validation, dict) else None,
+    "social_validated": social_validation.get("validated_strategies", []) if isinstance(social_validation, dict) else [],
     "global_win_rate": wr,
     "panel": panel.get("panel"),
   }

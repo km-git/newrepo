@@ -48,6 +48,15 @@ def run_improvement_cycle(
     except Exception as exc:
       impact_report = {"error": str(exc)}
 
+  social_validation = {}
+  if os.environ.get("EW_SOCIAL_VALIDATION", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.social_strategy_validation import run_social_strategy_validation
+
+      social_validation = run_social_strategy_validation(use_llm=False)
+    except Exception as exc:
+      social_validation = {"error": str(exc)}
+
   from engine.system_health import run_health_checks, save_health
   health = run_health_checks()
   save_health(health)
@@ -63,6 +72,11 @@ def run_improvement_cycle(
       "recommendations": impact_report.get("recommendations", []) if impact_report else [],
       "top_boosts": (impact_report.get("discovery") or {}).get("top_boosts", [])[:3] if impact_report else [],
     },
+    "social_validation": {
+      "stance": social_validation.get("consensus_stance") if social_validation else None,
+      "validated": social_validation.get("validated_strategies", [])[:3] if social_validation else [],
+      "rejected": social_validation.get("rejected_strategies", [])[:3] if social_validation else [],
+    },
     "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
   }
 
@@ -76,7 +90,15 @@ def run_improvement_cycle(
     risk_consensus = {"error": str(exc)}
 
   _append_cycle_log(cycle)
-  return {"metrics": metrics, "okf": okf, "health": health, "cycle": cycle, "risk_consensus": cycle.get("risk_consensus"), "impact": impact_report}
+  return {
+    "metrics": metrics,
+    "okf": okf,
+    "health": health,
+    "cycle": cycle,
+    "risk_consensus": cycle.get("risk_consensus"),
+    "impact": impact_report,
+    "social_validation": social_validation,
+  }
 
 
 def _persist_metrics_lessons(metrics: dict) -> Dict[str, Any]:

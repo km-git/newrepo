@@ -13,6 +13,23 @@ from gateway.web_intel import build_web_intel
 from gateway.ws_hub import get_ws_hub
 
 
+def _merge_social_intel(intel: dict, symbol: str) -> dict:
+  if os.environ.get("EW_SOCIAL_INTEL", "1").lower() in ("0", "false", "no"):
+    return intel
+  try:
+    from gateway.social_intel import build_social_intel
+
+    social = build_social_intel(symbol)
+    intel = dict(intel)
+    intel["social"] = social
+    if social.get("signals"):
+      intel["signals"] = list(intel.get("signals") or []) + social["signals"][:3]
+  except Exception as exc:
+    intel = dict(intel)
+    intel["social"] = {"available": False, "error": str(exc)}
+  return intel
+
+
 def data_hub_enabled() -> bool:
   return os.environ.get("EW_DATA_HUB", "1").lower() not in ("0", "false", "no")
 
@@ -50,6 +67,7 @@ def live_market_state(symbol: str, *, start_ws: bool = True) -> Dict[str, Any]:
   if data_hub_enabled() and os.environ.get("EW_WEB_INTEL", "1").lower() not in ("0", "false", "no"):
     try:
       intel = build_web_intel(symbol)
+      intel = _merge_social_intel(intel, symbol)
     except Exception as exc:
       intel = {"error": str(exc)}
   state: Dict[str, Any] = {
@@ -87,4 +105,10 @@ def enrich_market_tools(symbol: str, data: Dict[str, pd.DataFrame], tools: dict)
   fg = (state.get("web_intel") or {}).get("fear_greed") or {}
   if fg.get("available") and fg.get("value", 50) <= 25:
     tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + ["extreme fear"]
+  social = (state.get("web_intel") or {}).get("social") or {}
+  for c in (social.get("candidates") or [])[:2]:
+    if c.get("validation_prior") == "likely_valid":
+      sig = f"social validated: {c.get('name')}"
+      tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [sig]
+      tools["confluence_boost"] = min(int(tools.get("confluence_boost", 0)) + 2, 25)
   return tools
