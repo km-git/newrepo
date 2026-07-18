@@ -130,6 +130,11 @@ def main() -> None:
     help="With --tv-oss: use multi-AI brain panel",
   )
   parser.add_argument(
+    "--tv-oss-explore",
+    action="store_true",
+    help="Explore new dynamic-value TV OSS indicators + fine-tune",
+  )
+  parser.add_argument(
     "--emergency-flatten",
     action="store_true",
     help="Cancel all orders and halt (dry-run unless --execute-live)",
@@ -253,6 +258,13 @@ def main() -> None:
     from engine.tv_oss_consensus import run_tv_oss_consensus
 
     result = run_tv_oss_consensus(use_llm=args.tv_oss_llm)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.tv_oss_explore:
+    from engine.tv_oss_discovery import run_tv_oss_discovery
+
+    result = run_tv_oss_discovery(use_llm=args.tv_oss_llm)
     print(json.dumps(result, indent=2, default=str))
     return
 

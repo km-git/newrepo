@@ -30,6 +30,18 @@ TV_OSS_CATALOG: Tuple[Dict[str, str], ...] = (
   {"id": "vwap", "role": "anchor", "desc": "VWAP institutional anchor"},
 )
 
+# Exploration pool — dynamic value candidates not yet promoted to active stack
+TV_OSS_CANDIDATES: Tuple[Dict[str, Any], ...] = (
+  {"id": "cmf", "role": "flow", "desc": "Chaikin Money Flow — volume conviction", "pine_ref": "Chaikin Money Flow"},
+  {"id": "williams_r", "role": "momentum", "desc": "Williams %R — fast overbought/oversold", "pine_ref": "Williams %R"},
+  {"id": "aroon", "role": "strength", "desc": "Aroon — trend emergence timing", "pine_ref": "Aroon"},
+  {"id": "stoch_rsi", "role": "momentum", "desc": "Stochastic RSI — sensitive momentum", "pine_ref": "Stoch RSI"},
+  {"id": "obv_trend", "role": "flow", "desc": "OBV slope — volume flow confirmation", "pine_ref": "On Balance Volume"},
+  {"id": "wavetrend", "role": "momentum", "desc": "WaveTrend — CT momentum oscillator", "pine_ref": "WaveTrend"},
+  {"id": "keltner_break", "role": "volatility", "desc": "Keltner channel breakout", "pine_ref": "Keltner Channels"},
+  {"id": "fisher", "role": "momentum", "desc": "Fisher Transform — Gaussian normalized momentum", "pine_ref": "Fisher Transform"},
+)
+
 
 def _true_range(high: pd.Series, low: pd.Series, close: pd.Series) -> pd.Series:
   prev = close.shift(1)
@@ -344,6 +356,175 @@ def ttm_squeeze(
   }
 
 
+def chaikin_mf(df: pd.DataFrame, period: int = 20) -> Dict[str, Any]:
+  """Chaikin Money Flow — volume-weighted accumulation/distribution."""
+  if df is None or len(df) < period + 2 or "Volume" not in df.columns:
+    return {"available": False, "value": 0, "signal": "neutral"}
+
+  high = df["High"].astype(float)
+  low = df["Low"].astype(float)
+  close = df["Close"].astype(float)
+  vol = df["Volume"].astype(float)
+  hl = (high - low).replace(0, np.nan)
+  mfm = ((close - low) - (high - close)) / hl
+  mfv = mfm * vol
+  cmf = mfv.rolling(period).sum() / vol.rolling(period).sum()
+  val = float(cmf.iloc[-1]) if np.isfinite(cmf.iloc[-1]) else 0.0
+  if val > 0.1:
+    signal = "accumulation"
+  elif val < -0.1:
+    signal = "distribution"
+  else:
+    signal = "neutral"
+  return {"available": True, "value": round(val, 4), "signal": signal}
+
+
+def williams_r(df: pd.DataFrame, period: int = 14) -> Dict[str, Any]:
+  if df is None or len(df) < period + 1:
+    return {"available": False, "value": -50, "signal": "neutral"}
+
+  high = df["High"].astype(float).rolling(period).max()
+  low = df["Low"].astype(float).rolling(period).min()
+  close = df["Close"].astype(float)
+  wr = -100 * (high - close) / (high - low).replace(0, np.nan)
+  val = float(wr.iloc[-1]) if np.isfinite(wr.iloc[-1]) else -50.0
+  if val <= -80:
+    signal = "oversold"
+  elif val >= -20:
+    signal = "overbought"
+  else:
+    signal = "neutral"
+  return {"available": True, "value": round(val, 2), "signal": signal}
+
+
+def aroon(df: pd.DataFrame, period: int = 25) -> Dict[str, Any]:
+  if df is None or len(df) < period + 5:
+    return {"available": False, "signal": "neutral", "spread": 0}
+
+  high = df["High"].astype(float)
+  low = df["Low"].astype(float)
+  aroon_up = 100 * high.rolling(period + 1).apply(lambda x: x.argmax() / period, raw=True)
+  aroon_down = 100 * low.rolling(period + 1).apply(lambda x: x.argmin() / period, raw=True)
+  up = float(aroon_up.iloc[-1])
+  down = float(aroon_down.iloc[-1])
+  spread = up - down
+  if up > 70 and spread > 25:
+    signal = "bullish"
+  elif down > 70 and spread < -25:
+    signal = "bearish"
+  else:
+    signal = "neutral"
+  return {"available": True, "aroon_up": round(up, 1), "aroon_down": round(down, 1), "spread": round(spread, 1), "signal": signal}
+
+
+def stoch_rsi(df: pd.DataFrame, period: int = 14) -> Dict[str, Any]:
+  if df is None or len(df) < period * 2 + 5:
+    return {"available": False, "value": 0.5, "signal": "neutral"}
+
+  close = df["Close"].astype(float)
+  delta = close.diff()
+  gain = delta.clip(lower=0).rolling(period).mean()
+  loss = (-delta.clip(upper=0)).rolling(period).mean()
+  rs = gain / loss.replace(0, np.nan)
+  rsi = 100 - (100 / (1 + rs))
+  rsi_min = rsi.rolling(period).min()
+  rsi_max = rsi.rolling(period).max()
+  stoch = (rsi - rsi_min) / (rsi_max - rsi_min).replace(0, np.nan)
+  val = float(stoch.iloc[-1]) if np.isfinite(stoch.iloc[-1]) else 0.5
+  if val <= 0.2:
+    signal = "oversold"
+  elif val >= 0.8:
+    signal = "overbought"
+  else:
+    signal = "neutral"
+  return {"available": True, "value": round(val, 4), "signal": signal}
+
+
+def obv_trend(df: pd.DataFrame, lookback: int = 14) -> Dict[str, Any]:
+  if df is None or len(df) < lookback + 5 or "Volume" not in df.columns:
+    return {"available": False, "slope": 0, "signal": "neutral"}
+
+  close = df["Close"].astype(float)
+  vol = df["Volume"].astype(float)
+  direction = np.sign(close.diff()).fillna(0)
+  obv = (direction * vol).cumsum()
+  recent = obv.iloc[-lookback:]
+  x = np.arange(len(recent))
+  coef = np.polyfit(x, recent.values.astype(float), 1)
+  slope = float(coef[0])
+  if slope > 0:
+    signal = "bullish"
+  elif slope < 0:
+    signal = "bearish"
+  else:
+    signal = "neutral"
+  return {"available": True, "slope": round(slope, 2), "signal": signal}
+
+
+def wavetrend(df: pd.DataFrame, channel: int = 10, avg: int = 21) -> Dict[str, Any]:
+  """WaveTrend oscillator — popular TV OSS momentum."""
+  if df is None or len(df) < channel + avg + 5:
+    return {"available": False, "wt1": 0, "wt2": 0, "signal": "neutral"}
+
+  hlc3 = (df["High"] + df["Low"] + df["Close"]) / 3
+  hlc3 = hlc3.astype(float)
+  esa = hlc3.ewm(span=channel, adjust=False).mean()
+  d = (hlc3 - esa).abs().ewm(span=channel, adjust=False).mean()
+  ci = (hlc3 - esa) / (0.015 * d.replace(0, np.nan))
+  wt1 = ci.ewm(span=avg, adjust=False).mean()
+  wt2 = wt1.rolling(4).mean()
+  w1 = float(wt1.iloc[-1])
+  w2 = float(wt2.iloc[-1]) if np.isfinite(wt2.iloc[-1]) else w1
+  if w1 > w2 and w1 < -50:
+    signal = "bullish"
+  elif w1 < w2 and w1 > 50:
+    signal = "bearish"
+  else:
+    signal = "neutral"
+  return {"available": True, "wt1": round(w1, 2), "wt2": round(w2, 2), "signal": signal}
+
+
+_EXPLORATION_FN = {
+  "cmf": chaikin_mf,
+  "williams_r": williams_r,
+  "aroon": aroon,
+  "stoch_rsi": stoch_rsi,
+  "obv_trend": obv_trend,
+  "wavetrend": wavetrend,
+}
+
+
+def compute_exploration_signals(df: pd.DataFrame) -> Dict[str, Any]:
+  """Compute exploration-pool TV OSS indicators for dynamic value scoring."""
+  out: Dict[str, Any] = {}
+  for cand in TV_OSS_CANDIDATES:
+    fn = _EXPLORATION_FN.get(cand["id"])
+    if fn:
+      out[cand["id"]] = fn(df)
+    else:
+      out[cand["id"]] = {"available": False, "signal": "not_implemented"}
+  return out
+
+
+def score_candidate_alignment(indicator_id: str, sig: dict, direction: str) -> int:
+  """Score 0-100 how well an exploration indicator aligns with direction."""
+  if not sig.get("available"):
+    return 0
+  is_long = direction.upper() in ("LONG", "BULL")
+  signal = sig.get("signal", "neutral")
+
+  bullish = signal in ("bullish", "accumulation", "oversold", "momentum_up")
+  bearish = signal in ("bearish", "distribution", "overbought", "momentum_down")
+
+  if (is_long and bullish) or (not is_long and bearish):
+    return 75
+  if signal == "neutral":
+    return 40
+  if (is_long and bearish) or (not is_long and bullish):
+    return 15
+  return 50
+
+
 def compute_tv_signals(df: pd.DataFrame) -> Dict[str, Any]:
   """Bundle TV-style signals for one OHLCV frame."""
   st = supertrend(df)
@@ -501,6 +682,32 @@ def score_tv_confluence(
       notes.append("below VWAP trend short")
   layer_scores["anchor"] = max(-5, min(7, anc_pts))
 
+  # --- Dynamic exploration layer (promoted candidates) ---
+  flow_pts = 0
+  try:
+    from engine.tv_oss_discovery import load_tv_oss_discovery
+
+    promoted = load_tv_oss_discovery().get("all_promoted_exploration") or []
+    if not promoted:
+      from engine.tv_oss_consensus import load_tv_oss_consensus
+
+      promoted = load_tv_oss_consensus().get("promoted_exploration") or []
+    if promoted:
+      exp = compute_exploration_signals(df)
+      for pid in promoted[:3]:
+        sig = exp.get(pid) or {}
+        align = score_candidate_alignment(pid, sig, direction)
+        if align >= 70:
+          flow_pts += 5
+          notes.append(f"explore:{pid} {sig.get('signal')} aligned")
+        elif align <= 20:
+          flow_pts -= 4
+          notes.append(f"explore:{pid} opposes")
+  except Exception:
+    pass
+  if flow_pts:
+    layer_scores["flow"] = max(-8, min(10, flow_pts))
+
   # Weighted composite + baseline
   raw = sum(layer_scores.get(k, 0) * weights.get(k, 1.0) for k in layer_scores)
   score = max(0, min(100, int(raw + 30)))
@@ -532,4 +739,4 @@ def _default_layer_weights() -> Dict[str, float]:
       return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
       pass
-  return {"trend": 1.0, "volatility": 1.0, "strength": 1.0, "momentum": 0.9, "anchor": 0.85}
+  return {"trend": 1.0, "volatility": 1.0, "strength": 1.0, "momentum": 0.9, "anchor": 0.85, "flow": 0.85}

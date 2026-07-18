@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core.tv_indicators import TV_OSS_CATALOG
+from core.tv_indicators import TV_OSS_CATALOG, TV_OSS_CANDIDATES
 
 
 TV_OSS_STATE = Path(os.environ.get("EW_TV_OSS_STATE", "output/system/tv_oss_consensus.json"))
@@ -121,10 +121,28 @@ def run_tv_oss_consensus(*, use_llm: bool = False) -> Dict[str, Any]:
   if not tv_oss_consensus_enabled():
     return {"skipped": True, "reason": "EW_TV_OSS_CONSENSUS disabled"}
 
+  discovery = {}
+  if os.environ.get("EW_TV_OSS_EXPLORE", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.tv_oss_discovery import run_tv_oss_discovery
+
+      discovery = run_tv_oss_discovery(use_llm=use_llm)
+    except Exception as exc:
+      discovery = {"error": str(exc)}
+
   impact = _cross_reference_impact()
   ranked = _rank_indicators(impact)
-  layer_weights = _build_layer_weights(ranked)
+
+  # Boost exploration promotions in ranked list
+  promoted_explore = set(discovery.get("all_promoted_exploration") or [])
+  for r in ranked:
+    if r["id"] in promoted_explore:
+      r["inferred_lift"] = round(r["inferred_lift"] + 0.04, 3)
+      r["evidence"] = "promoted via dynamic discovery"
+
+  layer_weights = discovery.get("layer_weights") or _build_layer_weights(ranked)
   active = [r["id"] for r in ranked if r["inferred_lift"] >= 0.05][:5]
+  active += [p for p in promoted_explore if p not in active][:2]
 
   panel = {
     "stance": "agree" if active else "caution",
@@ -168,11 +186,18 @@ def run_tv_oss_consensus(*, use_llm: bool = False) -> Dict[str, Any]:
     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     "consensus_stance": panel["stance"],
     "summary": panel["summary"],
-    "active_indicators": panel["active_indicators"],
-    "layer_weights": panel["layer_weights"],
+    "active_indicators": active[:6],
+    "layer_weights": layer_weights,
     "ranked_indicators": ranked,
+    "promoted_exploration": list(promoted_explore),
+    "discovery": {
+      "top_candidates": (discovery.get("top_candidates") or [])[:4],
+      "new_promotions": discovery.get("new_promotions", []),
+      "summary": discovery.get("summary"),
+    } if discovery and not discovery.get("skipped") else {},
     "actions": panel.get("actions", []),
     "catalog": list(TV_OSS_CATALOG),
+    "exploration_pool": list(TV_OSS_CANDIDATES),
   }
 
   _save_state(result)

@@ -30,6 +30,8 @@ CANDIDATE_SOURCES: Tuple[Dict[str, str], ...] = (
   {"id": "chandelier_aligned", "category": "tv_oss", "desc": "Chandelier Exit confirms Supertrend"},
   {"id": "ttm_squeeze_release", "category": "tv_oss", "desc": "TTM Squeeze release aligned with direction"},
   {"id": "vwap_anchor_favorable", "category": "tv_oss", "desc": "VWAP anchor favors entry side"},
+  {"id": "cmf_flow_aligned", "category": "tv_oss", "desc": "Chaikin MF accumulation supports direction"},
+  {"id": "aroon_trend_emerge", "category": "tv_oss", "desc": "Aroon spread confirms trend emergence"},
   {"id": "rsi_stack_bias", "category": "indicator", "desc": "Multi-TF RSI stack agrees"},
   {"id": "funding_carry", "category": "derivatives", "desc": "Funding rate favors direction"},
   {"id": "fear_greed_contrarian", "category": "sentiment", "desc": "Extreme fear long / greed short"},
