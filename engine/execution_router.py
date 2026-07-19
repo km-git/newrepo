@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 from engine.broker.symbol_map import client_order_id, for_kraken_cli
+from engine.execution_advanced import compute_leg_dollars, resolve_account_equity
 
 
 def _parse_dca_legs(raw: Any) -> List[dict]:
@@ -21,6 +23,40 @@ def _parse_dca_legs(raw: Any) -> List[dict]:
     except (json.JSONDecodeError, TypeError):
       return []
   return []
+
+
+def _leg_notional_usd(row: dict, leg: dict, leg_n: int) -> float:
+  """Resolve USD notional for one DCA leg from export columns or risk formula."""
+  usd_key = f"leg{leg_n}_usd"
+  usd = float(row.get(usd_key) or 0)
+  if usd > 0:
+    return usd
+
+  pos_usd = float(row.get("position_notional_usd") or 0)
+  if pos_usd > 0:
+    pct = float(leg.get("size_pct") or 0) / 100.0
+    return pos_usd * pct
+
+  wae = float(row.get("wae") or 0)
+  stop = float(row.get("stop_loss") or 0)
+  risk_pct = float(row.get("account_risk_pct") or 0)
+  if wae <= 0 or stop <= 0 or risk_pct <= 0:
+    return 0.0
+
+  legs = _parse_dca_legs(row.get("dca_legs"))
+  if not legs:
+    return 0.0
+  equity = float(row.get("account_equity") or resolve_account_equity())
+  sizing = compute_leg_dollars(
+    equity,
+    legs,
+    wae,
+    stop,
+    risk_pct,
+    float(row.get("gtc_size_cap_pct") or 100),
+    macro_long_boost_pct=float(row.get("macro_long_boost_pct") or 0),
+  )
+  return float(sizing.get("leg_usd", {}).get(usd_key, 0))
 
 
 def row_to_orders(row: dict) -> List[Dict[str, Any]]:
@@ -43,12 +79,13 @@ def row_to_orders(row: dict) -> List[Dict[str, Any]]:
     price = float(leg.get("price") or 0)
     if price <= 0:
       continue
-    usd_key = f"leg{leg_n}_usd"
-    usd = float(row.get(usd_key) or 0)
-    if usd <= 0:
+    usd = _leg_notional_usd(row, leg, leg_n)
+    if usd <= 0 and cap < 1.0:
+      # Legacy rows: position_notional may omit tier cap — apply probe cap once.
       pos_usd = float(row.get("position_notional_usd") or 0)
-      pct = float(leg.get("size_pct") or 0) / 100.0
-      usd = pos_usd * pct * cap
+      if pos_usd > 0:
+        pct = float(leg.get("size_pct") or 0) / 100.0
+        usd = pos_usd * pct * cap
     amount = usd / price if price else 0
     if amount <= 0:
       continue
