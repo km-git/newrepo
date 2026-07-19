@@ -40,6 +40,7 @@ def compute_risk_multiplier(
   hist_n: int = 0,
   gtc_tier: str = "executable",
   honest_tier: str = "probe",
+  wave_structure: str = "",
 ) -> Dict[str, Any]:
   """
   Continuous risk multiplier 0.25–1.25 applied to account risk %.
@@ -114,6 +115,28 @@ def compute_risk_multiplier(
       factors.append(f"drawdown {dd:.1f}% elevated → ×0.75")
   except Exception:
     pass
+
+  # Balanced impact-discovery weights (capped per-factor)
+  if dynamic_risk_enabled() and timeframe:
+    try:
+      from engine.impact_discovery import load_impact_report, match_setup_factors
+
+      keys = match_setup_factors(
+        timeframe=timeframe,
+        direction=direction,
+        honest_tier=honest_tier,
+        gtc_tier=gtc_tier,
+        wave_structure=wave_structure,
+      )
+      report = load_impact_report()
+      weights = (report.get("balanced_weights") or {}).get("weights") or {}
+      impact_adj = sum(weights.get(k, 0) for k in keys)
+      impact_adj = max(-0.12, min(0.12, impact_adj))
+      if impact_adj:
+        mult *= 1 + impact_adj
+        factors.append(f"impact_discovery net {impact_adj:+.1%} → ×{1+impact_adj:.2f}")
+    except Exception:
+      pass
 
   # Probe tier cap
   if honest_tier == "probe":

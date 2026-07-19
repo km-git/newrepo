@@ -22,11 +22,11 @@ jobs:
         run: bash scripts/setup_environment.sh --skip-auth
 
       - name: Run pytest
-        run: python -m pytest tests/ -q --tb=short
+        run: .venv/bin/python -m pytest tests/ -q --tb=short
 
       - name: E2E health (offline)
         run: |
-          EW_WEB_INTEL=0 EW_WS_ENABLED=0 python scripts/e2e_trading_cycle.py --health
+          EW_WEB_INTEL=0 EW_WS_ENABLED=0 EW_HEALTH_REQUIRE_ARTIFACTS=0 .venv/bin/python scripts/e2e_trading_cycle.py --health
         env:
           EW_OKF_BRAIN_DIR: /tmp/ew-okf-test
           EW_PAPER_LEDGER: /tmp/ew-paper-test.json

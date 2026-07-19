@@ -108,6 +108,33 @@ def main() -> None:
     help="Fetch WS + web intel snapshot for symbol",
   )
   parser.add_argument(
+    "--social-validate",
+    nargs="?",
+    const="",
+    metavar="SYMBOL",
+    help="Validate forum/social strategies via executive consensus (optional symbol)",
+  )
+  parser.add_argument(
+    "--social-validate-llm",
+    action="store_true",
+    help="With --social-validate: use multi-AI brain panel (requires API keys)",
+  )
+  parser.add_argument(
+    "--tv-oss",
+    action="store_true",
+    help="Run TV OSS complementary stack executive consensus",
+  )
+  parser.add_argument(
+    "--tv-oss-llm",
+    action="store_true",
+    help="With --tv-oss: use multi-AI brain panel",
+  )
+  parser.add_argument(
+    "--tv-oss-explore",
+    action="store_true",
+    help="Explore new dynamic-value TV OSS indicators + fine-tune",
+  )
+  parser.add_argument(
     "--emergency-flatten",
     action="store_true",
     help="Cancel all orders and halt (dry-run unless --execute-live)",
@@ -215,6 +242,30 @@ def main() -> None:
   if args.data_intel:
     from gateway.data_hub import live_market_state
     print(json.dumps(live_market_state(args.data_intel), indent=2, default=str))
+    return
+
+  if args.social_validate is not None:
+    from engine.social_strategy_validation import run_social_strategy_validation
+
+    result = run_social_strategy_validation(
+      symbol=args.social_validate or "",
+      use_llm=args.social_validate_llm,
+    )
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.tv_oss:
+    from engine.tv_oss_consensus import run_tv_oss_consensus
+
+    result = run_tv_oss_consensus(use_llm=args.tv_oss_llm)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.tv_oss_explore:
+    from engine.tv_oss_discovery import run_tv_oss_discovery
+
+    result = run_tv_oss_discovery(use_llm=args.tv_oss_llm)
+    print(json.dumps(result, indent=2, default=str))
     return
 
   if args.emergency_flatten:

@@ -45,6 +45,50 @@ def test_tv_confluence_long():
   result = score_tv_confluence(df, "LONG")
   assert 0 <= result["score"] <= 100
   assert "signals" in result
+  assert "layers" in result
+  assert "trend" in result["layers"]
+
+
+def test_chandelier_exit():
+  from core.tv_indicators import chandelier_exit
+
+  ch = chandelier_exit(_sample_ohlcv(60))
+  assert ch["available"] is True
+  assert ch["signal"] in ("bullish", "bearish", "neutral")
+
+
+def test_ttm_squeeze():
+  from core.tv_indicators import ttm_squeeze
+
+  sq = ttm_squeeze(_sample_ohlcv(80))
+  assert sq["available"] is True
+  assert "squeeze_on" in sq
+
+
+def test_hull_ma():
+  from core.tv_indicators import hull_ma_trend
+
+  hm = hull_ma_trend(_sample_ohlcv(50))
+  assert hm["available"] is True
+
+
+def test_tv_oss_catalog_complete():
+  from core.tv_indicators import TV_OSS_CATALOG, compute_tv_signals
+
+  assert len(TV_OSS_CATALOG) >= 8
+  sig = compute_tv_signals(_sample_ohlcv(100))
+  assert "chandelier" in sig
+  assert "ttm_squeeze" in sig
+  assert "hull_ma" in sig
+
+
+def test_tv_oss_consensus_offline():
+  from engine.tv_oss_consensus import run_tv_oss_consensus
+
+  result = run_tv_oss_consensus(use_llm=False)
+  assert result.get("consensus_stance") in ("agree", "caution", "reject")
+  assert len(result.get("active_indicators", [])) >= 1
+  assert "layer_weights" in result
 
 
 def test_dynamic_risk_poor_history():

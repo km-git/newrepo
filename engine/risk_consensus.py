@@ -21,7 +21,7 @@ def risk_consensus_enabled() -> bool:
   return os.environ.get("EW_RISK_CONSENSUS", "1").lower() not in ("0", "false", "no")
 
 
-def _build_review_prompt(metrics: dict, tv_summary: dict) -> str:
+def _build_review_prompt(metrics: dict, tv_summary: dict, impact: Optional[dict] = None, social: Optional[dict] = None, tv_oss: Optional[dict] = None) -> str:
   overall = metrics.get("overall") or {}
   wr = overall.get("win_rate")
   wr_s = f"{wr:.1%}" if wr is not None else "n/a"
@@ -45,10 +45,39 @@ def _build_review_prompt(metrics: dict, tv_summary: dict) -> str:
     "",
     "TV OSS INDICATOR SUMMARY:",
     json.dumps(tv_summary, indent=2)[:2000],
+  ])
+  if impact:
+    lines.extend([
+      "",
+      "IMPACT DISCOVERY (hidden factors):",
+      f"baseline_wr={impact.get('discovery', {}).get('baseline_wr')}",
+      "top_boosts: " + ", ".join(
+        f"{b['factor']}({b.get('lift_vs_baseline', 0):+.1%})"
+        for b in impact.get("discovery", {}).get("top_boosts", [])[:5]
+      ),
+      "recommendations: " + "; ".join(impact.get("recommendations", [])[:4]),
+    ])
+  if social and not social.get("skipped"):
+    lines.extend([
+      "",
+      "SOCIAL STRATEGY VALIDATION (forum/CT executive review):",
+      f"stance={social.get('consensus_stance')} validated={social.get('validated_strategies', [])[:3]}",
+      f"rejected={social.get('rejected_strategies', [])[:3]}",
+      f"summary: {(social.get('summary') or '')[:300]}",
+    ])
+  if tv_oss and not tv_oss.get("skipped"):
+    lines.extend([
+      "",
+      "TV OSS COMPLEMENTARY STACK (TradingView open-source):",
+      f"active={tv_oss.get('active_indicators', [])}",
+      f"layer_weights={tv_oss.get('layer_weights', {})}",
+      f"summary: {(tv_oss.get('summary') or '')[:300]}",
+    ])
+  lines.extend([
     "",
     "QUESTION: Given historical outcomes and TV indicator alignment data,",
     "should we tighten risk (reduce probe size), maintain, or allow selective boost?",
-    "List 1-3 concrete actions.",
+    "List 1-3 concrete actions. Prioritize hidden high-lift factors over adding more indicators.",
   ])
   return "\n".join(lines)
 
@@ -75,7 +104,11 @@ def summarize_tv_efficacy(metrics: dict) -> Dict[str, Any]:
       if ranked and ranked[-1].get("win_rate", 1) < 0.52
       else "Maintain current TV filter weights."
     ),
-    "tv_filters": ["supertrend", "bollinger_pct_b", "adx_trend"],
+    "tv_filters": [
+      "cvd", "footprint", "volume_profile", "tpo", "anchored_vwap",
+      "liquidity_pools", "hidden_liquidity",
+      "supertrend", "chandelier", "ttm_squeeze", "adx",
+    ],
     "dynamic_risk": "EW_DYNAMIC_RISK=1 scales size by vol percentile + TV score + history",
   }
 
@@ -96,7 +129,33 @@ def run_risk_consensus(
 
   metrics = metrics or load_metrics()
   tv_summary = summarize_tv_efficacy(metrics)
-  prompt = _build_review_prompt(metrics, tv_summary)
+  impact = {}
+  try:
+    from engine.impact_discovery import run_impact_discovery
+
+    impact = run_impact_discovery()
+  except Exception as exc:
+    impact = {"error": str(exc)}
+
+  social_validation = {}
+  if os.environ.get("EW_SOCIAL_VALIDATION", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.social_strategy_validation import run_social_strategy_validation
+
+      social_validation = run_social_strategy_validation(use_llm=use_llm)
+    except Exception as exc:
+      social_validation = {"error": str(exc)}
+
+  tv_oss = {}
+  if os.environ.get("EW_TV_OSS_CONSENSUS", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.tv_oss_consensus import run_tv_oss_consensus
+
+      tv_oss = run_tv_oss_consensus(use_llm=use_llm)
+    except Exception as exc:
+      tv_oss = {"error": str(exc)}
+
+  prompt = _build_review_prompt(metrics, tv_summary, impact, social_validation, tv_oss)
 
   panel: Dict[str, Any] = {
     "consensus_stance": "caution",
@@ -150,6 +209,11 @@ def run_risk_consensus(
     "actions": panel.get("actions", []),
     "risk_adjustment": risk_adj,
     "tv_summary": tv_summary,
+    "impact_discovery": impact.get("recommendations", []) if isinstance(impact, dict) else [],
+    "social_validation": social_validation.get("summary") if isinstance(social_validation, dict) else None,
+    "social_validated": social_validation.get("validated_strategies", []) if isinstance(social_validation, dict) else [],
+    "tv_oss_active": tv_oss.get("active_indicators", []) if isinstance(tv_oss, dict) else [],
+    "tv_oss_weights": tv_oss.get("layer_weights") if isinstance(tv_oss, dict) else {},
     "global_win_rate": wr,
     "panel": panel.get("panel"),
   }

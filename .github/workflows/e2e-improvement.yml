@@ -21,16 +21,16 @@ jobs:
         run: bash scripts/setup_environment.sh --skip-auth
 
       - name: Run tests
-        run: python -m pytest tests/ -q --tb=line -x
+        run: .venv/bin/python -m pytest tests/ -q --tb=line -x
 
       - name: Learning phase (offline metrics)
-        run: python -c "from engine.improvement_cycle import run_improvement_cycle; print(run_improvement_cycle())"
+        run: .venv/bin/python -c "from engine.improvement_cycle import run_improvement_cycle; print(run_improvement_cycle())"
         env:
           EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci
           EW_WEB_INTEL: "0"
           EW_WS_ENABLED: "0"
 
       - name: System health
-        run: python scripts/e2e_trading_cycle.py --health
+        run: .venv/bin/python scripts/e2e_trading_cycle.py --health
         env:
           EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci

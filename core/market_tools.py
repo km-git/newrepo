@@ -132,22 +132,35 @@ def build_market_confluence(
     "raw_indicators": raw,
   }
 
-  # TV OSS indicators (Supertrend, Bollinger, ADX)
-  if df_p is not None and len(df_p) >= 30:
-    from core.tv_indicators import compute_tv_signals, score_tv_confluence
-
-    tools["tv_signals"] = compute_tv_signals(df_p)
-    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG")  # default; per-setup scored in outcomes
-  else:
-    tools["tv_signals"] = {"available": False}
-    tools["tv_confluence"] = {"score": 0, "aligned": False, "signals": []}
-
+  # Order book first — upgrades hidden liquidity / footprint scoring
   if exchange is not None:
     tools["orderbook"] = orderbook_imbalance(exchange, symbol)
     tools["funding"] = funding_rate_snapshot(exchange, symbol)
   else:
     tools["orderbook"] = {"available": False}
     tools["funding"] = {"available": False}
+
+  orderbook = tools.get("orderbook") if tools.get("orderbook", {}).get("available") else None
+
+  # TV OSS + microstructure (CVD, VP, TPO, liquidity, AVWAP)
+  if df_p is not None and len(df_p) >= 30:
+    from core.tv_indicators import compute_tv_signals, score_tv_confluence
+    from core.tv_microstructure import compute_microstructure_signals, score_microstructure_confluence
+    from core.tv_cycles import compute_cycle_signals, score_cycle_confluence
+
+    tools["tv_signals"] = compute_tv_signals(df_p, orderbook=orderbook)
+    tools["microstructure"] = compute_microstructure_signals(df_p, orderbook)
+    tools["cycles"] = compute_cycle_signals(df_p)
+    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG", orderbook=orderbook)
+    tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], "LONG")
+    tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], "LONG")
+  else:
+    tools["tv_signals"] = {"available": False}
+    tools["microstructure"] = {"available": False}
+    tools["tv_confluence"] = {"score": 0, "aligned": False, "signals": []}
+    tools["ms_confluence"] = {"score": 0, "aligned": False, "signals": []}
+    tools["cycles"] = {"available": False}
+    tools["cycle_confluence"] = {"score": 0, "aligned": False, "signals": [], "strategy_mode": "neutral"}
 
   # Confluence score boost for readiness (0-20)
   boost = 0
@@ -180,10 +193,35 @@ def build_market_confluence(
   if tv.get("supertrend", {}).get("available"):
     st = tv["supertrend"]
     signals.append(f"supertrend {st.get('signal')}")
+  if tv.get("chandelier", {}).get("available"):
+    ch = tv["chandelier"]
+    signals.append(f"chandelier {ch.get('signal')}")
+  if tv.get("ttm_squeeze", {}).get("squeeze_on"):
+    signals.append("TTM squeeze on")
+  elif tv.get("ttm_squeeze", {}).get("release"):
+    boost += 3
+    signals.append("TTM squeeze release")
   if tv.get("adx", {}).get("trend") == "strong":
     boost += 5
     signals.append(f"ADX {tv['adx'].get('adx', 0):.0f} strong trend")
 
-  tools["confluence_boost"] = min(boost, 20)
+  ms = tools.get("ms_confluence") or {}
+  if ms.get("aligned"):
+    boost += 6
+    signals.extend((ms.get("signals") or [])[:2])
+  elif ms.get("score", 50) < 40:
+    signals.append(f"microstructure weak ({ms.get('score')})")
+
+  cc = tools.get("cycle_confluence") or {}
+  if cc.get("strategy_mode") == "trend":
+    boost += 4
+    signals.append(f"Hurst trend regime")
+  elif cc.get("strategy_mode") == "mean_revert":
+    signals.append(f"Hurst mean-revert regime")
+  if cc.get("aligned"):
+    boost += 5
+    signals.extend((cc.get("signals") or [])[:2])
+
+  tools["confluence_boost"] = min(boost, 28)
   tools["confluence_signals"] = signals
   return tools
