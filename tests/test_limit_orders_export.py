@@ -116,6 +116,14 @@ def test_build_limit_order_row_has_dca_legs():
   assert row.get("dca_profile")
 
 
+def test_build_limit_order_row_includes_notional_sizing():
+  row = build_limit_order_row(_sample_result(), "15m")
+  assert float(row.get("position_notional_usd") or 0) > 0
+  assert float(row.get("risk_budget_usd") or 0) > 0
+  assert float(row.get("leg1_usd") or 0) > 0
+  assert float(row.get("account_equity") or 0) == 10_000.0
+
+
 def test_build_all_limit_orders_row_count():
   results = [_sample_result("A/USDT"), _sample_result("B/USDT")]
   rows = build_all_limit_orders(results)
@@ -127,11 +135,18 @@ def test_export_limit_orders_writes_csv(tmp_path: Path):
   meta = export_limit_orders(results, output_dir=tmp_path, write_json=True)
   assert meta["row_count"] == 2 * len(ALL_TIMEFRAMES)
   assert meta["expected_rows"] == 250
+  assert meta["account_equity"] == 10_000.0
   assert Path(meta["csv"]).exists()
   assert Path(meta["latest_csv"]).exists()
   assert Path(meta["matrix_html"]).exists()
   assert Path(meta["json"]).exists()
   assert sum(meta["tier_counts"].values()) == meta["row_count"]
+
+  import csv
+  rows = list(csv.DictReader(Path(meta["latest_csv"]).open()))
+  exec_row = next(r for r in rows if r.get("gtc_tier") == "executable" and r.get("row_type") == "primary")
+  assert float(exec_row.get("position_notional_usd") or 0) > 0
+  assert float(exec_row.get("leg1_usd") or 0) > 0
 
 
 @pytest.mark.skipif(

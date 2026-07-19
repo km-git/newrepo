@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -18,6 +19,22 @@ def _r(x: float, decimals: int = 6) -> float:
 
 DEFAULT_MACRO_LONG_UPGRADE_PCT = 8.45
 DEFAULT_MACRO_NUKE_PCT = 8.953
+DEFAULT_ACCOUNT_EQUITY = 10_000.0
+
+
+def resolve_account_equity(account_equity: Optional[float] = None) -> float:
+  """Paper/live equity for notional sizing — env ACCOUNT_EQUITY, default $10k."""
+  if account_equity is not None:
+    try:
+      eq = float(account_equity)
+      if eq > 0:
+        return eq
+    except (TypeError, ValueError):
+      pass
+  try:
+    return max(0.0, float(os.environ.get("ACCOUNT_EQUITY", DEFAULT_ACCOUNT_EQUITY)))
+  except (TypeError, ValueError):
+    return DEFAULT_ACCOUNT_EQUITY
 
 DCA_PROFILE_PYRAMID = "pyramid_4"
 DCA_PROFILE_10_90 = "two_layer_10_90"
@@ -258,6 +275,32 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
   ]
 
 
+def apply_notional_sizing(row: dict, legs: List[dict], ctx: ExportContext) -> dict:
+  """Attach account equity, risk budget, position notional, and per-leg USD."""
+  row = dict(row)
+  equity = resolve_account_equity(ctx.account_equity)
+  if equity <= 0 or not legs:
+    return row
+  macro = ctx.macro_eval
+  boost = float(row.get("macro_long_boost_pct") or macro.get("long_boost_pct") or 0)
+  sizing = compute_leg_dollars(
+    equity,
+    legs,
+    float(row["wae"]),
+    float(row["stop_loss"]),
+    float(row.get("account_risk_pct") or 0),
+    float(row.get("gtc_size_cap_pct") or 100),
+    macro_long_boost_pct=boost if row.get("direction") == "LONG" else 0,
+  )
+  row["account_equity"] = sizing["account_equity"]
+  row["risk_budget_usd"] = sizing["risk_budget_usd"]
+  row["position_notional_usd"] = sizing["position_notional_usd"]
+  row["position_units"] = sizing["position_units"]
+  for k, v in sizing["leg_usd"].items():
+    row[k] = v
+  return row
+
+
 def enrich_row_with_advanced(
   row: dict,
   legs: List[dict],
@@ -269,20 +312,7 @@ def enrich_row_with_advanced(
   row = apply_macro_to_row(row, ctx)
   row["dca_profile"] = dca_profile
   row["dca_profile_reason"] = profile_reason
-  macro = ctx.macro_eval
-  boost = float(row.get("macro_long_boost_pct") or macro.get("long_boost_pct") or 0)
-  if ctx.account_equity and float(ctx.account_equity) > 0:
-    sizing = compute_leg_dollars(
-      float(ctx.account_equity), legs, float(row["wae"]), float(row["stop_loss"]),
-      float(row.get("account_risk_pct") or 0), float(row.get("gtc_size_cap_pct") or 100),
-      macro_long_boost_pct=boost if row.get("direction") == "LONG" else 0,
-    )
-    row["account_equity"] = sizing["account_equity"]
-    row["risk_budget_usd"] = sizing["risk_budget_usd"]
-    row["position_notional_usd"] = sizing["position_notional_usd"]
-    row["position_units"] = sizing["position_units"]
-    for k, v in sizing["leg_usd"].items():
-      row[k] = v
+  row = apply_notional_sizing(row, legs, ctx)
   if contingent_scenarios:
     row["order_mode"] = "contingent_dual"
     row["contingent_scenarios"] = contingent_scenarios
@@ -309,7 +339,12 @@ def dca_legs_to_columns(dca: List[dict]) -> Dict[str, Any]:
   }
 
 
-def expand_contingent_rows(base_row: dict, scenarios: List[dict]) -> List[dict]:
+def expand_contingent_rows(
+  base_row: dict,
+  scenarios: List[dict],
+  ctx: Optional[ExportContext] = None,
+) -> List[dict]:
+  ctx = ctx or ExportContext(account_equity=resolve_account_equity())
   children: List[dict] = []
   for sc in scenarios:
     child = {k: v for k, v in base_row.items() if k not in ("contingent_scenarios", "dca_legs")}
@@ -328,6 +363,8 @@ def expand_contingent_rows(base_row: dict, scenarios: List[dict]) -> List[dict]:
     child["tp1"] = sc["targets"][0]["price"]
     child["tp2"] = sc["targets"][1]["price"]
     child["tp3"] = sc["targets"][2]["price"]
+    child["dca_legs"] = sc["dca"]
     child.update(dca_legs_to_columns(sc["dca"]))
+    child = apply_notional_sizing(child, sc["dca"], ctx)
     children.append(child)
   return children

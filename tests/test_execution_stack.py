@@ -44,11 +44,22 @@ def test_row_to_orders_produces_legs():
   assert limits[0]["client_id"].startswith("ew-")
 
 
-def test_row_to_orders_parses_json_dca_legs():
+def test_row_to_orders_derives_sizing_from_risk_fields():
   import json
-  legs = [{"leg": 1, "price": 100000, "size_pct": 10}]
-  orders = row_to_orders(_row(dca_legs=json.dumps(legs), leg1_usd=100))
-  assert len([o for o in orders if o["type"] == "limit"]) == 1
+  legs = [{"leg": 1, "price": 100000, "size_pct": 10}, {"leg": 2, "price": 99000, "size_pct": 20}]
+  orders = row_to_orders(_row(
+    dca_legs=json.dumps(legs),
+    position_notional_usd=0,
+    leg1_usd=0,
+    leg2_usd=0,
+    account_risk_pct=0.75,
+    wae=99500,
+    stop_loss=95000,
+    account_equity=10000,
+  ))
+  limits = [o for o in orders if o["type"] == "limit"]
+  assert len(limits) == 2
+  assert limits[0]["notional_usd"] > 0
 
 
 def test_gate_blocks_nuke():

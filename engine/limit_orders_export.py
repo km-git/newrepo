@@ -25,6 +25,7 @@ from engine.execution_advanced import (
   build_contingent_scenarios,
   enrich_row_with_advanced,
   expand_contingent_rows,
+  resolve_account_equity,
   select_dca_profile,
 )
 
@@ -191,8 +192,9 @@ def build_export_context(
     bc = mkt.get("btc_correlation") or {}
     if bc.get("high_beta"):
       high_beta.append(r.get("symbol", "?"))
+  equity = resolve_account_equity(account_equity)
   return ExportContext(
-    account_equity=account_equity,
+    account_equity=equity,
     macro=MacroState(usdt_d_pct=usdt_d_pct),
     high_beta_symbols=high_beta,
   )
@@ -492,7 +494,7 @@ def build_all_limit_orders(
       rows.append(primary)
       contingent = primary.get("contingent_scenarios")
       if contingent:
-        rows.extend(expand_contingent_rows(primary, contingent))
+        rows.extend(expand_contingent_rows(primary, contingent, ctx))
   return rows
 
 
@@ -619,7 +621,7 @@ def save_limit_orders_matrix_html(
   symbols = sorted(by_sym.keys())
   tfs = list(ALL_TIMEFRAMES)
   ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-  equity_line = f" · ${account_equity:,.0f} equity" if account_equity else ""
+  equity_line = f" · ${(account_equity or resolve_account_equity()):,.0f} equity"
 
   header = "".join(f"<th>{html.escape(tf)}</th>" for tf in tfs)
   body_rows = []
@@ -694,6 +696,7 @@ def export_limit_orders(
   save_performance_report(metrics)
 
   ctx = build_export_context(results, account_equity=account_equity, usdt_d_pct=usdt_d_pct)
+  resolved_equity = ctx.account_equity
   ctx.historical_metrics = metrics
   ts = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
   rows = build_all_limit_orders(results, ctx=ctx)
@@ -718,7 +721,7 @@ def export_limit_orders(
   matrix_html = output_dir / "latest_trade_setups_matrix.html"
   save_limit_orders_matrix_html(
     rows, matrix_html, title="Trade Setups — All Pairs × Timeframes",
-    account_equity=account_equity,
+    account_equity=resolved_equity,
   )
 
   meta = {
@@ -735,7 +738,7 @@ def export_limit_orders(
     "stable_csv": str(stable_csv),
     "matrix_html": str(matrix_html),
     "dca_splits_pct": DCA_SPLITS,
-    "account_equity": account_equity,
+    "account_equity": resolved_equity,
     "usdt_d_pct": usdt_d_pct,
     "macro": ctx.macro_eval,
     "high_beta_symbols": ctx.high_beta_symbols,
