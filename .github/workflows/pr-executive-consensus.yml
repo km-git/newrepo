@@ -53,4 +53,4 @@ jobs:
           EW_LLM_INTELLIGENCE: ensemble
         run: |
           PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
-          python scripts/pr_executive_consensus.py "$PR_NUM" --repo "${{ github.repository }}"
+          .venv/bin/python scripts/pr_executive_consensus.py "$PR_NUM" --repo "${{ github.repository }}"
