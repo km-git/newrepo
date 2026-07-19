@@ -104,7 +104,11 @@ def summarize_tv_efficacy(metrics: dict) -> Dict[str, Any]:
       if ranked and ranked[-1].get("win_rate", 1) < 0.52
       else "Maintain current TV filter weights."
     ),
-    "tv_filters": ["supertrend", "chandelier", "hull_ma", "bollinger_pct_b", "ttm_squeeze", "adx_trend", "rsi", "vwap"],
+    "tv_filters": [
+      "cvd", "footprint", "volume_profile", "tpo", "anchored_vwap",
+      "liquidity_pools", "hidden_liquidity",
+      "supertrend", "chandelier", "ttm_squeeze", "adx",
+    ],
     "dynamic_risk": "EW_DYNAMIC_RISK=1 scales size by vol percentile + TV score + history",
   }
 

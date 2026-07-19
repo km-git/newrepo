@@ -513,8 +513,18 @@ def score_candidate_alignment(indicator_id: str, sig: dict, direction: str) -> i
   is_long = direction.upper() in ("LONG", "BULL")
   signal = sig.get("signal", "neutral")
 
-  bullish = signal in ("bullish", "accumulation", "oversold", "momentum_up")
-  bearish = signal in ("bearish", "distribution", "overbought", "momentum_down")
+  bullish = signal in (
+    "bullish", "accumulation", "oversold", "momentum_up",
+    "bullish_absorption", "buy_aggression", "below_value_area", "below_poc",
+    "value_low", "below_avwap", "at_avwap", "liquidity_below",
+    "hidden_bid_wall", "bullish_cvd_div",
+  )
+  bearish = signal in (
+    "bearish", "distribution", "overbought", "momentum_down",
+    "bearish_distribution", "sell_aggression", "above_value_area", "above_poc",
+    "value_high", "above_avwap", "liquidity_above",
+    "hidden_ask_wall", "bearish_cvd_div",
+  )
 
   if (is_long and bullish) or (not is_long and bearish):
     return 75
@@ -525,7 +535,7 @@ def score_candidate_alignment(indicator_id: str, sig: dict, direction: str) -> i
   return 50
 
 
-def compute_tv_signals(df: pd.DataFrame) -> Dict[str, Any]:
+def compute_tv_signals(df: pd.DataFrame, orderbook: Optional[dict] = None) -> Dict[str, Any]:
   """Bundle TV-style signals for one OHLCV frame."""
   st = supertrend(df)
   bb = bollinger_bands(df)
@@ -542,7 +552,7 @@ def compute_tv_signals(df: pd.DataFrame) -> Dict[str, Any]:
     if price > 0:
       atr_pct = float(atr.iloc[-1] / price * 100)
 
-  return {
+  out = {
     "supertrend": st,
     "bollinger": bb,
     "adx": ax,
@@ -554,6 +564,14 @@ def compute_tv_signals(df: pd.DataFrame) -> Dict[str, Any]:
     "atr_pct": round(atr_pct, 3),
     "catalog": [c["id"] for c in TV_OSS_CATALOG],
   }
+  if os.environ.get("EW_TV_MICROSTRUCTURE", "1").lower() not in ("0", "false", "no"):
+    try:
+      from core.tv_microstructure import compute_microstructure_signals
+
+      out["microstructure"] = compute_microstructure_signals(df, orderbook)
+    except Exception as exc:
+      out["microstructure"] = {"available": False, "error": str(exc)}
+  return out
 
 
 def score_tv_confluence(
@@ -561,12 +579,13 @@ def score_tv_confluence(
   direction: str,
   *,
   layer_weights: Optional[Dict[str, float]] = None,
+  orderbook: Optional[dict] = None,
 ) -> Dict[str, Any]:
   """
   Score 0–100: complementary TV OSS layers aligned with trade direction.
   Trend + volatility + strength + momentum + anchor collaborate with EW.
   """
-  signals = compute_tv_signals(df)
+  signals = compute_tv_signals(df, orderbook=orderbook)
   is_long = direction.upper() in ("LONG", "BULL")
   weights = layer_weights or _default_layer_weights()
   layer_scores: Dict[str, int] = {}
@@ -708,6 +727,19 @@ def score_tv_confluence(
   if flow_pts:
     layer_scores["flow"] = max(-8, min(10, flow_pts))
 
+  # --- Microstructure layer (CVD, VP, TPO, liquidity, footprint) ---
+  ms_raw = signals.get("microstructure")
+  if ms_raw and ms_raw.get("cvd", {}).get("available"):
+    try:
+      from core.tv_microstructure import score_microstructure_confluence
+
+      ms = score_microstructure_confluence(ms_raw, direction)
+      ms_pts = int((ms.get("score", 50) - 50) * 0.35)
+      layer_scores["microstructure"] = max(-12, min(18, ms_pts))
+      notes.extend(ms.get("signals", [])[:4])
+    except Exception:
+      pass
+
   # Weighted composite + baseline
   raw = sum(layer_scores.get(k, 0) * weights.get(k, 1.0) for k in layer_scores)
   score = max(0, min(100, int(raw + 30)))
@@ -739,4 +771,4 @@ def _default_layer_weights() -> Dict[str, float]:
       return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
       pass
-  return {"trend": 1.0, "volatility": 1.0, "strength": 1.0, "momentum": 0.9, "anchor": 0.85, "flow": 0.85}
+  return {"trend": 1.0, "volatility": 1.0, "strength": 1.0, "momentum": 0.9, "anchor": 0.85, "flow": 0.85, "microstructure": 1.15}

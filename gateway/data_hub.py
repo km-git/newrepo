@@ -102,6 +102,13 @@ def enrich_market_tools(symbol: str, data: Dict[str, pd.DataFrame], tools: dict)
     sig = f"WS book imb {ws['imbalance']:+.2f}"
     tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [sig]
     tools["confluence_boost"] = min(int(tools.get("confluence_boost", 0)) + 3, 25)
+    # Upgrade orderbook proxy for microstructure when live WS available
+    if not (tools.get("orderbook") or {}).get("available"):
+      tools["orderbook"] = {
+        "available": True,
+        "imbalance": ws["imbalance"],
+        "source": "ws_proxy",
+      }
   fg = (state.get("web_intel") or {}).get("fear_greed") or {}
   if fg.get("available") and fg.get("value", 50) <= 25:
     tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + ["extreme fear"]

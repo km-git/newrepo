@@ -39,6 +39,14 @@ CANDIDATE_SOURCES: Tuple[Dict[str, str], ...] = (
   {"id": "social_forum_rejected", "category": "sentiment", "desc": "Forum hype rejected by consensus"},
   {"id": "btc_correlation_filter", "category": "macro", "desc": "BTC correlation alignment"},
   {"id": "orderbook_imbalance", "category": "microstructure", "desc": "Bid/ask imbalance supports trade"},
+  {"id": "cvd_aligned", "category": "microstructure", "desc": "CVD slope aligned with direction"},
+  {"id": "cvd_divergence", "category": "microstructure", "desc": "CVD divergence confirms reversal"},
+  {"id": "volume_profile_poc", "category": "microstructure", "desc": "Price at VP POC / value area edge"},
+  {"id": "tpo_value_area", "category": "microstructure", "desc": "TPO market profile value alignment"},
+  {"id": "liquidity_pool_sweep", "category": "microstructure", "desc": "Liquidity pool sweep setup"},
+  {"id": "hidden_liquidity_wall", "category": "microstructure", "desc": "Hidden order book wall supports trade"},
+  {"id": "footprint_aggression", "category": "microstructure", "desc": "Footprint buy/sell aggression aligned"},
+  {"id": "anchored_vwap_favorable", "category": "microstructure", "desc": "Anchored VWAP (TVWAP) favorable side"},
   {"id": "hist_pair_tf_boost", "category": "feedback", "desc": "Strong tracked pair×TF history"},
   {"id": "probe_only_sizing", "category": "risk", "desc": "Honest probe tier half-size"},
 )
@@ -250,6 +258,12 @@ def rank_data_sources(discovery: dict, metrics: Optional[dict] = None) -> List[d
     if src["id"] in ("supertrend_aligned", "adx_strong_trend"):
       evidence = "TV OSS wired — validate via forward test"
       inferred_lift = 0.06
+    if src["category"] == "microstructure":
+      evidence = "order-flow layer — CVD/VP/TPO/liquidity"
+      inferred_lift = max(inferred_lift, 0.09)
+    if src["id"] == "cvd_aligned":
+      inferred_lift = 0.10
+      evidence = "CVD — primary modern TV OSS edge"
     if src["id"] == "funding_carry":
       evidence = "data_hub funding — high carry potential"
       inferred_lift = 0.05

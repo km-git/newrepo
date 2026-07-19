@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from core.tv_microstructure import TV_MICROSTRUCTURE_CATALOG
 from core.tv_indicators import TV_OSS_CATALOG, TV_OSS_CANDIDATES
 
 
@@ -51,10 +52,15 @@ def _rank_indicators(impact: dict) -> List[dict]:
   }
 
   ranked = []
-  for item in TV_OSS_CATALOG:
+  micro_ids = {c["id"] for c in TV_MICROSTRUCTURE_CATALOG}
+  for item in list(TV_OSS_CATALOG) + [{**c, "id": c["id"], "role": c["role"], "desc": c["desc"]} for c in TV_MICROSTRUCTURE_CATALOG]:
     ind_id = item["id"]
-    lift = 0.0
-    evidence = "complements EW — forward validate"
+    if ind_id in micro_ids and ind_id not in {c["id"] for c in TV_OSS_CATALOG}:
+      lift = 0.09
+      evidence = "order-flow / liquidity — modern TV OSS priority"
+    else:
+      lift = 0.0
+      evidence = "complements EW — forward validate"
     if ind_id == "supertrend" or social_map.get(ind_id) in validated_social:
       lift = 0.08
       evidence = "social + measured alignment"
@@ -197,7 +203,7 @@ def run_tv_oss_consensus(*, use_llm: bool = False) -> Dict[str, Any]:
     } if discovery and not discovery.get("skipped") else {},
     "actions": panel.get("actions", []),
     "catalog": list(TV_OSS_CATALOG),
-    "exploration_pool": list(TV_OSS_CANDIDATES),
+    "exploration_pool": list(TV_OSS_CANDIDATES) + list(TV_MICROSTRUCTURE_CATALOG),
   }
 
   _save_state(result)

@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+from core.tv_microstructure import TV_MICROSTRUCTURE_CATALOG
 from core.tv_indicators import (
   TV_OSS_CANDIDATES,
   TV_OSS_CATALOG,
@@ -106,9 +107,21 @@ def explore_candidates(
     pass
 
   ranked: List[dict] = []
-  for cand in TV_OSS_CANDIDATES:
+  pools = list(TV_OSS_CANDIDATES) + [
+    {**c, "priority_boost": 0.12} for c in TV_MICROSTRUCTURE_CATALOG
+  ]
+  for cand in pools:
     ind_id = cand["id"]
     sig = exploration.get(ind_id) or {}
+    if not sig.get("available"):
+      # Microstructure computed via separate bundle
+      try:
+        from core.tv_microstructure import compute_microstructure_signals
+
+        ms = compute_microstructure_signals(df)
+        sig = ms.get(ind_id) or {}
+      except Exception:
+        sig = {}
     if not sig.get("available"):
       continue
 
@@ -121,7 +134,7 @@ def explore_candidates(
     redundancy = -0.08 if cand["role"] in active_roles and cand["role"] in ("momentum", "strength") else 0.0
 
     dynamic_value = round(
-      (align / 100) * 0.45 + gap + regime + social + redundancy,
+      (align / 100) * 0.45 + gap + regime + social + redundancy + float(cand.get("priority_boost", 0)),
       4,
     )
     priority = "high" if dynamic_value >= 0.55 else "medium" if dynamic_value >= 0.35 else "low"

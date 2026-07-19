@@ -118,11 +118,12 @@ def build_style_setup(
   rr = targets[1]["rr"] if len(targets) > 1 else 0
   harmonic_near = bool(harm_tf)
   indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
-  # TV OSS confluence layer (Supertrend / BB / ADX)
+  # TV OSS confluence layer (Supertrend / BB / ADX + microstructure)
   if df is not None and len(df) >= 30:
     from core.tv_indicators import score_tv_confluence
 
-    tv = score_tv_confluence(df, direction)
+    ob = (market_tools or {}).get("orderbook")
+    tv = score_tv_confluence(df, direction, orderbook=ob if ob and ob.get("available") else None)
     indicators["tv_score"] = tv.get("score", 0)
     indicators["tv_aligned"] = tv.get("aligned", False)
     tv_boost = min(15, max(-10, (tv.get("score", 0) - 50) // 3))

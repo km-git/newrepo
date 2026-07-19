@@ -132,22 +132,30 @@ def build_market_confluence(
     "raw_indicators": raw,
   }
 
-  # TV OSS indicators (Supertrend, Bollinger, ADX)
-  if df_p is not None and len(df_p) >= 30:
-    from core.tv_indicators import compute_tv_signals, score_tv_confluence
-
-    tools["tv_signals"] = compute_tv_signals(df_p)
-    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG")  # default; per-setup scored in outcomes
-  else:
-    tools["tv_signals"] = {"available": False}
-    tools["tv_confluence"] = {"score": 0, "aligned": False, "signals": []}
-
+  # Order book first — upgrades hidden liquidity / footprint scoring
   if exchange is not None:
     tools["orderbook"] = orderbook_imbalance(exchange, symbol)
     tools["funding"] = funding_rate_snapshot(exchange, symbol)
   else:
     tools["orderbook"] = {"available": False}
     tools["funding"] = {"available": False}
+
+  orderbook = tools.get("orderbook") if tools.get("orderbook", {}).get("available") else None
+
+  # TV OSS + microstructure (CVD, VP, TPO, liquidity, AVWAP)
+  if df_p is not None and len(df_p) >= 30:
+    from core.tv_indicators import compute_tv_signals, score_tv_confluence
+    from core.tv_microstructure import compute_microstructure_signals, score_microstructure_confluence
+
+    tools["tv_signals"] = compute_tv_signals(df_p, orderbook=orderbook)
+    tools["microstructure"] = compute_microstructure_signals(df_p, orderbook)
+    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG", orderbook=orderbook)
+    tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], "LONG")
+  else:
+    tools["tv_signals"] = {"available": False}
+    tools["microstructure"] = {"available": False}
+    tools["tv_confluence"] = {"score": 0, "aligned": False, "signals": []}
+    tools["ms_confluence"] = {"score": 0, "aligned": False, "signals": []}
 
   # Confluence score boost for readiness (0-20)
   boost = 0
@@ -192,6 +200,13 @@ def build_market_confluence(
     boost += 5
     signals.append(f"ADX {tv['adx'].get('adx', 0):.0f} strong trend")
 
-  tools["confluence_boost"] = min(boost, 20)
+  ms = tools.get("ms_confluence") or {}
+  if ms.get("aligned"):
+    boost += 6
+    signals.extend((ms.get("signals") or [])[:2])
+  elif ms.get("score", 50) < 40:
+    signals.append(f"microstructure weak ({ms.get('score')})")
+
+  tools["confluence_boost"] = min(boost, 25)
   tools["confluence_signals"] = signals
   return tools
