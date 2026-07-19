@@ -68,6 +68,19 @@ def _gh_run(args: List[str]) -> str:
   return proc.stdout.strip()
 
 
+def _optional_ci_patterns() -> tuple:
+  raw = os.environ.get(
+    "EW_PR_CI_OPTIONAL",
+    "executive-consensus,Cursor Approval,Approval Agent",
+  )
+  return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
+
+
+def _is_required_ci_check(check: dict) -> bool:
+  name = (check.get("name") or "").lower()
+  return not any(pat in name for pat in _optional_ci_patterns())
+
+
 def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
   """Load PR metadata, files, checks, and truncated diff for executive review."""
   slug = repo or _repo_slug()
@@ -115,9 +128,14 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
   if len(diff) > diff_max:
     diff = diff[:diff_max] + f"\n... [truncated {len(diff) - diff_max} chars]"
 
-  ci_pass = all(c.get("conclusion") in ("success", "skipped", None) for c in check_runs if c.get("status") == "completed")
-  ci_fail = any(c.get("conclusion") == "failure" for c in check_runs)
-  ci_pending = any(c.get("status") in ("queued", "in_progress") for c in check_runs)
+  required_checks = [c for c in check_runs if _is_required_ci_check(c)]
+  ci_pass = all(
+    c.get("conclusion") in ("success", "skipped", None)
+    for c in required_checks
+    if c.get("status") == "completed"
+  )
+  ci_fail = any(c.get("conclusion") == "failure" for c in required_checks)
+  ci_pending = any(c.get("status") in ("queued", "in_progress") for c in required_checks)
 
   return {
     "repo": slug,

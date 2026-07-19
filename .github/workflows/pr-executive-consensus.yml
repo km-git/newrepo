@@ -29,10 +29,10 @@ jobs:
       - name: Install dependencies
         run: bash scripts/setup_environment.sh --skip-auth
 
-      - name: Configure gh CLI
+      - name: Verify gh CLI auth
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$GH_TOKEN" | gh auth login --with-token
+        run: gh auth status
 
       - name: PR executive consensus agent
         env:
