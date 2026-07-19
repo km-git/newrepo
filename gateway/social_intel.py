@@ -91,6 +91,8 @@ FORUM_STRATEGY_CATALOG: Tuple[Dict[str, Any], ...] = (
     "our_signal": "anchored_vwap_favorable",
     "skeptic_q": "Is swing-anchored VWAP the right anchor for crypto 24/7?",
   },
+  {
+    "id": "funding_squeeze",
     "name": "Funding Rate Squeeze",
     "category": "derivatives",
     "keywords": ("funding rate", "short squeeze", "long squeeze", "negative funding", "funding arb"),
