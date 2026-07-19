@@ -26,7 +26,7 @@ jobs:
 
       - name: E2E health (offline)
         run: |
-          EW_WEB_INTEL=0 EW_WS_ENABLED=0 .venv/bin/python scripts/e2e_trading_cycle.py --health
+          EW_WEB_INTEL=0 EW_WS_ENABLED=0 EW_HEALTH_REQUIRE_ARTIFACTS=0 .venv/bin/python scripts/e2e_trading_cycle.py --health
         env:
           EW_OKF_BRAIN_DIR: /tmp/ew-okf-test
           EW_PAPER_LEDGER: /tmp/ew-paper-test.json
