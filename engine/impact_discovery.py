@@ -47,6 +47,10 @@ CANDIDATE_SOURCES: Tuple[Dict[str, str], ...] = (
   {"id": "hidden_liquidity_wall", "category": "microstructure", "desc": "Hidden order book wall supports trade"},
   {"id": "footprint_aggression", "category": "microstructure", "desc": "Footprint buy/sell aggression aligned"},
   {"id": "anchored_vwap_favorable", "category": "microstructure", "desc": "Anchored VWAP (TVWAP) favorable side"},
+  {"id": "hurst_trend_regime", "category": "cycle", "desc": "Hurst H>0.52 persistent trend regime"},
+  {"id": "hurst_mean_revert", "category": "cycle", "desc": "Hurst H<0.48 mean-reversion regime"},
+  {"id": "dominant_cycle_aligned", "category": "cycle", "desc": "Dominant cycle phase aligns with entry"},
+  {"id": "ehlers_cycle_turn", "category": "cycle", "desc": "Ehlers roofing filter cycle turn"},
   {"id": "hist_pair_tf_boost", "category": "feedback", "desc": "Strong tracked pair×TF history"},
   {"id": "probe_only_sizing", "category": "risk", "desc": "Honest probe tier half-size"},
 )
@@ -261,6 +265,12 @@ def rank_data_sources(discovery: dict, metrics: Optional[dict] = None) -> List[d
     if src["category"] == "microstructure":
       evidence = "order-flow layer — CVD/VP/TPO/liquidity"
       inferred_lift = max(inferred_lift, 0.09)
+    if src["category"] == "cycle":
+      evidence = "Hurst/cycle regime — game-changer for strategy mode"
+      inferred_lift = max(inferred_lift, 0.11)
+    if src["id"] == "hurst_trend_regime":
+      inferred_lift = 0.12
+      evidence = "Hurst trending — size up impulse trades"
     if src["id"] == "cvd_aligned":
       inferred_lift = 0.10
       evidence = "CVD — primary modern TV OSS edge"

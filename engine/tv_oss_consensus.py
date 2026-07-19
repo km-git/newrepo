@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from core.tv_microstructure import TV_MICROSTRUCTURE_CATALOG
+from core.tv_cycles import TV_CYCLE_CATALOG
 from core.tv_indicators import TV_OSS_CATALOG, TV_OSS_CANDIDATES
 
 
@@ -203,7 +204,7 @@ def run_tv_oss_consensus(*, use_llm: bool = False) -> Dict[str, Any]:
     } if discovery and not discovery.get("skipped") else {},
     "actions": panel.get("actions", []),
     "catalog": list(TV_OSS_CATALOG),
-    "exploration_pool": list(TV_OSS_CANDIDATES) + list(TV_MICROSTRUCTURE_CATALOG),
+    "exploration_pool": list(TV_OSS_CANDIDATES) + list(TV_MICROSTRUCTURE_CATALOG) + list(TV_CYCLE_CATALOG),
   }
 
   _save_state(result)

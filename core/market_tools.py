@@ -146,16 +146,21 @@ def build_market_confluence(
   if df_p is not None and len(df_p) >= 30:
     from core.tv_indicators import compute_tv_signals, score_tv_confluence
     from core.tv_microstructure import compute_microstructure_signals, score_microstructure_confluence
+    from core.tv_cycles import compute_cycle_signals, score_cycle_confluence
 
     tools["tv_signals"] = compute_tv_signals(df_p, orderbook=orderbook)
     tools["microstructure"] = compute_microstructure_signals(df_p, orderbook)
+    tools["cycles"] = compute_cycle_signals(df_p)
     tools["tv_confluence"] = score_tv_confluence(df_p, "LONG", orderbook=orderbook)
     tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], "LONG")
+    tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], "LONG")
   else:
     tools["tv_signals"] = {"available": False}
     tools["microstructure"] = {"available": False}
     tools["tv_confluence"] = {"score": 0, "aligned": False, "signals": []}
     tools["ms_confluence"] = {"score": 0, "aligned": False, "signals": []}
+    tools["cycles"] = {"available": False}
+    tools["cycle_confluence"] = {"score": 0, "aligned": False, "signals": [], "strategy_mode": "neutral"}
 
   # Confluence score boost for readiness (0-20)
   boost = 0
@@ -207,6 +212,16 @@ def build_market_confluence(
   elif ms.get("score", 50) < 40:
     signals.append(f"microstructure weak ({ms.get('score')})")
 
-  tools["confluence_boost"] = min(boost, 25)
+  cc = tools.get("cycle_confluence") or {}
+  if cc.get("strategy_mode") == "trend":
+    boost += 4
+    signals.append(f"Hurst trend regime")
+  elif cc.get("strategy_mode") == "mean_revert":
+    signals.append(f"Hurst mean-revert regime")
+  if cc.get("aligned"):
+    boost += 5
+    signals.extend((cc.get("signals") or [])[:2])
+
+  tools["confluence_boost"] = min(boost, 28)
   tools["confluence_signals"] = signals
   return tools

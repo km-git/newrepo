@@ -518,12 +518,16 @@ def score_candidate_alignment(indicator_id: str, sig: dict, direction: str) -> i
     "bullish_absorption", "buy_aggression", "below_value_area", "below_poc",
     "value_low", "below_avwap", "at_avwap", "liquidity_below",
     "hidden_bid_wall", "bullish_cvd_div",
+    "persistent_trend", "weak_trend", "strong_cycle", "moderate_cycle",
+    "cycle_trough", "cycle_rising", "cycle_up", "cycle_bottom", "smooth_trend",
   )
   bearish = signal in (
     "bearish", "distribution", "overbought", "momentum_down",
     "bearish_distribution", "sell_aggression", "above_value_area", "above_poc",
     "value_high", "above_avwap", "liquidity_above",
     "hidden_ask_wall", "bearish_cvd_div",
+    "mean_reverting", "weak_mean_revert",
+    "cycle_peak_zone", "cycle_falling", "cycle_down", "cycle_top", "choppy_noise",
   )
 
   if (is_long and bullish) or (not is_long and bearish):
@@ -571,6 +575,13 @@ def compute_tv_signals(df: pd.DataFrame, orderbook: Optional[dict] = None) -> Di
       out["microstructure"] = compute_microstructure_signals(df, orderbook)
     except Exception as exc:
       out["microstructure"] = {"available": False, "error": str(exc)}
+  if os.environ.get("EW_TV_CYCLES", "1").lower() not in ("0", "false", "no"):
+    try:
+      from core.tv_cycles import compute_cycle_signals
+
+      out["cycles"] = compute_cycle_signals(df)
+    except Exception as exc:
+      out["cycles"] = {"available": False, "error": str(exc)}
   return out
 
 
@@ -740,6 +751,21 @@ def score_tv_confluence(
     except Exception:
       pass
 
+  # --- Cycle / Hurst regime layer ---
+  cyc_raw = signals.get("cycles")
+  if cyc_raw and cyc_raw.get("available"):
+    try:
+      from core.tv_cycles import score_cycle_confluence
+
+      cyc = score_cycle_confluence(cyc_raw, direction)
+      cyc_pts = int((cyc.get("score", 50) - 50) * 0.4)
+      layer_scores["cycle"] = max(-10, min(15, cyc_pts))
+      notes.extend(cyc.get("signals", [])[:3])
+      if cyc.get("strategy_mode"):
+        notes.append(f"strategy_mode={cyc['strategy_mode']}")
+    except Exception:
+      pass
+
   # Weighted composite + baseline
   raw = sum(layer_scores.get(k, 0) * weights.get(k, 1.0) for k in layer_scores)
   score = max(0, min(100, int(raw + 30)))
@@ -771,4 +797,4 @@ def _default_layer_weights() -> Dict[str, float]:
       return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
       pass
-  return {"trend": 1.0, "volatility": 1.0, "strength": 1.0, "momentum": 0.9, "anchor": 0.85, "flow": 0.85, "microstructure": 1.15}
+  return {"trend": 1.0, "volatility": 1.0, "strength": 1.0, "momentum": 0.9, "anchor": 0.85, "flow": 0.85, "microstructure": 1.15, "cycle": 1.2}

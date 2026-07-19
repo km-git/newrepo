@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from core.tv_microstructure import TV_MICROSTRUCTURE_CATALOG
+from core.tv_cycles import TV_CYCLE_CATALOG
 from core.tv_indicators import (
   TV_OSS_CANDIDATES,
   TV_OSS_CATALOG,
@@ -109,6 +110,8 @@ def explore_candidates(
   ranked: List[dict] = []
   pools = list(TV_OSS_CANDIDATES) + [
     {**c, "priority_boost": 0.12} for c in TV_MICROSTRUCTURE_CATALOG
+  ] + [
+    {**c, "priority_boost": 0.15} for c in TV_CYCLE_CATALOG
   ]
   for cand in pools:
     ind_id = cand["id"]
@@ -120,6 +123,14 @@ def explore_candidates(
 
         ms = compute_microstructure_signals(df)
         sig = ms.get(ind_id) or {}
+      except Exception:
+        sig = {}
+    if not sig.get("available"):
+      try:
+        from core.tv_cycles import compute_cycle_signals
+
+        cy = compute_cycle_signals(df)
+        sig = cy.get(ind_id) or {}
       except Exception:
         sig = {}
     if not sig.get("available"):
