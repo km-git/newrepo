@@ -184,7 +184,29 @@ def merge_pr(pr_number: int, repo: str = "", method: str = "") -> Dict[str, Any]
 
 def list_open_prs(repo: str = "", limit: int = 20) -> List[Dict[str, Any]]:
   slug = repo or _repo_slug()
-  raw = _gh_json(["pr", "list", "--repo", slug, "--state", "open", "--limit", str(limit), "--json", "number,title,draft,headRefName,url"])
-  if isinstance(raw, list):
-    return raw
-  return []
+  raw = _gh_json(
+    [
+      "pr",
+      "list",
+      "--repo",
+      slug,
+      "--state",
+      "open",
+      "--limit",
+      str(limit),
+      "--json",
+      "number,title,isDraft,headRefName,url",
+    ]
+  )
+  if not isinstance(raw, list):
+    return []
+  return [
+    {
+      "number": pr.get("number"),
+      "title": pr.get("title"),
+      "draft": bool(pr.get("isDraft")),
+      "headRefName": pr.get("headRefName"),
+      "url": pr.get("url"),
+    }
+    for pr in raw
+  ]
