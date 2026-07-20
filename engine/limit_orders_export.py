@@ -119,15 +119,26 @@ def _resolve_stop(
   zone_low: float,
   zone_high: float,
   reused: Optional[dict] = None,
+  *,
+  timeframe: str = "",
+  ladder_legs: Optional[List[dict]] = None,
 ) -> dict:
   max_stop_atr = cfg.get("max_stop_atr", 5.0)
   if reused and isinstance(reused, dict) and reused.get("price") is not None:
     px = float(reused["price"])
-    if stop_is_sane(direction, entry, px, atr, max_atr=max_stop_atr):
+    if stop_is_sane(
+      direction, entry, px, atr,
+      max_atr=max_stop_atr,
+      timeframe=timeframe or None,
+      zone_low=zone_low,
+      zone_high=zone_high,
+    ):
       return reused
   return dynamic_stop(
     direction, entry, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=zone_low, zone_high=zone_high, max_stop_atr=max_stop_atr,
+    timeframe=timeframe or None,
+    ladder_legs=ladder_legs,
   )
 
 
@@ -349,6 +360,7 @@ def build_limit_order_row(
 
   stop = _resolve_stop(
     direction, wae, atr, s_low, s_high, cfg, zone_low, zone_high, reused_stop,
+    timeframe=tf, ladder_legs=dca,
   )
   targets = dynamic_targets(
     direction, wae, atr,

@@ -22,6 +22,16 @@ PROFILE_SPLITS = {
 DEFAULT_MAX_STRUCTURE_ATR = 4.0
 DEFAULT_MAX_STOP_ATR = 5.0
 
+# Min / max stop distance (% of reference price) by timeframe — common-sense trading bounds.
+TF_STOP_PCT: Dict[str, Tuple[float, float]] = {
+  "15m": (0.35, 2.5),
+  "1h": (0.45, 3.5),
+  "4h": (0.55, 4.5),
+  "1d": (0.85, 6.5),
+  "1w": (1.25, 9.0),
+}
+DEFAULT_STOP_PCT = (0.5, 5.0)
+
 # Golden-ratio scale-in depths inside the entry zone (0 = near-side, 1 = far-side).
 _ZONE_DEPTH_RATIOS = [0.0, 0.382, 0.618, 1.0]
 
@@ -264,6 +274,22 @@ def _clamp_structure_to_entry(
   return s_low, s_high
 
 
+def _stop_pct_bounds(timeframe: Optional[str]) -> Tuple[float, float]:
+  if timeframe and timeframe in TF_STOP_PCT:
+    return TF_STOP_PCT[timeframe]
+  return DEFAULT_STOP_PCT
+
+
+def _ladder_extreme(direction: str, legs: Optional[List[dict]], entry: float) -> float:
+  """Worst-case fill: lowest leg for LONG, highest for SHORT."""
+  if not legs:
+    return entry
+  prices = [float(leg["price"]) for leg in legs if leg.get("price")]
+  if not prices:
+    return entry
+  return min(prices) if _is_long(direction) else max(prices)
+
+
 def stop_is_sane(
   direction: str,
   entry: float,
@@ -271,8 +297,11 @@ def stop_is_sane(
   atr: float,
   *,
   max_atr: float = DEFAULT_MAX_STOP_ATR,
+  timeframe: Optional[str] = None,
+  zone_low: Optional[float] = None,
+  zone_high: Optional[float] = None,
 ) -> bool:
-  if entry <= 0 or atr <= 0:
+  if entry <= 0 or stop <= 0 or atr <= 0:
     return False
   if _is_long(direction):
     if stop >= entry:
@@ -280,7 +309,21 @@ def stop_is_sane(
   else:
     if stop <= entry:
       return False
-  return abs(entry - stop) <= max_atr * atr
+
+  dist_pct = abs(entry - stop) / entry * 100.0
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  if dist_pct < min_pct * 0.85 or dist_pct > max_pct * 1.05:
+    return False
+  if abs(entry - stop) > max_atr * atr * 1.05:
+    return False
+
+  if zone_low is not None and zone_high is not None:
+    lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+    if _is_long(direction) and stop > lo:
+      return False
+    if not _is_long(direction) and stop < hi:
+      return False
+  return True
 
 
 def dynamic_stop(
@@ -295,47 +338,67 @@ def dynamic_stop(
   zone_high: Optional[float] = None,
   max_structure_atr: float = DEFAULT_MAX_STRUCTURE_ATR,
   max_stop_atr: float = DEFAULT_MAX_STOP_ATR,
+  timeframe: Optional[str] = None,
+  ladder_legs: Optional[List[dict]] = None,
 ) -> dict:
-  """Hard stop from WAE/entry, structure, and zone invalidation."""
+  """
+  Hard stop from zone invalidation + DCA ladder extreme, capped by TF % bounds.
+
+  Stops are placed beyond the entry zone (not arbitrary HTF structure) with
+  a minimum buffer so micro-ATR symbols do not get razor-thin stops.
+  """
   if atr <= 0:
     atr = max(abs(entry) * 0.01, 1e-9)
 
-  s_low, s_high = _clamp_structure_to_entry(
-    direction, entry, atr, structure_low, structure_high, max_structure_atr,
-  )
+  ref = _ladder_extreme(direction, ladder_legs, entry)
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  buffer = max(atr_mult * 0.35 * atr, ref * min_pct / 100.0 * 0.5)
 
+  lo = hi = None
+  if zone_low is not None and zone_high is not None:
+    lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+    if hi - lo <= 0:
+      lo, hi = None, None
+
+  if lo is None or hi is None:
+    pad = max(atr * 0.5, ref * 0.005)
+    lo, hi = ref - pad, ref + pad
+
+  # Local structure only when it sits near the trade zone (ignore stale HTF noise).
+  band = min(max_structure_atr * atr, ref * max_pct / 100.0)
+  s_low, s_high = _clamp_structure_to_entry(
+    direction, ref, atr, structure_low, structure_high, max_structure_atr,
+  )
   if _is_long(direction):
-    base = min(s_low, entry - 0.5 * atr)
-    stop = base - atr_mult * atr
-    rule = f"hard stop below structure {_r(s_low)} − {atr_mult}×ATR"
-    min_stop = entry - max_stop_atr * atr
-    max_stop = entry - 0.25 * atr
-    stop = _clamp(stop, min_stop, max_stop)
-    if zone_low is not None and zone_high is not None:
-      lo = min(zone_low, zone_high)
-      zone_stop = lo - atr_mult * atr
-      stop = max(stop, zone_stop)
-      stop = _clamp(stop, min_stop, max_stop)
-      rule = f"hard stop max(zone @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
+    near_struct = s_low if abs(s_low - lo) <= band else lo
+    invalidation = min(lo, near_struct) - buffer
+    pct_lo = ref * (1.0 - max_pct / 100.0)
+    pct_hi = ref * (1.0 - min_pct / 100.0)
+    stop = _clamp(invalidation, pct_lo, pct_hi)
+    stop = min(stop, ref - buffer * 0.5)
+    rule = f"stop below zone floor {_r(lo)} − buffer (TF {min_pct}-{max_pct}%)"
   else:
-    base = max(s_high, entry + 0.5 * atr)
-    stop = base + atr_mult * atr
-    rule = f"hard stop above structure {_r(s_high)} + {atr_mult}×ATR"
-    max_stop = entry + max_stop_atr * atr
-    min_stop = entry + 0.25 * atr
-    stop = _clamp(stop, min_stop, max_stop)
-    if zone_low is not None and zone_high is not None:
-      hi = max(zone_low, zone_high)
-      zone_stop = hi + atr_mult * atr
-      stop = min(stop, zone_stop)
-      stop = _clamp(stop, min_stop, max_stop)
-      rule = f"hard stop min(zone @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
+    near_struct = s_high if abs(s_high - hi) <= band else hi
+    invalidation = max(hi, near_struct) + buffer
+    pct_lo = ref * (1.0 + min_pct / 100.0)
+    pct_hi = ref * (1.0 + max_pct / 100.0)
+    stop = _clamp(invalidation, pct_lo, pct_hi)
+    stop = max(stop, ref + buffer * 0.5)
+    rule = f"stop above zone ceiling {_r(hi)} + buffer (TF {min_pct}-{max_pct}%)"
+
+  # Final sanity clamp vs ATR cap (secondary to % cap).
+  atr_cap = max_stop_atr * atr
+  if _is_long(direction):
+    stop = max(stop, ref - atr_cap)
+  else:
+    stop = min(stop, ref + atr_cap)
 
   return {
     "price": _r(stop),
     "type": "hard",
     "rule": rule,
-    "distance_pct": _r(abs(entry - stop) / entry * 100, 2),
+    "distance_pct": _r(abs(ref - stop) / ref * 100, 2),
+    "reference_price": _r(ref),
   }
 
 

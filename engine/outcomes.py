@@ -106,6 +106,8 @@ def build_style_setup(
     direction, wae, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=kz_low, zone_high=kz_high,
     max_stop_atr={"15m": 3.0, "1h": 4.0, "4h": 4.5, "1d": 5.0, "1w": 6.0}.get(tf, 5.0),
+    timeframe=tf,
+    ladder_legs=dca,
   )
   targets = dynamic_targets(
     direction,
