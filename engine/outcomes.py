@@ -116,6 +116,12 @@ def build_style_setup(
     prz,
     c_targets.get("c_target_100"),
     c_targets.get("c_target_161"),
+    stop_price=stop["price"],
+    zone_low=kz_low,
+    zone_high=kz_high,
+    timeframe=tf,
+    structure_low=s_low,
+    structure_high=s_high,
   )
   rr = targets[1]["rr"] if len(targets) > 1 else 0
   harmonic_near = bool(harm_tf)

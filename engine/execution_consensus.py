@@ -57,9 +57,9 @@ def _rule_adjustments(row: dict, panel: dict) -> dict:
   elif agreement and agreement < 40:
     stance = "reject"
     notes.append(f"EW agreement {agreement:.0f}% < 40%")
-  elif stop_pct and tf == "15m" and stop_pct < 0.30:
+  elif stop_pct and tf == "15m" and stop_pct < 0.85:
     stance = "caution" if stance == "agree" else stance
-    notes.append(f"15m stop only {stop_pct:.2f}% from WAE")
+    notes.append(f"15m stop only {stop_pct:.2f}% from WAE (floor 0.85%)")
   elif stop_pct and stop_pct > 8.0:
     stance = "caution" if stance == "agree" else stance
     notes.append(f"wide stop {stop_pct:.1f}%")

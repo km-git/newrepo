@@ -8,6 +8,7 @@ from core.risk import (
   build_dca_ladder,
   compute_wae,
   dynamic_stop,
+  dynamic_targets,
   sensible_entry_anchor,
   stop_is_sane,
 )
@@ -65,7 +66,8 @@ def test_dynamic_stop_long():
   )
   assert s["price"] < 100.0
   assert s["price"] > 0
-  assert 0.45 <= s["distance_pct"] <= 3.6
+  assert 1.15 <= s["distance_pct"] <= 4.6
+  assert s.get("architecture") == "smart_dynamic_sl"
 
 
 def test_dynamic_stop_short_clamps_stale_structure():
@@ -76,8 +78,8 @@ def test_dynamic_stop_short_clamps_stale_structure():
     timeframe="1d", ladder_legs=legs,
   )
   assert s["price"] > 4018.0
-  assert s["distance_pct"] <= 7.0
-  assert s["price"] < 4300.0
+  assert s["distance_pct"] <= 8.1
+  assert s["price"] < 4400.0
 
 
 def test_dynamic_stop_btc_short_zone_not_21pct():
@@ -101,7 +103,7 @@ def test_dynamic_stop_tokenized_not_razor_thin():
     "SHORT", wae, 0.5, 300.0, 400.0, atr_mult=1.2,
     zone_low=347.0, zone_high=349.5, timeframe="15m", ladder_legs=legs,
   )
-  assert s["distance_pct"] >= 0.30
+  assert s["distance_pct"] >= 0.85
 
 
 def test_long_no_chase_peak():
@@ -137,6 +139,27 @@ def test_short_above_zone_sells_rally():
   legs = build_dca_ladder("SHORT", 0.4606, 0.002, 0.4502, 0.4547, current=current)
   assert all(leg["price"] > current for leg in legs)
   assert legs[0]["price"] < legs[-1]["price"]
+
+
+def test_dynamic_targets_r_based_from_stop():
+  legs = build_dca_ladder("LONG", 100.0, 2.0, 95.0, 105.0)
+  wae = compute_wae(legs)
+  stop = dynamic_stop(
+    "LONG", wae, 2.0, 96.0, 110.0, atr_mult=1.0,
+    zone_low=95.0, zone_high=105.0, timeframe="1h", ladder_legs=legs,
+  )
+  targets = dynamic_targets(
+    "LONG", wae, 2.0,
+    stop_price=stop["price"],
+    zone_low=95.0, zone_high=105.0,
+    timeframe="1h",
+    structure_low=96.0, structure_high=110.0,
+  )
+  assert len(targets) == 3
+  assert targets[0].get("architecture") == "smart_dynamic_tp"
+  assert targets[0]["price"] > wae
+  assert targets[0]["r_multiple"] >= 1.4
+  assert targets[1]["r_multiple"] > targets[0]["r_multiple"]
 
 
 def test_stop_is_sane_rejects_negative_and_distant():

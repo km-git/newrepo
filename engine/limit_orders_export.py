@@ -16,7 +16,9 @@ from core.risk import (
   compute_wae,
   dynamic_stop,
   dynamic_targets,
+  min_stop_distance_pct,
   risk_package,
+  stop_distance_pct,
   stop_is_sane,
 )
 from engine.execution_advanced import (
@@ -125,20 +127,28 @@ def _resolve_stop(
   ladder_legs: Optional[List[dict]] = None,
 ) -> dict:
   max_stop_atr = cfg.get("max_stop_atr", 5.0)
+  tf = timeframe or None
+  min_pct = min_stop_distance_pct(tf)
   if reused and isinstance(reused, dict) and reused.get("price") is not None:
     px = float(reused["price"])
-    if stop_is_sane(
-      direction, entry, px, atr,
-      max_atr=max_stop_atr,
-      timeframe=timeframe or None,
-      zone_low=zone_low,
-      zone_high=zone_high,
+    dist = stop_distance_pct(entry, px)
+    smart = reused.get("architecture") == "smart_dynamic_sl"
+    if (
+      smart
+      and dist >= min_pct
+      and stop_is_sane(
+        direction, entry, px, atr,
+        max_atr=max_stop_atr,
+        timeframe=tf,
+        zone_low=zone_low,
+        zone_high=zone_high,
+      )
     ):
-      return reused
+      return {**reused, "price": px, "distance_pct": dist}
   return dynamic_stop(
     direction, entry, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=zone_low, zone_high=zone_high, max_stop_atr=max_stop_atr,
-    timeframe=timeframe or None,
+    timeframe=tf,
     ladder_legs=ladder_legs,
   )
 
@@ -365,6 +375,12 @@ def build_limit_order_row(
     harmonic_prz=prz,
     c_target_100=ct.get("c_target_100"),
     c_target_161=ct.get("c_target_161"),
+    stop_price=stop["price"],
+    zone_low=zone_low,
+    zone_high=zone_high,
+    timeframe=tf,
+    structure_low=s_low,
+    structure_high=s_high,
   )
 
   while len(targets) < 3:
@@ -432,13 +448,17 @@ def build_limit_order_row(
     **dca_cols,
     "stop_loss": stop["price"],
     "stop_rule": stop.get("rule"),
-    "stop_distance_pct": stop.get("distance_pct"),
+    "stop_architecture": stop.get("architecture", "smart_dynamic_sl"),
+    "stop_distance_pct": stop_distance_pct(wae, float(stop["price"])),
     "tp1": targets[0]["price"],
     "tp1_exit_pct": targets[0]["exit_pct"],
+    "tp1_r_multiple": targets[0].get("r_multiple"),
     "tp2": targets[1]["price"],
     "tp2_exit_pct": targets[1]["exit_pct"],
+    "tp2_r_multiple": targets[1].get("r_multiple") if len(targets) > 1 else None,
     "tp3": targets[2]["price"],
     "tp3_exit_pct": targets[2]["exit_pct"],
+    "tp3_r_multiple": targets[2].get("r_multiple") if len(targets) > 2 else None,
     "rr_tp2": rr,
     "min_rr": cfg["min_rr"],
     "account_risk_pct": acct_risk,
