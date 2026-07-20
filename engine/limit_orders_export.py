@@ -423,6 +423,7 @@ def build_limit_order_row(
     "entry_anchor": entry_anchor,
     "wae": wae,
     "dca_architecture": "asymmetric_pyramid_10_20_30_40",
+    "dca_splits_pct": ",".join(str(x) for x in DCA_SPLITS),
     "entry_zone_low": zone_low,
     "entry_zone_high": zone_high,
     "dca_legs": dca,
