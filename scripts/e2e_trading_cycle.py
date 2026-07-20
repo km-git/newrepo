@@ -11,6 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from engine.llm_backend import bootstrap_llm_env
+
+bootstrap_llm_env()
+
 from engine.e2e_pipeline import e2e_status, run_e2e_cycle
 
 

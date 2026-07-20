@@ -232,8 +232,15 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
   short_stop = dynamic_stop(
     "SHORT", short_wae, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=kz_lo, zone_high=kz_hi, max_stop_atr=cfg.get("max_stop_atr", 5.0),
+    timeframe=tf, ladder_legs=short_dca,
   )
-  short_targets = dynamic_targets("SHORT", short_wae, atr)
+  short_targets = dynamic_targets(
+    "SHORT", short_wae, atr,
+    stop_price=short_stop["price"],
+    zone_low=kz_lo, zone_high=kz_hi,
+    timeframe=tf,
+    structure_low=s_low, structure_high=s_high,
+  )
 
   long_l1 = kz_lo if kz_lo > 0 else current
   long_l2 = long_l1 - max(atr * 1.5, (kz_hi - kz_lo) if kz_hi > kz_lo else atr)
@@ -242,8 +249,15 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
   long_stop = dynamic_stop(
     "LONG", long_wae, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=long_l2, zone_high=kz_hi, max_stop_atr=cfg.get("max_stop_atr", 5.0),
+    timeframe=tf, ladder_legs=long_dca,
   )
-  long_targets = dynamic_targets("LONG", long_wae, atr)
+  long_targets = dynamic_targets(
+    "LONG", long_wae, atr,
+    stop_price=long_stop["price"],
+    zone_low=long_l2, zone_high=kz_hi,
+    timeframe=tf,
+    structure_low=s_low, structure_high=s_high,
+  )
 
   return [
     {

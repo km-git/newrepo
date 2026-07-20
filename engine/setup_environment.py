@@ -227,6 +227,13 @@ def setup_environment(
   if configure_auth:
     result["steps"]["gh_auth"] = configure_gh_auth()
 
+  try:
+    from engine.llm_backend import bootstrap_llm_env
+
+    result["steps"]["llm"] = bootstrap_llm_env()
+  except Exception as exc:
+    result["steps"]["llm"] = {"bootstrapped": False, "error": str(exc)}
+
   result["steps"]["verify"] = verify_imports()
   result["python"] = str(venv_python())
   result["gh"] = find_gh()

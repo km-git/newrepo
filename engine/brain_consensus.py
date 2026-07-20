@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from engine.llm_panel import run_panel
 from engine.okf_brain import (
@@ -36,38 +35,31 @@ def _mock_call_provider(provider: str, model: str, tier: str, task: str, max_out
   }
 
 
-def _make_call_provider():
-  """Build panel call_provider from llm_advisor when credentials exist."""
-  from engine.llm_advisor import advisory_credentials_available
-  from engine.llm_backend import llm_backend
+def make_prompt_call_provider(prompt: str) -> Callable[..., dict]:
+  """
+  Build a panel call_provider that passes the given prompt to advisory calls.
+  Prefer this over reading EW_BRAIN_PROMPT from the environment.
+  """
+  from engine.llm_advisor import _call_advisory, advisory_credentials_available
 
   if not advisory_credentials_available():
     return _mock_call_provider
 
-  from engine.llm_advisor import _call_advisory  # noqa: PLC2701
-
   def call_provider(provider: str, model: str, tier: str, task: str, max_out: int) -> dict:
-    prompt = os.environ.get("EW_BRAIN_PROMPT", "")
     return _call_advisory(provider, model, tier, task, max_out, prompt)
 
-  if llm_backend() == "cursor":
-    from engine.llm_cursor import call_cursor_provider_advisory
-
-    def call_cursor(provider: str, model: str, tier: str, task: str, max_out: int) -> dict:
-      prompt = os.environ.get("EW_BRAIN_PROMPT", "")
-      return call_cursor_provider_advisory(
-        provider, model, tier, prompt, task=task, max_output=max_out
-      )
-
-    return call_cursor
-
   return call_provider
+
+
+def _make_call_provider():
+  """Legacy env-based provider — prefer make_prompt_call_provider(prompt)."""
+  return make_prompt_call_provider(os.environ.get("EW_BRAIN_PROMPT", ""))
 
 
 def _brain_prompt(question: str, context_docs: Optional[list] = None) -> str:
   lines = [
     "SECONDARY BRAIN QUERY — answer from trading/PR/engineering knowledge.",
-    "Respond JSON: {\"stance\":\"agree|caution|reject\",\"summary\":\"...\",\"confidence_adjustment\":0.0}",
+    'Respond JSON: {"stance":"agree|caution|reject","summary":"...","confidence_adjustment":0.0}',
     "",
     f"QUESTION: {question}",
   ]
@@ -78,14 +70,29 @@ def _brain_prompt(question: str, context_docs: Optional[list] = None) -> str:
   return "\n".join(lines)
 
 
+def _stub_panel(prompt: str) -> Dict[str, Any]:
+  """No API keys — return deterministic caution panel instead of empty routes."""
+  return {
+    "consensus_stance": "caution",
+    "blended_summary": "[stub] No LLM credentials — default caution",
+    "consulted": ["stub"],
+    "intelligence_mode": "stub",
+    "confidence_adjustment": 0.0,
+    "prompt_chars": len(prompt),
+  }
+
+
 def ask_brain(
   question: str,
   *,
   use_llm: Optional[bool] = None,
   search_memory: bool = True,
+  context: Optional[str] = None,
 ) -> Dict[str, Any]:
   """
   Query → retrieve OKF memory → multi-model panel → persist → return verdict.
+
+  Pass rich domain data via `context` (risk metrics, TV OSS stack, social intel, etc.).
   """
   llm_on = use_llm if use_llm is not None else os.environ.get("EW_BRAIN_LLM", "1").lower() not in (
     "0",
@@ -95,12 +102,22 @@ def ask_brain(
 
   context_docs = search_concepts(question, limit=5) if search_memory else []
   prompt = _brain_prompt(question, context_docs)
-  os.environ["EW_BRAIN_PROMPT"] = prompt
+  if context:
+    prompt = f"{context.strip()}\n\n---\n\n{prompt}"
 
   panel: Dict[str, Any] = {"consensus_stance": "unknown", "blended_summary": ""}
   if llm_on:
-    call_provider = _make_call_provider()
-    panel = run_panel(prompt, verdict="GO", conviction="medium", call_provider=call_provider)
+    from engine.llm_advisor import advisory_credentials_available
+
+    if advisory_credentials_available():
+      panel = run_panel(
+        prompt,
+        verdict="GO",
+        conviction="medium",
+        call_provider=make_prompt_call_provider(prompt),
+      )
+    else:
+      panel = _stub_panel(prompt)
     panel["intelligence_panel"] = {
       k: panel.get(k)
       for k in (
