@@ -14,6 +14,7 @@ _BOOTSTRAPPED = False
 # Alternate env names users / CI may set for the same Cursor Cloud Agents key.
 _CURSOR_KEY_NAMES = (
   "CURSOR_API_KEY",
+  "EW_CURSOR_API_KEY",
   "CURSOR_AGENT_API_KEY",
   "CURSOR_CLOUD_AGENT_API_KEY",
 )

@@ -20,11 +20,12 @@ def main() -> int:
 
   if not cursor_available():
     print(
-      "\nCURSOR_API_KEY not found.\n"
-      "Add to workspace/.env (gitignored):\n"
-      "  CURSOR_API_KEY=crsr_...\n"
-      "Or Cloud Agent secret: CURSOR_API_KEY\n"
-      "Or GitHub repo secret for CI.",
+      "\nCURSOR_API_KEY not found in this agent session.\n"
+      "If you just added it in Cursor Dashboard → Cloud Agents → Secrets:\n"
+      "  • Name must be exactly: CURSOR_API_KEY (or EW_CURSOR_API_KEY)\n"
+      "  • Start a NEW cloud agent run — secrets do not hot-reload mid-session\n"
+      "Or add to workspace/.env (gitignored):\n"
+      "  CURSOR_API_KEY=crsr_...\n",
       file=sys.stderr,
     )
     return 1
