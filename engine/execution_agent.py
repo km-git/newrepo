@@ -81,9 +81,29 @@ def execute_rows(
     return {"ok": False, "error": "risk_halt_active", "dry_run": dry}
 
   broker = get_broker()
-  executable = filter_executable_rows(rows)
+  all_executable = filter_executable_rows(rows)
+  consensus_report: Optional[Dict[str, Any]] = None
+  executable = all_executable
+  if os.environ.get("EW_EXECUTION_CONSENSUS", "1").lower() not in ("0", "false", "no"):
+    from engine.execution_consensus import review_executable_rows
+
+    consensus_report = review_executable_rows(all_executable, use_llm=True)
+    executable = consensus_report["allowed_rows"]
+    print(
+      f"[execute] consensus: {consensus_report['allowed']}/{consensus_report['total']} allowed "
+      f"stances={consensus_report.get('stances')} mode="
+      f"{(consensus_report['reviews'][0].get('mode') if consensus_report['reviews'] else 'n/a')}"
+    )
+
   submitted: List[dict] = []
   blocked: List[dict] = []
+  if consensus_report:
+    for rev in consensus_report.get("blocked_details") or []:
+      blocked.append({
+        "symbol": rev.get("symbol"),
+        "tf": rev.get("timeframe"),
+        "reasons": [f"execution_consensus_{rev.get('stance')}", rev.get("summary", "")[:120]],
+      })
   order_count = 0
 
   for row in executable:
@@ -125,6 +145,7 @@ def execute_rows(
     "orders_submitted": len(submitted),
     "blocked": blocked,
     "submitted": submitted,
+    "consensus": consensus_report,
     "risk": risk,
   }
 
