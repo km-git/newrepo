@@ -172,15 +172,15 @@ def run_risk_consensus(
       from engine.brain_consensus import brain_consensus_enabled, ask_brain
 
       if brain_consensus_enabled():
-        os.environ["EW_BRAIN_PROMPT"] = prompt
         brain = ask_brain(
           "Risk executive review: tighten, maintain, or boost probe sizing?",
           use_llm=True,
           search_memory=True,
+          context=prompt,
         )
         panel = {
-          "consensus_stance": brain.get("consensus_stance", "caution"),
-          "blended_summary": brain.get("blended_summary", ""),
+          "consensus_stance": brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution"),
+          "blended_summary": brain.get("answer") or brain.get("panel", {}).get("blended_summary", ""),
           "panel": brain.get("panel"),
           "okf": brain.get("okf"),
         }

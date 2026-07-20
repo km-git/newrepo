@@ -240,11 +240,11 @@ def fine_tune_with_consensus(
       from engine.brain_consensus import ask_brain, brain_consensus_enabled, record_decision
 
       if brain_consensus_enabled():
-        os.environ["EW_BRAIN_PROMPT"] = _build_finetune_prompt(candidates, impact, current_weights)
         brain = ask_brain(
           "Fine-tune TV OSS stack: promote high dynamic-value indicators, adjust layer weights?",
           use_llm=True,
           search_memory=True,
+          context=_build_finetune_prompt(candidates, impact, current_weights),
         )
         stance = brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution")
         panel["stance"] = stance

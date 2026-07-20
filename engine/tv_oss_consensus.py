@@ -168,11 +168,11 @@ def run_tv_oss_consensus(*, use_llm: bool = False) -> Dict[str, Any]:
       from engine.brain_consensus import ask_brain, brain_consensus_enabled, record_decision
 
       if brain_consensus_enabled():
-        os.environ["EW_BRAIN_PROMPT"] = _build_prompt(ranked, impact)
         brain = ask_brain(
           "Which TV OSS indicators complement our EW stack without sprawl?",
           use_llm=True,
           search_memory=True,
+          context=_build_prompt(ranked, impact),
         )
         stance = brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution")
         panel["stance"] = stance

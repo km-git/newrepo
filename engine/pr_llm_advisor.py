@@ -51,7 +51,7 @@ def get_pr_llm_advisory(
 ) -> Optional[Dict[str, Any]]:
   if not enabled:
     return None
-  if not advisory_credentials_available() and llm_backend() != "cursor":
+  if not advisory_credentials_available():
     return {"skipped_reason": f"No credentials ({credentials_hint()})", "consulted": []}
 
   verdict = executive.get("verdict", "CONDITIONAL_MERGE")

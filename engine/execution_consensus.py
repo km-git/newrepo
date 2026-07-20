@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Any, Dict, List, Optional
 
 from engine.llm_token_saver import (
-  ew_bypass_enabled,
-  ew_consensus_strong_enough,
+  should_bypass_llm_with_ew,
   synthetic_panel_from_ew_consensus,
 )
 
@@ -72,22 +70,10 @@ def _rule_adjustments(row: dict, panel: dict) -> dict:
   return out
 
 
-def _llm_panel_for_row(row: dict) -> Optional[dict]:
-  if os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "1").lower() in ("0", "false", "no"):
-    return None
-  try:
-    from engine.llm_advisor import advisory_credentials_available
-    from engine.llm_panel import run_panel
-    from engine.brain_consensus import _make_call_provider
-  except ImportError:
-    return None
-
-  if not advisory_credentials_available():
-    return None
-
+def _build_execution_prompt(row: dict) -> str:
   sym = row.get("symbol", "?")
   tf = row.get("timeframe", "?")
-  prompt = "\n".join([
+  return "\n".join([
     "EXECUTION CONSENSUS — approve paper submission for this GTC limit ladder?",
     'Respond JSON: {"stance":"agree|caution|reject","summary":"...","confidence_adjustment":0.0}',
     "",
@@ -100,9 +86,29 @@ def _llm_panel_for_row(row: dict) -> Optional[dict]:
     "",
     "agree = submit all DCA legs; caution = submit with reduced conviction; reject = block execution",
   ])
+
+
+def _llm_panel_for_row(row: dict) -> Optional[dict]:
+  if os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "1").lower() in ("0", "false", "no"):
+    return None
+  try:
+    from engine.brain_consensus import make_prompt_call_provider
+    from engine.llm_advisor import advisory_credentials_available
+    from engine.llm_panel import run_panel
+  except ImportError:
+    return None
+
+  if not advisory_credentials_available():
+    return None
+
+  prompt = _build_execution_prompt(row)
   verdict = str(row.get("executive_verdict") or "CONDITIONAL_GO")
-  panel = run_panel(prompt, verdict=verdict, conviction="medium", call_provider=_make_call_provider())
-  return panel
+  return run_panel(
+    prompt,
+    verdict=verdict,
+    conviction="medium",
+    call_provider=make_prompt_call_provider(prompt),
+  )
 
 
 def review_row(row: dict, *, use_llm: Optional[bool] = None) -> Dict[str, Any]:
@@ -122,7 +128,7 @@ def review_row(row: dict, *, use_llm: Optional[bool] = None) -> Dict[str, Any]:
   if llm_panel:
     panel = llm_panel
     panel["intelligence_mode"] = panel.get("intelligence_mode", "ensemble")
-  elif ew_bypass_enabled():
+  elif should_bypass_llm_with_ew(executive, consensus):
     panel = synthetic_panel_from_ew_consensus(executive, consensus)
     panel["intelligence_mode"] = "ew_bypass"
   else:
@@ -155,7 +161,7 @@ def review_executable_rows(rows: List[dict], *, use_llm: Optional[bool] = None) 
   reviews = [review_row(r, use_llm=use_llm) for r in rows]
   allowed_rows = [r for r, rev in zip(rows, reviews) if rev["allowed"]]
   blocked = [rev for rev in reviews if not rev["allowed"]]
-  stances = {}
+  stances: Dict[str, int] = {}
   for rev in reviews:
     stances[rev["stance"]] = stances.get(rev["stance"], 0) + 1
   return {

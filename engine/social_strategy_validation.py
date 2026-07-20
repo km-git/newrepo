@@ -147,11 +147,11 @@ def run_social_strategy_validation(
       from engine.brain_consensus import ask_brain, brain_consensus_enabled, record_decision
 
       if brain_consensus_enabled():
-        os.environ["EW_BRAIN_PROMPT"] = prompt
         brain = ask_brain(
           "Validate forum/social strategies against our measured outcomes — promote or reject?",
           use_llm=True,
           search_memory=True,
+          context=prompt,
         )
         stance = brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution")
         panel = {

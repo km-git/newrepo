@@ -41,6 +41,39 @@ def test_review_row_rejects_low_agreement(monkeypatch):
   assert rev["stance"] == "reject"
 
 
+def test_review_row_weak_ew_no_bypass(monkeypatch):
+  """Without strong EW agreement, fall back to rules_only caution — not synthetic agree."""
+  monkeypatch.setenv("EW_LLM_EW_BYPASS", "1")
+  monkeypatch.setenv("EW_EXECUTION_CONSENSUS_LLM", "0")
+  rev = review_row(_row(agreement_pct=50, engines_valid=1), use_llm=False)
+  assert rev["mode"] == "rules_only"
+  assert rev["stance"] == "caution"
+
+
+def test_execution_llm_receives_row_prompt(monkeypatch):
+  captured = {}
+
+  def fake_run_panel(prompt, verdict, conviction, call_provider):
+    captured["prompt"] = prompt
+    captured["provider"] = call_provider
+    return {
+      "consensus_stance": "agree",
+      "blended_summary": "ok",
+      "consulted": ["openai"],
+      "intelligence_mode": "ensemble",
+    }
+
+  monkeypatch.setenv("EW_EXECUTION_CONSENSUS_LLM", "1")
+  monkeypatch.setattr("engine.llm_advisor.advisory_credentials_available", lambda: True)
+  monkeypatch.setattr("engine.llm_panel.run_panel", fake_run_panel)
+
+  rev = review_row(_row(symbol="XSPY/USDT"), use_llm=True)
+  assert "EXECUTION CONSENSUS" in captured["prompt"]
+  assert "XSPY/USDT" in captured["prompt"]
+  assert captured["provider"] is not None
+  assert rev["stance"] == "agree"
+
+
 def test_review_executable_batch(monkeypatch):
   monkeypatch.setenv("EW_EXECUTION_CONSENSUS_LLM", "0")
   rows = [_row(), _row(symbol="ETH/USDT", agreement_pct=20)]
