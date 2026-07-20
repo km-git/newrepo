@@ -19,7 +19,9 @@ TERMINAL_RUN_STATUSES = frozenset({"FINISHED", "ERROR", "CANCELLED", "EXPIRED"})
 
 
 def cursor_api_key() -> str:
-  return os.environ.get("CURSOR_API_KEY", "").strip()
+  from engine.llm_backend import cursor_api_key as _key
+
+  return _key()
 
 
 def cursor_available() -> bool:

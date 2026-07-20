@@ -16,6 +16,14 @@ def test_llm_backend_defaults_to_cursor_with_key(monkeypatch):
   assert llm_backend() == "cursor"
 
 
+def test_llm_backend_defaults_to_cursor_without_direct_keys(monkeypatch):
+  monkeypatch.delenv("EW_LLM_BACKEND", raising=False)
+  monkeypatch.delenv("CURSOR_API_KEY", raising=False)
+  monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+  monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+  assert llm_backend() == "cursor"
+
+
 def test_llm_backend_direct_when_forced(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "direct")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")

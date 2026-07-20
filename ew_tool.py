@@ -9,6 +9,10 @@ import os
 import sys
 import time
 
+from engine.llm_backend import bootstrap_llm_env
+
+bootstrap_llm_env()
+
 from schemas.models import ElliottWaveOutput
 
 
@@ -29,7 +33,7 @@ def main() -> None:
   parser.add_argument(
     "--llm-advisory",
     action="store_true",
-    help="Consult Claude + GPT on critical decisions (GO/CONDITIONAL_GO/executable); needs API keys",
+    help="Consult multi-model AI panel on critical decisions (Cursor Pro via CURSOR_API_KEY)",
   )
   parser.add_argument(
     "--llm-cost",
