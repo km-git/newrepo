@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from core.risk import (
   DCA_SPLITS,
   build_dca_ladder,
+  sensible_entry_anchor,
   compute_wae,
   dynamic_stop,
   dynamic_targets,
@@ -241,11 +242,12 @@ def _gtc_dca_ladder(
   *,
   harmonic_prz: Optional[Tuple[float, float]] = None,
   profile: str = "pyramid_4",
+  current: Optional[float] = None,
 ) -> List[dict]:
-  """Asymmetric pyramid — all GTC limits."""
+  """Asymmetric pyramid — all GTC limits; no chase when current is set."""
   return build_dca_ladder(
     direction, anchor, atr, zone_low, zone_high, fib_levels,
-    harmonic_prz=harmonic_prz, gtc=True, profile=profile,
+    harmonic_prz=harmonic_prz, gtc=True, profile=profile, current=current,
   )
 
 
@@ -320,9 +322,9 @@ def build_limit_order_row(
 
   # Reuse honest geometry when this TF owns the style setup (gates unchanged).
   if reuse and reuse.get("timeframe") == tf and reuse.get("entry"):
-    entry_anchor = float(reuse["entry"]["anchor"])
     zone = reuse["entry"].get("zone") or [kz_low, kz_high]
     zone_low, zone_high = float(zone[0]), float(zone[1])
+    entry_anchor = sensible_entry_anchor(direction, current, zone_low, zone_high, atr)
     readiness = reuse.get("readiness_score")
     indicators = "; ".join((reuse.get("indicator_signals") or [])[:3])
     honest_status = reuse.get("status")
@@ -330,13 +332,9 @@ def build_limit_order_row(
   else:
     if harm_tf:
       zone_low, zone_high = float(harm_tf["prz_low"]), float(harm_tf["prz_high"])
-      entry_anchor = (zone_low + zone_high) / 2
-    elif in_zone:
-      entry_anchor = current
+    elif not (zone_low and zone_high):
       zone_low, zone_high = kz_low, kz_high
-    else:
-      entry_anchor = (kz_low + kz_high) / 2
-      zone_low, zone_high = kz_low, kz_high
+    entry_anchor = sensible_entry_anchor(direction, current, zone_low, zone_high, atr)
     readiness = None
     indicators = wave.get("structure", "")
     honest_status = "staged"
@@ -354,7 +352,7 @@ def build_limit_order_row(
 
   dca = _gtc_dca_ladder(
     direction, entry_anchor, atr, zone_low, zone_high,
-    fib_levels=fib_levels, harmonic_prz=prz, profile=dca_profile,
+    fib_levels=fib_levels, harmonic_prz=prz, profile=dca_profile, current=current,
   )
   wae = compute_wae(dca)
 

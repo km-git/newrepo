@@ -72,6 +72,102 @@ def compute_wae(legs: List[dict]) -> float:
   return _r(total)
 
 
+def sensible_entry_anchor(
+  direction: str,
+  current: float,
+  zone_low: float,
+  zone_high: float,
+  atr: float,
+) -> float:
+  """
+  First limit away from chasing extended price.
+  LONG: pullback into upper zone, strictly below market.
+  SHORT: rally into supply — above market when price has already left the zone.
+  """
+  if current <= 0:
+    return current
+  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+  span = hi - lo if hi > lo else 0.0
+  buf = max(atr * 0.12, abs(current) * 0.0008, span * 0.04 if span else 0.0, 1e-9)
+  long = _is_long(direction)
+
+  if long:
+    if hi > 0 and current > hi:
+      ideal = hi - buf * 0.35
+    else:
+      ideal = hi - buf * 0.35 if span > 0 else current - buf
+    ideal = min(ideal, current - buf)
+    if span > 0:
+      ideal = _clamp(ideal, lo + span * 0.08, hi - buf * 0.15)
+    return _r(ideal)
+
+  if hi > 0 and current > hi:
+    return _r(current + buf)
+  ideal = lo + buf * 0.35 if span > 0 else current + buf
+  ideal = max(ideal, current + buf)
+  if span > 0:
+    ideal = _clamp(ideal, lo + buf * 0.15, hi - span * 0.08)
+  return _r(ideal)
+
+
+def clamp_ladder_no_chase(
+  current: float,
+  direction: str,
+  prices: List[float],
+  atr: float,
+  zone_low: float,
+  zone_high: float,
+) -> List[float]:
+  """Limit legs must not chase: LONG buys below, SHORT sells above current."""
+  if current <= 0 or not prices:
+    return prices
+  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+  span = hi - lo if hi > lo else 0.0
+  buf = max(atr * 0.1, abs(current) * 0.0005, span * 0.06 if span else 0.0, 1e-9)
+  long = _is_long(direction)
+  out = [_r(p) for p in prices]
+
+  if long:
+    if hi > 0 and current > hi:
+      # Extended above zone — wait for pullback into zone ceiling, never chase higher.
+      cap = current - buf
+      out[0] = min(out[0], hi - buf * 0.2, cap)
+      out[0] = _clamp(out[0], lo if lo > 0 else out[0], hi)
+      for i in range(1, len(out)):
+        out[i] = min(out[i], out[i - 1] - buf * 0.25, cap)
+      if lo > 0:
+        out[-1] = max(out[-1], lo)
+    else:
+      cap = current - buf
+      out[0] = min(out[0], cap)
+      if lo > 0 and hi > lo:
+        out[0] = _clamp(out[0], lo, hi)
+      for i in range(1, len(out)):
+        out[i] = min(out[i], out[i - 1] - buf * 0.25, cap)
+      if lo > 0:
+        out[-1] = max(out[-1], lo)
+  else:
+    if hi > 0 and current > hi:
+      # Price above supply zone — sell the rally above market, not into weakness below.
+      floor = current + buf
+      out[0] = max(out[0], floor)
+      for i in range(1, len(out)):
+        out[i] = max(out[i], out[i - 1] + buf * 0.25)
+      return out
+    floor = current + buf
+    out[0] = max(out[0], floor)
+    if lo > 0 and hi > lo:
+      out[0] = _clamp(out[0], lo, hi)
+      if out[0] < floor:
+        out[0] = _r(floor)
+    for i in range(1, len(out)):
+      out[i] = max(out[i], out[i - 1] + buf * 0.25, floor)
+    if hi > 0:
+      out[-1] = min(out[-1], hi) if current <= hi else out[-1]
+
+  return out
+
+
 def _min_leg_separation(span: float, atr: float, anchor: float) -> float:
   """Minimum price gap between consecutive DCA legs (capped to fit 4 legs in zone)."""
   raw = max(span * 0.08, atr * 0.05, abs(anchor) * 0.0004, 1e-9)
@@ -160,7 +256,11 @@ def _zone_pyramid_prices(
   min_sep = _min_leg_separation(span, atr, anchor)
 
   if lo <= anchor <= hi:
-    l1 = anchor
+    # Use anchor only on the conservative (near) side — never chase the far extreme.
+    if long:
+      l1 = anchor if anchor >= lo + span * 0.45 else near
+    else:
+      l1 = anchor if anchor <= hi - span * 0.45 else near
   else:
     l1 = near
 
@@ -192,6 +292,7 @@ def build_dca_ladder(
   harmonic_prz: Optional[Tuple[float, float]] = None,
   gtc: bool = False,
   profile: str = DCA_PROFILE_PYRAMID,
+  current: Optional[float] = None,
 ) -> List[dict]:
   """
   Asymmetric pyramiding DCA.
@@ -214,6 +315,8 @@ def build_dca_ladder(
       lo, hi = lo - pad, hi + pad
 
   pyramid_prices = _zone_pyramid_prices(direction, anchor, lo, hi, atr, harmonic_prz)
+  if current and current > 0:
+    pyramid_prices = clamp_ladder_no_chase(current, direction, pyramid_prices, atr, lo, hi)
   splits = PROFILE_SPLITS.get(profile, DCA_SPLITS)
 
   if profile == DCA_PROFILE_PYRAMID:

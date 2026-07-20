@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from core.atr import compute_atr14
-from core.risk import DCA_SPLITS, build_dca_ladder
+from core.risk import DCA_SPLITS, build_dca_ladder, sensible_entry_anchor
 
 
 def _bias_to_direction(bias: str, bull_count: int, bear_count: int) -> str:
@@ -107,7 +107,10 @@ def _staged_legs(
     pad = max(atr * 0.5, abs(current) * 0.005)
     lo, hi = current - pad, current + pad
 
-  ladder = build_dca_ladder(dir_norm, current, atr, lo, hi, gtc=True)
+  ladder = build_dca_ladder(
+    dir_norm, sensible_entry_anchor(dir_norm, current, lo, hi, atr),
+    atr, lo, hi, gtc=True, current=current,
+  )
   staged: List[dict] = []
   for leg in ladder:
     px = float(leg["price"])

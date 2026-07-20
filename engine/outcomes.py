@@ -8,7 +8,7 @@ import pandas as pd
 
 from core.atr import compute_atr14
 from core.indicators import score_indicator_confluence
-from core.risk import build_dca_ladder, compute_wae, dynamic_stop, dynamic_targets, risk_package
+from core.risk import build_dca_ladder, compute_wae, dynamic_stop, dynamic_targets, risk_package, sensible_entry_anchor
 from engine.readiness import resolve_execution_status
 
 STYLE_CONFIG = {
@@ -97,10 +97,10 @@ def build_style_setup(
     harm_tf = [h for h in harmonic_overlaps if h.get("near_price")][:1]
   prz = (harm_tf[0]["prz_low"], harm_tf[0]["prz_high"]) if harm_tf else None
 
-  entry_anchor = current if in_zone else (kz_low + kz_high) / 2
+  entry_anchor = sensible_entry_anchor(direction, current, kz_low, kz_high, atr)
   fibs = [kz_low, kz_high] if kz_low < kz_high else []
 
-  dca = build_dca_ladder(direction, entry_anchor, atr, kz_low, kz_high, fibs)
+  dca = build_dca_ladder(direction, entry_anchor, atr, kz_low, kz_high, fibs, current=current)
   wae = compute_wae(dca)
   stop = dynamic_stop(
     direction, wae, atr, s_low, s_high, cfg["atr_mult_sl"],

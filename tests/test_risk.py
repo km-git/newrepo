@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from core.risk import build_dca_ladder, compute_wae, dynamic_stop, stop_is_sane
+from core.risk import (
+  build_dca_ladder,
+  compute_wae,
+  dynamic_stop,
+  sensible_entry_anchor,
+  stop_is_sane,
+)
 
 
 def test_dca_asymmetric_pyramid_long():
@@ -96,6 +102,41 @@ def test_dynamic_stop_tokenized_not_razor_thin():
     zone_low=347.0, zone_high=349.5, timeframe="15m", ladder_legs=legs,
   )
   assert s["distance_pct"] >= 0.30
+
+
+def test_long_no_chase_peak():
+  """LONG at zone top: every leg must sit below market."""
+  current = 104.0
+  legs = build_dca_ladder("LONG", 104.0, 2.0, 95.0, 105.0, current=current)
+  for leg in legs:
+    assert leg["price"] < current
+
+
+def test_short_no_chase_trough():
+  """SHORT at zone bottom: every leg must sit above market."""
+  current = 96.0
+  legs = build_dca_ladder("SHORT", 96.0, 2.0, 95.0, 105.0, current=current)
+  for leg in legs:
+    assert leg["price"] > current
+
+
+def test_sensible_entry_anchor_long_pullback():
+  anchor = sensible_entry_anchor("LONG", 348.85, 347.0, 349.5, 0.5)
+  assert anchor < 348.85
+  assert anchor >= 347.0
+
+
+def test_sensible_entry_anchor_short_rally():
+  anchor = sensible_entry_anchor("SHORT", 2.265, 2.249, 2.271, 0.024)
+  assert anchor > 2.265
+
+
+def test_short_above_zone_sells_rally():
+  """SHORT with price above zone: legs above market, not into zone below."""
+  current = 0.4606
+  legs = build_dca_ladder("SHORT", 0.4606, 0.002, 0.4502, 0.4547, current=current)
+  assert all(leg["price"] > current for leg in legs)
+  assert legs[0]["price"] < legs[-1]["price"]
 
 
 def test_stop_is_sane_rejects_negative_and_distant():
