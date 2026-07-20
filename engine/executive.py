@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from core.atr import compute_atr14
+from core.risk import DCA_SPLITS, build_dca_ladder, sensible_entry_anchor
 
 
 def _bias_to_direction(bias: str, bull_count: int, bear_count: int) -> str:
@@ -98,20 +99,32 @@ def _staged_legs(
   fib_high: float,
   atr: float,
 ) -> List[dict]:
-  """Three-leg scale plan: probe → fib → kill zone."""
-  if direction == "BULL":
-    legs = [
-      {"leg": 1, "label": "probe", "zone": [round(current - atr * 0.3, 2), round(current + atr * 0.1, 2)], "size_pct": 25},
-      {"leg": 2, "label": "fib_support", "zone": [round(fib_low, 2), round(fib_high, 2)], "size_pct": 35},
-      {"leg": 3, "label": "kill_zone", "zone": [round(kz_low, 2), round(kz_high, 2)], "size_pct": 40},
-    ]
-  else:
-    legs = [
-      {"leg": 1, "label": "probe", "zone": [round(current - atr * 0.1, 2), round(current + atr * 0.3, 2)], "size_pct": 25},
-      {"leg": 2, "label": "fib_resistance", "zone": [round(fib_low, 2), round(fib_high, 2)], "size_pct": 35},
-      {"leg": 3, "label": "kill_zone", "zone": [round(kz_low, 2), round(kz_high, 2)], "size_pct": 40},
-    ]
-  return legs
+  """Four-leg asymmetric pyramid: 10% / 20% / 30% / 40% inside kill zone."""
+  dir_norm = "LONG" if direction == "BULL" else "SHORT"
+  lo = min(kz_low, kz_high, fib_low, fib_high)
+  hi = max(kz_low, kz_high, fib_low, fib_high)
+  if hi <= lo:
+    pad = max(atr * 0.5, abs(current) * 0.005)
+    lo, hi = current - pad, current + pad
+
+  ladder = build_dca_ladder(
+    dir_norm, sensible_entry_anchor(dir_norm, current, lo, hi, atr),
+    atr, lo, hi, gtc=True, current=current,
+  )
+  staged: List[dict] = []
+  for leg in ladder:
+    px = float(leg["price"])
+    band = max(atr * 0.12, abs(px) * 0.0008)
+    staged.append({
+      "leg": leg["leg"],
+      "label": str(leg.get("layer", f"L{leg['leg']}")).lower(),
+      "zone": [round(px - band, 2), round(px + band, 2)],
+      "price": round(px, 2),
+      "size_pct": leg["size_pct"],
+      "rationale": leg.get("rationale", ""),
+      "dca_splits_pct": DCA_SPLITS,
+    })
+  return staged
 
 
 def _apply_consensus(
@@ -335,7 +348,7 @@ def executive_decide(
       "reason": (
         f"HTF {htf_class['state']} → {direction} via {fib_source}. "
         f"EW consensus {exec_consensus.get('agreement_pct', 0)}% ({consensus_note}). "
-        f"Scale {len(staged)} legs toward [{kz_low:.0f}-{kz_high:.0f}]"
+        f"Scale {len(staged)} legs (10/20/30/40%) toward [{kz_low:.0f}-{kz_high:.0f}]"
       ),
       "trigger_zone": [round(kz_low, 2), round(kz_high, 2)],
       "instruction": (
@@ -357,7 +370,7 @@ def executive_decide(
       "structural_gaps": structural_gaps,
       "consensus_summary": exec_consensus,
       "contingencies": [
-        {"if": "leg 1 fills and price reverses 1 ATR against", "then": "pause legs 2-3, reassess"},
+        {"if": "leg 1 fills and price reverses 1 ATR against", "then": "pause legs 2-4, reassess"},
         {"if": "harmonic pattern emerges", "then": "consolidate entries into PRZ"},
         {"if": "15m impulse validates", "then": "accelerate to full size at market"},
         {"if": f"HTF bias flips from {htf_class['bias']}", "then": "flatten all legs"},
