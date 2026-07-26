@@ -1,0 +1,98 @@
+name: Nightly AutoResearch
+
+on:
+  schedule:
+    # 03:00 UTC daily
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      batch_n:
+        description: "Top N USDT pairs to analyze"
+        required: false
+        default: "15"
+        type: string
+      skip_batch:
+        description: "Skip live batch; eval + goal-mode only (needs prior output in repo — usually false)"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  autoresearch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EW_OKF_BRAIN_DIR: /tmp/ew-okf-nightly
+      EW_PAPER_LEDGER: /tmp/ew-paper-nightly.json
+      EW_WEB_INTEL: "0"
+      EW_WS_ENABLED: "0"
+      EW_HEALTH_REQUIRE_ARTIFACTS: "0"
+      EW_GOAL_MODE_AUTORESEARCH: "0"
+      EW_NIGHTLY_BATCH_N: ${{ github.event.inputs.batch_n || '15' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Smoke tests (autoresearch + goal-mode)
+        run: .venv/bin/python -m pytest tests/test_autoresearch_eval.py tests/test_goal_mode_swarm.py -q --tb=line
+
+      - name: Nightly batch + eval + goal-mode
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_batch != true }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: bash scripts/run_nightly_autoresearch.sh
+
+      - name: Eval + goal-mode only (skip batch)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_batch == true }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          mkdir -p output/nightly
+          .venv/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+          from engine.autoresearch import run_autoresearch_eval_loop
+          from engine.goal_mode import run_goal_mode_cycle
+
+          out = Path("output/nightly")
+          eval_result = run_autoresearch_eval_loop()
+          (out / "autoresearch_eval.json").write_text(json.dumps(eval_result, indent=2, default=str))
+          goal = run_goal_mode_cycle(batch_n=0, execute_paper=False, skip_batch=True, skip_monitor=True)
+          (out / "goal_mode_full.json").write_text(json.dumps(goal, indent=2, default=str))
+          summary = {
+            "autoresearch_best": eval_result.get("best"),
+            "goal_ok": goal.get("ok"),
+            "backtest_fitness": (goal.get("phases") or {}).get("backtest", {}).get("fitness"),
+          }
+          (out / "run_summary.json").write_text(json.dumps(summary, indent=2))
+          PY
+
+      - name: Job summary
+        if: always()
+        run: |
+          SUMMARY="output/nightly/run_summary.json"
+          if [ -f "$SUMMARY" ]; then
+            echo "## Nightly AutoResearch" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No run_summary.json (batch may have failed early)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload nightly artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autoresearch-nightly-${{ github.run_id }}
+          retention-days: 30
+          path: |
+            output/nightly/
+            output/autoresearch/experiments.jsonl
