@@ -56,4 +56,6 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   CI: `.github/workflows/ci.yml` + scheduled `.github/workflows/e2e-improvement.yml`.
 - **Nightly AutoResearch:** Top-N batch → `--autoresearch-eval` → goal-mode quick.
   Script: `bash scripts/run_nightly_autoresearch.sh` (`EW_NIGHTLY_BATCH_N`, default 15).
+  **Continuous daemon:** `bash scripts/run_autoresearch_daemon.sh` or `ew_tool.py --autoresearch-daemon`
+  (`EW_AUTORESEARCH_INTERVAL` default 3600s). Status: `--autoresearch-daemon-status`.
   Workflow: `.github/workflows/autoresearch-nightly.yml` (03:00 UTC + manual dispatch); artifacts: `output/nightly/`, `experiments.jsonl`.

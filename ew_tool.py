@@ -177,6 +177,16 @@ def main() -> None:
     action="store_true",
     help="Goal mode without batch/monitor fetch; optional --execute for paper",
   )
+  parser.add_argument(
+    "--autoresearch-daemon",
+    action="store_true",
+    help="Foreground loop: batch → eval → goal-mode (EW_AUTORESEARCH_INTERVAL, default 3600s)",
+  )
+  parser.add_argument(
+    "--autoresearch-daemon-status",
+    action="store_true",
+    help="Show autoresearch daemon PID and latest cycle log",
+  )
   parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
@@ -306,7 +316,9 @@ def main() -> None:
     print(json.dumps(emergency_flatten(dry_run=dry), indent=2, default=str))
     return
 
-  if args.execute or args.execute_live:
+  if (args.execute or args.execute_live) and not (
+    args.goal_mode or args.goal_mode_quick or args.e2e_cycle
+  ):
     from engine.execution_agent import execute_from_csv
     if args.execute_live:
       os.environ["EW_EXECUTION_MODE"] = "live"
@@ -347,6 +359,40 @@ def main() -> None:
       default=str,
     ))
     return
+
+  if args.autoresearch_daemon_status:
+    from pathlib import Path
+
+    pid_path = Path(os.environ.get("EW_AUTORESEARCH_DAEMON_PID", "output/nightly/daemon.pid"))
+    log_dir = Path(os.environ.get("EW_AUTORESEARCH_DAEMON_LOG_DIR", "output/nightly/daemon"))
+    status: dict = {"pid_file": str(pid_path), "running": False, "pid": None}
+    if pid_path.exists():
+      try:
+        pid = int(pid_path.read_text(encoding="utf-8").strip())
+        status["pid"] = pid
+        status["running"] = Path(f"/proc/{pid}").exists()
+      except (ValueError, OSError):
+        pass
+    logs = sorted(log_dir.glob("cycle_*.log")) if log_dir.is_dir() else []
+    if logs:
+      status["latest_log"] = str(logs[-1])
+      try:
+        tail = logs[-1].read_text(encoding="utf-8", errors="replace").splitlines()[-8:]
+        status["latest_log_tail"] = tail
+      except OSError:
+        pass
+    summary = Path(os.environ.get("EW_NIGHTLY_OUT", "output/nightly")) / "run_summary.json"
+    if summary.exists():
+      status["run_summary"] = json.loads(summary.read_text(encoding="utf-8"))
+    print(json.dumps(status, indent=2, default=str))
+    return
+
+  if args.autoresearch_daemon:
+    import subprocess
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parent / "scripts" / "run_autoresearch_daemon.sh"
+    raise SystemExit(subprocess.call(["bash", str(script)]))
 
   if args.goal_mode or args.goal_mode_quick:
     from engine.goal_mode import run_goal_mode_cycle
