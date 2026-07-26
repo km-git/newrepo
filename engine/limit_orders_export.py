@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import html
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -80,6 +81,18 @@ TF_CONFIG: Dict[str, dict] = {
 
 TIER_RISK_MULT = {"executable": 1.0, "monitor": 0.5, "watch": 0.25}
 TIER_SIZE_CAP = {"executable": 100, "monitor": 50, "watch": 25}
+
+
+def tf_export_config(tf: str) -> dict:
+  """Per-TF export knobs; EW_TF_STOP_MIN_MULT widens stops for autoresearch trials."""
+  cfg = dict(TF_CONFIG[tf])
+  try:
+    mult = float(os.environ.get("EW_TF_STOP_MIN_MULT", "1.0"))
+  except (TypeError, ValueError):
+    mult = 1.0
+  if mult > 0 and abs(mult - 1.0) > 1e-9:
+    cfg["atr_mult_sl"] = cfg["atr_mult_sl"] * mult
+  return cfg
 
 
 def _dir_norm(d: str) -> str:
@@ -269,7 +282,7 @@ def build_limit_order_row(
       "error": result.get("error", "incomplete"),
     }
 
-  cfg = TF_CONFIG[tf]
+  cfg = tf_export_config(tf)
   style = TF_STYLE_MAP.get(tf) or f"{tf}_context"
   gtc_tier, honest_tier, tier_note = _resolve_gtc_tier(result, tf)
 

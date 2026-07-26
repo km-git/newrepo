@@ -144,8 +144,40 @@ def main() -> None:
     action="store_true",
     help="Full E2E: learn → analyze → export → improve",
   )
-  parser.add_argument("--e2e-batch", type=int, default=50, metavar="N", help="With --e2e-cycle: top N pairs")
+  parser.add_argument("--e2e-batch", type=int, default=50, metavar="N", help="With --e2e-cycle / --goal-mode: top N pairs")
   parser.add_argument("--e2e-status", action="store_true", help="E2E pipeline status")
+  parser.add_argument(
+    "--goal-mode",
+    action="store_true",
+    help="Autonomous swarm loop: research → fitness → validate → paper deploy (live gated)",
+  )
+  parser.add_argument(
+    "--goal-mode-agents",
+    action="store_true",
+    help="Print EW multi-agent role map (Swarm Trader / goal-mode analogy)",
+  )
+  parser.add_argument(
+    "--autoresearch",
+    action="store_true",
+    help="Log baseline fitness + proposed env experiments (human promote only)",
+  )
+  parser.add_argument(
+    "--autoresearch-eval",
+    action="store_true",
+    help="Evaluate env proposals on newest cached analysis JSON (overnight-style)",
+  )
+  parser.add_argument(
+    "--autoresearch-analysis",
+    default=None,
+    metavar="PATH",
+    help="Analysis JSON for --autoresearch-eval",
+  )
+  parser.add_argument(
+    "--goal-mode-quick",
+    action="store_true",
+    help="Goal mode without batch/monitor fetch; optional --execute for paper",
+  )
+  parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
@@ -294,6 +326,51 @@ def main() -> None:
     print(json.dumps(e2e_status(), indent=2, default=str))
     return
 
+  if args.goal_mode_agents:
+    from engine.goal_mode import swarm_agent_map
+
+    print(json.dumps(swarm_agent_map(), indent=2))
+    return
+
+  if args.autoresearch:
+    from engine.autoresearch import run_autoresearch_batch
+
+    print(json.dumps(run_autoresearch_batch(), indent=2, default=str))
+    return
+
+  if args.autoresearch_eval:
+    from engine.autoresearch import run_autoresearch_eval_loop
+
+    print(json.dumps(
+      run_autoresearch_eval_loop(analysis_path=args.autoresearch_analysis),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if args.goal_mode or args.goal_mode_quick:
+    from engine.goal_mode import run_goal_mode_cycle
+
+    os.environ.setdefault("EW_GOAL_MODE", "1")
+    paper = True
+    if args.execute:
+      paper = True
+    elif args.execute_live:
+      paper = False
+    quick = args.goal_mode_quick
+    result = run_goal_mode_cycle(
+      goal=args.goal_text,
+      batch_n=0 if quick else args.e2e_batch,
+      llm_advisory=args.llm_advisory,
+      execute_paper=paper if (args.execute or args.execute_live) else (False if quick else None),
+      execute=args.execute,
+      execute_live=args.execute_live,
+      skip_batch=quick,
+      skip_monitor=quick,
+    )
+    print(json.dumps(result, indent=2, default=str))
+    return
+
   if args.e2e_cycle:
     from engine.e2e_pipeline import run_e2e_cycle
     result = run_e2e_cycle(
@@ -309,7 +386,6 @@ def main() -> None:
     from gateway.repomix_export import pack_repository
 
     packed = pack_repository(".")
-    import os
     os.makedirs(os.path.dirname(args.repomix_out) or ".", exist_ok=True)
     with open(args.repomix_out, "w") as f:
       f.write(packed)
