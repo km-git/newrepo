@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+import json
 import os
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 DEFAULT_GOAL = (
   "Improve risk-adjusted returns on EW + harmonic limit setups "
   "(probe sizing, dynamic SL/TP, multi-model consensus before paper submit)."
 )
+
+GOAL_MODE_REPORT = Path(os.environ.get("EW_GOAL_MODE_REPORT", "output/goal_mode/last_run.json"))
+
+
+def save_goal_mode_report(result: Dict[str, Any]) -> str:
+  GOAL_MODE_REPORT.parent.mkdir(parents=True, exist_ok=True)
+  GOAL_MODE_REPORT.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
+  return str(GOAL_MODE_REPORT)
 
 
 def goal_mode_enabled() -> bool:
@@ -63,6 +74,7 @@ def run_goal_mode_cycle(
   paper = execute_paper if execute_paper is not None else auto_deploy_allowed()
 
   live_req = bool(e2e_kwargs.pop("execute_live", False))
+  e2e_kwargs.pop("execute", None)
   allow_live = (
     live_req
     and os.environ.get("EW_EXECUTE_CONFIRM", "") == "1"
@@ -120,7 +132,7 @@ def run_goal_mode_cycle(
     except Exception as exc:
       research["autoresearch_error"] = str(exc)
 
-  return {
+  result = {
     "ok": e2e.get("ok"),
     "healthy": e2e.get("healthy"),
     "goal": goal_text,
@@ -133,4 +145,13 @@ def run_goal_mode_cycle(
     },
     "e2e": e2e,
     "paradigm": "research → backtest → validate → paper deploy (live gated)",
+    "report_path": save_goal_mode_report({
+      "ok": e2e.get("ok"),
+      "healthy": e2e.get("healthy"),
+      "goal": goal_text,
+      "backtest_fitness": fitness.get("fitness"),
+      "deploy": deploy,
+      "finished_at": datetime.now(timezone.utc).isoformat(),
+    }),
   }
+  return result

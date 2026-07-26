@@ -161,6 +161,22 @@ def main() -> None:
     action="store_true",
     help="Log baseline fitness + proposed env experiments (human promote only)",
   )
+  parser.add_argument(
+    "--autoresearch-eval",
+    action="store_true",
+    help="Evaluate env proposals on newest cached analysis JSON (overnight-style)",
+  )
+  parser.add_argument(
+    "--autoresearch-analysis",
+    default=None,
+    metavar="PATH",
+    help="Analysis JSON for --autoresearch-eval",
+  )
+  parser.add_argument(
+    "--goal-mode-quick",
+    action="store_true",
+    help="Goal mode without batch/monitor fetch; optional --execute for paper",
+  )
   parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
@@ -322,7 +338,17 @@ def main() -> None:
     print(json.dumps(run_autoresearch_batch(), indent=2, default=str))
     return
 
-  if args.goal_mode:
+  if args.autoresearch_eval:
+    from engine.autoresearch import run_autoresearch_eval_loop
+
+    print(json.dumps(
+      run_autoresearch_eval_loop(analysis_path=args.autoresearch_analysis),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if args.goal_mode or args.goal_mode_quick:
     from engine.goal_mode import run_goal_mode_cycle
 
     os.environ.setdefault("EW_GOAL_MODE", "1")
@@ -331,13 +357,16 @@ def main() -> None:
       paper = True
     elif args.execute_live:
       paper = False
+    quick = args.goal_mode_quick
     result = run_goal_mode_cycle(
       goal=args.goal_text,
-      batch_n=args.e2e_batch,
+      batch_n=0 if quick else args.e2e_batch,
       llm_advisory=args.llm_advisory,
-      execute_paper=paper if (args.execute or args.execute_live) else None,
+      execute_paper=paper if (args.execute or args.execute_live) else (False if quick else None),
       execute=args.execute,
       execute_live=args.execute_live,
+      skip_batch=quick,
+      skip_monitor=quick,
     )
     print(json.dumps(result, indent=2, default=str))
     return
@@ -357,7 +386,6 @@ def main() -> None:
     from gateway.repomix_export import pack_repository
 
     packed = pack_repository(".")
-    import os
     os.makedirs(os.path.dirname(args.repomix_out) or ".", exist_ok=True)
     with open(args.repomix_out, "w") as f:
       f.write(packed)
