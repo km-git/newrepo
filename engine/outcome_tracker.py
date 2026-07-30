@@ -30,6 +30,16 @@ def _is_long(direction: str) -> bool:
   return str(direction).upper() in ("LONG", "BULL")
 
 
+def _likely_invalid_symbol(symbol: str) -> bool:
+  """Skip unit-test fixture pairs and malformed symbols (avoids OKX fetch spam)."""
+  if not symbol or "/" not in symbol:
+    return True
+  base, _quote = symbol.split("/", 1)
+  if len(base) <= 1:
+    return True
+  return False
+
+
 def _load_state() -> dict:
   if not TRACKED_PATH.exists():
     return {"open": [], "closed": []}
@@ -92,6 +102,8 @@ def _row_to_tracked(row: dict, recorded_at: str) -> Optional[dict]:
   tf = row.get("timeframe", "")
   direction = row.get("direction", "")
   if not sym or not tf or not direction:
+    return None
+  if _likely_invalid_symbol(sym):
     return None
   return {
     "id": setup_key(sym, tf, direction),
@@ -173,6 +185,12 @@ def resolve_open_setups(*, is_crypto: bool = True) -> int:
   for setup in state["open"]:
     sym = setup["symbol"]
     tf = setup["timeframe"]
+    if _likely_invalid_symbol(sym):
+      setup["status"] = "invalid_symbol"
+      setup["resolved_at"] = _utcnow()
+      state["closed"].append(setup)
+      resolved += 1
+      continue
     max_bars = _MAX_FORWARD_BARS.get(tf, 48)
     cache_key = f"{sym}|{tf}"
     if cache_key not in fetch_cache:
