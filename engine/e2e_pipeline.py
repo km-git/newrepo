@@ -155,11 +155,30 @@ def e2e_status() -> Dict[str, Any]:
     except json.JSONDecodeError:
       pass
 
+  goal_meta: Dict[str, Any] = {}
+  try:
+    from engine.goal_mode import goal_mode_enabled, swarm_agent_map
+
+    goal_meta["enabled"] = goal_mode_enabled()
+    goal_meta["agents"] = list(swarm_agent_map().keys())
+  except ImportError:
+    goal_meta["enabled"] = False
+
+  autoresearch_meta: Dict[str, Any] = {}
+  try:
+    from engine.autoresearch import latest_experiments_summary
+
+    autoresearch_meta = latest_experiments_summary()
+  except ImportError:
+    pass
+
   return {
     "enabled": e2e_enabled(),
     "last_run": state.get("finished_at"),
     "last_healthy": state.get("healthy"),
     "improvement": improvement_report(),
     "execution": execution_status(),
+    "goal_mode": goal_meta,
+    "autoresearch": autoresearch_meta,
     "health_path": str(Path(os.environ.get("EW_HEALTH_PATH", "output/system/health.json"))),
   }
