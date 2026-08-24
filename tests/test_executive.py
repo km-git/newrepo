@@ -80,4 +80,6 @@ def test_executive_staged_has_scale_legs():
   )
   assert result["status"] == "staged_entry"
   assert "scale_legs" in result["executive_decision"]
-  assert len(result["executive_decision"]["scale_legs"]) == 3
+  legs = result["executive_decision"]["scale_legs"]
+  assert len(legs) == 4
+  assert [l["size_pct"] for l in legs] == [10, 20, 30, 40]

@@ -22,6 +22,26 @@ PROFILE_SPLITS = {
 DEFAULT_MAX_STRUCTURE_ATR = 4.0
 DEFAULT_MAX_STOP_ATR = 5.0
 
+# Min / max stop distance (% of WAE) by timeframe — room to breathe, capped for risk.
+TF_STOP_PCT: Dict[str, Tuple[float, float]] = {
+  "15m": (0.85, 3.5),
+  "1h": (1.15, 4.5),
+  "4h": (1.35, 5.5),
+  "1d": (1.75, 8.0),
+  "1w": (2.5, 12.0),
+}
+DEFAULT_STOP_PCT = (1.0, 6.0)
+
+# R-multiples for smart targets (TP1 / TP2 / TP3) by timeframe.
+TF_TARGET_R: Dict[str, Tuple[float, float, float]] = {
+  "15m": (1.25, 2.25, 3.75),
+  "1h": (1.5, 2.75, 4.5),
+  "4h": (1.75, 3.0, 5.0),
+  "1d": (2.0, 3.5, 6.0),
+  "1w": (2.5, 4.5, 8.0),
+}
+DEFAULT_TARGET_R = (1.5, 2.5, 4.0)
+
 # Golden-ratio scale-in depths inside the entry zone (0 = near-side, 1 = far-side).
 _ZONE_DEPTH_RATIOS = [0.0, 0.382, 0.618, 1.0]
 
@@ -60,6 +80,102 @@ def compute_wae(legs: List[dict]) -> float:
   """Weighted average entry: Σ(price × allocation%)."""
   total = sum(float(leg["price"]) * float(leg["size_pct"]) / 100.0 for leg in legs)
   return _r(total)
+
+
+def sensible_entry_anchor(
+  direction: str,
+  current: float,
+  zone_low: float,
+  zone_high: float,
+  atr: float,
+) -> float:
+  """
+  First limit away from chasing extended price.
+  LONG: pullback into upper zone, strictly below market.
+  SHORT: rally into supply — above market when price has already left the zone.
+  """
+  if current <= 0:
+    return current
+  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+  span = hi - lo if hi > lo else 0.0
+  buf = max(atr * 0.12, abs(current) * 0.0008, span * 0.04 if span else 0.0, 1e-9)
+  long = _is_long(direction)
+
+  if long:
+    if hi > 0 and current > hi:
+      ideal = hi - buf * 0.35
+    else:
+      ideal = hi - buf * 0.35 if span > 0 else current - buf
+    ideal = min(ideal, current - buf)
+    if span > 0:
+      ideal = _clamp(ideal, lo + span * 0.08, hi - buf * 0.15)
+    return _r(ideal)
+
+  if hi > 0 and current > hi:
+    return _r(current + buf)
+  ideal = lo + buf * 0.35 if span > 0 else current + buf
+  ideal = max(ideal, current + buf)
+  if span > 0:
+    ideal = _clamp(ideal, lo + buf * 0.15, hi - span * 0.08)
+  return _r(ideal)
+
+
+def clamp_ladder_no_chase(
+  current: float,
+  direction: str,
+  prices: List[float],
+  atr: float,
+  zone_low: float,
+  zone_high: float,
+) -> List[float]:
+  """Limit legs must not chase: LONG buys below, SHORT sells above current."""
+  if current <= 0 or not prices:
+    return prices
+  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+  span = hi - lo if hi > lo else 0.0
+  buf = max(atr * 0.1, abs(current) * 0.0005, span * 0.06 if span else 0.0, 1e-9)
+  long = _is_long(direction)
+  out = [_r(p) for p in prices]
+
+  if long:
+    if hi > 0 and current > hi:
+      # Extended above zone — wait for pullback into zone ceiling, never chase higher.
+      cap = current - buf
+      out[0] = min(out[0], hi - buf * 0.2, cap)
+      out[0] = _clamp(out[0], lo if lo > 0 else out[0], hi)
+      for i in range(1, len(out)):
+        out[i] = min(out[i], out[i - 1] - buf * 0.25, cap)
+      if lo > 0:
+        out[-1] = max(out[-1], lo)
+    else:
+      cap = current - buf
+      out[0] = min(out[0], cap)
+      if lo > 0 and hi > lo:
+        out[0] = _clamp(out[0], lo, hi)
+      for i in range(1, len(out)):
+        out[i] = min(out[i], out[i - 1] - buf * 0.25, cap)
+      if lo > 0:
+        out[-1] = max(out[-1], lo)
+  else:
+    if hi > 0 and current > hi:
+      # Price above supply zone — sell the rally above market, not into weakness below.
+      floor = current + buf
+      out[0] = max(out[0], floor)
+      for i in range(1, len(out)):
+        out[i] = max(out[i], out[i - 1] + buf * 0.25)
+      return out
+    floor = current + buf
+    out[0] = max(out[0], floor)
+    if lo > 0 and hi > lo:
+      out[0] = _clamp(out[0], lo, hi)
+      if out[0] < floor:
+        out[0] = _r(floor)
+    for i in range(1, len(out)):
+      out[i] = max(out[i], out[i - 1] + buf * 0.25, floor)
+    if hi > 0:
+      out[-1] = min(out[-1], hi) if current <= hi else out[-1]
+
+  return out
 
 
 def _min_leg_separation(span: float, atr: float, anchor: float) -> float:
@@ -150,7 +266,11 @@ def _zone_pyramid_prices(
   min_sep = _min_leg_separation(span, atr, anchor)
 
   if lo <= anchor <= hi:
-    l1 = anchor
+    # Use anchor only on the conservative (near) side — never chase the far extreme.
+    if long:
+      l1 = anchor if anchor >= lo + span * 0.45 else near
+    else:
+      l1 = anchor if anchor <= hi - span * 0.45 else near
   else:
     l1 = near
 
@@ -182,6 +302,7 @@ def build_dca_ladder(
   harmonic_prz: Optional[Tuple[float, float]] = None,
   gtc: bool = False,
   profile: str = DCA_PROFILE_PYRAMID,
+  current: Optional[float] = None,
 ) -> List[dict]:
   """
   Asymmetric pyramiding DCA.
@@ -204,6 +325,8 @@ def build_dca_ladder(
       lo, hi = lo - pad, hi + pad
 
   pyramid_prices = _zone_pyramid_prices(direction, anchor, lo, hi, atr, harmonic_prz)
+  if current and current > 0:
+    pyramid_prices = clamp_ladder_no_chase(current, direction, pyramid_prices, atr, lo, hi)
   splits = PROFILE_SPLITS.get(profile, DCA_SPLITS)
 
   if profile == DCA_PROFILE_PYRAMID:
@@ -264,6 +387,58 @@ def _clamp_structure_to_entry(
   return s_low, s_high
 
 
+def _stop_pct_bounds(timeframe: Optional[str]) -> Tuple[float, float]:
+  if timeframe and timeframe in TF_STOP_PCT:
+    return TF_STOP_PCT[timeframe]
+  return DEFAULT_STOP_PCT
+
+
+def min_stop_distance_pct(timeframe: Optional[str] = None) -> float:
+  """Minimum stop distance (% of entry) for a timeframe."""
+  return _stop_pct_bounds(timeframe)[0]
+
+
+def stop_distance_pct(entry: float, stop: float) -> float:
+  if entry <= 0 or stop <= 0:
+    return 0.0
+  return _r(abs(entry - stop) / entry * 100.0, 2)
+
+
+def _target_r_multiples(timeframe: Optional[str]) -> Tuple[float, float, float]:
+  if timeframe and timeframe in TF_TARGET_R:
+    return TF_TARGET_R[timeframe]
+  return DEFAULT_TARGET_R
+
+
+def _smart_stop_distance_pct(
+  ref: float,
+  atr: float,
+  zone_low: float,
+  zone_high: float,
+  timeframe: Optional[str],
+) -> Tuple[float, float]:
+  """Blend TF floor, zone width, and ATR — never razor-thin."""
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  if ref <= 0:
+    return min_pct, max_pct
+  lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+  span = hi - lo if hi > lo else 0.0
+  zone_pct = span / ref * 100.0 * 1.2 if span > 0 else 0.0
+  atr_pct = atr / ref * 100.0 * 1.15 if atr > 0 else 0.0
+  effective_min = max(min_pct, zone_pct, atr_pct)
+  return min(effective_min, max_pct), max_pct
+
+
+def _ladder_extreme(direction: str, legs: Optional[List[dict]], entry: float) -> float:
+  """Worst-case fill: lowest leg for LONG, highest for SHORT."""
+  if not legs:
+    return entry
+  prices = [float(leg["price"]) for leg in legs if leg.get("price")]
+  if not prices:
+    return entry
+  return min(prices) if _is_long(direction) else max(prices)
+
+
 def stop_is_sane(
   direction: str,
   entry: float,
@@ -271,8 +446,11 @@ def stop_is_sane(
   atr: float,
   *,
   max_atr: float = DEFAULT_MAX_STOP_ATR,
+  timeframe: Optional[str] = None,
+  zone_low: Optional[float] = None,
+  zone_high: Optional[float] = None,
 ) -> bool:
-  if entry <= 0 or atr <= 0:
+  if entry <= 0 or stop <= 0 or atr <= 0:
     return False
   if _is_long(direction):
     if stop >= entry:
@@ -280,7 +458,21 @@ def stop_is_sane(
   else:
     if stop <= entry:
       return False
-  return abs(entry - stop) <= max_atr * atr
+
+  dist_pct = abs(entry - stop) / entry * 100.0
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  if dist_pct < min_pct * 0.85 or dist_pct > max_pct * 1.05:
+    return False
+  if abs(entry - stop) > max_atr * atr * 1.05:
+    return False
+
+  if zone_low is not None and zone_high is not None:
+    lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+    if _is_long(direction) and stop > lo:
+      return False
+    if not _is_long(direction) and stop < hi:
+      return False
+  return True
 
 
 def dynamic_stop(
@@ -295,47 +487,81 @@ def dynamic_stop(
   zone_high: Optional[float] = None,
   max_structure_atr: float = DEFAULT_MAX_STRUCTURE_ATR,
   max_stop_atr: float = DEFAULT_MAX_STOP_ATR,
+  timeframe: Optional[str] = None,
+  ladder_legs: Optional[List[dict]] = None,
 ) -> dict:
-  """Hard stop from WAE/entry, structure, and zone invalidation."""
+  """
+  Smart hard stop: zone invalidation + structure + DCA ladder extreme.
+
+  Distance is the wider of (zone breach, TF/ATR/zone-width floor) — never
+  clipped to the minimum by a tight invalidation tick.
+  """
   if atr <= 0:
     atr = max(abs(entry) * 0.01, 1e-9)
 
+  ref = _ladder_extreme(direction, ladder_legs, entry)
+  lo = hi = None
+  if zone_low is not None and zone_high is not None:
+    lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+    if hi - lo <= 0:
+      lo, hi = None, None
+
+  if lo is None or hi is None:
+    pad = max(atr * 0.65, ref * 0.006)
+    lo, hi = ref - pad, ref + pad
+
+  min_pct, max_pct = _smart_stop_distance_pct(ref, atr, lo, hi, timeframe)
+  buffer = max(atr_mult * 0.45 * atr, ref * min_pct / 100.0 * 0.25, (hi - lo) * 0.12)
+
+  band = min(max_structure_atr * atr, ref * max_pct / 100.0)
   s_low, s_high = _clamp_structure_to_entry(
-    direction, entry, atr, structure_low, structure_high, max_structure_atr,
+    direction, ref, atr, structure_low, structure_high, max_structure_atr,
   )
 
   if _is_long(direction):
-    base = min(s_low, entry - 0.5 * atr)
-    stop = base - atr_mult * atr
-    rule = f"hard stop below structure {_r(s_low)} − {atr_mult}×ATR"
-    min_stop = entry - max_stop_atr * atr
-    max_stop = entry - 0.25 * atr
-    stop = _clamp(stop, min_stop, max_stop)
-    if zone_low is not None and zone_high is not None:
-      lo = min(zone_low, zone_high)
-      zone_stop = lo - atr_mult * atr
-      stop = max(stop, zone_stop)
-      stop = _clamp(stop, min_stop, max_stop)
-      rule = f"hard stop max(zone @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
+    near_struct = s_low if abs(s_low - lo) <= band else lo
+    zone_stop = min(lo, near_struct) - buffer
+    pct_stop = ref * (1.0 - min_pct / 100.0)
+    wide_cap = ref * (1.0 - max_pct / 100.0)
+    stop = min(zone_stop, pct_stop)
+    stop = max(stop, wide_cap)
+    rule = (
+      f"smart SL below zone {_r(lo)} / struct — "
+      f"min {min_pct:.2f}% · zone+ATR floor (max {max_pct}%)"
+    )
   else:
-    base = max(s_high, entry + 0.5 * atr)
-    stop = base + atr_mult * atr
-    rule = f"hard stop above structure {_r(s_high)} + {atr_mult}×ATR"
-    max_stop = entry + max_stop_atr * atr
-    min_stop = entry + 0.25 * atr
-    stop = _clamp(stop, min_stop, max_stop)
-    if zone_low is not None and zone_high is not None:
-      hi = max(zone_low, zone_high)
-      zone_stop = hi + atr_mult * atr
-      stop = min(stop, zone_stop)
-      stop = _clamp(stop, min_stop, max_stop)
-      rule = f"hard stop min(zone @ {_r(zone_stop)}, structure) — capped {max_stop_atr}×ATR"
+    near_struct = s_high if abs(s_high - hi) <= band else hi
+    zone_stop = max(hi, near_struct) + buffer
+    pct_stop = ref * (1.0 + min_pct / 100.0)
+    wide_cap = ref * (1.0 + max_pct / 100.0)
+    stop = max(zone_stop, pct_stop)
+    stop = min(stop, wide_cap)
+    rule = (
+      f"smart SL above zone {_r(hi)} / struct — "
+      f"min {min_pct:.2f}% · zone+ATR floor (max {max_pct}%)"
+    )
+
+  atr_cap = max_stop_atr * atr
+  if _is_long(direction):
+    stop = max(stop, ref - atr_cap)
+  else:
+    stop = min(stop, ref + atr_cap)
+
+  dist_pct = abs(ref - stop) / ref * 100.0 if ref else 0.0
+  if dist_pct < min_pct * 0.9:
+    if _is_long(direction):
+      stop = ref * (1.0 - min_pct / 100.0)
+    else:
+      stop = ref * (1.0 + min_pct / 100.0)
 
   return {
     "price": _r(stop),
     "type": "hard",
     "rule": rule,
-    "distance_pct": _r(abs(entry - stop) / entry * 100, 2),
+    "distance_pct": _r(abs(ref - stop) / ref * 100, 2) if ref else 0.0,
+    "reference_price": _r(ref),
+    "min_distance_pct": _r(min_pct, 2),
+    "architecture": "smart_dynamic_sl",
   }
 
 
@@ -346,22 +572,57 @@ def dynamic_targets(
   harmonic_prz: Optional[Tuple[float, float]] = None,
   c_target_100: Optional[float] = None,
   c_target_161: Optional[float] = None,
+  *,
+  stop_price: Optional[float] = None,
+  zone_low: Optional[float] = None,
+  zone_high: Optional[float] = None,
+  timeframe: Optional[str] = None,
+  structure_low: Optional[float] = None,
+  structure_high: Optional[float] = None,
 ) -> List[dict]:
-  """Three-tier targets from WAE with 40/30/30 exit split."""
-  if _is_long(direction):
-    t1 = entry + atr * 1.5
-    t2 = entry + atr * 3.0
-    t3 = c_target_100 if c_target_100 and c_target_100 > entry else entry + atr * 5.0
+  """
+  Smart R-based targets from actual WAE→stop risk, structure, and harmonics.
+
+  TP1/2/3 use TF R-multiples; anchors lift to zone mid/opposite edge and
+  wave structure when those levels improve the reward profile.
+  """
+  r1, r2, r3 = _target_r_multiples(timeframe)
+  risk = abs(entry - stop_price) if stop_price and stop_price > 0 else max(atr * 1.25, entry * 0.01)
+  lo = hi = None
+  if zone_low is not None and zone_high is not None:
+    lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
+    if hi <= lo:
+      lo, hi = None, None
+
+  long = _is_long(direction)
+  if long:
+    t1 = entry + risk * r1
+    t2 = entry + risk * r2
+    t3 = entry + risk * r3
+    if lo is not None and hi is not None:
+      t1 = max(t1, (lo + hi) / 2.0)
+      t1 = max(t1, hi)
+    if structure_high and structure_high > entry:
+      t2 = max(t2, structure_high)
     if harmonic_prz:
       t2 = max(t2, harmonic_prz[1])
+    if c_target_100 and c_target_100 > entry:
+      t3 = max(t3, c_target_100)
     if c_target_161 and c_target_161 > entry:
       t3 = max(t3, c_target_161)
   else:
-    t1 = entry - atr * 1.5
-    t2 = entry - atr * 3.0
-    t3 = c_target_100 if c_target_100 and c_target_100 < entry else entry - atr * 5.0
+    t1 = entry - risk * r1
+    t2 = entry - risk * r2
+    t3 = entry - risk * r3
+    if lo is not None and hi is not None:
+      t1 = min(t1, (lo + hi) / 2.0)
+      t1 = min(t1, lo)
+    if structure_low and structure_low < entry:
+      t2 = min(t2, structure_low)
     if harmonic_prz:
       t2 = min(t2, harmonic_prz[0])
+    if c_target_100 and c_target_100 < entry:
+      t3 = min(t3, c_target_100)
     if c_target_161 and c_target_161 < entry:
       t3 = min(t3, c_target_161)
 
@@ -370,8 +631,15 @@ def dynamic_targets(
   prices = [t1, t2, t3]
   out = []
   for label, px, pct in zip(labels, prices, exits):
-    rr = abs(px - entry) / max(abs(entry - (entry - atr)), 1e-9)
-    out.append({"label": label, "price": _r(px), "exit_pct": pct, "rr": _r(rr, 2)})
+    rr = abs(px - entry) / max(risk, 1e-9)
+    out.append({
+      "label": label,
+      "price": _r(px),
+      "exit_pct": pct,
+      "rr": _r(rr, 2),
+      "r_multiple": _r(rr, 2),
+      "architecture": "smart_dynamic_tp",
+    })
   return out
 
 

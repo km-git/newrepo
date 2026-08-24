@@ -145,7 +145,7 @@ def apply_panel_to_trade(trade_setup: dict, panel: dict) -> dict:
 
   stance = panel.get("consensus_stance")
   if stance == "reject":
-    trade["panel_warning"] = "LLM panel recommends caution — consider reduced size or skip."
+    trade["panel_warning"] = "LLM panel recommends reject — consider skip or reduced size."
   elif stance == "caution":
     trade["panel_note"] = "Mixed model consensus — verify wave count before sizing up."
 
