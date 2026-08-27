@@ -53,10 +53,15 @@ def model_for(provider: Provider, tier: str = "cheap") -> str:
 def select_providers() -> List[Provider]:
   """
   Provider selection (token budget):
-  - auto (default): ONE provider — OpenAI if key present, else Anthropic
-  - dual: both (2× cost — use only when EW_LLM_PROVIDER=dual)
-  - openai / anthropic: force single
+  - cursor backend: virtual openai+anthropic slots (routed via Cursor Cloud Agents API)
+  - auto (direct): ONE provider — OpenAI if key present, else Anthropic
+  - dual: both direct keys (2× cost)
   """
+  from engine.llm_backend import cursor_available, llm_backend
+
+  if llm_backend() == "cursor":
+    return ["openai", "anthropic"] if cursor_available() else []
+
   mode = provider_mode()
   has_openai = bool(os.environ.get("OPENAI_API_KEY", "").strip())
   has_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())

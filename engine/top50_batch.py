@@ -37,6 +37,7 @@ def _sync_reports_from_export(output_dir: Path, limit_meta: dict) -> None:
     (output_dir / "COMPLETE_TRADING_ANALYSIS.md", _REPORTS_DIR / "COMPLETE_TRADING_ANALYSIS.md"),
     (output_dir / "latest_trade_setups_matrix.html", _REPORTS_DIR / "trade_setups_matrix.html"),
     (Path("reports/HISTORICAL_PERFORMANCE.md"), _REPORTS_DIR / "HISTORICAL_PERFORMANCE.md"),
+    (Path("reports/PAPER_PNL.md"), _REPORTS_DIR / "PAPER_PNL.md"),
   ]
   for src, dst in pairs:
     if src.exists() and src.resolve() != dst.resolve():
@@ -144,6 +145,27 @@ def run_top_crypto_batch(
   )
   _sync_reports_from_export(out, limit_meta)
 
+  paper_summary: Dict[str, Any] = {}
+  if os.environ.get("EW_PAPER_AFTER_BATCH", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.paper_simulator import run_paper_simulation
+
+      paper_summary = run_paper_simulation(
+        csv_path=limit_meta.get("latest_csv", str(out / "latest_limit_orders_all_tf.csv")),
+        equity_usd=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
+        fetch_ohlc=True,
+      )
+      pnl_src = Path("reports/PAPER_PNL.md")
+      if pnl_src.exists():
+        shutil.copy2(pnl_src, _REPORTS_DIR / "PAPER_PNL.md")
+      print(
+        f"  Paper P&L: ${paper_summary.get('realized_pnl_usd', 0):,.2f} "
+        f"({paper_summary.get('simulated', 0)} trades)"
+      )
+    except Exception as exc:
+      print(f"  Paper sim skipped: {exc}")
+      paper_summary = {"ok": False, "error": str(exc)}
+
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}
   for r in results:
@@ -173,6 +195,7 @@ def run_top_crypto_batch(
     "limit_orders_csv": limit_meta["latest_csv"],
     "limit_orders_matrix_html": limit_meta.get("matrix_html"),
     "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
+    "paper_pnl": paper_summary,
     "pairs_csv": str(pairs_csv),
     "summary_csv": str(stable_summary),
   }

@@ -214,5 +214,23 @@ def run_scheduler_cycle(
     except Exception as exc:
       result["improvement_error"] = str(exc)
 
+  if os.environ.get("EW_PAPER_AFTER_BATCH", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.paper_simulator import run_paper_simulation
+
+      paper = run_paper_simulation(
+        equity_usd=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
+        fetch_ohlc=True,
+      )
+      result["paper_pnl"] = paper
+      state["last_paper_pnl"] = {
+        "realized_pnl_usd": paper.get("realized_pnl_usd"),
+        "simulated": paper.get("simulated"),
+        "ending_equity_usd": paper.get("ending_equity_usd"),
+        "run_at": paper.get("run_at"),
+      }
+    except Exception as exc:
+      result["paper_pnl"] = {"ok": False, "error": str(exc)}
+
   save_state(state)
   return result

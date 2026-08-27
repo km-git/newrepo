@@ -54,3 +54,6 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   `python3 ew_tool.py --e2e-cycle --e2e-batch 50` or `python3 scripts/e2e_trading_cycle.py`.
   Daemon: `./scripts/run_e2e_daemon.sh`. Status: `--e2e-status`, `--health`.
   CI: `.github/workflows/ci.yml` + scheduled `.github/workflows/e2e-improvement.yml`.
+- **Nightly AutoResearch:** Top-N batch → `--autoresearch-eval` → goal-mode quick.
+  Script: `bash scripts/run_nightly_autoresearch.sh` (`EW_NIGHTLY_BATCH_N`, default 15).
+  Workflow: `.github/workflows/autoresearch-nightly.yml` (03:00 UTC + manual dispatch); artifacts: `output/nightly/`, `experiments.jsonl`.
