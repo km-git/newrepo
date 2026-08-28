@@ -37,4 +37,6 @@ def test_is_gpt_model():
 
 def test_gpt_allowed_by_default(monkeypatch):
   monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   assert gpt_replacement_for("screen_b", "gpt-5-mini") == "gpt-5-mini"

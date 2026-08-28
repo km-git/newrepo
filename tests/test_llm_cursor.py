@@ -33,8 +33,20 @@ def test_llm_backend_direct_when_forced(monkeypatch):
 def test_cursor_model_mapping(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
-  assert cursor_model_for("openai", "cheap") == "gpt-5-mini"
+  # Default: Cursor Pro pool — cheap openai routes to Composer, not GPT-mini
+  assert cursor_model_for("openai", "cheap") == "composer-2.5"
   assert cursor_model_for("anthropic", "cheap") == "cursor-grok-4.5-high"
+  assert "grok" in cursor_model_for("anthropic", "standard").lower()
+
+  # Legacy path when Other Models explicitly allowed
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
+  monkeypatch.setitem(MODEL, "screen_b", "gpt-5-mini")
+  monkeypatch.setitem(MODEL, "opus", "claude-opus-4-8")
+  assert cursor_model_for("openai", "cheap") == "gpt-5-mini"
   assert "claude" in cursor_model_for("anthropic", "standard")
 
 

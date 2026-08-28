@@ -85,6 +85,17 @@ def run_improvement_cycle(
   health = run_health_checks()
   save_health(health)
 
+  gap_audit: Dict[str, Any] = {}
+  gap_summary: Dict[str, Any] = {}
+  if os.environ.get("EW_GAP_AUDIT", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.resource_gap_audit import gap_audit_summary, run_resource_gap_audit
+
+      gap_audit = run_resource_gap_audit(persist=True, persist_okf=True)
+      gap_summary = gap_audit_summary()
+    except Exception as exc:
+      gap_audit = {"error": str(exc)}
+
   cycle = {
     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     "resolved": metrics.get("last_resolved", 0),
@@ -107,6 +118,7 @@ def run_improvement_cycle(
       "layer_weights": tv_oss.get("layer_weights") if tv_oss else {},
     },
     "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
+    "gap_audit": gap_summary if gap_summary else gap_audit,
   }
 
   try:
@@ -149,6 +161,7 @@ def run_improvement_cycle(
     "social_validation": social_validation,
     "tv_oss": tv_oss,
     "ai_improvement": ai_review,
+    "gap_audit": gap_audit,
   }
 
 

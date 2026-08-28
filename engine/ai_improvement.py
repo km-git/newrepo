@@ -26,6 +26,7 @@ from engine.model_budget_governor import (
   should_escalate_to_premium,
   should_use_other_model,
 )
+from engine.llm_budget_policy import allow_premium_escalation
 from engine.token_saver_registry import optimize_prompt_text
 
 NAMESPACE = "ai_improvement"
@@ -117,6 +118,10 @@ def improvement_escalation_routes(
   if sev == "hard" or metrics_poor:
     for task_name in ("planning", "synthesis", "architect"):
       task = task_name  # type: ignore[assignment]
+      if not allow_premium_escalation(
+        task, verdict, conviction, stances, context="self_improvement", metrics_poor=metrics_poor,
+      ) and task in ("executive", "architect", "synthesis"):
+        continue
       model, _, _ = escalate_task_model(task, verdict, conviction, stances)
       if model in {r[1] for r in routes}:
         continue
@@ -256,7 +261,6 @@ def run_multi_model_improvement_review(
   poor = _metrics_poor(metrics)
   unanimous = len(stances) >= 2 and len(set(stances)) == 1 and stances[0] == "agree"
 
-  # Phase 2: standard ensemble panel — skip when phase 1 unanimous agree (token save)
   panel: Dict[str, Any] = {"consensus_stance": stances[0] if unanimous else "caution", "skipped": unanimous}
   if not unanimous:
     panel = run_panel(

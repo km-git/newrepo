@@ -38,9 +38,20 @@ def test_screen_routes_ensemble_dual_cheap(monkeypatch):
   assert all(r[3] == "screen" for r in routes)
 
 
-def test_tiebreaker_route_executive_uses_opus(monkeypatch):
+def test_tiebreaker_route_executive_uses_grok_pro(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  route = tiebreaker_route("GO", "high")
+  assert route is not None
+  assert route[1] == "cursor-grok-4.5-high"
+  assert route[3] == "executive"
+
+
+def test_tiebreaker_route_executive_uses_opus_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   route = tiebreaker_route("GO", "high")
   assert route is not None
   assert route[1] == "claude-opus-4-8"
@@ -50,16 +61,35 @@ def test_tiebreaker_route_executive_uses_opus(monkeypatch):
 def test_crucial_models_defaults(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  from engine.llm_model_roster import MODEL
   from engine.llm_task_router import crucial_model_for_task
+
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
 
   assert crucial_model_for_task("executive") == "claude-opus-4-8"
   assert crucial_model_for_task("architect") == "claude-fable-5"
   assert crucial_model_for_task("planning") == "gpt-5.6-sol"
 
 
-def test_tiebreaker_route_planning_uses_luna_for_conditional(monkeypatch):
+def test_tiebreaker_route_planning_uses_grok_pro(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  route = tiebreaker_route("CONDITIONAL_GO", "medium")
+  assert route is not None
+  assert route[1] == "cursor-grok-4.5-high"
+  assert route[3] == "planning"
+
+
+def test_tiebreaker_route_planning_uses_luna_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "light_plan", "gpt-5.6-luna")
   route = tiebreaker_route("CONDITIONAL_GO", "medium")
   assert route is not None
   assert route[1] == "gpt-5.6-luna"
@@ -76,7 +106,7 @@ def test_tiebreaker_route_mild_uses_grok_high_not_opus(monkeypatch):
   assert route[3] == "tiebreaker"
 
 
-def test_tiebreaker_route_hard_go_high_uses_opus(monkeypatch):
+def test_tiebreaker_route_hard_go_high_uses_opus_within_2pct_budget(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
   route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
@@ -85,8 +115,35 @@ def test_tiebreaker_route_hard_go_high_uses_opus(monkeypatch):
   assert route[3] == "executive"
 
 
+def test_tiebreaker_route_hard_go_high_falls_back_when_budget_exhausted(monkeypatch):
+  from engine.llm_token_saver import get_pool_mix_tracker
+
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  tracker = get_pool_mix_tracker()
+  monkeypatch.setattr(tracker, "_state", lambda: {"cursor_pro": 98, "other": 2})
+  route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
+  assert route is not None
+  assert route[1] == "cursor-grok-4.5-high"
+  assert route[3] == "executive"
+
+
+def test_tiebreaker_route_hard_go_high_uses_opus_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
+  route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
+  assert route is not None
+  assert route[1] == "claude-opus-4-8"
+  assert route[3] == "executive"
+
+
 def test_routing_matrix_has_crucial_models(monkeypatch):
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   matrix = routing_matrix()
   assert matrix["crucial_models"]["opus"] == "claude-opus-4-8"
   assert matrix["crucial_models"]["fable"] == "claude-fable-5"

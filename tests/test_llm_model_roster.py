@@ -140,6 +140,8 @@ def test_screen_slots_includes_gpt_when_other_pool_enabled(monkeypatch):
     monkeypatch,
     EW_USE_OTHER_MODEL_POOL="1",
     EW_CURSOR_ONLY_SCREEN="0",
+    EW_CURSOR_PRO_ONLY="0",
+    EW_ALLOW_OTHER_MODELS="1",
     EW_MINIMIZE_GPT="0",
   )
   slots = roster.screen_model_slots()
