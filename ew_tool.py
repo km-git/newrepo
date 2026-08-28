@@ -216,6 +216,16 @@ def main() -> None:
     help="Include OHLC paper simulation in --effectiveness-audit (network)",
   )
   parser.add_argument(
+    "--paper-forward",
+    action="store_true",
+    help="LLM-free paper proof tick: OHLC sim + 30-day forward ledger (no AI models)",
+  )
+  parser.add_argument(
+    "--paper-forward-no-fetch",
+    action="store_true",
+    help="With --paper-forward: skip OHLC network fetch (structural test only)",
+  )
+  parser.add_argument(
     "--goal-mode-quick",
     action="store_true",
     help="Goal mode without batch/monitor fetch; optional --execute for paper",

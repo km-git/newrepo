@@ -160,6 +160,13 @@ def gate_paper_row(
   if stop <= 0 or tp1 <= 0:
     return False, ["invalid_sl_tp"]
 
+  from engine.smart_risk_policy import always_smart_enabled, validate_row_policy
+
+  if always_smart_enabled():
+    ok_policy, policy_issues = validate_row_policy(row)
+    if not ok_policy:
+      return False, [f"smart_risk:{i}" for i in policy_issues]
+
   return True, []
 
 
