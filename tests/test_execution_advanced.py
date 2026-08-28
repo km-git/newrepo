@@ -55,8 +55,7 @@ def test_dollar_sizing_from_equity():
   assert sum(sizing["leg_usd"].values()) == pytest.approx(sizing["position_notional_usd"], abs=0.02)
 
 
-def test_select_correlation_cap_profile(monkeypatch):
-  monkeypatch.setenv("EW_ALWAYS_SMART_RISK", "0")
+def test_select_correlation_cap_profile():
   ctx = ExportContext()
   result = {
     "symbol": "ADA/USDT",

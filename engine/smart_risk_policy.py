@@ -3,7 +3,7 @@ Always-on smart risk stack — single policy for the whole execution pipeline.
 
 Defaults (override only with EW_ALWAYS_SMART_RISK=0):
 - Dynamic risk management (vol, TV, history, drawdown)
-- DCA pyramid 10 / 20 / 30 / 40
+- Smart DCA: pyramid 10/20/30/40 OR 30/70 correlation cap (analysis-driven)
 - Smart dynamic stop-loss (structure + zone + ATR)
 - Smart dynamic targets (R-multiples by TF, 50/25/25 exits)
 """
@@ -13,27 +13,41 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from core.risk import DCA_PROFILE_PYRAMID, DCA_SPLITS, dynamic_stop, dynamic_targets
+from core.risk import (
+  DCA_PROFILE_10_90,
+  DCA_PROFILE_30_70,
+  DCA_PROFILE_PYRAMID,
+  DCA_SPLITS,
+  PROFILE_SPLITS,
+  dynamic_stop,
+  dynamic_targets,
+)
 
 SMART_SL_ARCH = "smart_dynamic_sl"
 SMART_TP_ARCH = "smart_dynamic_tp"
 POLICY_TAG = "always_smart_risk_v1"
+
+ALLOWED_DCA_PROFILES = frozenset({
+  DCA_PROFILE_PYRAMID,
+  DCA_PROFILE_30_70,
+  DCA_PROFILE_10_90,
+})
 
 
 def always_smart_enabled() -> bool:
   return os.environ.get("EW_ALWAYS_SMART_RISK", "1").lower() not in ("0", "false", "no")
 
 
-def require_pyramid_dca() -> bool:
-  return always_smart_enabled()
-
-
 def default_dca_profile() -> str:
   return DCA_PROFILE_PYRAMID
 
 
-def dca_splits() -> List[int]:
-  return list(DCA_SPLITS)
+def dca_splits_for_profile(profile: str) -> List[int]:
+  return list(PROFILE_SPLITS.get(profile, DCA_SPLITS))
+
+
+def dca_splits_label(profile: str) -> str:
+  return ",".join(str(x) for x in dca_splits_for_profile(profile))
 
 
 def select_dca_profile(
@@ -42,12 +56,17 @@ def select_dca_profile(
   result: dict,
   ctx: Any,
 ) -> Tuple[str, str]:
-  """Always pyramid 10/20/30/40 unless legacy mode."""
-  if require_pyramid_dca():
-    return default_dca_profile(), "always smart pyramid 10/20/30/40"
-  from engine.execution_advanced import _legacy_select_dca_profile
+  """
+  Analysis-driven smart DCA:
+  - pyramid_4 (10/20/30/40) — default
+  - two_layer_30_70 — high BTC correlation on 1d/1w
+  - two_layer_10_90 — BTC/ETH contingent 1h/4h dual-scenario
+  """
+  if always_smart_enabled():
+    from engine.execution_advanced import analyzed_select_dca_profile
 
-  return _legacy_select_dca_profile(symbol, tf, result, ctx)
+    return analyzed_select_dca_profile(symbol, tf, result, ctx)
+  return default_dca_profile(), "smart risk off — static pyramid 10/20/30/40"
 
 
 def compute_dynamic_risk_context(
@@ -154,11 +173,12 @@ def resolve_smart_targets(
 
 
 def stamp_row_policy(row: dict) -> dict:
-  """Annotate export row with always-on smart risk metadata."""
+  """Annotate export row with smart risk metadata (preserve analysis-chosen DCA)."""
   row = dict(row)
   row["smart_risk_policy"] = POLICY_TAG
-  row["dca_splits_pct"] = ",".join(str(x) for x in dca_splits())
-  row["dca_profile"] = default_dca_profile()
+  profile = str(row.get("dca_profile") or default_dca_profile())
+  row["dca_profile"] = profile
+  row["dca_splits_pct"] = dca_splits_label(profile)
   row.setdefault("stop_architecture", SMART_SL_ARCH)
   row.setdefault("dynamic_risk_mult", row.get("dynamic_risk_mult") or 1.0)
   for i, key in enumerate(("tp1", "tp2", "tp3"), start=1):
@@ -179,12 +199,13 @@ def validate_row_policy(row: dict) -> Tuple[bool, List[str]]:
     return True, []
   issues: List[str] = []
   profile = str(row.get("dca_profile") or "")
-  if profile and profile != default_dca_profile():
-    issues.append(f"dca_profile={profile} (expected {default_dca_profile()})")
+  if profile and profile not in ALLOWED_DCA_PROFILES:
+    issues.append(f"dca_profile={profile} (not in smart DCA allow-list)")
   splits = str(row.get("dca_splits_pct") or "")
-  expected = ",".join(str(x) for x in dca_splits())
-  if splits and splits != expected:
-    issues.append(f"dca_splits={splits} (expected {expected})")
+  if profile and splits:
+    expected = dca_splits_label(profile)
+    if splits != expected:
+      issues.append(f"dca_splits={splits} (expected {expected} for {profile})")
   if row.get("stop_architecture") and row.get("stop_architecture") != SMART_SL_ARCH:
     issues.append(f"stop_architecture={row.get('stop_architecture')}")
   if not row.get("stop_loss") and not row.get("stop_loss_price"):
