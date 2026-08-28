@@ -131,6 +131,26 @@ def run_autonomous_tick(
   if not skip_autoresearch:
     tick["phases"]["autoresearch"] = run_autoresearch_promote()
 
+  if os.environ.get("EW_AUTONOMOUS_UNIVERSE_EXECUTE", "0").lower() in ("1", "true", "yes"):
+    try:
+      from engine.execution_agent import execute_from_csv
+
+      csv_path = os.environ.get("EW_LIMIT_ORDERS_CSV", "output/latest_limit_orders_all_tf.csv")
+      tick["phases"]["universe_execute"] = execute_from_csv(
+        csv_path,
+        dry_run=os.environ.get("EW_EXECUTE_CONFIRM", "0") != "1",
+      )
+    except Exception as exc:
+      tick["phases"]["universe_execute"] = {"error": str(exc)}
+
+  if os.environ.get("EW_AUTONOMOUS_BACKTEST", "0").lower() in ("1", "true", "yes"):
+    try:
+      from engine.backtest_runner import run_walk_forward_backtest
+
+      tick["phases"]["backtest"] = run_walk_forward_backtest()
+    except Exception as exc:
+      tick["phases"]["backtest"] = {"error": str(exc)}
+
   if not skip_pr:
     tick["phases"]["pr_merge"] = run_pr_auto_merge(dry_run=pr_dry_run)
 
@@ -147,6 +167,13 @@ def run_autonomous_tick(
     isinstance(v, dict) and v.get("error") and not v.get("skipped")
     for v in tick["phases"].values()
   )
+
+  try:
+    from engine.model_budget_governor import governor_summary
+
+    tick["model_budget"] = governor_summary()
+  except Exception:
+    pass
 
   _append_tick(tick)
   state = {

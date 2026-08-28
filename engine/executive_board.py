@@ -19,6 +19,14 @@ from engine.accurate_setups import (
 BOARD_PATH = Path("output/autodream/executive_board.json")
 BOARD_CSV_PATH = Path("output/latest_executive_board.csv")
 
+# Actions that may proceed to export filter, paper sim, and broker submission
+TRADABLE_EXECUTIVE_ACTIONS = frozenset({
+  "EXECUTE_NOW",
+  "EXECUTE_CAUTION",
+  "STANDBY_LIMIT",
+  "SCALE_IN",
+})
+
 # Minimum executive score to appear on the board (geometry must pass)
 MIN_BOARD_SCORE = 15
 DEFAULT_PICKS_PER_TF = 5
@@ -564,6 +572,43 @@ def save_executive_board(board: dict, json_path: Path = BOARD_PATH, csv_path: Pa
       w.writeheader()
       w.writerows(picks)
   return {"json": str(json_path), "csv": str(csv_path)}
+
+
+def executive_pick_map(board: dict) -> Dict[tuple, dict]:
+  """Map (symbol, timeframe) → board pick row."""
+  out: Dict[tuple, dict] = {}
+  for pick in board.get("picks", []):
+    sym = pick.get("symbol", "")
+    tf = pick.get("timeframe") or STYLE_TF.get(pick.get("style", ""), "")
+    if sym and tf:
+      out[(sym, tf)] = pick
+  return out
+
+
+def stamp_executive_on_export_rows(rows: List[dict], board: dict) -> List[dict]:
+  """Attach executive_action/score/size from board picks onto limit-order export rows."""
+  picks = executive_pick_map(board)
+  for row in rows:
+    key = (row.get("symbol", ""), row.get("timeframe", ""))
+    pick = picks.get(key)
+    if pick:
+      row["executive_action"] = pick.get("executive_action", "WATCH_ONLY")
+      row["executive_score"] = pick.get("executive_score")
+      row["position_size_pct"] = pick.get("position_size_pct")
+      row["executive_playbook"] = pick.get("playbook", "")
+    elif not row.get("executive_action"):
+      row["executive_action"] = "WATCH_ONLY"
+  return rows
+
+
+def filter_rows_by_executive_action(
+  rows: List[dict],
+  *,
+  allowed: Optional[frozenset] = None,
+) -> List[dict]:
+  """Keep only rows whose executive_action is in the tradable set."""
+  allowed = allowed or TRADABLE_EXECUTIVE_ACTIONS
+  return [r for r in rows if r.get("executive_action") in allowed]
 
 
 def apply_board_to_results(results: List[dict], board: dict) -> List[dict]:

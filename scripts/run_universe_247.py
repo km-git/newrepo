@@ -61,6 +61,12 @@ def main() -> None:
           f"  Board: {fin.get('board_picks')} picks → {fin.get('best_trades_csv')}",
           file=sys.stderr,
         )
+        if fin.get("execution"):
+          ex = fin["execution"]
+          print(
+            f"  Execute: dry_run={ex.get('dry_run')} orders={ex.get('orders_submitted')}",
+            file=sys.stderr,
+          )
 
       if not args.skip_monitor:
         monitor = run_monitor_cycle(
