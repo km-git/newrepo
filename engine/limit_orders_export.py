@@ -33,13 +33,14 @@ from engine.execution_advanced import (
   select_dca_profile,
 )
 
-ALL_TIMEFRAMES = ("1w", "1d", "4h", "1h", "15m")
+ALL_TIMEFRAMES = ("1w", "1d", "12h", "4h", "1h", "15m")
 
 # Maps each TF to the style that owns honest executable gates (4h is context-only).
 TF_STYLE_MAP = {
   "15m": "scalp",
   "1h": "day_trade",
   "4h": None,
+  "12h": "swing",
   "1d": "swing",
   "1w": "long_term",
 }
@@ -65,6 +66,13 @@ TF_CONFIG: Dict[str, dict] = {
     "account_risk_pct": 0.85,
     "min_rr": 1.4,
     "max_stop_atr": 4.5,
+  },
+  "12h": {
+    "horizon": "12h–2w",
+    "atr_mult_sl": 1.65,
+    "account_risk_pct": 0.9,
+    "min_rr": 1.45,
+    "max_stop_atr": 4.75,
   },
   "1d": {
     "horizon": "2d–4w",

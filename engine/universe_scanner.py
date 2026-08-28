@@ -15,7 +15,7 @@ from engine.executive_board import apply_board_to_results, build_executive_board
 from engine.limit_orders_export import export_limit_orders
 from engine.timeframes import UNIVERSE_TFS
 from engine.top50_batch import save_batch_summary_csv
-from fetchers.pairs import fetch_top_pairs, write_pairs_csv
+from fetchers.pairs import fetch_scanner_pairs, fetch_top_pairs, write_pairs_csv
 
 STATE_PATH = Path(os.environ.get("UNIVERSE_STATE_PATH", "output/autodream/universe_state.json"))
 RESULTS_PATH = Path(os.environ.get("UNIVERSE_RESULTS_PATH", "output/autodream/universe_results.json"))
@@ -89,7 +89,11 @@ def refresh_universe_pairs(
     except (json.JSONDecodeError, ValueError, KeyError):
       pass
 
-  pairs = fetch_top_pairs(n=n, quote=quote)
+  pairs = fetch_scanner_pairs(
+    n=n,
+    quote=quote,
+    include_swap=os.environ.get("EW_SCANNER_INCLUDE_SWAP", "1").lower() not in ("0", "false", "no"),
+  )
   PAIRS_CACHE.write_text(json.dumps({
     "fetched_utc": _utcnow(),
     "count": n,
@@ -259,6 +263,17 @@ def finalize_universe_cycle(
       w.writeheader()
       w.writerows(picks)
 
+  best_trades_meta: Dict[str, Any] = {}
+  try:
+    from engine.best_trades import export_best_trades
+
+    best_trades_meta = export_best_trades(
+      limit_meta.get("latest_csv", str(out / "latest_limit_orders_all_tf.csv")),
+      output_dir=out / "v6_scanner",
+    )
+  except Exception as exc:
+    best_trades_meta = {"error": str(exc)}
+
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
   save_batch_json(results, str(json_path))
@@ -274,6 +289,7 @@ def finalize_universe_cycle(
     "research_setups_csv": str(research_csv),
     "executive_board_csv": board_paths["csv"],
     "best_trades_csv": str(BEST_TRADES_CSV),
+    "best_trades_ranked": best_trades_meta,
     "board_picks": executive_board.get("board_picks"),
     "by_action": executive_board.get("by_action"),
     "by_timeframe": executive_board.get("by_timeframe"),

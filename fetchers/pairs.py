@@ -24,6 +24,63 @@ def fetch_top_pairs(
   """
   Return top N BASE/QUOTE spot pairs sorted by 24h quote volume (OKX only).
   """
+  return _fetch_okx_spot_pairs(n=n, quote=quote, min_volume_usd=min_volume_usd)
+
+
+def fetch_scanner_pairs(
+  n: int = 1000,
+  quote: str = "USDT",
+  *,
+  include_swap: bool = True,
+  min_volume_usd: float = 0,
+) -> List[str]:
+  """
+  Build scanner universe up to n symbols: OKX spot USDT + optional USDT perps.
+  OKX spot caps ~395 USDT pairs; swaps add ~400+ for broader coverage toward 1000.
+  """
+  spot = _fetch_okx_spot_pairs(n=n, quote=quote, min_volume_usd=min_volume_usd)
+  pairs: List[str] = list(spot)
+
+  if include_swap and len(pairs) < n:
+    try:
+      ex = _make_exchange("okx")
+      ex.load_markets()
+      existing = set(pairs)
+      swap_tickers = ex.fetch_tickers(params={"instType": "SWAP"})
+      swap_cands: list[tuple[str, float]] = []
+      for sym, t in swap_tickers.items():
+        if not sym.endswith(f":{quote}") or "/" not in sym:
+          continue
+        if sym in existing:
+          continue
+        base = sym.split("/")[0]
+        if base in STABLES or base.startswith("1000"):
+          continue
+        market = ex.markets.get(sym, {})
+        if market.get("active") is False:
+          continue
+        vol = float(t.get("quoteVolume") or t.get("baseVolume") or 0)
+        if t.get("last") and t.get("baseVolume") and not t.get("quoteVolume"):
+          vol = float(t["baseVolume"]) * float(t["last"])
+        swap_cands.append((sym, vol))
+      swap_cands.sort(key=lambda x: x[1], reverse=True)
+      for sym, _ in swap_cands:
+        if len(pairs) >= n:
+          break
+        pairs.append(sym)
+        existing.add(sym)
+    except Exception as e:
+      print(f"[pairs] swap fetch skipped: {e}")
+
+  print(f"[pairs] Scanner universe: {len(pairs)} symbols (target={n}, swap={include_swap})")
+  return pairs[:n]
+
+
+def _fetch_okx_spot_pairs(
+  n: int = 50,
+  quote: str = "USDT",
+  min_volume_usd: float = 0,
+) -> List[str]:
   chain = ["okx"]
   last_err = None
   for ex_name in chain:

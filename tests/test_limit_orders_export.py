@@ -135,7 +135,7 @@ def test_export_limit_orders_writes_csv(tmp_path: Path):
   results = [_sample_result("BTC/USDT"), _sample_result("ETH/USDT")]
   meta = export_limit_orders(results, output_dir=tmp_path, write_json=True)
   assert meta["row_count"] >= 2 * len(ALL_TIMEFRAMES)
-  assert meta["expected_rows"] == 250
+  assert meta["expected_rows"] == 50 * len(ALL_TIMEFRAMES)
   assert meta["account_equity"] == 10_000.0
   assert Path(meta["csv"]).exists()
   assert Path(meta["latest_csv"]).exists()
