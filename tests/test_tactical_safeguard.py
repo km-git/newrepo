@@ -52,6 +52,8 @@ def test_assess_defensive_on_halt(tmp_path, monkeypatch):
 def test_assess_neutral_on_proof_go_below_opportunistic_threshold(tmp_path, monkeypatch):
   """Proof GO boosts score but OPPORTUNISTIC needs score >= 62."""
   monkeypatch.setenv("EW_RISK_STATE", str(tmp_path / "risk.json"))
+  monkeypatch.setenv("EW_PORTFOLIO_STATE", str(tmp_path / "portfolio_state.json"))
+  monkeypatch.setenv("EW_PORTFOLIO_RISK", "0")
   monkeypatch.setenv("EW_PAPER_FORWARD_LEDGER", str(tmp_path / "ledger.jsonl"))
   monkeypatch.setenv("EW_PAPER_PROOF_MIN_DAYS", "3")
   (tmp_path / "risk.json").write_text(
