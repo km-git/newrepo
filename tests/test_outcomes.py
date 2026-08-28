@@ -36,7 +36,8 @@ def test_dynamic_targets_three_tiers():
     timeframe="1h",
   )
   assert len(t) == 3
-  assert t[0]["exit_pct"] == 40
+  assert t[0]["exit_pct"] == 50
+  assert sum(x["exit_pct"] for x in t) == 100
   assert t[0]["price"] > 100.0
   assert t[0].get("architecture") == "smart_dynamic_tp"
 

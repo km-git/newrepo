@@ -135,6 +135,9 @@ def test_feedback_boosts_strong_history():
     "gtc_tier": "executable",
     "honest_execution_tier": "full",
     "gtc_size_cap_pct": 100,
+    "wae": 100,
+    "stop_loss": 95,
+    "tp1": 110,
   }
   out = apply_feedback_to_row(row, metrics)
   assert out["gtc_tier"] == "executable"
@@ -142,14 +145,33 @@ def test_feedback_boosts_strong_history():
   assert out["hist_action"] == "boost"
 
 
+def test_compute_metrics_dedupes_by_setup_id(tmp_path: Path, monkeypatch):
+  monkeypatch.setattr("engine.outcome_tracker.TRACKED_PATH", tmp_path / "tracked.json")
+  state = {
+    "open": [],
+    "closed": [
+      {"id": "BTC/USDT|1h|LONG", "symbol": "BTC/USDT", "timeframe": "1h", "direction": "LONG",
+       "status": "sl_hit", "resolved_at": "2024-01-01T00:00:00+00:00"},
+      {"id": "BTC/USDT|1h|LONG", "symbol": "BTC/USDT", "timeframe": "1h", "direction": "LONG",
+       "status": "tp1_hit", "resolved_at": "2024-02-01T00:00:00+00:00"},
+    ],
+  }
+  (tmp_path / "tracked.json").write_text(json.dumps(state))
+  m = compute_metrics()
+  assert m["overall"]["decided"] == 1
+  assert m["overall"]["wins"] == 1
+
+
 def test_compute_metrics_from_closed(tmp_path: Path, monkeypatch):
   monkeypatch.setattr("engine.outcome_tracker.TRACKED_PATH", tmp_path / "tracked.json")
   state = {
     "open": [],
     "closed": [
-      {"symbol": "A/USDT", "timeframe": "1h", "direction": "LONG", "status": "tp1_hit",
+      {"id": "A/USDT|1h|LONG", "symbol": "A/USDT", "timeframe": "1h", "direction": "LONG",
+       "status": "tp1_hit", "resolved_at": "2024-01-02T00:00:00+00:00",
        "gtc_tier": "executable", "honest_execution_tier": "probe"},
-      {"symbol": "A/USDT", "timeframe": "1h", "direction": "LONG", "status": "sl_hit",
+      {"id": "B/USDT|1h|LONG", "symbol": "B/USDT", "timeframe": "1h", "direction": "LONG",
+       "status": "sl_hit", "resolved_at": "2024-01-01T00:00:00+00:00",
        "gtc_tier": "executable", "honest_execution_tier": "probe"},
     ],
   }

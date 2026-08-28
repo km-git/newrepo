@@ -69,9 +69,66 @@ def test_gate_blocks_nuke():
   assert "macro_nuke" in reasons[0]
 
 
-def test_gate_allows_executable():
+def test_gate_allows_executable(monkeypatch):
+  monkeypatch.setenv("EW_DIRECTION_GATES", "0")
   ok, _ = gate_row(_row())
   assert ok is True
+
+
+def test_gate_blocks_weak_regime_tf(monkeypatch):
+  monkeypatch.setenv("EW_REGIME_GATES", "1")
+  metrics = {
+    "by_timeframe": {
+      "1d": {"decided": 50, "win_rate": 0.38, "wins": 19, "losses": 31},
+    },
+  }
+  monkeypatch.setattr("engine.outcome_tracker.load_metrics", lambda: metrics)
+  ok, reasons = gate_row(_row(timeframe="1d"))
+  assert ok is False
+  assert any("regime_weak" in r or "tf_blocked" in r for r in reasons)
+
+
+def test_gate_blocks_1d_by_default(monkeypatch):
+  monkeypatch.setenv("EW_REGIME_GATES", "0")
+  ok, reasons = gate_row(_row(timeframe="1d"))
+  assert ok is False
+  assert any("tf_blocked" in r for r in reasons)
+
+
+def test_gate_blocks_weak_long_direction(monkeypatch):
+  monkeypatch.setenv("EW_DIRECTION_GATES", "1")
+  metrics = {
+    "by_direction": {
+      "LONG": {"decided": 50, "win_rate": 0.42, "wins": 21, "losses": 29},
+      "SHORT": {"decided": 50, "win_rate": 0.62, "wins": 31, "losses": 19},
+    },
+  }
+  monkeypatch.setattr("engine.outcome_tracker.load_metrics", lambda: metrics)
+  ok, reasons = gate_row(_row(direction="LONG"))
+  assert ok is False
+  assert any("direction_blocked_LONG" in r for r in reasons)
+  ok_short, _ = gate_row(_row(direction="SHORT"))
+  assert ok_short is True
+
+
+def test_filter_closed_applies_regime_weak_tf(monkeypatch):
+  from engine.execution_gates import filter_closed_for_policy
+
+  monkeypatch.setenv("EW_BLOCKED_TFS", "")
+  monkeypatch.setenv("EW_DIRECTION_GATES", "0")
+  metrics = {
+    "by_timeframe": {
+      "4h": {"decided": 40, "win_rate": 0.35, "wins": 14, "losses": 26},
+    },
+    "by_direction": {},
+  }
+  closed = [
+    {"timeframe": "4h", "direction": "SHORT", "status": "tp1_hit"},
+    {"timeframe": "15m", "direction": "SHORT", "status": "tp1_hit"},
+  ]
+  out = filter_closed_for_policy(closed, metrics)
+  assert len(out) == 1
+  assert out[0]["timeframe"] == "15m"
 
 
 def test_filter_executable_rows():
@@ -97,6 +154,7 @@ def test_execution_agent_dry_run(monkeypatch):
   monkeypatch.setenv("EW_WS_ENABLED", "0")
   monkeypatch.setenv("EW_EXECUTION_CONSENSUS_LLM", "0")
   monkeypatch.setenv("EW_LLM_EW_BYPASS", "1")
+  monkeypatch.setenv("EW_DIRECTION_GATES", "0")
   monkeypatch.delenv("CURSOR_API_KEY", raising=False)
   from engine.execution_agent import execute_rows
   row = _row(consensus="BULL", agreement_pct=85, engines_valid=3)

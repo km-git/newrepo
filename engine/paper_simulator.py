@@ -120,6 +120,10 @@ def extract_legs(row: dict) -> List[dict]:
   notional = float(row.get("position_notional_usd") or 0)
   if not legs and wae > 0 and notional > 0:
     legs.append({"leg": 1, "price": wae, "usd": round(notional * cap, 2)})
+
+  if row.get("honest_execution_tier") == "probe":
+    max_legs = int(os.environ.get("EW_PROBE_MAX_LEGS", "2"))
+    legs = legs[:max_legs]
   return legs
 
 
@@ -315,6 +319,15 @@ def simulate_trade_on_bars(
         })
         fees_paid += exit_fee
 
+    # Breakeven stop after TP1 — protect remaining position
+    if os.environ.get("EW_BREAKEVEN_AFTER_TP1", "1").lower() not in ("0", "false", "no"):
+      if any(e.get("type") == "tp1" for e in exits) and fills and total_qty > 0:
+        avg_entry = sum(f["price"] * f["qty"] for f in fills) / sum(f["qty"] for f in fills)
+        if long:
+          stop = max(stop, avg_entry)
+        elif stop > 0:
+          stop = min(stop, avg_entry)
+
     exited_qty = sum(e["qty"] for e in exits)
     if total_qty > 0 and exited_qty >= total_qty * 0.99:
       status = "closed_tp"
@@ -442,12 +455,38 @@ def run_paper_simulation(
   losses = sum(1 for r in results if r.get("realized_pnl_usd", 0) < 0)
   no_fill = sum(1 for r in results if r.get("status") == "no_fill")
 
+  # Risk-adjusted metrics for backtest/autoresearch fitness
+  pnl_returns: List[float] = []
+  equity_curve = [equity]
+  running_eq = equity
+  for r in results:
+    pnl = float(r.get("realized_pnl_usd") or 0)
+    if pnl != 0:
+      ret = pnl / equity if equity > 0 else 0.0
+      pnl_returns.append(ret)
+      running_eq += pnl
+      equity_curve.append(running_eq)
+
+  from engine.strategy_fitness import profit_factor as _pf, sharpe_ratio as _sharpe, sortino_ratio as _sortino
+  from engine.effectiveness_gates import max_drawdown_pct
+
+  return_pct = round((running_eq - equity) / equity * 100.0, 4) if equity > 0 else None
+  sharpe = _sharpe(pnl_returns) if len(pnl_returns) >= 2 else None
+  sortino = _sortino(pnl_returns) if len(pnl_returns) >= 2 else None
+  pf = _pf(pnl_returns) if pnl_returns else None
+  max_dd = max_drawdown_pct(equity_curve) if len(equity_curve) > 1 else None
+
   summary = {
     "ok": True,
     "run_at": _utcnow(),
     "starting_equity_usd": equity,
     "ending_equity_usd": round(equity + total_pnl, 2),
     "realized_pnl_usd": total_pnl,
+    "return_pct": return_pct,
+    "sharpe": round(sharpe, 4) if sharpe is not None else None,
+    "sortino": round(sortino, 4) if sortino is not None else None,
+    "profit_factor": round(pf, 4) if pf is not None else None,
+    "max_drawdown_pct": max_dd,
     "fees_usd": total_fees,
     "fee_rate": fee_rate(),
     "max_positions": max_positions(),
