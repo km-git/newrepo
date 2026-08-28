@@ -26,6 +26,13 @@ def _row(**kwargs):
   return base
 
 
+def test_review_row_defaults_to_ew_bypass_without_llm(monkeypatch):
+  monkeypatch.delenv("EW_EXECUTION_CONSENSUS_LLM", raising=False)
+  monkeypatch.setenv("EW_LLM_EW_BYPASS", "1")
+  rev = review_row(_row())
+  assert rev["mode"] in ("ew_bypass", "rules_only", "ensemble")
+
+
 def test_review_row_ew_bypass_agrees(monkeypatch):
   monkeypatch.setenv("EW_LLM_EW_BYPASS", "1")
   monkeypatch.setenv("EW_EXECUTION_CONSENSUS_LLM", "0")
@@ -53,7 +60,7 @@ def test_review_row_weak_ew_no_bypass(monkeypatch):
 def test_execution_llm_receives_row_prompt(monkeypatch):
   captured = {}
 
-  def fake_run_panel(prompt, verdict, conviction, call_provider):
+  def fake_run_panel(prompt, verdict, conviction, call_provider, **kwargs):
     captured["prompt"] = prompt
     captured["provider"] = call_provider
     return {

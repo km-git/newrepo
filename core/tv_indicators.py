@@ -484,6 +484,53 @@ def wavetrend(df: pd.DataFrame, channel: int = 10, avg: int = 21) -> Dict[str, A
   return {"available": True, "wt1": round(w1, 2), "wt2": round(w2, 2), "signal": signal}
 
 
+def keltner_break(df: pd.DataFrame, period: int = 20, mult: float = 1.5) -> Dict[str, Any]:
+  """Keltner channel breakout — TV OSS volatility expansion signal."""
+  if df is None or len(df) < period + 5:
+    return {"available": False, "signal": "neutral"}
+  close = df["Close"].astype(float)
+  mid = close.ewm(span=period, adjust=False).mean()
+  atr = atr_series(df, period)
+  upper = mid + mult * atr
+  lower = mid - mult * atr
+  c = float(close.iloc[-1])
+  u = float(upper.iloc[-1])
+  l = float(lower.iloc[-1])
+  if c > u:
+    signal = "breakout_up"
+  elif c < l:
+    signal = "breakout_down"
+  else:
+    signal = "inside_channel"
+  return {
+    "available": True,
+    "upper": round(u, 8),
+    "lower": round(l, 8),
+    "signal": signal,
+    "dist_pct": round((c - float(mid.iloc[-1])) / c * 100, 3),
+  }
+
+
+def fisher_transform(df: pd.DataFrame, period: int = 10) -> Dict[str, Any]:
+  """Fisher Transform — Gaussian-normalized momentum oscillator (TV OSS)."""
+  if df is None or len(df) < period + 5:
+    return {"available": False, "value": 0, "signal": "neutral"}
+  hl2 = ((df["High"] + df["Low"]) / 2).astype(float)
+  lo = hl2.rolling(period).min()
+  hi = hl2.rolling(period).max()
+  span = (hi - lo).replace(0, np.nan)
+  x = ((hl2 - lo) / span).clip(0.001, 0.999)
+  v = 0.5 * np.log((1 + x) / (1 - x))
+  val = float(v.iloc[-1]) if np.isfinite(v.iloc[-1]) else 0.0
+  if val > 1.5:
+    signal = "bullish"
+  elif val < -1.5:
+    signal = "bearish"
+  else:
+    signal = "neutral"
+  return {"available": True, "value": round(val, 4), "signal": signal}
+
+
 _EXPLORATION_FN = {
   "cmf": chaikin_mf,
   "williams_r": williams_r,
@@ -491,6 +538,8 @@ _EXPLORATION_FN = {
   "stoch_rsi": stoch_rsi,
   "obv_trend": obv_trend,
   "wavetrend": wavetrend,
+  "keltner_break": keltner_break,
+  "fisher": fisher_transform,
 }
 
 
@@ -520,6 +569,7 @@ def score_candidate_alignment(indicator_id: str, sig: dict, direction: str) -> i
     "hidden_bid_wall", "bullish_cvd_div",
     "persistent_trend", "weak_trend", "strong_cycle", "moderate_cycle",
     "cycle_trough", "cycle_rising", "cycle_up", "cycle_bottom", "smooth_trend",
+    "breakout_up", "momentum_up",
   )
   bearish = signal in (
     "bearish", "distribution", "overbought", "momentum_down",
@@ -528,6 +578,7 @@ def score_candidate_alignment(indicator_id: str, sig: dict, direction: str) -> i
     "hidden_ask_wall", "bearish_cvd_div",
     "mean_reverting", "weak_mean_revert",
     "cycle_peak_zone", "cycle_falling", "cycle_down", "cycle_top", "choppy_noise",
+    "breakout_down", "momentum_down",
   )
 
   if (is_long and bullish) or (not is_long and bearish):

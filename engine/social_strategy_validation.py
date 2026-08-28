@@ -152,6 +152,7 @@ def run_social_strategy_validation(
           use_llm=True,
           search_memory=True,
           context=prompt,
+          domain="social",
         )
         stance = brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution")
         panel = {

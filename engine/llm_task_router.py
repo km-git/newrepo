@@ -268,9 +268,11 @@ def tiebreaker_route(
 
 def routing_matrix() -> Dict[str, Any]:
   """Human-readable task → model → token matrix for --llm-tasks."""
+  from engine.llm_budget_policy import budget_policy_summary
   from engine.llm_token_saver import token_saver_summary
 
   roster = roster_summary()
+  from engine.llm_model_roster import MODEL as roster_model
   rows = []
   for task in TASK_DESCRIPTIONS:
     tier = tier_for_task(task)
@@ -305,19 +307,20 @@ def routing_matrix() -> Dict[str, Any]:
   return {
     "backend": llm_backend(),
     "principle": (
-      "Every model in the roster — Grok High for screen/mild review (first-party), "
-      "Terra/Luna for API mid-tier, Opus/Fable/Sol only when crucial."
+      f"~{budget_policy_summary()['cheap_target_pct']}% cheap Cursor workhorses; "
+      "premium (Opus/Fable/Sol) only for executive GO + hard disagree or self-improvement escalation."
     ),
     "crucial_models": {
-      "opus": CURSOR_OPUS,
-      "fable": CURSOR_FABLE,
-      "sol": CURSOR_SOL,
-      "grok_high": MODEL["grok_high"],
-      "terra": MODEL["mild_tb"],
-      "luna": MODEL["light_plan"],
+      "opus": roster_model["opus"],
+      "fable": roster_model["fable"],
+      "sol": roster_model["sol"],
+      "grok_high": roster_model["grok_high"],
+      "terra": roster_model["mild_tb"],
+      "luna": roster_model["light_plan"],
     },
     "tasks": rows,
     "roster": roster,
     "token_savers": roster["efficiency_rules"],
+    "budget_policy": budget_policy_summary(),
     "token_saver_config": token_saver_summary(),
   }

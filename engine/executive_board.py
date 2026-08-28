@@ -19,6 +19,14 @@ from engine.accurate_setups import (
 BOARD_PATH = Path("output/autodream/executive_board.json")
 BOARD_CSV_PATH = Path("output/latest_executive_board.csv")
 
+# Actions that may proceed to export filter, paper sim, and broker submission
+TRADABLE_EXECUTIVE_ACTIONS = frozenset({
+  "EXECUTE_NOW",
+  "EXECUTE_CAUTION",
+  "STANDBY_LIMIT",
+  "SCALE_IN",
+})
+
 # Minimum executive score to appear on the board (geometry must pass)
 MIN_BOARD_SCORE = 15
 DEFAULT_PICKS_PER_TF = 5
@@ -148,6 +156,17 @@ def executive_setup_score(
   elif ex_verdict == "STAGED_GO":
     score += 3
 
+  tv_score = int(setup.get("_tv_composite_score") or setup.get("_tv_score") or 0)
+  if tv_score >= 70:
+    score += 8
+    tags.append(f"tv_oss+{tv_score}")
+  elif tv_score >= 58:
+    score += 4
+    tags.append(f"tv_oss_{tv_score}")
+  elif 0 < tv_score < 42:
+    score -= 6
+    tags.append(f"tv_oss_opposes_{tv_score}")
+
   if symbol_bonus:
     score += symbol_bonus
     tags.append(f"multi_tf+{symbol_bonus}")
@@ -175,6 +194,22 @@ def executive_setup_score(
     score -= 5
 
   floor = _baseline_score(setup, style)
+
+  try:
+    from engine.executive_intel import executive_intel_enabled, setup_intel_boost
+
+    if executive_intel_enabled():
+      boost, intel_tags = setup_intel_boost(
+        setup=setup,
+        symbol=str(setup.get("symbol") or ""),
+        direction=str(setup.get("direction") or ""),
+        market_tools=setup.get("_market_tools"),
+      )
+      score += boost
+      tags.extend(intel_tags)
+  except ImportError:
+    pass
+
   return min(100, max(floor, score)), tags
 
 
@@ -351,11 +386,16 @@ def _flatten_setups(results: List[dict]) -> List[dict]:
     sym = r["symbol"]
     ex = r.get("executive_decision") or {}
     cons = r.get("step6_wave_consensus") or {}
+    mkt = r.get("step9_market_confluence") or {}
+    tv_oss = ex.get("tv_oss") or {}
+    tv_score = tv_oss.get("composite_score") or (mkt.get("tv_confluence") or {}).get("score") or 0
     for style, setup in (r.get("step8_outcomes") or {}).get("setups", {}).items():
       if not setup:
         continue
       setup = dict(setup)
       setup["_executive_verdict"] = ex.get("verdict", "")
+      setup["_tv_composite_score"] = tv_score
+      setup["_tv_score"] = tv_oss.get("tv_score") or (mkt.get("tv_confluence") or {}).get("score")
       setup["_symbol"] = sym
       setup["_style"] = style
       setup["_consensus"] = cons.get("consensus_direction")
@@ -583,6 +623,43 @@ def save_executive_board(board: dict, json_path: Path = BOARD_PATH, csv_path: Pa
       w.writeheader()
       w.writerows(picks)
   return {"json": str(json_path), "csv": str(csv_path)}
+
+
+def executive_pick_map(board: dict) -> Dict[tuple, dict]:
+  """Map (symbol, timeframe) → board pick row."""
+  out: Dict[tuple, dict] = {}
+  for pick in board.get("picks", []):
+    sym = pick.get("symbol", "")
+    tf = pick.get("timeframe") or STYLE_TF.get(pick.get("style", ""), "")
+    if sym and tf:
+      out[(sym, tf)] = pick
+  return out
+
+
+def stamp_executive_on_export_rows(rows: List[dict], board: dict) -> List[dict]:
+  """Attach executive_action/score/size from board picks onto limit-order export rows."""
+  picks = executive_pick_map(board)
+  for row in rows:
+    key = (row.get("symbol", ""), row.get("timeframe", ""))
+    pick = picks.get(key)
+    if pick:
+      row["executive_action"] = pick.get("executive_action", "WATCH_ONLY")
+      row["executive_score"] = pick.get("executive_score")
+      row["position_size_pct"] = pick.get("position_size_pct")
+      row["executive_playbook"] = pick.get("playbook", "")
+    elif not row.get("executive_action"):
+      row["executive_action"] = "WATCH_ONLY"
+  return rows
+
+
+def filter_rows_by_executive_action(
+  rows: List[dict],
+  *,
+  allowed: Optional[frozenset] = None,
+) -> List[dict]:
+  """Keep only rows whose executive_action is in the tradable set."""
+  allowed = allowed or TRADABLE_EXECUTIVE_ACTIONS
+  return [r for r in rows if r.get("executive_action") in allowed]
 
 
 def apply_board_to_results(results: List[dict], board: dict) -> List[dict]:

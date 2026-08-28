@@ -64,7 +64,9 @@ def run_improvement_cycle(
     try:
       from engine.social_strategy_validation import run_social_strategy_validation
 
-      social_validation = run_social_strategy_validation(use_llm=llm_on)
+      social_validation = run_social_strategy_validation(
+        use_llm=llm_on and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      )
     except Exception as exc:
       social_validation = {"error": str(exc)}
 
@@ -73,13 +75,26 @@ def run_improvement_cycle(
     try:
       from engine.tv_oss_consensus import run_tv_oss_consensus
 
-      tv_oss = run_tv_oss_consensus(use_llm=llm_on)
+      tv_oss = run_tv_oss_consensus(
+        use_llm=llm_on and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      )
     except Exception as exc:
       tv_oss = {"error": str(exc)}
 
   from engine.system_health import run_health_checks, save_health
   health = run_health_checks()
   save_health(health)
+
+  gap_audit: Dict[str, Any] = {}
+  gap_summary: Dict[str, Any] = {}
+  if os.environ.get("EW_GAP_AUDIT", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.resource_gap_audit import gap_audit_summary, run_resource_gap_audit
+
+      gap_audit = run_resource_gap_audit(persist=True, persist_okf=True)
+      gap_summary = gap_audit_summary()
+    except Exception as exc:
+      gap_audit = {"error": str(exc)}
 
   cycle = {
     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -103,6 +118,7 @@ def run_improvement_cycle(
       "layer_weights": tv_oss.get("layer_weights") if tv_oss else {},
     },
     "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
+    "gap_audit": gap_summary if gap_summary else gap_audit,
   }
 
   try:
@@ -145,6 +161,7 @@ def run_improvement_cycle(
     "social_validation": social_validation,
     "tv_oss": tv_oss,
     "ai_improvement": ai_review,
+    "gap_audit": gap_audit,
   }
 
 

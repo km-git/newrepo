@@ -99,7 +99,7 @@ MODEL = {
   "screen_a": _m("EW_MODEL_SCREEN_A", "cursor-grok-4.5-high"),
   "screen_b": gpt_replacement_for("screen_b", _m("EW_MODEL_SCREEN_B", "gpt-5-mini")),
   "screen_alt": _m("EW_MODEL_SCREEN_ALT", "grok-4.5"),
-  "screen_c": _m("EW_MODEL_SCREEN_C", "gemini-3-flash"),
+  "screen_c": gpt_replacement_for("screen_c", _m("EW_MODEL_SCREEN_C", "gemini-3-flash")),
   "review": _m("EW_MODEL_REVIEW", "cursor-grok-4.5-high"),
   "mild_tb": gpt_replacement_for("mild_tb", _m("EW_MODEL_MILD_TB", "gpt-5.6-terra")),
   "light_plan": gpt_replacement_for("light_plan", _m("EW_MODEL_LIGHT_PLAN", "gpt-5.6-luna")),
@@ -118,24 +118,36 @@ def grok_high_model() -> str:
 
 
 def mild_tb_model() -> str:
-  """Runtime mild tiebreaker — respects EW_USE_GROK_HIGH and EW_MODEL_MILD_TB."""
+  """Runtime mild tiebreaker — Cursor Pro only (never Terra/GPT API)."""
   if grok_high_enabled():
     return grok_high_model()
-  if minimize_gpt_enabled():
-    return gpt_replacement_for("mild_tb", "composer-2.5")
-  return _m("EW_MODEL_MILD_TB", "gpt-5.6-terra")
+  return MODEL["workhorse_fp"]
 
 
 def workhorse_model() -> str:
-  """Prefer first-party composer; API workhorse when EW_LLM_WORKHORSE_POOL=api."""
+  """Prefer first-party composer; API workhorse only when Other Models pool enabled."""
+  from engine.model_budget_governor import cursor_models_only, other_model_pool_enabled
+
   pool = os.environ.get("EW_LLM_WORKHORSE_POOL", "first_party").lower()
-  if pool == "api":
+  if pool == "api" and not cursor_models_only() and other_model_pool_enabled():
     return MODEL["workhorse_api"]
   return MODEL["workhorse_fp"]
 
 
 def screen_model_slots() -> List[Tuple[str, str]]:
-  """Dual screen — Grok High + GPT-mini (or Composer when EW_MINIMIZE_GPT=1)."""
+  """Dual screen — Cursor Pro only by default (95% pool target)."""
+  from engine.model_budget_governor import cursor_only_screen, other_model_pool_enabled
+  from engine.llm_budget_policy import cursor_models_only, other_models_override
+
+  use_api_screen = (other_models_override() and not cursor_models_only()) or (
+    not cursor_only_screen() and other_model_pool_enabled()
+  )
+
+  if not use_api_screen:
+    a = grok_high_model() if grok_high_enabled() else MODEL["workhorse_fp"]
+    b = MODEL["workhorse_fp"] if a != MODEL["workhorse_fp"] else MODEL["screen_alt"]
+    return [("cursor", a), ("composer", b)]
+
   if os.environ.get("EW_LLM_SCREEN_DIVERSE", "").lower() in ("1", "true"):
     a = MODEL["screen_alt"]
   elif grok_high_enabled():
@@ -161,46 +173,110 @@ def disagreement_severity(stances: List[str]) -> DisagreementSeverity:
   return "hard"
 
 
+def _allow_other_model_for_task(
+  task: str,
+  verdict: str = "",
+  conviction: str = "",
+  stances: Optional[List[str]] = None,
+  *,
+  force_critical: bool = False,
+) -> bool:
+  """True when Other Models quota/budget permits this escalation."""
+  from engine.llm_budget_policy import cursor_models_only, other_models_override
+  from engine.model_budget_governor import (
+    cursor_pool_governor_enabled,
+    should_use_other_model as gov_should,
+  )
+
+  if other_models_override() and not cursor_models_only():
+    return True
+
+  purpose = "executive" if task in ("executive", "tiebreaker") else "self_improvement"
+  if cursor_pool_governor_enabled():
+    return gov_should(
+      purpose,
+      verdict=verdict,
+      conviction=conviction,
+      stances=stances,
+      force_critical=force_critical,
+    )
+
+  from engine.llm_budget_policy import may_use_other_model
+
+  llm_task = task if task in ("executive", "planning", "architect", "tiebreaker") else "executive"
+  context = "executive" if task in ("executive", "tiebreaker") else "routine"
+  return may_use_other_model(llm_task, context, verdict, conviction, stances)
+
+
 def escalate_task_model(
   task: str,
   verdict: str = "",
   conviction: str = "",
   stances: Optional[List[str]] = None,
 ) -> Tuple[str, str, str]:
+  from engine.model_budget_governor import prefer_cursor_pool_model
+
   sev = disagreement_severity(stances or [])
 
   if task == "workhorse":
     return workhorse_model(), "workhorse", "composer — cheapest"
 
   if task == "screen":
-    return "", "workhorse", "Grok+Composer parallel — no GPT"
+    return "", "workhorse", "Grok+Composer parallel — Cursor Pro only"
 
   if task == "architect":
-    return MODEL["fable"], "flagship", "multi-file deep reasoning"
+    model, _ = prefer_cursor_pool_model(MODEL["fable"], purpose="self_improvement")
+    return model, "standard", "multi-file deep reasoning (Cursor Pro)"
 
   if task == "executive":
-    return MODEL["opus"], "flagship", "GO + high conviction"
+    model = MODEL["opus"]
+    critical = verdict == "GO" and conviction == "high" and sev == "hard"
+    if _allow_other_model_for_task(
+      task,
+      verdict=verdict,
+      conviction=conviction,
+      stances=stances,
+      force_critical=critical,
+    ):
+      return model, "flagship", "GO + high conviction + hard disagree (Other Models — use sparingly)"
+    model, _ = prefer_cursor_pool_model(model, purpose="executive")
+    tier = "flagship" if model == MODEL["opus"] else "standard"
+    return model, tier, "GO — Cursor Pro (Other Models withheld for success)"
 
   if task == "synthesis":
-    return MODEL["sol"], "crucial", "Sol synthesis — budget-limited"
+    model, _ = prefer_cursor_pool_model(MODEL["sol"], purpose="self_improvement")
+    return model, "standard", "synthesis (Cursor Pro)"
 
   if task == "planning":
-    if verdict == "CONDITIONAL_GO" and conviction != "high":
-      return MODEL["light_plan"], "standard", "Luna light plan"
-    return MODEL["sol"], "crucial", "Sol full plan"
+    raw = MODEL["light_plan"] if verdict == "CONDITIONAL_GO" and conviction != "high" else MODEL["sol"]
+    model, _ = prefer_cursor_pool_model(raw, purpose="self_improvement")
+    tier = "standard"
+    reason = "light plan (Cursor Pro)" if raw == MODEL["light_plan"] else "full plan (Cursor Pro)"
+    return model, tier, reason
 
   if task in ("tiebreaker", "review"):
     if sev == "mild":
       if grok_high_enabled():
         return grok_high_model(), "standard", "mild — Grok High only"
-      return mild_tb_model(), "standard", "mild — Terra fallback"
+      return mild_tb_model(), "standard", "mild — Composer fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
-      return MODEL["opus"], "flagship", "hard disagree executive GO"
+      model = MODEL["opus"]
+      if _allow_other_model_for_task(
+        "executive",
+        verdict=verdict,
+        conviction=conviction,
+        stances=stances,
+        force_critical=True,
+      ):
+        return model, "flagship", "hard disagree executive GO (Other Models — ashamed if >2%)"
+      model, _ = prefer_cursor_pool_model(model, purpose="executive", force_critical=True)
+      return model, "standard", "hard disagree — Cursor Grok High (success without Other Models)"
     if sev == "hard":
-      return MODEL["sol"], "crucial", "hard disagreement — Sol"
+      model, _ = prefer_cursor_pool_model(MODEL["sol"], purpose="self_improvement")
+      return model, "standard", "hard disagreement — Cursor Grok High"
     if grok_high_enabled():
       return grok_high_model(), "standard", "mid review — Grok High"
-    return mild_tb_model(), "standard", "mid review — Terra fallback"
+    return mild_tb_model(), "standard", "mid review — Composer"
 
   return workhorse_model(), "workhorse", "fallback composer"
 

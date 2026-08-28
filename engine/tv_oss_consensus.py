@@ -173,6 +173,7 @@ def run_tv_oss_consensus(*, use_llm: bool = False) -> Dict[str, Any]:
           use_llm=True,
           search_memory=True,
           context=_build_prompt(ranked, impact),
+          domain="tv_oss",
         )
         stance = brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution")
         panel["stance"] = stance

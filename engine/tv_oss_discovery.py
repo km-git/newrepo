@@ -245,6 +245,7 @@ def fine_tune_with_consensus(
           use_llm=True,
           search_memory=True,
           context=_build_finetune_prompt(candidates, impact, current_weights),
+          domain="tv_oss_discovery",
         )
         stance = brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution")
         panel["stance"] = stance

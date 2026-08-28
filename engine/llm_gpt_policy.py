@@ -20,12 +20,22 @@ def session_token_limit() -> int:
   return per_model_token_limit()
 
 
+def cheap_first_enabled() -> bool:
+  """Master cheap-first switch — default on (90% workhorse target)."""
+  return os.environ.get("EW_CHEAP_FIRST", "1").lower() not in ("0", "false", "no")
+
+
 def minimize_gpt_enabled() -> bool:
   """
-  Optional preference for first-party models over GPT API.
-  Default off — GPT is allowed; per-model budget enforces the limit.
+  Prefer Cursor Pro models over GPT/Claude API pool.
+  Default follows EW_CHEAP_FIRST=1; override with EW_MINIMIZE_GPT=0|1.
   """
-  return os.environ.get("EW_MINIMIZE_GPT", "0").lower() in ("1", "true", "yes")
+  raw = os.environ.get("EW_MINIMIZE_GPT", "").lower().strip()
+  if raw in ("1", "true", "yes"):
+    return True
+  if raw in ("0", "false", "no"):
+    return False
+  return cheap_first_enabled()
 
 
 def gpt_free_screen_slot_b() -> str:
@@ -35,10 +45,13 @@ def gpt_free_screen_slot_b() -> str:
 
 def gpt_replacement_for(model_key: str, default: str) -> str:
   """
-  Map roster MODEL keys to first-party alternatives when EW_MINIMIZE_GPT=1.
-  When off (default), returns the GPT/default model unchanged.
+  Map roster MODEL keys to Cursor Pro alternatives when minimizing Other Models quota.
   """
-  if not minimize_gpt_enabled():
+  from engine.llm_budget_policy import cursor_pro_only, other_models_allowed, resolve_to_cursor_pro
+
+  if other_models_allowed() and not cursor_pro_only():
+    return default
+  if not minimize_gpt_enabled() and not cursor_pro_only():
     return default
 
   replacements = {
@@ -47,9 +60,10 @@ def gpt_replacement_for(model_key: str, default: str) -> str:
     "nano": os.environ.get("EW_MODEL_WORKHORSE_FP", "composer-2.5"),
     "mild_tb": os.environ.get("EW_MODEL_GROK_HIGH", "cursor-grok-4.5-high"),
     "light_plan": os.environ.get("EW_MODEL_GROK_HIGH", "cursor-grok-4.5-high"),
-    "sol": os.environ.get("EW_MODEL_OPUS", "claude-opus-4-8"),
+    "sol": os.environ.get("EW_MODEL_GROK_HIGH", "cursor-grok-4.5-high"),
   }
-  return replacements.get(model_key, default)
+  resolved = replacements.get(model_key, default)
+  return resolve_to_cursor_pro(resolved, task=model_key)
 
 
 def is_gpt_model(model_id: str) -> bool:

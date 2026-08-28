@@ -6,6 +6,12 @@ import os
 from typing import Any, Callable, Dict, Optional
 
 from engine.llm_panel import run_panel
+from engine.model_budget_governor import (
+  cheap_workhorse_route,
+  llm_allowed_for_routine,
+  purpose_for_brain_domain,
+  record_model_call,
+)
 from engine.okf_brain import (
   list_index,
   okf_brain_enabled,
@@ -88,17 +94,22 @@ def ask_brain(
   use_llm: Optional[bool] = None,
   search_memory: bool = True,
   context: Optional[str] = None,
+  domain: str = "routine",
 ) -> Dict[str, Any]:
   """
   Query → retrieve OKF memory → multi-model panel → persist → return verdict.
 
   Pass rich domain data via `context` (risk metrics, TV OSS stack, social intel, etc.).
+  Routine domains (tv_oss, social) use cheap workhorse only unless EW_ROUTINE_LLM=1.
   """
+  purpose = purpose_for_brain_domain(domain)
   llm_on = use_llm if use_llm is not None else os.environ.get("EW_BRAIN_LLM", "1").lower() not in (
     "0",
     "false",
     "no",
   )
+  if purpose == "routine" and not llm_allowed_for_routine() and use_llm is not True:
+    llm_on = False
 
   context_docs = search_concepts(question, limit=5) if search_memory else []
   prompt = _brain_prompt(question, context_docs)
@@ -110,12 +121,28 @@ def ask_brain(
     from engine.llm_advisor import advisory_credentials_available
 
     if advisory_credentials_available():
-      panel = run_panel(
-        prompt,
-        verdict="GO",
-        conviction="medium",
-        call_provider=make_prompt_call_provider(prompt),
-      )
+      call_provider = make_prompt_call_provider(prompt)
+      if purpose == "routine":
+        provider, model, tier, task, max_out = cheap_workhorse_route()
+        resp = call_provider(provider, model, tier, task, max_out)
+        if resp.get("available") and resp.get("stance"):
+          record_model_call(tier, model)
+        panel = {
+          "consensus_stance": resp.get("stance", "caution"),
+          "blended_summary": resp.get("summary", ""),
+          "consulted": [model],
+          "intelligence_mode": "cheap_workhorse",
+          "escalated_to_premium": False,
+          "screen": {"openai": resp, "anthropic": {"available": False, "skipped": "routine_cheap"}},
+        }
+      else:
+        panel = run_panel(
+          prompt,
+          verdict="GO",
+          conviction="medium",
+          call_provider=call_provider,
+          purpose=purpose,
+        )
     else:
       panel = _stub_panel(prompt)
     panel["intelligence_panel"] = {

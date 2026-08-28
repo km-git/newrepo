@@ -93,9 +93,11 @@ def _rule_adjustments(row: dict, panel: dict, intel: Optional[dict] = None) -> d
 
 
 def _build_execution_prompt(row: dict) -> str:
+  from engine.token_saver_registry import optimize_prompt_text
+
   sym = row.get("symbol", "?")
   tf = row.get("timeframe", "?")
-  return "\n".join([
+  raw = "\n".join([
     "EXECUTION CONSENSUS — approve paper submission for this GTC limit ladder?",
     'Respond JSON: {"stance":"agree|caution|reject","summary":"...","confidence_adjustment":0.0}',
     "",
@@ -108,10 +110,12 @@ def _build_execution_prompt(row: dict) -> str:
     "",
     "agree = submit all DCA legs; caution = submit with reduced conviction; reject = block execution",
   ])
+  optimized, _meta = optimize_prompt_text(raw)
+  return optimized
 
 
 def _llm_panel_for_row(row: dict) -> Optional[dict]:
-  if os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "1").lower() in ("0", "false", "no"):
+  if os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "0").lower() in ("0", "false", "no"):
     return None
   try:
     from engine.brain_consensus import make_prompt_call_provider
@@ -130,6 +134,7 @@ def _llm_panel_for_row(row: dict) -> Optional[dict]:
     verdict=verdict,
     conviction="medium",
     call_provider=make_prompt_call_provider(prompt),
+    purpose="executive",
   )
 
 
@@ -144,7 +149,7 @@ def review_row(row: dict, *, use_llm: Optional[bool] = None) -> Dict[str, Any]:
 
   llm_on = use_llm
   if llm_on is None:
-    llm_on = os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "1").lower() not in ("0", "false", "no")
+    llm_on = os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "0").lower() not in ("0", "false", "no")
 
   llm_panel = _llm_panel_for_row(row) if llm_on else None
   if llm_panel:

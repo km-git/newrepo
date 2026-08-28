@@ -1,4 +1,4 @@
-"""Executive intel — fuse free data sources + TV OSS into decision scoring."""
+"""Executive intel — fuse free data, TV OSS, market structure into decision scoring."""
 
 from __future__ import annotations
 
@@ -25,40 +25,19 @@ def load_global_intel() -> Dict[str, Any]:
   if not executive_intel_enabled():
     return out
 
-  try:
-    from engine.risk_consensus import load_risk_consensus
-
-    out["risk"] = load_risk_consensus()
-  except Exception:
-    out["risk"] = {}
-
-  try:
-    from engine.tv_oss_consensus import load_tv_oss_consensus
-
-    out["tv_oss"] = load_tv_oss_consensus()
-  except Exception:
-    out["tv_oss"] = {}
-
-  try:
-    from engine.impact_discovery import load_impact_report
-
-    out["impact"] = load_impact_report()
-  except Exception:
-    out["impact"] = {}
-
-  try:
-    from engine.deep_research import load_deep_research
-
-    out["deep_research"] = load_deep_research()
-  except Exception:
-    out["deep_research"] = {}
-
-  try:
-    from engine.ai_improvement import load_ai_improvement_state
-
-    out["ai_improvement"] = load_ai_improvement_state()
-  except Exception:
-    out["ai_improvement"] = {}
+  for key, mod_path, fn in (
+    ("risk", "engine.risk_consensus", "load_risk_consensus"),
+    ("tv_oss", "engine.tv_oss_consensus", "load_tv_oss_consensus"),
+    ("impact", "engine.impact_discovery", "load_impact_report"),
+    ("deep_research", "engine.deep_research", "load_deep_research"),
+    ("ai_improvement", "engine.ai_improvement", "load_ai_improvement_state"),
+    ("gap_audit", "engine.resource_gap_audit", "load_gap_audit"),
+  ):
+    try:
+      mod = __import__(mod_path, fromlist=[fn])
+      out[key] = getattr(mod, fn)()
+    except Exception:
+      out[key] = {}
 
   return out
 
@@ -98,13 +77,13 @@ def setup_intel_boost(
   tags: List[str] = []
   delta = 0
   direction = _norm_dir(direction or setup.get("direction", ""))
+  mkt = market_tools or {}
 
   # --- TV OSS per-setup ---
   indicators = setup.get("indicators") or {}
   tv_score = indicators.get("tv_score")
-  if tv_score is None and market_tools:
-    tv_c = (market_tools.get("tv_confluence") or {})
-    tv_score = tv_c.get("score")
+  if tv_score is None:
+    tv_score = (mkt.get("tv_confluence") or {}).get("score")
   if tv_score is not None:
     try:
       ts = int(tv_score)
@@ -120,7 +99,7 @@ def setup_intel_boost(
     except (TypeError, ValueError):
       pass
 
-  if indicators.get("tv_aligned") or (market_tools or {}).get("tv_confluence", {}).get("aligned"):
+  if indicators.get("tv_aligned") or (mkt.get("tv_confluence") or {}).get("aligned"):
     delta += 5
     tags.append("tv_aligned")
 
@@ -128,12 +107,19 @@ def setup_intel_boost(
   if active:
     tags.append(f"tv_stack={','.join(sorted(active)[:4])}")
 
+  ms = mkt.get("market_structure") or {}
+  if ms.get("available"):
+    ms_score = (mkt.get("ms_structure") or {}).get("score", 50)
+    if ms.get("aligned") or (mkt.get("ms_structure") or {}).get("aligned"):
+      delta += 8
+      tags.append(f"structure_{ms.get('event', 'ok')}")
+    elif ms_score < 42:
+      delta -= 6
+      tags.append("structure_against")
+
   # --- Free data: fear/greed, WS, social (from market_tools / deep research) ---
-  mkt = market_tools or {}
-  fg = None
-  if mkt.get("web_intel"):
-    fg = (mkt["web_intel"].get("fear_greed") or {})
-  if not fg:
+  fg = (mkt.get("web_intel") or {}).get("fear_greed") or {}
+  if not fg.get("available"):
     dr = intel.get("deep_research") or {}
     fg = ((dr.get("intel") or {}).get("macro") or {}).get("fear_greed") or {}
 
@@ -152,7 +138,12 @@ def setup_intel_boost(
     elif bias:
       tags.append(f"fg_{bias}")
 
-  ws = mkt.get("ws") or {}
+  oi = (mkt.get("web_intel") or {}).get("open_interest") or {}
+  if oi.get("available") and oi.get("open_interest"):
+    delta += 2
+    tags.append("oi_available")
+
+  ws = mkt.get("live_ws") or mkt.get("ws") or {}
   imb = ws.get("imbalance")
   if imb is not None:
     try:
@@ -181,7 +172,7 @@ def setup_intel_boost(
   if boost:
     delta += min(8, int(boost) // 2)
     for sig in (mkt.get("confluence_signals") or [])[:2]:
-      tags.append(sig[:40])
+      tags.append(str(sig)[:40])
 
   # --- Global risk consensus ---
   risk = intel.get("risk") or {}
@@ -208,12 +199,11 @@ def setup_intel_boost(
   # --- Impact discovery high-lift factors ---
   impact = intel.get("impact") or {}
   boosts = (impact.get("discovery") or {}).get("top_boosts") or []
-  setup_factors = set()
   struct = str(setup.get("wave_structure") or "")
   tf = str(setup.get("timeframe") or "")
   for b in boosts[:5]:
     factor = str(b.get("factor") or "")
-    if factor in setup_factors or (
+    if (
       factor.startswith("tf:") and tf and factor.endswith(tf)
     ) or (
       factor.startswith("wave:") and struct and factor.split(":", 1)[-1] in struct

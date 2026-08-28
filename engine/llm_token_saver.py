@@ -243,7 +243,90 @@ class PerModelTokenBudget:
 # Backward-compat alias
 SessionTokenBudget = PerModelTokenBudget
 
+
+class PoolMixTracker:
+  """Daily Cursor Pro vs Other Models call mix — enforces 2% / 5% shame limits."""
+
+  NAMESPACE = "llm_pool_mix"
+
+  def __init__(self) -> None:
+    from cache.disk_cache import get_llm_cache
+
+    self._cache = get_llm_cache()
+    self._key = ("daily", date.today().isoformat())
+
+  def _state(self) -> Dict[str, int]:
+    return dict(self._cache.get(self.NAMESPACE, *self._key) or {"cursor_pro": 0, "other": 0})
+
+  def _save(self, state: Dict[str, int]) -> None:
+    self._cache.set(self.NAMESPACE, state, *self._key)
+
+  def record(self, model_id: str) -> None:
+    from engine.llm_budget_policy import is_cursor_pro_model, is_other_quota_model
+
+    state = self._state()
+    if is_other_quota_model(model_id):
+      state["other"] = int(state.get("other", 0)) + 1
+    elif is_cursor_pro_model(model_id):
+      state["cursor_pro"] = int(state.get("cursor_pro", 0)) + 1
+    else:
+      state["cursor_pro"] = int(state.get("cursor_pro", 0)) + 1
+    self._save(state)
+
+  def totals(self) -> Dict[str, int]:
+    s = self._state()
+    cursor_pro = int(s.get("cursor_pro", 0))
+    other = int(s.get("other", 0))
+    total = cursor_pro + other
+    return {"cursor_pro": cursor_pro, "other": other, "total": total}
+
+  def other_pct(self) -> float:
+    t = self.totals()
+    if t["total"] <= 0:
+      return 0.0
+    return round(100.0 * t["other"] / t["total"], 2)
+
+  def cursor_pro_pct(self) -> float:
+    t = self.totals()
+    if t["total"] <= 0:
+      return 100.0
+    return round(100.0 * t["cursor_pro"] / t["total"], 2)
+
+  def at_budget_limit(self) -> bool:
+    from engine.llm_budget_policy import other_models_budget_pct
+
+    return self.other_pct() >= other_models_budget_pct()
+
+  def at_shame_limit(self) -> bool:
+    from engine.llm_budget_policy import other_models_shame_pct
+
+    return self.other_pct() >= other_models_shame_pct()
+
+  def summary(
+    self,
+    *,
+    budget_pct: float,
+    shame_pct: float,
+    target_pct: int,
+  ) -> Dict[str, Any]:
+    t = self.totals()
+    other_pct = self.other_pct()
+    return {
+      **t,
+      "cursor_pro_pct": self.cursor_pro_pct(),
+      "other_pct": other_pct,
+      "target_cursor_pro_pct": target_pct,
+      "other_budget_pct": budget_pct,
+      "other_shame_pct": shame_pct,
+      "at_budget_limit": self.at_budget_limit(),
+      "at_shame_limit": self.at_shame_limit(),
+      "shame": other_pct >= shame_pct,
+      "session_date": self._key[1],
+    }
+
+
 _budget: Optional[PerModelTokenBudget] = None
+_pool_tracker: Optional[PoolMixTracker] = None
 
 
 def get_model_budget() -> PerModelTokenBudget:
@@ -251,6 +334,13 @@ def get_model_budget() -> PerModelTokenBudget:
   if _budget is None:
     _budget = PerModelTokenBudget()
   return _budget
+
+
+def get_pool_mix_tracker() -> PoolMixTracker:
+  global _pool_tracker
+  if _pool_tracker is None:
+    _pool_tracker = PoolMixTracker()
+  return _pool_tracker
 
 
 def get_session_budget() -> PerModelTokenBudget:

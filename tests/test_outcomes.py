@@ -65,3 +65,6 @@ def test_enrich_outcomes_with_autodream():
   enriched = enrich_outcomes_with_autodream(outcomes, "TEST/USDT", {"1d": df, "15m": df})
   assert "autodream" in enriched
   assert enriched["autodream"]["by_style"]["scalp"]["available"] is True
+  setup = enriched["setups"]["scalp"]
+  assert "oos_gate" in setup
+  assert "oos_trades" in setup

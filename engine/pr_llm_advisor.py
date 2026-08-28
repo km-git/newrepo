@@ -74,7 +74,7 @@ def get_pr_llm_advisory(
       "blended_summary": panel.get("blended_summary"),
     }
   elif mode in ("ensemble", "dual"):
-    panel = run_panel(prompt, verdict, conviction, _call)
+    panel = run_panel(prompt, verdict, conviction, _call, purpose="screen")
     result = {
       "consulted": panel.get("consulted", []),
       "consensus_stance": panel.get("consensus_stance"),

@@ -45,9 +45,9 @@ def run_pr_auto_merge(*, dry_run: bool = False) -> Dict[str, Any]:
     os.environ.setdefault("EW_PR_MERGE_WITHOUT_PANEL", "1")
     os.environ.setdefault("EW_PR_LLM_ADVISORY", "1")
     os.environ.setdefault("EW_LLM_BACKEND", "cursor")
+    os.environ.setdefault("EW_PR_AUTO_RESOLVE_CONFLICTS", "1")
 
-    result = run_pr_agent(approve_all=True, dry_run=dry_run)
-    return result
+    return run_pr_agent(approve_all=True, dry_run=dry_run)
   except Exception as exc:
     return {"ok": False, "error": str(exc)}
 
@@ -65,6 +65,7 @@ def run_self_learning(*, use_llm: bool = True) -> Dict[str, Any]:
     except ImportError:
       pass
 
+    # Self-improvement uses LLM; routine sub-tasks stay cheap/off via governor
     return run_improvement_cycle(
       is_crypto=True,
       persist_okf=True,
@@ -111,6 +112,14 @@ def run_autonomous_tick(
   if not skip_learning:
     tick["phases"]["learning"] = run_self_learning(use_llm=True)
 
+  if os.environ.get("EW_TOOL_AUDIT", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.tool_resource_audit import run_tool_resource_audit
+
+      tick["phases"]["tool_audit"] = run_tool_resource_audit(persist=True)
+    except Exception as exc:
+      tick["phases"]["tool_audit"] = {"error": str(exc)}
+
   if not skip_research:
     try:
       from engine.deep_research import run_deep_research
@@ -121,6 +130,26 @@ def run_autonomous_tick(
 
   if not skip_autoresearch:
     tick["phases"]["autoresearch"] = run_autoresearch_promote()
+
+  if os.environ.get("EW_AUTONOMOUS_UNIVERSE_EXECUTE", "0").lower() in ("1", "true", "yes"):
+    try:
+      from engine.execution_agent import execute_from_csv
+
+      csv_path = os.environ.get("EW_LIMIT_ORDERS_CSV", "output/latest_limit_orders_all_tf.csv")
+      tick["phases"]["universe_execute"] = execute_from_csv(
+        csv_path,
+        dry_run=os.environ.get("EW_EXECUTE_CONFIRM", "0") != "1",
+      )
+    except Exception as exc:
+      tick["phases"]["universe_execute"] = {"error": str(exc)}
+
+  if os.environ.get("EW_AUTONOMOUS_BACKTEST", "0").lower() in ("1", "true", "yes"):
+    try:
+      from engine.backtest_runner import run_walk_forward_backtest
+
+      tick["phases"]["backtest"] = run_walk_forward_backtest()
+    except Exception as exc:
+      tick["phases"]["backtest"] = {"error": str(exc)}
 
   if not skip_pr:
     tick["phases"]["pr_merge"] = run_pr_auto_merge(dry_run=pr_dry_run)
@@ -138,6 +167,19 @@ def run_autonomous_tick(
     isinstance(v, dict) and v.get("error") and not v.get("skipped")
     for v in tick["phases"].values()
   )
+
+  try:
+    from engine.model_budget_governor import cursor_fallback_enabled, cursor_models_only, governor_summary, other_model_shame_status
+
+    tick["model_budget"] = governor_summary()
+    tick["model_budget"]["cursor_models_only"] = cursor_models_only()
+    tick["model_budget"]["cursor_fallback"] = cursor_fallback_enabled()
+    shame = other_model_shame_status()
+    tick["model_budget"]["shame"] = shame
+    if shame.get("ashamed"):
+      print(f"[autonomous] ASHAMED: Other Models at {shame.get('other_share', 0):.1%} — use Cursor Pro")
+  except Exception:
+    pass
 
   _append_tick(tick)
   state = {

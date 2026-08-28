@@ -67,6 +67,25 @@ def _simulate_leg(entry: float, stop: float, tp: float, direction: str, highs: L
   return "open"
 
 
+def _oos_gate_from_backtest(win_rate: Optional[float], trades: int) -> str:
+  """Map bar-sim backtest stats to executive/accurate gate labels."""
+  from engine.accurate_setups import MIN_OOS_ACCURATE, MIN_OOS_TRADES
+
+  if trades < MIN_OOS_TRADES:
+    return "insufficient_oos"
+  if win_rate is not None and float(win_rate) >= MIN_OOS_ACCURATE:
+    return "passed"
+  return "below_threshold"
+
+
+def _autodream_verdict_from_backtest(win_rate: Optional[float], trades: int) -> Optional[str]:
+  from engine.accurate_setups import MIN_OOS_ACCURATE, MIN_OOS_TRADES
+
+  if trades < MIN_OOS_TRADES or win_rate is None:
+    return None
+  return "validated" if float(win_rate) >= MIN_OOS_ACCURATE else "caution"
+
+
 def analyze_historical(
   symbol: str,
   style: str,
@@ -173,6 +192,16 @@ def enrich_outcomes_with_autodream(
     setup = outcomes.get("setups", {}).get(style, {})
     if not setup or setup.get("status") == "not_actionable":
       continue
+
+    wr = ad.get("win_rate")
+    n = int(ad.get("simulated_trades") or 0)
+    setup["oos_win_rate"] = wr
+    setup["oos_trades"] = n
+    setup["oos_gate"] = _oos_gate_from_backtest(wr, n)
+    verdict = _autodream_verdict_from_backtest(wr, n)
+    if verdict and not setup.get("autodream_verdict"):
+      setup["autodream_verdict"] = verdict
+
     tf = {"scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w"}.get(style, "1d")
     wr, n = lookup_win_rate(tracked, symbol, tf, setup.get("direction", ""))
     if wr is not None and n >= 3:

@@ -77,6 +77,25 @@ def main() -> None:
     help="Run executive consensus on all open PRs",
   )
   parser.add_argument(
+    "--pr-resolve-conflicts",
+    type=int,
+    nargs="?",
+    const=0,
+    metavar="N",
+    help="Auto-resolve merge conflicts for PR N (omit N with flag alone for all open PRs)",
+  )
+  parser.add_argument(
+    "--resolve-conflicts",
+    type=int,
+    metavar="N",
+    help="Alias for --pr-resolve-conflicts N",
+  )
+  parser.add_argument(
+    "--resolve-conflicts-all",
+    action="store_true",
+    help="Alias for --pr-resolve-conflicts (all open PRs)",
+  )
+  parser.add_argument(
     "--brain-ask",
     metavar="QUESTION",
     help="Query OKF secondary brain with multi-model consensus",
@@ -198,6 +217,11 @@ def main() -> None:
   )
   parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
+  parser.add_argument(
+    "--gap-audit",
+    action="store_true",
+    help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -250,6 +274,16 @@ def main() -> None:
       sys.exit(1)
     return
 
+  if args.pr_resolve_conflicts is not None:
+    from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
+
+    if args.pr_resolve_conflicts == 0:
+      result = resolve_open_pr_conflicts(dry_run=args.pr_dry_run)
+    else:
+      result = resolve_pr_conflicts(args.pr_resolve_conflicts, dry_run=args.pr_dry_run)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
   if args.pr_approve is not None or args.pr_approve_all:
     from engine.pr_agent import run_pr_agent
 
@@ -258,6 +292,16 @@ def main() -> None:
       dry_run=args.pr_dry_run,
       approve_all=args.pr_approve_all,
     )
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.resolve_conflicts is not None or args.resolve_conflicts_all:
+    from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
+
+    if args.resolve_conflicts_all:
+      result = resolve_open_pr_conflicts(dry_run=args.pr_dry_run)
+    else:
+      result = resolve_pr_conflicts(args.resolve_conflicts, dry_run=args.pr_dry_run)
     print(json.dumps(result, indent=2, default=str))
     return
 
@@ -331,6 +375,15 @@ def main() -> None:
       os.environ["EW_EXECUTION_MODE"] = "live"
     result = execute_from_csv(dry_run=not args.execute_live)
     print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.gap_audit:
+    from engine.resource_gap_audit import run_resource_gap_audit, save_gap_audit
+
+    result = run_resource_gap_audit(persist=True, persist_okf=False)
+    path = save_gap_audit(result)
+    print(json.dumps(result, indent=2, default=str))
+    print(f"[gap-audit] saved {path}", file=sys.stderr)
     return
 
   if args.health:

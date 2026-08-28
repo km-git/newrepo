@@ -23,6 +23,19 @@ export EW_SOCIAL_VALIDATION="${EW_SOCIAL_VALIDATION:-1}"
 export EW_AI_IMPROVEMENT="${EW_AI_IMPROVEMENT:-1}"
 export EW_IMPROVEMENT_LLM="${EW_IMPROVEMENT_LLM:-1}"
 export EW_USE_ALL_CURSOR_MODELS="${EW_USE_ALL_CURSOR_MODELS:-1}"
+export EW_CHEAP_FIRST="${EW_CHEAP_FIRST:-1}"
+export EW_CURSOR_PRO_ONLY="${EW_CURSOR_PRO_ONLY:-1}"
+export EW_ALLOW_OTHER_MODELS="${EW_ALLOW_OTHER_MODELS:-0}"
+export EW_USE_CURSOR_API_POOL="${EW_USE_CURSOR_API_POOL:-0}"
+export EW_LLM_CHEAP_TARGET_PCT="${EW_LLM_CHEAP_TARGET_PCT:-98}"
+export EW_CURSOR_FALLBACK="${EW_CURSOR_FALLBACK:-1}"
+export EW_CURSOR_MODELS_ONLY="${EW_CURSOR_MODELS_ONLY:-0}"
+export EW_USE_OTHER_MODEL_POOL="${EW_USE_OTHER_MODEL_POOL:-1}"
+export EW_OTHER_MODELS_BUDGET_PCT="${EW_OTHER_MODELS_BUDGET_PCT:-2}"
+export EW_OTHER_MODELS_SHAME_PCT="${EW_OTHER_MODELS_SHAME_PCT:-5}"
+export EW_LLM_ROUTINE_INTELLIGENCE="${EW_LLM_ROUTINE_INTELLIGENCE:-single}"
+export EW_LLM_EW_BYPASS="${EW_LLM_EW_BYPASS:-1}"
+export EW_MINIMIZE_GPT="${EW_MINIMIZE_GPT:-1}"
 export EW_AUTORESEARCH_AUTO_PROMOTE="${EW_AUTORESEARCH_AUTO_PROMOTE:-1}"
 export EW_HEALTH_REQUIRE_ARTIFACTS=0
 export EW_GOAL_MODE_AUTORESEARCH=0
@@ -61,6 +74,20 @@ r = run_deep_research(use_ai=True)
 print(json.dumps({'skipped': r.get('skipped'), 'ai': (r.get('ai_synthesis') or {}).get('stance')}, indent=2))
 " || echo "[autonomous] deep research skipped: $?"
 
+echo "=== Phase 2c: resource gap audit (challenge missing tools/data) ==="
+"$PY" -c "
+import json
+from engine.resource_gap_audit import run_resource_gap_audit
+r = run_resource_gap_audit(persist=True, persist_okf=True)
+s = r.get('summary') or {}
+print(json.dumps({
+  'gaps': s.get('gaps'),
+  'critical': s.get('critical_gaps'),
+  'top': [g.get('id') for g in (r.get('top_gaps') or [])[:5]],
+  'challenges': (r.get('challenge_questions') or [])[:2],
+}, indent=2))
+" || echo "[autonomous] gap audit skipped: $?"
+
 echo "=== Phase 3: autoresearch (top-N batch + eval) ==="
 EW_NIGHTLY_BATCH_N="${EW_NIGHTLY_BATCH_N:-15}" bash scripts/run_nightly_autoresearch.sh || echo "[autonomous] autoresearch phase failed (continuing): $?"
 
@@ -81,6 +108,14 @@ soc = run_social_strategy_validation(use_llm=True)
 print('web_intel_keys', list(wi.keys())[:8])
 print('social_ok', soc.get('ok', soc.get('skipped')))
 " || echo "[autonomous] web/social phase skipped: $?"
+
+echo "=== Phase 5b: auto-resolve GitHub merge conflicts (Cursor Pro AI) ==="
+export EW_PR_AUTO_RESOLVE_CONFLICTS="${EW_PR_AUTO_RESOLVE_CONFLICTS:-1}"
+if command -v gh >/dev/null 2>&1; then
+  "$PY" ew_tool.py --pr-resolve-conflicts ${EW_PR_DRY_RUN:+--pr-dry-run} || echo "[autonomous] conflict resolution note: $?"
+else
+  echo "[autonomous] gh not available — skip conflict resolution"
+fi
 
 echo "=== Phase 6: ready draft PRs + executive consensus merge ==="
 if command -v gh >/dev/null 2>&1; then

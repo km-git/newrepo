@@ -177,6 +177,7 @@ def run_risk_consensus(
           use_llm=True,
           search_memory=True,
           context=prompt,
+          domain="risk",
         )
         panel = {
           "consensus_stance": brain.get("stance") or brain.get("panel", {}).get("consensus_stance", "caution"),
