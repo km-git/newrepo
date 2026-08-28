@@ -82,7 +82,8 @@ print('web_intel_keys', list(wi.keys())[:8])
 print('social_ok', soc.get('ok', soc.get('skipped')))
 " || echo "[autonomous] web/social phase skipped: $?"
 
-echo "=== Phase 6: ready draft PRs + executive consensus merge ==="
+echo "=== Phase 6: resolve conflicts + ready draft PRs + executive consensus merge ==="
+export EW_PR_AUTO_RESOLVE_CONFLICTS="${EW_PR_AUTO_RESOLVE_CONFLICTS:-1}"
 if command -v gh >/dev/null 2>&1; then
   gh pr list --state open --json number,isDraft -q '.[] | select(.isDraft==true) | .number' 2>/dev/null | while read -r n; do
     [[ -n "$n" ]] && gh pr ready "$n" || true

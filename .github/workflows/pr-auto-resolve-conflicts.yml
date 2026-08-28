@@ -1,0 +1,53 @@
+name: PR Auto-Resolve Conflicts
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to resolve (omit for all open PRs)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Auto-resolve merge conflicts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          EW_PR_AUTO_RESOLVE_CONFLICTS: "1"
+          EW_PR_CONFLICT_LLM: "1"
+          EW_LLM_BACKEND: cursor
+          EW_GIT_USER_NAME: ew-conflict-bot
+          EW_GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
+          if [[ -n "$PR_NUM" ]]; then
+            .venv/bin/python scripts/pr_auto_resolve_conflicts.py "$PR_NUM" --repo "${{ github.repository }}"
+          else
+            .venv/bin/python scripts/pr_auto_resolve_conflicts.py --all --repo "${{ github.repository }}"
+          fi

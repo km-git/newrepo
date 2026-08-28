@@ -77,6 +77,14 @@ def main() -> None:
     help="Run executive consensus on all open PRs",
   )
   parser.add_argument(
+    "--pr-resolve-conflicts",
+    type=int,
+    nargs="?",
+    const=0,
+    metavar="N",
+    help="Auto-resolve merge conflicts for PR N (omit N with flag alone for all open PRs)",
+  )
+  parser.add_argument(
     "--brain-ask",
     metavar="QUESTION",
     help="Query OKF secondary brain with multi-model consensus",
@@ -248,6 +256,16 @@ def main() -> None:
     print(json.dumps(result, indent=2))
     if not result.get("ok"):
       sys.exit(1)
+    return
+
+  if args.pr_resolve_conflicts is not None:
+    from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
+
+    if args.pr_resolve_conflicts == 0:
+      result = resolve_open_pr_conflicts(dry_run=args.pr_dry_run)
+    else:
+      result = resolve_pr_conflicts(args.pr_resolve_conflicts, dry_run=args.pr_dry_run)
+    print(json.dumps(result, indent=2, default=str))
     return
 
   if args.pr_approve is not None or args.pr_approve_all:

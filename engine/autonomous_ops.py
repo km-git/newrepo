@@ -45,9 +45,9 @@ def run_pr_auto_merge(*, dry_run: bool = False) -> Dict[str, Any]:
     os.environ.setdefault("EW_PR_MERGE_WITHOUT_PANEL", "1")
     os.environ.setdefault("EW_PR_LLM_ADVISORY", "1")
     os.environ.setdefault("EW_LLM_BACKEND", "cursor")
+    os.environ.setdefault("EW_PR_AUTO_RESOLVE_CONFLICTS", "1")
 
-    result = run_pr_agent(approve_all=True, dry_run=dry_run)
-    return result
+    return run_pr_agent(approve_all=True, dry_run=dry_run)
   except Exception as exc:
     return {"ok": False, "error": str(exc)}
 
