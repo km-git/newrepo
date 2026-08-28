@@ -220,3 +220,30 @@ def run_full_daily() -> int:
     return 1
   proc = subprocess.run(["bash", str(script)], env=os.environ.copy())
   return proc.returncode
+
+
+def run_paper_proof_tick(
+  *,
+  fetch_ohlc: bool = True,
+  equity_usd: Optional[float] = None,
+) -> Dict[str, Any]:
+  """
+  LLM-free proof tick — paper P&L forward test only.
+  No self-learning, research, PR merge, or AI models.
+  """
+  os.environ.setdefault("EW_IMPROVEMENT_LLM", "0")
+  os.environ.setdefault("EW_AI_IMPROVEMENT", "0")
+  os.environ.setdefault("EW_DEEP_RESEARCH", "0")
+  os.environ.setdefault("EW_PR_AUTO_MERGE", "0")
+  os.environ.setdefault("EW_GATEWAY_QUIET", "1")
+  os.environ.setdefault("EW_FETCH_QUIET", "1")
+
+  from engine.paper_forward_tracker import run_paper_forward_tick
+
+  tick = run_paper_forward_tick(
+    fetch_ohlc=fetch_ohlc,
+    equity_usd=equity_usd,
+    include_effectiveness=True,
+  )
+  _append_tick({"type": "paper_proof", **tick})
+  return tick

@@ -141,6 +141,8 @@ class MarketDataGateway:
       "ts": time.time(),
     }
     self._request_log.append(entry)
+    if os.environ.get("EW_GATEWAY_QUIET", "0").lower() in ("1", "true", "yes"):
+      return
     if hit == "miss":
       print(f"[gateway] MISS {symbol} {tf} → live via {source}")
     else:
