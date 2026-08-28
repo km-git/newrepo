@@ -1,4 +1,4 @@
-"""Expanded multi-model PR panel — 5/7 approve consensus rule."""
+"""Expanded multi-model PR panel — 5/7 approve consensus rule (Cursor Pro only)."""
 
 from __future__ import annotations
 
@@ -24,17 +24,20 @@ def pr_expanded_panel_enabled() -> bool:
 
 def pr_panel_slots() -> List[Tuple[str, str, str, str]]:
   """
-  Specialist slots for PR review (no GPT — per pr-consensus-review.md).
+  Specialist slots for PR review — Cursor Pro models only (no Other Models quota).
   Returns (provider, model, tier, role).
   """
+  gh = MODEL["grok_high"]
+  comp = MODEL["workhorse_fp"]
+  grok = MODEL["screen_alt"]
   slots = [
-    ("anthropic", MODEL["opus"], "premium", "architect"),
-    ("anthropic", MODEL["fable"], "premium", "hard_architect"),
-    ("cursor", MODEL["grok_high"], "standard", "verify"),
-    ("composer", MODEL["workhorse_fp"], "cheap", "workhorse"),
-    ("cursor", MODEL["screen_alt"], "cheap", "boilerplate"),
-    ("openai", MODEL["screen_c"], "cheap", "boilerplate_alt"),
-    ("anthropic", MODEL.get("review", MODEL["grok_high"]), "standard", "review"),
+    ("cursor", gh, "standard", "architect"),
+    ("cursor", gh, "standard", "hard_architect"),
+    ("cursor", gh, "standard", "verify"),
+    ("composer", comp, "cheap", "workhorse"),
+    ("cursor", grok, "cheap", "boilerplate"),
+    ("composer", comp, "cheap", "boilerplate_alt"),
+    ("cursor", gh, "standard", "review"),
   ]
   return slots[: pr_panel_size()]
 
@@ -78,7 +81,7 @@ def run_expanded_pr_panel(
 
   def _invoke(slot: Tuple[str, str, str, str]) -> Dict[str, Any]:
     provider, model, tier, role = slot
-    task = "architect" if tier == "premium" else ("tiebreaker" if tier == "standard" else "screen")
+    task = "screen"
     resp = call_provider(provider, model, tier, task, max_out)
     resp["role"] = role
     resp["model"] = model
@@ -112,7 +115,8 @@ def run_expanded_pr_panel(
       "intelligence_mode": "pr_expanded_panel",
       "consensus_stance": stance,
       "vote_tally": tally,
-      "escalated_to_premium": any(s[2] == "premium" for s in slots),
+      "escalated_to_premium": False,
+      "cursor_pro_only": True,
       "disagreement_severity": "hard" if tally.get("reject", 0) >= 3 else ("mild" if stance == "caution" else "none"),
     },
   }

@@ -63,12 +63,18 @@ def test_hard_disagreement_go_high_uses_cursor_by_default():
 
 
 def test_hard_disagreement_go_high_uses_opus_when_other_pool_enabled(monkeypatch):
+  from engine.model_budget_governor import ModelBudgetGovernor, reset_governor
+
   roster = _reload_roster(
     monkeypatch,
     EW_USE_OTHER_MODEL_POOL="1",
-    EW_CURSOR_POOL_GOVERNOR="0",
+    EW_CURSOR_POOL_GOVERNOR="1",
     EW_MINIMIZE_GPT="0",
   )
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(50):
+    g.record_call("cheap", "composer-2.5")
   model, tier, _ = roster.escalate_task_model("tiebreaker", "GO", "high", ["agree", "reject"])
   assert model == "claude-opus-4-8"
   assert tier == "flagship"
@@ -80,7 +86,7 @@ def test_hard_disagreement_default_uses_cursor_grok():
   assert tier == "standard"
 
 
-def test_hard_disagreement_uses_sol_when_other_pool_enabled(monkeypatch):
+def test_hard_disagreement_uses_cursor_for_non_executive(monkeypatch):
   roster = _reload_roster(
     monkeypatch,
     EW_USE_OTHER_MODEL_POOL="1",
@@ -88,8 +94,8 @@ def test_hard_disagreement_uses_sol_when_other_pool_enabled(monkeypatch):
     EW_MINIMIZE_GPT="0",
   )
   model, tier, _ = roster.escalate_task_model("tiebreaker", "NO_GO", "low", ["agree", "reject"])
-  assert model == "gpt-5.6-sol"
-  assert tier == "crucial"
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
 
 
 def test_light_planning_uses_cursor_grok_by_default():
@@ -98,17 +104,16 @@ def test_light_planning_uses_cursor_grok_by_default():
   assert tier == "standard"
 
 
-def test_light_planning_uses_luna_when_other_pool_enabled(monkeypatch):
+def test_light_planning_stays_cursor_when_other_pool_enabled(monkeypatch):
   roster = _reload_roster(
     monkeypatch,
     EW_USE_OTHER_MODEL_POOL="1",
     EW_CURSOR_POOL_GOVERNOR="0",
     EW_MINIMIZE_GPT="0",
   )
-  model, tier, reason = roster.escalate_task_model("planning", "CONDITIONAL_GO", "medium")
-  assert model == "gpt-5.6-luna"
+  model, tier, _ = roster.escalate_task_model("planning", "CONDITIONAL_GO", "medium")
+  assert model == "cursor-grok-4.5-high"
   assert tier == "standard"
-  assert "luna" in reason.lower()
 
 
 def test_full_planning_uses_cursor_by_default():

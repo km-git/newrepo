@@ -49,22 +49,41 @@ def test_escalation_uses_cursor_when_other_pool_disabled(tmp_path, monkeypatch):
   mild = improvement_escalation_routes(stances=["agree", "caution"], metrics_poor=False)
   hard = improvement_escalation_routes(stances=["agree", "reject"], metrics_poor=True)
   hard_models = {r[1] for r in hard}
-  assert len(mild) == 0
+  assert len(mild) == 1
+  assert all(is_cursor_pro_model(m) for m in {r[1] for r in mild})
   assert hard_models
   assert all(is_cursor_pro_model(m) for m in hard_models)
 
 
-def test_escalation_includes_other_models_when_pool_enabled(tmp_path, monkeypatch):
-  from engine.model_budget_governor import reset_governor
+def test_escalation_cursor_only_even_when_other_pool_enabled(tmp_path, monkeypatch):
+  """Self-improvement never uses Other Models — only Cursor Pro."""
+  from engine.model_budget_governor import is_cursor_pro_model, reset_governor
 
   monkeypatch.setenv("EW_LLM_CACHE_DIR", str(tmp_path))
-  monkeypatch.setenv("EW_MODEL_BUDGET_GOVERNOR", "1")
   monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "0")
   reset_governor()
   hard = improvement_escalation_routes(stances=["agree", "reject"], metrics_poor=True)
-  hard_models = {r[1] for r in hard}
-  assert MODEL["opus"] in hard_models or MODEL["fable"] in hard_models or MODEL["sol"] in hard_models
+  assert all(is_cursor_pro_model(r[1]) for r in hard)
+
+
+def test_escalation_includes_other_models_for_executive_task_only(tmp_path, monkeypatch):
+  import importlib
+  import engine.llm_model_roster as roster
+  from engine.model_budget_governor import ModelBudgetGovernor, reset_governor
+
+  monkeypatch.setenv("EW_LLM_CACHE_DIR", str(tmp_path))
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
+  monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
+  monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(50):
+    g.record_call("cheap", "composer-2.5")
+  importlib.reload(roster)
+  model, tier, _ = roster.escalate_task_model("executive", "GO", "high", ["agree", "reject"])
+  assert model == "claude-opus-4-8"
+  assert tier == "flagship"
 
 
 def test_escalation_includes_premium_on_hard_disagree(tmp_path, monkeypatch):

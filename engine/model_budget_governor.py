@@ -1,12 +1,12 @@
 """
-Model budget governor — 95% Cursor Pro models, 5% Other Models (GPT/Claude API).
+Model budget governor — 98% Cursor Pro models, 2% Other Models (executive only).
 
 Tracks two budgets:
   1. Cursor Pro pool (composer, grok) vs Other Models quota (GPT, Claude, Gemini)
-  2. Cheap vs premium tier for executive/self-improvement escalation
+  2. Cheap vs premium tier for executive escalation
 
-Routine tasks stay on cheapest Cursor workhorse; Other Models only when budget allows
-and purpose is executive decision-making or self-improvement.
+Other Models are reserved exclusively for executive decision-making and capped at 2%.
+All other tasks (screen, self-improvement, PR, research) use Cursor Pro only.
 """
 
 from __future__ import annotations
@@ -49,8 +49,18 @@ def cheap_target_ratio() -> float:
 
 
 def cursor_target_ratio() -> float:
-  """Target fraction of calls on Cursor Pro models (default 95%)."""
-  return float(os.environ.get("EW_CURSOR_MODEL_RATIO", "0.95"))
+  """Target fraction of calls on Cursor Pro models (default 98%)."""
+  return float(os.environ.get("EW_CURSOR_MODEL_RATIO", "0.98"))
+
+
+def other_models_executive_only() -> bool:
+  """When true, GPT/Claude/Gemini only for executive purpose (default on)."""
+  return os.environ.get("EW_OTHER_MODELS_EXECUTIVE_ONLY", "1").lower() not in ("0", "false", "no")
+
+
+def other_model_pool_enabled() -> bool:
+  """Allow Other Models when executive budget permits (default on, capped at 2%)."""
+  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "1").lower() not in ("0", "false", "no")
 
 
 def premium_escalation_mode() -> str:
@@ -64,11 +74,6 @@ def governor_enabled() -> bool:
 
 def cursor_pool_governor_enabled() -> bool:
   return os.environ.get("EW_CURSOR_POOL_GOVERNOR", "1").lower() not in ("0", "false", "no")
-
-
-def other_model_pool_enabled() -> bool:
-  """When false, never route to GPT/Claude/Gemini API pool — Cursor Pro only."""
-  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "0").lower() in ("1", "true", "yes")
 
 
 def cursor_only_screen() -> bool:
@@ -176,13 +181,20 @@ class ModelBudgetGovernor:
     return self.premium_share() < max_premium + 0.001
 
   def other_model_budget_allows(self) -> bool:
-    """True when Other Models share is below (1 - cursor_target_ratio)."""
+    """True when adding one Other Model call keeps share at or below 2%."""
     if not cursor_pool_governor_enabled():
       return other_model_pool_enabled()
     if not other_model_pool_enabled():
       return False
+    state = self._state()
+    cursor = int(state.get("cursor", 0))
+    other = int(state.get("other", 0))
+    total = cursor + other
+    if total == 0:
+      return False
     max_other = 1.0 - cursor_target_ratio()
-    return self.other_share() < max_other + 0.001
+    projected_share = (other + 1) / (total + 1)
+    return projected_share <= max_other + 0.001
 
   def should_use_other_model(
     self,
@@ -190,18 +202,16 @@ class ModelBudgetGovernor:
     *,
     force_critical: bool = False,
   ) -> bool:
-    """Gate Other Models (GPT/Claude/Gemini) — executive + self-improvement only."""
+    """Gate Other Models — executive decision-making only, max 2% daily share."""
     if not other_model_pool_enabled():
       return False
-    if purpose in ("routine", "screen", "research"):
+    if purpose != "executive":
       return False
     if not cursor_pool_governor_enabled():
       return True
     if force_critical:
-      return self.other_model_budget_allows() or force_critical
-    if purpose in ("executive", "self_improvement"):
       return self.other_model_budget_allows()
-    return False
+    return self.other_model_budget_allows()
 
   def should_escalate_to_premium(
     self,
@@ -227,11 +237,6 @@ class ModelBudgetGovernor:
         return self.premium_budget_allows() or force_critical
       if verdict == "GO" and conviction == "high" and sev in ("mild", "hard"):
         return self.premium_budget_allows()
-      return False
-
-    if purpose == "self_improvement":
-      if metrics_poor or sev == "hard" or force_critical:
-        return self.premium_budget_allows() or force_critical
       return False
 
     return False
@@ -262,6 +267,7 @@ class ModelBudgetGovernor:
       "governor_enabled": governor_enabled(),
       "cursor_pool_governor": cursor_pool_governor_enabled(),
       "other_model_pool_enabled": other_model_pool_enabled(),
+      "other_models_executive_only": other_models_executive_only(),
       "premium_escalation": premium_escalation_mode(),
     }
 
@@ -293,6 +299,17 @@ def should_escalate_to_premium(purpose: Purpose, **kwargs: Any) -> bool:
 
 def should_use_other_model(purpose: Purpose, **kwargs: Any) -> bool:
   return get_governor().should_use_other_model(purpose, **kwargs)
+
+
+def purpose_from_task(task: str) -> Purpose:
+  """Map LLM task → budget purpose. Only task=executive may use Other Models."""
+  if task == "executive":
+    return "executive"
+  if task in ("architect", "synthesis", "planning", "tiebreaker"):
+    return "self_improvement"
+  if task in ("screen", "workhorse"):
+    return "screen"
+  return "routine"
 
 
 def prefer_cursor_pool_model(

@@ -215,14 +215,15 @@ def run_panel(
         force_critical=(purpose == "executive" and verdict == "GO"),
       )
       allow_tiebreaker = is_cursor_pro_model(model) or (
-        should_escalate_to_premium(
+        purpose == "executive"
+        and should_escalate_to_premium(
           purpose,
           verdict=verdict,
           conviction=conviction,
           stances=stances,
           metrics_poor=metrics_poor,
         )
-        and should_use_other_model(purpose, force_critical=(purpose == "executive" and verdict == "GO"))
+        and should_use_other_model(purpose, force_critical=(verdict == "GO"))
       )
       if allow_tiebreaker:
         escalated = True

@@ -192,6 +192,13 @@ def _call_advisory(
   max_output: int,
   prompt: str,
 ) -> dict:
+  from engine.model_budget_governor import purpose_from_task, route_model_for_task
+
+  purpose = purpose_from_task(task)
+  model, tier, _substituted = route_model_for_task(
+    model, tier, purpose=purpose,
+    force_critical=(purpose == "executive"),
+  )
   budget = get_model_budget()
   if budget.at_limit(model):
     ms = budget.model_summary(model)

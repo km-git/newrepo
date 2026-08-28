@@ -103,12 +103,12 @@ def test_cheap_workhorse_route():
 
 
 def test_cursor_target_ratio_default():
-  assert cursor_target_ratio() == 0.95
+  assert cursor_target_ratio() == 0.98
 
 
-def test_other_model_pool_off_by_default(monkeypatch):
+def test_other_model_pool_on_by_default(monkeypatch):
   monkeypatch.delenv("EW_USE_OTHER_MODEL_POOL", raising=False)
-  assert other_model_pool_enabled() is False
+  assert other_model_pool_enabled() is True
 
 
 def test_prefer_cursor_substitutes_gpt():
@@ -117,9 +117,10 @@ def test_prefer_cursor_substitutes_gpt():
   assert is_cursor_pro_model(model)
 
 
-def test_should_use_other_model_blocked_for_routine():
+def test_should_use_other_model_executive_only():
   assert should_use_other_model("routine") is False
   assert should_use_other_model("screen") is False
+  assert should_use_other_model("self_improvement") is False
 
 
 def test_governor_tracks_cursor_ratio(tmp_path, monkeypatch):

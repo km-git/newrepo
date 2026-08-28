@@ -80,7 +80,7 @@ def cursor_api_pool_models() -> List[str]:
 def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
   """
   Phase 1 — parallel cheap Cursor Pro screens only (Composer, Grok).
-  Other Models (GPT/Claude/Gemini) added only when EW_USE_OTHER_MODEL_POOL=1.
+  Never uses Other Models — self-improvement stays on Cursor Pro pool.
   """
   task: TaskKind = "workhorse"
   max_out = max_output_for_task(task)
@@ -90,16 +90,6 @@ def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
     model = slot["model"]
     provider = provider_for_task(task, model)
     routes.append((provider, model, "cheap", task, max_out))
-
-  if use_other_model_pool():
-    for model in cursor_api_pool_models():
-      if model in {r[1] for r in routes} or is_cursor_pro_model(model):
-        continue
-      tier_meta = ROSTER.get(model, {})
-      roster_tier = tier_meta.get("tier", "workhorse")
-      if roster_tier in ("nano", "workhorse"):
-        provider = provider_for_task(task, model)
-        routes.append((provider, model, "cheap", task, max_out))
 
   if not routes:
     routes.append((provider_for_task(task, MODEL["workhorse_fp"]), MODEL["workhorse_fp"], "cheap", task, max_out))
@@ -120,39 +110,17 @@ def improvement_escalation_routes(
   routes: List[Tuple[str, str, str, TaskKind, int]] = []
 
   if sev in ("mild", "hard") or metrics_poor:
-    if not should_escalate_to_premium(
-      "self_improvement",
-      verdict=verdict,
-      conviction=conviction,
-      stances=stances,
-      metrics_poor=metrics_poor,
-    ):
-      return routes
     tb_model, _, _ = escalate_task_model("tiebreaker", verdict, conviction, stances)
     task: TaskKind = "tiebreaker"
     routes.append((provider_for_task(task, tb_model), tb_model, "standard", task, max_output_for_task(task)))
 
   if sev == "hard" or metrics_poor:
-    for task_name in ("planning", "synthesis", "architect", "executive"):
+    for task_name in ("planning", "synthesis", "architect"):
       task = task_name  # type: ignore[assignment]
       model, _, _ = escalate_task_model(task, verdict, conviction, stances)
       if model in {r[1] for r in routes}:
         continue
-      if not should_use_other_model("self_improvement") and not is_cursor_pro_model(model):
-        continue
-      tier = "premium" if task in ("executive", "architect") and should_use_other_model("self_improvement") else "standard"
-      routes.append((provider_for_task(task, model), model, tier, task, max_output_for_task(task)))
-
-  if use_other_model_pool() and (sev != "none" or metrics_poor):
-    for model in cursor_api_pool_models():
-      if model in {r[1] for r in routes} or is_cursor_pro_model(model):
-        continue
-      if not should_use_other_model("self_improvement"):
-        continue
-      tier_meta = ROSTER.get(model, {})
-      if tier_meta.get("tier") in ("standard", "crucial", "flagship"):
-        task = "synthesis" if model == MODEL["sol"] else "tiebreaker"
-        routes.append((provider_for_task(task, model), model, "standard", task, max_output_for_task(task)))
+      routes.append((provider_for_task(task, model), model, "standard", task, max_output_for_task(task)))
 
   return filter_routes_to_cursor_pro(routes, purpose="self_improvement")
 

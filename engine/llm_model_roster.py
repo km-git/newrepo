@@ -118,12 +118,10 @@ def grok_high_model() -> str:
 
 
 def mild_tb_model() -> str:
-  """Runtime mild tiebreaker — respects EW_USE_GROK_HIGH and EW_MODEL_MILD_TB."""
+  """Runtime mild tiebreaker — Cursor Pro only (never Terra/GPT API)."""
   if grok_high_enabled():
     return grok_high_model()
-  if minimize_gpt_enabled():
-    return gpt_replacement_for("mild_tb", "composer-2.5")
-  return _m("EW_MODEL_MILD_TB", "gpt-5.6-terra")
+  return MODEL["workhorse_fp"]
 
 
 def workhorse_model() -> str:
@@ -190,10 +188,8 @@ def escalate_task_model(
     return "", "workhorse", "Grok+Composer parallel — Cursor Pro only"
 
   if task == "architect":
-    model = MODEL["fable"]
-    if not should_use_other_model(purpose):
-      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
-    return model, "flagship" if should_use_other_model(purpose) else "standard", "multi-file deep reasoning"
+    model, _ = prefer_cursor_pool_model(MODEL["fable"], purpose="self_improvement")
+    return model, "standard", "multi-file deep reasoning (Cursor Pro)"
 
   if task == "executive":
     model = MODEL["opus"]
@@ -203,43 +199,33 @@ def escalate_task_model(
     return model, tier, "GO + high conviction"
 
   if task == "synthesis":
-    model = MODEL["sol"]
-    if not should_use_other_model(purpose):
-      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
-    tier = "crucial" if model == MODEL["sol"] else "standard"
-    return model, tier, "Sol synthesis — budget-limited"
+    model, _ = prefer_cursor_pool_model(MODEL["sol"], purpose="self_improvement")
+    return model, "standard", "synthesis (Cursor Pro)"
 
   if task == "planning":
-    if verdict == "CONDITIONAL_GO" and conviction != "high":
-      model = MODEL["light_plan"]
-    else:
-      model = MODEL["sol"]
-    if not should_use_other_model(purpose):
-      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
-    tier = "standard" if model in (MODEL["light_plan"], MODEL["grok_high"], "cursor-grok-4.5-high") else "crucial"
-    reason = "Luna light plan" if verdict == "CONDITIONAL_GO" and conviction != "high" else "Sol full plan"
+    raw = MODEL["light_plan"] if verdict == "CONDITIONAL_GO" and conviction != "high" else MODEL["sol"]
+    model, _ = prefer_cursor_pool_model(raw, purpose="self_improvement")
+    tier = "standard"
+    reason = "light plan (Cursor Pro)" if raw == MODEL["light_plan"] else "full plan (Cursor Pro)"
     return model, tier, reason
 
   if task in ("tiebreaker", "review"):
     if sev == "mild":
       if grok_high_enabled():
         return grok_high_model(), "standard", "mild — Grok High only"
-      return mild_tb_model(), "standard", "mild — Terra fallback"
+      return mild_tb_model(), "standard", "mild — Composer fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
       model = MODEL["opus"]
       if should_use_other_model("executive", force_critical=True):
         return model, "flagship", "hard disagree executive GO"
       model, _ = prefer_cursor_pool_model(model, purpose="executive", force_critical=True)
-      return model, "standard", "hard disagree — Cursor Grok High (Other Models budget)"
+      return model, "standard", "hard disagree — Cursor Grok High"
     if sev == "hard":
-      model = MODEL["sol"]
-      if should_use_other_model(purpose):
-        return model, "crucial", "hard disagreement — Sol"
-      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
+      model, _ = prefer_cursor_pool_model(MODEL["sol"], purpose="self_improvement")
       return model, "standard", "hard disagreement — Cursor Grok High"
     if grok_high_enabled():
       return grok_high_model(), "standard", "mid review — Grok High"
-    return mild_tb_model(), "standard", "mid review — Terra fallback"
+    return mild_tb_model(), "standard", "mid review — Composer"
 
   return workhorse_model(), "workhorse", "fallback composer"
 
