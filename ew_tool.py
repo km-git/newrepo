@@ -206,6 +206,16 @@ def main() -> None:
     help="Analysis JSON for --autoresearch-eval",
   )
   parser.add_argument(
+    "--effectiveness-audit",
+    action="store_true",
+    help="GOAT validation: walk-forward OOS, PSR gates, regime analysis, deployment verdict",
+  )
+  parser.add_argument(
+    "--effectiveness-paper",
+    action="store_true",
+    help="Include OHLC paper simulation in --effectiveness-audit (network)",
+  )
+  parser.add_argument(
     "--goal-mode-quick",
     action="store_true",
     help="Goal mode without batch/monitor fetch; optional --execute for paper",
@@ -457,6 +467,19 @@ def main() -> None:
 
     print(json.dumps(
       run_autoresearch_eval_loop(analysis_path=args.autoresearch_analysis),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if args.effectiveness_audit:
+    from engine.effectiveness_audit import run_full_effectiveness_audit
+
+    print(json.dumps(
+      run_full_effectiveness_audit(
+        fetch_ohlc=args.effectiveness_paper,
+        include_walk_forward=True,
+      ),
       indent=2,
       default=str,
     ))
