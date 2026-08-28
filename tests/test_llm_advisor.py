@@ -86,15 +86,9 @@ def test_get_llm_advisory_blends(mock_routes, mock_anthropic, mock_openai, monke
 
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "single")
   monkeypatch.setenv("EW_LLM_BACKEND", "direct")
-<<<<<<< HEAD
-  monkeypatch.delenv("CURSOR_API_KEY", raising=False)
-  monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-  monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-=======
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
   monkeypatch.delenv("CURSOR_API_KEY", raising=False)
->>>>>>> origin/main
   monkeypatch.setattr(disk_cache, "_llm_cache", CompressedCache(cache_dir=tmp_path))
   mock_routes.return_value = [
     ("openai", "gpt-4o-mini", "cheap"),

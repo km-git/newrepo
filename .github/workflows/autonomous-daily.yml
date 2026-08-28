@@ -1,0 +1,72 @@
+name: Autonomous Daily Ops
+
+on:
+  schedule:
+    # 04:00 UTC daily — after autoresearch nightly (03:00)
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      batch_n:
+        description: Top N pairs for autoresearch batch
+        required: false
+        default: "15"
+        type: string
+      skip_tests:
+        description: Skip pytest (not recommended)
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autonomous:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      EW_NIGHTLY_BATCH_N: ${{ github.event.inputs.batch_n || '15' }}
+      EW_PR_AUTO_APPROVE: "1"
+      EW_PR_AUTO_MERGE: "1"
+      EW_PR_MERGE_WITHOUT_PANEL: "1"
+      EW_PR_LLM_ADVISORY: "1"
+      EW_LLM_BACKEND: cursor
+      EW_LLM_INTELLIGENCE: ensemble
+      EW_OKF_BRAIN: "1"
+      EW_BRAIN_SELF_IMPROVE: "1"
+      EW_WEB_INTEL: "1"
+      EW_WS_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Autonomous daily loop
+        run: |
+          if [[ "${{ github.event.inputs.skip_tests }}" == "true" ]]; then
+            export EW_AUTONOMOUS_SKIP_TESTS=1
+          fi
+          bash scripts/run_autonomous_daily.sh
+
+      - name: Upload autonomous artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autonomous-daily-${{ github.run_id }}
+          retention-days: 30
+          path: |
+            output/autonomous/
+            output/nightly/
+            output/pr_reviews/
+            output/autoresearch/experiments.jsonl
+            okf/brain/

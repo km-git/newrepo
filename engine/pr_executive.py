@@ -162,7 +162,11 @@ def pr_actions_for_verdict(
 ) -> Dict[str, Any]:
   """Map final verdict to GitHub actions."""
   auto_approve = pr_auto_approve_enabled()
-  auto_merge = pr_auto_merge_enabled() and stance == "agree"
+  merge_without_panel = os.environ.get("EW_PR_MERGE_WITHOUT_PANEL", "1").lower() not in ("0", "false", "no")
+  auto_merge = pr_auto_merge_enabled() and (
+    stance == "agree"
+    or (verdict == "APPROVE_MERGE" and merge_without_panel)
+  )
 
   actions: Dict[str, Any] = {
     "approve": False,
