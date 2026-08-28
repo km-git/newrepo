@@ -66,6 +66,20 @@ r = run_deep_research(use_ai=True)
 print(json.dumps({'skipped': r.get('skipped'), 'ai': (r.get('ai_synthesis') or {}).get('stance')}, indent=2))
 " || echo "[autonomous] deep research skipped: $?"
 
+echo "=== Phase 2c: resource gap audit (challenge missing tools/data) ==="
+"$PY" -c "
+import json
+from engine.resource_gap_audit import run_resource_gap_audit
+r = run_resource_gap_audit(persist=True, persist_okf=True)
+s = r.get('summary') or {}
+print(json.dumps({
+  'gaps': s.get('gaps'),
+  'critical': s.get('critical_gaps'),
+  'top': [g.get('id') for g in (r.get('top_gaps') or [])[:5]],
+  'challenges': (r.get('challenge_questions') or [])[:2],
+}, indent=2))
+" || echo "[autonomous] gap audit skipped: $?"
+
 echo "=== Phase 3: autoresearch (top-N batch + eval) ==="
 EW_NIGHTLY_BATCH_N="${EW_NIGHTLY_BATCH_N:-15}" bash scripts/run_nightly_autoresearch.sh || echo "[autonomous] autoresearch phase failed (continuing): $?"
 

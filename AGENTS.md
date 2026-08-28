@@ -43,6 +43,9 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Opus/Fable/Sol only for executive GO + hard disagree or self-improvement escalation. Env: `EW_CHEAP_FIRST=1`,
   `EW_LLM_CHEAP_TARGET_PCT=90`, `EW_LLM_ROUTINE_INTELLIGENCE=single`, `EW_MINIMIZE_GPT=1`, `EW_LLM_EW_BYPASS=1`.
   Matrix: `python3 ew_tool.py --llm-tasks`.
+- **Resource gap audit (self-challenge):** `engine/resource_gap_audit.py` questions missing free data, TV OSS,
+  GitHub tools, and Python libs each improvement cycle. CLI: `python3 ew_tool.py --gap-audit`.
+  State: `output/system/resource_gap_audit.json`. Env: `EW_GAP_AUDIT=1`.
 - **PR auto-approve:** `python3 ew_tool.py --pr-approve <N>` or `--pr-approve-all`.
   Agent: `python3 scripts/pr_executive_consensus.py`. 5/7 model consensus rule.
   GitHub Action: `.github/workflows/pr-executive-consensus.yml`. Results in `output/pr_reviews/`.

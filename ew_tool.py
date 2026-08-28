@@ -198,6 +198,11 @@ def main() -> None:
   )
   parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
+  parser.add_argument(
+    "--gap-audit",
+    action="store_true",
+    help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -331,6 +336,15 @@ def main() -> None:
       os.environ["EW_EXECUTION_MODE"] = "live"
     result = execute_from_csv(dry_run=not args.execute_live)
     print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.gap_audit:
+    from engine.resource_gap_audit import run_resource_gap_audit, save_gap_audit
+
+    result = run_resource_gap_audit(persist=True, persist_okf=False)
+    path = save_gap_audit(result)
+    print(json.dumps(result, indent=2, default=str))
+    print(f"[gap-audit] saved {path}", file=sys.stderr)
     return
 
   if args.health:

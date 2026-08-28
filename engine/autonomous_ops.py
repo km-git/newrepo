@@ -119,6 +119,13 @@ def run_autonomous_tick(
     except Exception as exc:
       tick["phases"]["deep_research"] = {"error": str(exc)}
 
+  try:
+    from engine.resource_gap_audit import run_resource_gap_audit
+
+    tick["phases"]["gap_audit"] = run_resource_gap_audit(persist=True, persist_okf=True)
+  except Exception as exc:
+    tick["phases"]["gap_audit"] = {"error": str(exc)}
+
   if not skip_autoresearch:
     tick["phases"]["autoresearch"] = run_autoresearch_promote()
 
