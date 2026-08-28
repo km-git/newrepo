@@ -84,7 +84,12 @@ def test_run_tick_offline(tmp_path, monkeypatch):
   monkeypatch.setattr("engine.paper_simulator.run_paper_simulation", fake_paper)
   monkeypatch.setattr("engine.effectiveness_audit.run_full_effectiveness_audit", fake_audit)
 
+  monkeypatch.setenv("EW_RISK_STATE", str(tmp_path / "risk.json"))
+
   result = run_paper_forward_tick(fetch_ohlc=False)
   assert result["ok"] is True
   assert result["proof"]["verdict"] in ("PROOF_PENDING", "PROOF_GO")
   assert (tmp_path / "ledger.jsonl").exists()
+  risk = result["phases"].get("risk_ops") or {}
+  assert risk.get("equity_usd") == 50250
+  assert (tmp_path / "risk.json").exists()

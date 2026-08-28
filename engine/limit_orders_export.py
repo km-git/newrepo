@@ -498,7 +498,15 @@ def build_limit_order_row(
     )
   from engine.smart_risk_policy import stamp_row_policy
 
-  return stamp_row_policy(row)
+  row = stamp_row_policy(row)
+  try:
+    from engine.tactical_safeguard import apply_tactical_to_row, tactical_safeguard_enabled
+
+    if tactical_safeguard_enabled():
+      row = apply_tactical_to_row(row)
+  except Exception:
+    pass
+  return row
 
 
 def _prz_tuple(harm: Optional[dict]) -> Optional[Tuple[float, float]]:

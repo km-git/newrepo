@@ -217,4 +217,24 @@ def gate_row(row: dict, *, intel: Optional[dict] = None, portfolio_state=None) -
   except Exception:
     pass
 
+  try:
+    from engine.risk_ops import is_halted
+
+    if is_halted():
+      reasons.append("account_halted_drawdown")
+      return False, reasons
+  except Exception:
+    pass
+
+  try:
+    from engine.tactical_safeguard import gate_tactical, tactical_safeguard_enabled
+
+    if tactical_safeguard_enabled():
+      ok, tactical_reasons = gate_tactical(row)
+      if not ok:
+        reasons.extend(tactical_reasons)
+        return False, reasons
+  except Exception:
+    pass
+
   return True, reasons

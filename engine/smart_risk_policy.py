@@ -57,15 +57,21 @@ def select_dca_profile(
   ctx: Any,
 ) -> Tuple[str, str]:
   """
-  Analysis-driven smart DCA:
+  Analysis-driven smart DCA + tactical posture bias:
   - pyramid_4 (10/20/30/40) — default
-  - two_layer_30_70 — high BTC correlation on 1d/1w
-  - two_layer_10_90 — BTC/ETH contingent 1h/4h dual-scenario
+  - two_layer_30_70 — correlation / defensive posture
+  - two_layer_10_90 — BTC/ETH contingent 1h/4h
   """
   if always_smart_enabled():
     from engine.execution_advanced import analyzed_select_dca_profile
+    from engine.tactical_safeguard import adjust_dca_for_posture, tactical_safeguard_enabled
 
-    return analyzed_select_dca_profile(symbol, tf, result, ctx)
+    profile, reason = analyzed_select_dca_profile(symbol, tf, result, ctx)
+    if tactical_safeguard_enabled():
+      profile, reason = adjust_dca_for_posture(
+        profile, reason, symbol=symbol, tf=tf, result=result,
+      )
+    return profile, reason
   return default_dca_profile(), "smart risk off — static pyramid 10/20/30/40"
 
 
