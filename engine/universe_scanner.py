@@ -226,6 +226,16 @@ def finalize_universe_cycle(
     save_research_setups_csv,
   )
 
+  deep_research: Dict[str, Any] = {}
+  if os.environ.get("EW_DEEP_RESEARCH", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.deep_research import run_deep_research
+
+      symbols = [r.get("symbol") for r in results[:8] if r.get("symbol")]
+      deep_research = run_deep_research(symbols=symbols, use_ai=True)
+    except Exception as exc:
+      deep_research = {"error": str(exc)}
+
   accurate_rows = extract_accurate_setups(results, min_tier="C")
   accurate_csv = out / "latest_accurate_setups.csv"
   save_accurate_setups_csv(accurate_rows, accurate_csv)
@@ -294,6 +304,7 @@ def finalize_universe_cycle(
     "by_action": executive_board.get("by_action"),
     "by_timeframe": executive_board.get("by_timeframe"),
     "ai_improvement": ai_review,
+    "deep_research": deep_research,
     "json": str(json_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
   }

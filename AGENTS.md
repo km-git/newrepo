@@ -63,6 +63,7 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Workflow: `.github/workflows/autonomous-daily.yml` (04:00 UTC). Summary: `output/autonomous/daily/latest_summary.json`.
   Env: `EW_PR_AUTO_APPROVE=1`, `EW_PR_AUTO_MERGE=1`, `EW_PR_MERGE_WITHOUT_PANEL=1` (merge on rules-only APPROVE_MERGE when GitHub review API blocked).
   Set `CURSOR_API_KEY` in Cloud Agent secrets for full multi-model panel in CI/daily runs.
+- **Executive intel (TV OSS + free data):** `engine/executive_intel.py` fuses Fear&Greed, WS imbalance, social signals, TV OSS stack, risk consensus, and impact discovery into board scores and execution consensus. Env: `EW_EXECUTIVE_INTEL=1`, `EW_DEEP_RESEARCH=1`, `EW_WEB_INTEL=1`, `EW_WS_ENABLED=1`, `EW_TV_OSS_CONSENSUS=1`.
 - **V6 scanner (1000 pairs, 6 TFs):** Continuous large-scale validation across `15m,1h,4h,12h,1d,1w`.
   Universe: OKX spot USDT + USDT perps (~835 symbols max). Chunked scans rotate every 30 min; full refresh every 6h.
   CLI: `python3 ew_tool.py --v6-scan` (chunk) or `--v6-scan-full` (full universe).

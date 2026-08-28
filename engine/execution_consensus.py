@@ -38,11 +38,31 @@ def _row_consensus(row: dict) -> dict:
   }
 
 
-def _rule_adjustments(row: dict, panel: dict) -> dict:
-  """Deterministic risk overlays on top of EW / LLM stance."""
+def _rule_adjustments(row: dict, panel: dict, intel: Optional[dict] = None) -> dict:
+  """Deterministic risk overlays on top of EW / LLM stance + free data intel."""
   out = dict(panel)
   stance = out.get("consensus_stance", "unknown")
-  notes: List[str] = []
+  notes: List[str] = list(out.get("rule_notes") or [])
+
+  if intel is None and os.environ.get("EW_EXECUTION_INTEL", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.executive_intel import intel_overlay_for_row
+
+      intel = intel_overlay_for_row(row)
+    except Exception:
+      intel = None
+
+  if intel:
+    hint = intel.get("stance_hint")
+    for note in intel.get("notes") or []:
+      notes.append(note)
+    if hint == "caution" and stance == "agree":
+      stance = "caution"
+    elif hint == "agree" and stance == "caution":
+      stance = "agree"
+    tv_active = intel.get("tv_active") or []
+    if tv_active:
+      notes.append(f"tv_stack={','.join(tv_active[:3])}")
 
   agreement = float(row.get("agreement_pct") or 0)
   stop_pct = float(row.get("stop_distance_pct") or 0)
@@ -67,6 +87,8 @@ def _rule_adjustments(row: dict, panel: dict) -> dict:
     out["blended_summary"] = f"{summary} | {'; '.join(notes)}".strip(" |")
   out["consensus_stance"] = stance
   out["rule_notes"] = notes
+  if intel:
+    out["intel"] = {"boost": intel.get("boost"), "tags": intel.get("tags")}
   return out
 
 

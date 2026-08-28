@@ -108,6 +108,10 @@ def executive_setup_score(
   setup: dict,
   style: str,
   symbol_bonus: int = 0,
+  *,
+  symbol: str = "",
+  market_tools: Optional[dict] = None,
+  global_intel: Optional[dict] = None,
 ) -> Tuple[int, List[str]]:
   """Composite executive score 0–100."""
   if not setup or not _stop_ok(setup, style):
@@ -147,6 +151,22 @@ def executive_setup_score(
   if symbol_bonus:
     score += symbol_bonus
     tags.append(f"multi_tf+{symbol_bonus}")
+
+  # TV OSS + free data + global risk (Fear&Greed, WS, social, impact)
+  try:
+    from engine.executive_intel import setup_intel_boost
+
+    intel_delta, intel_tags = setup_intel_boost(
+      setup=setup,
+      symbol=symbol or setup.get("_symbol", ""),
+      direction=str(setup.get("direction") or ""),
+      market_tools=market_tools or setup.get("_market_tools"),
+      intel=global_intel,
+    )
+    score += intel_delta
+    tags.extend(intel_tags)
+  except Exception:
+    pass
 
   blocker = _primary_blocker(setup, style)
   if blocker == "oos_below_floor":
@@ -354,6 +374,14 @@ def build_executive_board(
   Executive solution board — always returns ranked picks per timeframe.
   Like a desk PM: never empty-handed; routes every top idea to a plan.
   """
+  try:
+    from engine.executive_intel import load_global_intel
+
+    global_intel = load_global_intel()
+  except Exception:
+    global_intel = None
+
+  result_by_sym = {r["symbol"]: r for r in results if r.get("symbol")}
   flat = _flatten_setups(results)
   by_symbol: Dict[str, List[dict]] = defaultdict(list)
 
@@ -361,6 +389,8 @@ def build_executive_board(
   for setup in flat:
     sym = setup["_symbol"]
     style = setup["_style"]
+    mkt = (result_by_sym.get(sym) or {}).get("step9_market_confluence")
+    setup["_market_tools"] = mkt
     if not _stop_ok(setup, style):
       continue
     entry = (setup.get("entry") or {}).get("anchor")
@@ -371,7 +401,12 @@ def build_executive_board(
       except (TypeError, ValueError):
         pass
 
-    score, tags = executive_setup_score(setup, style, 0)
+    score, tags = executive_setup_score(
+      setup, style, 0,
+      symbol=sym,
+      market_tools=mkt,
+      global_intel=global_intel,
+    )
     if score < min_score and _baseline_score(setup, style) < min_score:
       continue
 
