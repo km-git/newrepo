@@ -46,7 +46,7 @@ print(json.dumps({
 "
 
 echo "=== Phase 3: autoresearch (top-N batch + eval) ==="
-EW_NIGHTLY_BATCH_N="${EW_NIGHTLY_BATCH_N:-15}" bash scripts/run_nightly_autoresearch.sh
+EW_NIGHTLY_BATCH_N="${EW_NIGHTLY_BATCH_N:-15}" bash scripts/run_nightly_autoresearch.sh || echo "[autonomous] autoresearch phase failed (continuing): $?"
 
 echo "=== Phase 4: goal-mode validate ==="
 "$PY" -c "
