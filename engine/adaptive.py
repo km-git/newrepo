@@ -269,6 +269,31 @@ def adaptive_pipeline(
   consensus = build_consensus(data, adaptive, symbol, timeframes=["1d", "4h", "15m"])
   stages.append(("wave_consensus", {"symbol": symbol}, compact_summary(consensus)))
 
+  # STEP 6b: Market tools + free data (TV OSS, WS, web intel) — before executive
+  btc_1d = None
+  if is_crypto and not symbol.upper().startswith("BTC"):
+    try:
+      btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
+    except Exception:
+      pass
+  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d, direction=exec_direction)
+  try:
+    from gateway.data_hub import enrich_market_tools
+
+    market_tools = enrich_market_tools(symbol, data, market_tools)
+  except Exception:
+    pass
+  try:
+    from engine.executive_tv_oss import ensure_tv_oss_consensus
+
+    ensure_tv_oss_consensus(use_llm=False)
+  except Exception:
+    pass
+  stages.append(("market_confluence", {"symbol": symbol},
+                 {"boost": market_tools.get("confluence_boost"),
+                  "tv_score": (market_tools.get("tv_confluence") or {}).get("score"),
+                  "signals": market_tools.get("confluence_signals", [])[:3]}))
+
   # STEP 7: Executive decision — rule-based draft (refined by AI panel when enabled)
   decision = executive_decide(
     symbol=symbol,
@@ -286,28 +311,13 @@ def adaptive_pipeline(
     violations_sample=violations_sample,
     mc_result=mc_result,
     consensus=consensus,
+    market_tools=market_tools,
   )
   status = decision["status"]
   trade = decision["trade_setup"]
   executive = decision["executive_decision"]
   print(f"[step7] draft verdict={executive['verdict']} status={status} action={trade['action']}")
   stages.append(("executive_decide", {"verdict": executive["verdict"], "draft": True}, compact_summary(executive)))
-
-  # STEP 9: Supplementary market tools (EW always primary) — before outcomes for LLM context
-  btc_1d = None
-  if is_crypto and not symbol.upper().startswith("BTC"):
-    try:
-      btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
-    except Exception:
-      pass
-  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
-  try:
-    from gateway.data_hub import enrich_market_tools
-    market_tools = enrich_market_tools(symbol, data, market_tools)
-  except Exception:
-    pass
-  stages.append(("market_confluence", {"symbol": symbol},
-                 {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
 
   # STEP 7b: Multi-model AI consensus → final executive decision
   llm_advisory_result = None

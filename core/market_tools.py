@@ -116,6 +116,7 @@ def build_market_confluence(
   tfs: List[str],
   btc_1d: Optional[pd.DataFrame] = None,
   exchange=None,
+  direction: str = "LONG",
 ) -> dict:
   """Aggregate supplementary tools (EW remains primary)."""
   primary_tf = "1h" if "1h" in data else "1d"
@@ -151,9 +152,15 @@ def build_market_confluence(
     tools["tv_signals"] = compute_tv_signals(df_p, orderbook=orderbook)
     tools["microstructure"] = compute_microstructure_signals(df_p, orderbook)
     tools["cycles"] = compute_cycle_signals(df_p)
-    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG", orderbook=orderbook)
-    tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], "LONG")
-    tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], "LONG")
+    dir_label = direction.upper() if direction.upper() in ("LONG", "SHORT", "BULL", "BEAR") else "LONG"
+    if dir_label in ("BULL",):
+      dir_label = "LONG"
+    elif dir_label in ("BEAR",):
+      dir_label = "SHORT"
+    tools["tv_confluence"] = score_tv_confluence(df_p, dir_label, orderbook=orderbook)
+    tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], dir_label)
+    tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], dir_label)
+    tools["scored_direction"] = dir_label
   else:
     tools["tv_signals"] = {"available": False}
     tools["microstructure"] = {"available": False}

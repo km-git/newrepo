@@ -25,6 +25,13 @@ export EW_LLM_ADVISORY="${EW_LLM_ADVISORY:-1}"
 export EW_OKF_BRAIN_DIR="${EW_OKF_BRAIN_DIR:-output/okf/brain}"
 export EW_OKF_BRAIN="${EW_OKF_BRAIN:-1}"
 export EW_BRAIN_SELF_IMPROVE="${EW_BRAIN_SELF_IMPROVE:-1}"
+export EW_TV_OSS_CONSENSUS="${EW_TV_OSS_CONSENSUS:-1}"
+export EW_TV_OSS_EXECUTIVE="${EW_TV_OSS_EXECUTIVE:-1}"
+export EW_TV_OSS_EXPLORE="${EW_TV_OSS_EXPLORE:-1}"
+export EW_TV_MICROSTRUCTURE="${EW_TV_MICROSTRUCTURE:-1}"
+export EW_TV_CYCLES="${EW_TV_CYCLES:-1}"
+export EW_DATA_HUB="${EW_DATA_HUB:-1}"
+export EW_OHLCV_CHAIN="${EW_OHLCV_CHAIN:-okx,kraken,binance}"
 export ACCOUNT_EQUITY="${ACCOUNT_EQUITY:-50000}"
 
 mkdir -p output/autonomous output/okf/brain

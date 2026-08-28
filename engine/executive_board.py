@@ -144,6 +144,17 @@ def executive_setup_score(
   elif ex_verdict == "STAGED_GO":
     score += 3
 
+  tv_score = int(setup.get("_tv_composite_score") or setup.get("_tv_score") or 0)
+  if tv_score >= 70:
+    score += 8
+    tags.append(f"tv_oss+{tv_score}")
+  elif tv_score >= 58:
+    score += 4
+    tags.append(f"tv_oss_{tv_score}")
+  elif 0 < tv_score < 42:
+    score -= 6
+    tags.append(f"tv_oss_opposes_{tv_score}")
+
   if symbol_bonus:
     score += symbol_bonus
     tags.append(f"multi_tf+{symbol_bonus}")
@@ -331,11 +342,16 @@ def _flatten_setups(results: List[dict]) -> List[dict]:
     sym = r["symbol"]
     ex = r.get("executive_decision") or {}
     cons = r.get("step6_wave_consensus") or {}
+    mkt = r.get("step9_market_confluence") or {}
+    tv_oss = ex.get("tv_oss") or {}
+    tv_score = tv_oss.get("composite_score") or (mkt.get("tv_confluence") or {}).get("score") or 0
     for style, setup in (r.get("step8_outcomes") or {}).get("setups", {}).items():
       if not setup:
         continue
       setup = dict(setup)
       setup["_executive_verdict"] = ex.get("verdict", "")
+      setup["_tv_composite_score"] = tv_score
+      setup["_tv_score"] = tv_oss.get("tv_score") or (mkt.get("tv_confluence") or {}).get("score")
       setup["_symbol"] = sym
       setup["_style"] = style
       setup["_consensus"] = cons.get("consensus_direction")
