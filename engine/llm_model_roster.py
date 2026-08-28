@@ -135,7 +135,14 @@ def workhorse_model() -> str:
 
 
 def screen_model_slots() -> List[Tuple[str, str]]:
-  """Dual screen — Grok High + GPT-mini (or Composer when EW_MINIMIZE_GPT=1)."""
+  """Dual screen — Cursor Pro only by default (95% pool target)."""
+  from engine.model_budget_governor import cursor_only_screen, other_model_pool_enabled
+
+  if cursor_only_screen() or not other_model_pool_enabled():
+    a = grok_high_model() if grok_high_enabled() else MODEL["workhorse_fp"]
+    b = MODEL["workhorse_fp"] if a != MODEL["workhorse_fp"] else MODEL["screen_alt"]
+    return [("cursor", a), ("composer", b)]
+
   if os.environ.get("EW_LLM_SCREEN_DIVERSE", "").lower() in ("1", "true"):
     a = MODEL["screen_alt"]
   elif grok_high_enabled():
@@ -167,27 +174,51 @@ def escalate_task_model(
   conviction: str = "",
   stances: Optional[List[str]] = None,
 ) -> Tuple[str, str, str]:
+  from engine.model_budget_governor import (
+    prefer_cursor_pool_model,
+    purpose_for_brain_domain,
+    should_use_other_model,
+  )
+
   sev = disagreement_severity(stances or [])
+  purpose = "executive" if task in ("executive", "architect") else "self_improvement"
 
   if task == "workhorse":
     return workhorse_model(), "workhorse", "composer — cheapest"
 
   if task == "screen":
-    return "", "workhorse", "Grok+Composer parallel — no GPT"
+    return "", "workhorse", "Grok+Composer parallel — Cursor Pro only"
 
   if task == "architect":
-    return MODEL["fable"], "flagship", "multi-file deep reasoning"
+    model = MODEL["fable"]
+    if not should_use_other_model(purpose):
+      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
+    return model, "flagship" if should_use_other_model(purpose) else "standard", "multi-file deep reasoning"
 
   if task == "executive":
-    return MODEL["opus"], "flagship", "GO + high conviction"
+    model = MODEL["opus"]
+    if not should_use_other_model("executive", force_critical=(verdict == "GO" and conviction == "high")):
+      model, _ = prefer_cursor_pool_model(model, purpose="executive")
+    tier = "flagship" if model == MODEL["opus"] else "standard"
+    return model, tier, "GO + high conviction"
 
   if task == "synthesis":
-    return MODEL["sol"], "crucial", "Sol synthesis — budget-limited"
+    model = MODEL["sol"]
+    if not should_use_other_model(purpose):
+      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
+    tier = "crucial" if model == MODEL["sol"] else "standard"
+    return model, tier, "Sol synthesis — budget-limited"
 
   if task == "planning":
     if verdict == "CONDITIONAL_GO" and conviction != "high":
-      return MODEL["light_plan"], "standard", "Luna light plan"
-    return MODEL["sol"], "crucial", "Sol full plan"
+      model = MODEL["light_plan"]
+    else:
+      model = MODEL["sol"]
+    if not should_use_other_model(purpose):
+      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
+    tier = "standard" if model in (MODEL["light_plan"], MODEL["grok_high"], "cursor-grok-4.5-high") else "crucial"
+    reason = "Luna light plan" if verdict == "CONDITIONAL_GO" and conviction != "high" else "Sol full plan"
+    return model, tier, reason
 
   if task in ("tiebreaker", "review"):
     if sev == "mild":
@@ -195,9 +226,17 @@ def escalate_task_model(
         return grok_high_model(), "standard", "mild — Grok High only"
       return mild_tb_model(), "standard", "mild — Terra fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
-      return MODEL["opus"], "flagship", "hard disagree executive GO"
+      model = MODEL["opus"]
+      if should_use_other_model("executive", force_critical=True):
+        return model, "flagship", "hard disagree executive GO"
+      model, _ = prefer_cursor_pool_model(model, purpose="executive", force_critical=True)
+      return model, "standard", "hard disagree — Cursor Grok High (Other Models budget)"
     if sev == "hard":
-      return MODEL["sol"], "crucial", "hard disagreement — Sol"
+      model = MODEL["sol"]
+      if should_use_other_model(purpose):
+        return model, "crucial", "hard disagreement — Sol"
+      model, _ = prefer_cursor_pool_model(model, purpose=purpose)
+      return model, "standard", "hard disagreement — Cursor Grok High"
     if grok_high_enabled():
       return grok_high_model(), "standard", "mid review — Grok High"
     return mild_tb_model(), "standard", "mid review — Terra fallback"

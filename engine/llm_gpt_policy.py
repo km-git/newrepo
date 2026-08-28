@@ -22,10 +22,10 @@ def session_token_limit() -> int:
 
 def minimize_gpt_enabled() -> bool:
   """
-  Optional preference for first-party models over GPT API.
-  Default off — GPT is allowed; per-model budget enforces the limit.
+  Prefer Cursor Pro models over GPT/Claude API pool.
+  Default on — aligns with 95% Cursor / 5% Other Models target.
   """
-  return os.environ.get("EW_MINIMIZE_GPT", "0").lower() in ("1", "true", "yes")
+  return os.environ.get("EW_MINIMIZE_GPT", "1").lower() not in ("0", "false", "no")
 
 
 def gpt_free_screen_slot_b() -> str:

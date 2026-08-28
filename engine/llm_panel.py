@@ -25,7 +25,7 @@ from engine.llm_task_router import (
 )
 from engine.llm_backend import llm_backend
 from engine.llm_cursor import cursor_available, cursor_model_for
-from engine.model_budget_governor import Purpose, record_model_call, should_escalate_to_premium
+from engine.model_budget_governor import Purpose, is_cursor_pro_model, record_model_call, route_model_for_task, should_escalate_to_premium, should_use_other_model
 
 IntelligenceMode = Literal["ensemble", "single", "dual"]
 Stance = Literal["agree", "caution", "reject", "unknown"]
@@ -207,31 +207,40 @@ def run_panel(
   severity = disagreement_severity(stances)
 
   if mode == "ensemble" and models_disagree(ok_screen):
-    allow_premium = should_escalate_to_premium(
-      purpose,
-      verdict=verdict,
-      conviction=conviction,
-      stances=stances,
-      metrics_poor=metrics_poor,
-    )
-    if allow_premium:
-      tb = tiebreaker_route(verdict, conviction, stances=stances)
-      if tb:
+    tb = tiebreaker_route(verdict, conviction, stances=stances)
+    if tb:
+      provider, model, tier, task, max_out = tb
+      model, tier, substituted = route_model_for_task(
+        model, tier, purpose=purpose,
+        force_critical=(purpose == "executive" and verdict == "GO"),
+      )
+      allow_tiebreaker = is_cursor_pro_model(model) or (
+        should_escalate_to_premium(
+          purpose,
+          verdict=verdict,
+          conviction=conviction,
+          stances=stances,
+          metrics_poor=metrics_poor,
+        )
+        and should_use_other_model(purpose, force_critical=(purpose == "executive" and verdict == "GO"))
+      )
+      if allow_tiebreaker:
         escalated = True
-        provider, model, tier, task, max_out = tb
         tiebreaker_route_meta = {
           "provider": provider,
           "model": model,
           "tier": tier,
           "task": task,
           "disagreement_severity": severity,
+          "cursor_substituted": substituted,
+          "other_model_allowed": should_use_other_model(purpose),
         }
         tiebreaker = call_provider(provider, model, tier, task, max_out)
         tiebreaker["role"] = task
         if tiebreaker.get("available") and tiebreaker.get("stance"):
           record_model_call(tier, model)
-    else:
-      tiebreaker_route_meta = {"skipped": "premium_budget_or_purpose_gate"}
+      else:
+        tiebreaker_route_meta = {"skipped": "premium_budget_or_purpose_gate"}
 
   consensus = blend_stances(ok_screen, tiebreaker)
   conf_adj = avg_confidence_adjustment(ok_screen, tiebreaker)

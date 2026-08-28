@@ -18,10 +18,13 @@ from engine.llm_model_roster import MODEL, ROSTER, disagreement_severity, escala
 from engine.llm_panel import blend_stances, models_disagree, run_panel
 from engine.llm_task_router import TaskKind, max_output_for_task, provider_for_task
 from engine.model_budget_governor import (
+  filter_routes_to_cursor_pro,
   governor_summary,
+  is_cursor_pro_model,
   limit_cheap_routes,
   record_model_call,
   should_escalate_to_premium,
+  should_use_other_model,
 )
 from engine.token_saver_registry import optimize_prompt_text
 
@@ -34,8 +37,14 @@ def ai_improvement_enabled() -> bool:
 
 
 def use_all_cursor_models() -> bool:
-  """When true, sweep every Cursor-hosted model in the roster (cheap parallel first)."""
+  """When true, sweep every Cursor Pro first-party model (Composer, Grok)."""
   return os.environ.get("EW_USE_ALL_CURSOR_MODELS", "1").lower() not in ("0", "false", "no")
+
+
+def use_other_model_pool() -> bool:
+  """When true, allow GPT/Claude/Gemini API pool (consumes Other Models quota)."""
+  from engine.model_budget_governor import other_model_pool_enabled
+  return other_model_pool_enabled()
 
 
 def cursor_hosted_models() -> List[Dict[str, str]]:
@@ -70,8 +79,8 @@ def cursor_api_pool_models() -> List[str]:
 
 def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
   """
-  Phase 1 — parallel cheap Cursor-hosted screens.
-  Uses every first-party model + optional diverse API slots when EW_USE_ALL_CURSOR_MODELS=1.
+  Phase 1 — parallel cheap Cursor Pro screens only (Composer, Grok).
+  Other Models (GPT/Claude/Gemini) added only when EW_USE_OTHER_MODEL_POOL=1.
   """
   task: TaskKind = "workhorse"
   max_out = max_output_for_task(task)
@@ -82,9 +91,9 @@ def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
     provider = provider_for_task(task, model)
     routes.append((provider, model, "cheap", task, max_out))
 
-  if use_all_cursor_models():
+  if use_other_model_pool():
     for model in cursor_api_pool_models():
-      if model in {r[1] for r in routes}:
+      if model in {r[1] for r in routes} or is_cursor_pro_model(model):
         continue
       tier_meta = ROSTER.get(model, {})
       roster_tier = tier_meta.get("tier", "workhorse")
@@ -94,7 +103,7 @@ def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
 
   if not routes:
     routes.append((provider_for_task(task, MODEL["workhorse_fp"]), MODEL["workhorse_fp"], "cheap", task, max_out))
-  return limit_cheap_routes(routes)
+  return limit_cheap_routes(filter_routes_to_cursor_pro(routes, purpose="self_improvement"))
 
 
 def improvement_escalation_routes(
@@ -129,19 +138,23 @@ def improvement_escalation_routes(
       model, _, _ = escalate_task_model(task, verdict, conviction, stances)
       if model in {r[1] for r in routes}:
         continue
-      tier = "premium" if task in ("executive", "architect") else "standard"
+      if not should_use_other_model("self_improvement") and not is_cursor_pro_model(model):
+        continue
+      tier = "premium" if task in ("executive", "architect") and should_use_other_model("self_improvement") else "standard"
       routes.append((provider_for_task(task, model), model, tier, task, max_output_for_task(task)))
 
-  if use_all_cursor_models() and (sev != "none" or metrics_poor):
+  if use_other_model_pool() and (sev != "none" or metrics_poor):
     for model in cursor_api_pool_models():
-      if model in {r[1] for r in routes}:
+      if model in {r[1] for r in routes} or is_cursor_pro_model(model):
+        continue
+      if not should_use_other_model("self_improvement"):
         continue
       tier_meta = ROSTER.get(model, {})
       if tier_meta.get("tier") in ("standard", "crucial", "flagship"):
         task = "synthesis" if model == MODEL["sol"] else "tiebreaker"
         routes.append((provider_for_task(task, model), model, "standard", task, max_output_for_task(task)))
 
-  return routes
+  return filter_routes_to_cursor_pro(routes, purpose="self_improvement")
 
 
 def _compact_payload(

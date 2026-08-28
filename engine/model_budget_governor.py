@@ -1,10 +1,12 @@
 """
-Model budget governor — 90% cheap Cursor models, premium only when smartly required.
+Model budget governor — 95% Cursor Pro models, 5% Other Models (GPT/Claude API).
 
-Tracks cheap vs premium call ratio per day and gates escalation for:
-  - executive decision-making (GO + high conviction, hard disagreement)
-  - self-improvement (poor metrics, hard disagreement)
-Routine tasks (TV OSS, social, research screens) stay on cheapest workhorse models.
+Tracks two budgets:
+  1. Cursor Pro pool (composer, grok) vs Other Models quota (GPT, Claude, Gemini)
+  2. Cheap vs premium tier for executive/self-improvement escalation
+
+Routine tasks stay on cheapest Cursor workhorse; Other Models only when budget allows
+and purpose is executive decision-making or self-improvement.
 """
 
 from __future__ import annotations
@@ -20,10 +22,35 @@ Purpose = Literal["routine", "screen", "self_improvement", "executive", "researc
 CHEAP_TIERS = frozenset({"nano", "workhorse", "cheap"})
 PREMIUM_TIERS = frozenset({"standard", "crucial", "flagship", "premium"})
 
+# Cursor Pro included models — never count against Other Models quota
+CURSOR_PRO_MODELS = frozenset({
+  "composer-2.5",
+  "grok-4.5",
+  "cursor-grok-4.5-high",
+})
+
+# Map Other Models → best Cursor Pro substitute when quota exhausted
+CURSOR_SUBSTITUTE: Dict[str, str] = {
+  "gpt-5.4-nano": "composer-2.5",
+  "gpt-5-mini": "composer-2.5",
+  "gpt-5.6-luna": "cursor-grok-4.5-high",
+  "gpt-5.6-terra": "cursor-grok-4.5-high",
+  "gpt-5.6-sol": "cursor-grok-4.5-high",
+  "claude-4.5-sonnet": "cursor-grok-4.5-high",
+  "claude-opus-4-8": "cursor-grok-4.5-high",
+  "claude-fable-5": "cursor-grok-4.5-high",
+  "gemini-3-flash": "grok-4.5",
+}
+
 
 def cheap_target_ratio() -> float:
-  """Target fraction of LLM calls on cheap models (default 90%)."""
+  """Target fraction of LLM calls on cheap tiers (default 90%)."""
   return float(os.environ.get("EW_CHEAP_MODEL_RATIO", "0.90"))
+
+
+def cursor_target_ratio() -> float:
+  """Target fraction of calls on Cursor Pro models (default 95%)."""
+  return float(os.environ.get("EW_CURSOR_MODEL_RATIO", "0.95"))
 
 
 def premium_escalation_mode() -> str:
@@ -35,9 +62,48 @@ def governor_enabled() -> bool:
   return os.environ.get("EW_MODEL_BUDGET_GOVERNOR", "1").lower() not in ("0", "false", "no")
 
 
+def cursor_pool_governor_enabled() -> bool:
+  return os.environ.get("EW_CURSOR_POOL_GOVERNOR", "1").lower() not in ("0", "false", "no")
+
+
+def other_model_pool_enabled() -> bool:
+  """When false, never route to GPT/Claude/Gemini API pool — Cursor Pro only."""
+  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "0").lower() in ("1", "true", "yes")
+
+
+def cursor_only_screen() -> bool:
+  """Dual screen uses only Cursor Pro models (no GPT-mini slot)."""
+  return os.environ.get("EW_CURSOR_ONLY_SCREEN", "1").lower() not in ("0", "false", "no")
+
+
 def routine_llm_enabled() -> bool:
   """Routine consensus (TV OSS, social) — off by default to save tokens."""
   return os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true", "yes")
+
+
+def is_cursor_pro_model(model_id: str) -> bool:
+  """True for Composer/Grok models included in Cursor Pro."""
+  if not model_id:
+    return False
+  if model_id in CURSOR_PRO_MODELS:
+    return True
+  meta = ROSTER.get(model_id, {})
+  return meta.get("pool") == "first_party" or meta.get("family") == "cursor"
+
+
+def is_other_model(model_id: str) -> bool:
+  """True for GPT/Claude/Gemini API pool models (consumes Other Models quota)."""
+  if not model_id or is_cursor_pro_model(model_id):
+    return False
+  meta = ROSTER.get(model_id, {})
+  return meta.get("pool") == "api" or meta.get("family") in ("openai", "anthropic", "google")
+
+
+def cursor_substitute_for(model_id: str) -> str:
+  """Best Cursor Pro replacement for an Other Model."""
+  if is_cursor_pro_model(model_id):
+    return model_id
+  return CURSOR_SUBSTITUTE.get(model_id, MODEL.get("grok_high", "cursor-grok-4.5-high"))
 
 
 def _tier_is_cheap(tier: str) -> bool:
@@ -49,7 +115,7 @@ def _roster_tier(model_id: str) -> str:
 
 
 class ModelBudgetGovernor:
-  """Daily cheap/premium call tracker with 90/10 enforcement."""
+  """Daily cheap/premium + cursor/other call tracker."""
 
   _daily: Dict[str, Dict[str, int]] = {}
 
@@ -57,7 +123,10 @@ class ModelBudgetGovernor:
     self._day = date.today().isoformat()
 
   def _state(self) -> dict:
-    return dict(self._daily.get(self._day, {"cheap": 0, "premium": 0}))
+    base = {"cheap": 0, "premium": 0, "cursor": 0, "other": 0}
+    stored = self._daily.get(self._day, {})
+    base.update(stored)
+    return base
 
   def _save(self, state: dict) -> None:
     self._daily[self._day] = state
@@ -67,6 +136,9 @@ class ModelBudgetGovernor:
     roster_tier = _roster_tier(model) if model else tier
     bucket = "cheap" if _tier_is_cheap(tier) or roster_tier in ("nano", "workhorse") else "premium"
     state[bucket] = int(state.get(bucket, 0)) + 1
+    if model:
+      pool_bucket = "cursor" if is_cursor_pro_model(model) else "other"
+      state[pool_bucket] = int(state.get(pool_bucket, 0)) + 1
     self._save(state)
 
   def cheap_ratio(self) -> float:
@@ -81,8 +153,19 @@ class ModelBudgetGovernor:
   def premium_share(self) -> float:
     return 1.0 - self.cheap_ratio()
 
+  def cursor_ratio(self) -> float:
+    state = self._state()
+    cursor = int(state.get("cursor", 0))
+    other = int(state.get("other", 0))
+    total = cursor + other
+    if total == 0:
+      return 1.0
+    return cursor / total
+
+  def other_share(self) -> float:
+    return 1.0 - self.cursor_ratio()
+
   def premium_budget_allows(self) -> bool:
-    """True when premium share is below (1 - cheap_target_ratio)."""
     if not governor_enabled():
       return True
     if premium_escalation_mode() == "never":
@@ -91,6 +174,34 @@ class ModelBudgetGovernor:
       return True
     max_premium = 1.0 - cheap_target_ratio()
     return self.premium_share() < max_premium + 0.001
+
+  def other_model_budget_allows(self) -> bool:
+    """True when Other Models share is below (1 - cursor_target_ratio)."""
+    if not cursor_pool_governor_enabled():
+      return other_model_pool_enabled()
+    if not other_model_pool_enabled():
+      return False
+    max_other = 1.0 - cursor_target_ratio()
+    return self.other_share() < max_other + 0.001
+
+  def should_use_other_model(
+    self,
+    purpose: Purpose,
+    *,
+    force_critical: bool = False,
+  ) -> bool:
+    """Gate Other Models (GPT/Claude/Gemini) — executive + self-improvement only."""
+    if not other_model_pool_enabled():
+      return False
+    if purpose in ("routine", "screen", "research"):
+      return False
+    if not cursor_pool_governor_enabled():
+      return True
+    if force_critical:
+      return self.other_model_budget_allows() or force_critical
+    if purpose in ("executive", "self_improvement"):
+      return self.other_model_budget_allows()
+    return False
 
   def should_escalate_to_premium(
     self,
@@ -102,9 +213,6 @@ class ModelBudgetGovernor:
     metrics_poor: bool = False,
     force_critical: bool = False,
   ) -> bool:
-    """
-    Gate premium model usage — only executive + self-improvement when warranted.
-    """
     if premium_escalation_mode() == "never":
       return False
     if purpose in ("routine", "screen", "research"):
@@ -132,17 +240,28 @@ class ModelBudgetGovernor:
     state = self._state()
     cheap = int(state.get("cheap", 0))
     premium = int(state.get("premium", 0))
-    total = cheap + premium
+    cursor = int(state.get("cursor", 0))
+    other = int(state.get("other", 0))
+    pool_total = cursor + other
+    tier_total = cheap + premium
     return {
       "date": self._day,
       "cheap_calls": cheap,
       "premium_calls": premium,
-      "total_calls": total,
-      "cheap_ratio": round(self.cheap_ratio(), 3) if total else 1.0,
-      "premium_share": round(self.premium_share(), 3) if total else 0.0,
+      "total_calls": tier_total,
+      "cheap_ratio": round(self.cheap_ratio(), 3) if tier_total else 1.0,
+      "premium_share": round(self.premium_share(), 3) if tier_total else 0.0,
       "target_cheap_ratio": cheap_target_ratio(),
+      "cursor_calls": cursor,
+      "other_calls": other,
+      "cursor_ratio": round(self.cursor_ratio(), 3) if pool_total else 1.0,
+      "other_share": round(self.other_share(), 3) if pool_total else 0.0,
+      "target_cursor_ratio": cursor_target_ratio(),
+      "other_model_budget_allows": self.other_model_budget_allows(),
       "premium_budget_allows": self.premium_budget_allows(),
       "governor_enabled": governor_enabled(),
+      "cursor_pool_governor": cursor_pool_governor_enabled(),
+      "other_model_pool_enabled": other_model_pool_enabled(),
       "premium_escalation": premium_escalation_mode(),
     }
 
@@ -151,7 +270,6 @@ _governor: Optional[ModelBudgetGovernor] = None
 
 
 def reset_governor() -> None:
-  """Reset singleton and daily counters — use in tests."""
   global _governor
   _governor = None
   ModelBudgetGovernor._daily.clear()
@@ -165,22 +283,59 @@ def get_governor() -> ModelBudgetGovernor:
 
 
 def record_model_call(tier: str, model: str = "") -> None:
-  if governor_enabled():
+  if governor_enabled() or cursor_pool_governor_enabled():
     get_governor().record_call(tier, model)
 
 
-def should_escalate_to_premium(
-  purpose: Purpose,
-  **kwargs: Any,
-) -> bool:
+def should_escalate_to_premium(purpose: Purpose, **kwargs: Any) -> bool:
   return get_governor().should_escalate_to_premium(purpose, **kwargs)
 
 
+def should_use_other_model(purpose: Purpose, **kwargs: Any) -> bool:
+  return get_governor().should_use_other_model(purpose, **kwargs)
+
+
+def prefer_cursor_pool_model(
+  model_id: str,
+  *,
+  purpose: Purpose = "routine",
+  force_critical: bool = False,
+) -> Tuple[str, bool]:
+  """
+  Return (model, substituted).
+  Substitutes Other Models with Cursor Pro when pool budget is exhausted or disabled.
+  """
+  if is_cursor_pro_model(model_id):
+    return model_id, False
+  if not is_other_model(model_id):
+    return model_id, False
+  if should_use_other_model(purpose, force_critical=force_critical):
+    return model_id, False
+  sub = cursor_substitute_for(model_id)
+  return sub, sub != model_id
+
+
+def route_model_for_task(
+  model_id: str,
+  tier: str,
+  *,
+  purpose: Purpose = "routine",
+  force_critical: bool = False,
+) -> Tuple[str, str, bool]:
+  """Apply cursor pool preference; returns (model, tier, substituted)."""
+  model, substituted = prefer_cursor_pool_model(
+    model_id, purpose=purpose, force_critical=force_critical,
+  )
+  if substituted and tier == "premium":
+    tier = "standard"
+  return model, tier, substituted
+
+
 def cheap_workhorse_route() -> Tuple[str, str, str, str, int]:
-  """Single cheapest route for routine tasks."""
   from engine.llm_task_router import max_output_for_task, provider_for_task
 
   model = workhorse_model()
+  model, _ = prefer_cursor_pool_model(model, purpose="routine")
   task = "workhorse"
   max_out = max_output_for_task(task)
   provider = provider_for_task(task, model)
@@ -192,13 +347,27 @@ def limit_cheap_routes(
   *,
   max_routes: Optional[int] = None,
 ) -> List[Tuple[str, str, str, Any, int]]:
-  """Cap parallel cheap routes to control token spend."""
   cap = max_routes
   if cap is None:
     cap = int(os.environ.get("EW_CHEAP_PARALLEL_MAX", "4"))
   cheap = [r for r in routes if r[2] == "cheap"]
   other = [r for r in routes if r[2] != "cheap"]
   return cheap[:cap] + other
+
+
+def filter_routes_to_cursor_pro(
+  routes: List[Tuple[str, str, str, Any, int]],
+  *,
+  purpose: Purpose = "routine",
+) -> List[Tuple[str, str, str, Any, int]]:
+  """Drop or substitute routes that would consume Other Models quota."""
+  out: List[Tuple[str, str, str, Any, int]] = []
+  for provider, model, tier, task, max_out in routes:
+    if is_other_model(model) and not should_use_other_model(purpose):
+      model, tier, _ = route_model_for_task(model, tier, purpose=purpose)
+      tier = "cheap" if tier in ("nano", "workhorse") else tier
+    out.append((provider, model, tier, task, max_out))
+  return out
 
 
 def purpose_for_brain_domain(domain: str) -> Purpose:
@@ -214,7 +383,6 @@ def purpose_for_brain_domain(domain: str) -> Purpose:
 
 
 def llm_allowed_for_routine() -> bool:
-  """Whether routine consensus tasks may call LLM at all."""
   return routine_llm_enabled()
 
 

@@ -8,10 +8,16 @@ from engine.model_budget_governor import (
   ModelBudgetGovernor,
   cheap_target_ratio,
   cheap_workhorse_route,
+  cursor_target_ratio,
+  is_cursor_pro_model,
+  is_other_model,
   limit_cheap_routes,
   llm_allowed_for_routine,
+  other_model_pool_enabled,
+  prefer_cursor_pool_model,
   purpose_for_brain_domain,
   should_escalate_to_premium,
+  should_use_other_model,
 )
 
 
@@ -93,4 +99,40 @@ def test_cheap_workhorse_route():
   assert tier == "cheap"
   assert task == "workhorse"
   assert max_out > 0
-  assert provider in ("openai", "anthropic")
+  assert is_cursor_pro_model(model)
+
+
+def test_cursor_target_ratio_default():
+  assert cursor_target_ratio() == 0.95
+
+
+def test_other_model_pool_off_by_default(monkeypatch):
+  monkeypatch.delenv("EW_USE_OTHER_MODEL_POOL", raising=False)
+  assert other_model_pool_enabled() is False
+
+
+def test_prefer_cursor_substitutes_gpt():
+  model, sub = prefer_cursor_pool_model("gpt-5.6-sol", purpose="routine")
+  assert sub is True
+  assert is_cursor_pro_model(model)
+
+
+def test_should_use_other_model_blocked_for_routine():
+  assert should_use_other_model("routine") is False
+  assert should_use_other_model("screen") is False
+
+
+def test_governor_tracks_cursor_ratio(tmp_path, monkeypatch):
+  from engine.model_budget_governor import reset_governor
+
+  monkeypatch.setenv("EW_LLM_CACHE_DIR", str(tmp_path))
+  reset_governor()
+  g = ModelBudgetGovernor()
+  g.record_call("cheap", "composer-2.5")
+  g.record_call("cheap", "grok-4.5")
+  g.record_call("premium", "claude-opus-4-8")
+  summary = g.summary()
+  assert summary["cursor_calls"] == 2
+  assert summary["other_calls"] == 1
+  assert summary["cursor_ratio"] >= 0.66
+  assert is_other_model("claude-opus-4-8")
