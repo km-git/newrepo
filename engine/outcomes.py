@@ -171,7 +171,39 @@ def build_style_setup(
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
-  risk = risk_package(wae, stop["price"], cfg["account_risk_pct"] * probe_size_pct / 100)
+  base_risk = cfg["account_risk_pct"] * probe_size_pct / 100
+  risk_ctx: dict = {}
+  try:
+    from engine.smart_risk_policy import apply_account_risk_pct, compute_dynamic_risk_context
+
+    tv_score = None
+    if df is not None and len(df) >= 30:
+      from core.tv_indicators import score_tv_confluence
+      ob = (market_tools or {}).get("orderbook")
+      tv = score_tv_confluence(df, direction, orderbook=ob if ob and ob.get("available") else None)
+      tv_score = int(tv.get("score", 0))
+    hist_wr, hist_n = None, 0
+    if symbol and historical_metrics:
+      from engine.outcome_tracker import lookup_win_rate
+      hist_wr, hist_n = lookup_win_rate(historical_metrics, symbol, tf, direction)
+    risk_ctx = compute_dynamic_risk_context(
+      symbol=symbol,
+      timeframe=tf,
+      direction=direction,
+      df=df,
+      tv_score=tv_score,
+      readiness_score=indicators.get("score"),
+      hist_win_rate=hist_wr,
+      hist_n=hist_n,
+      gtc_tier="executable" if status == "executable" else "monitor",
+      honest_tier=execution_tier,
+      wave_structure=str(wave.get("structure") or ""),
+    )
+    acct_risk = apply_account_risk_pct(base_risk, risk_ctx)
+  except Exception:
+    acct_risk = base_risk
+
+  risk = risk_package(wae, stop["price"], acct_risk)
 
   return {
     "style": style,

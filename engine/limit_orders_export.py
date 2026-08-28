@@ -515,7 +515,9 @@ def build_limit_order_row(
       [{"id": s["scenario_id"], "trigger": s["scenario_trigger"], "direction": s["direction"], "wae": s["wae"]} for s in contingent],
       default=str,
     )
-  return row
+  from engine.smart_risk_policy import stamp_row_policy
+
+  return stamp_row_policy(row)
 
 
 def _prz_tuple(harm: Optional[dict]) -> Optional[Tuple[float, float]]:

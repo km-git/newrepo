@@ -9,6 +9,8 @@ import pandas as pd
 
 
 def dynamic_risk_enabled() -> bool:
+  if os.environ.get("EW_ALWAYS_SMART_RISK", "1").lower() not in ("0", "false", "no"):
+    return True
   return os.environ.get("EW_DYNAMIC_RISK", "1").lower() not in ("0", "false", "no")
 
 
