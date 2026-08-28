@@ -27,9 +27,13 @@ while true; do
   python3 scripts/run_paper_simulation.py --equity "$ACCOUNT_EQUITY" 2>&1 | tee -a "$LOG" || true
 
   if [[ "${EW_AUTORESEARCH_CONTINUOUS:-1}" == "1" ]]; then
-    echo "[continuous] autoresearch eval + goal-mode" | tee -a "$LOG"
-    EW_NIGHTLY_SKIP_BATCH=1 EW_WEB_INTEL=0 EW_WS_ENABLED=0 \
-      bash scripts/run_nightly_autoresearch.sh 2>&1 | tee -a "$LOG" || true
+    echo "[continuous] autonomous tick (learn + research + PR)" | tee -a "$LOG"
+    python3 -c "
+from engine.autonomous_ops import run_autonomous_tick
+import json
+r = run_autonomous_tick(skip_pr=False)
+print(json.dumps({'ok': r.get('ok'), 'health': r.get('health')}))
+" 2>&1 | tee -a "$LOG" || true
   fi
 
   sleep "$MONITOR_INTERVAL"
