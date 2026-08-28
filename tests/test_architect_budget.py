@@ -28,11 +28,22 @@ def test_build_compact_prompt_within_ceiling():
   assert report["est_total_tokens"] <= ARCHITECT_TOKEN_CEILING
 
 
-def test_route_gpt56_for_architect():
+def test_route_gpt56_for_architect(monkeypatch):
+  import engine.architect_budget as ab
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
+  monkeypatch.setattr(ab, "GPT56_DECISION_MODEL", "gpt-5.6-sol")
   model, reason, use = route_gpt56_decision("architect")
   assert use
   assert "gpt-5.6" in model
   assert "10000" in reason or "10" in reason
+
+
+def test_route_gpt56_cursor_pro_default():
+  model, reason, use = route_gpt56_decision("architect")
+  assert use
+  assert "grok" in model.lower() or "composer" in model.lower()
 
 
 def test_route_workhorse_for_unknown():
@@ -41,11 +52,23 @@ def test_route_workhorse_for_unknown():
   assert use
 
 
-def test_prepare_decision_call_budget():
+def test_prepare_decision_call_budget(monkeypatch):
+  import engine.architect_budget as ab
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
+  monkeypatch.setattr(ab, "GPT56_DECISION_MODEL", "gpt-5.6-sol")
   pkg = prepare_decision_call("decision", {"choice": "ship", "options": ["a", "b"]})
   assert pkg["budget"]["within_budget"]
   assert not pkg["skip_llm"]
   assert "gpt-5.6" in pkg["model"]
+
+
+def test_prepare_decision_call_cursor_pro_default():
+  pkg = prepare_decision_call("decision", {"choice": "ship", "options": ["a", "b"]})
+  assert pkg["budget"]["within_budget"]
+  assert not pkg["skip_llm"]
+  assert "grok" in pkg["model"].lower() or "composer" in pkg["model"].lower()
 
 
 def test_cache_hit(tmp_path, monkeypatch):
