@@ -50,7 +50,10 @@ def test_tiebreaker_route_executive_uses_opus(monkeypatch):
 def test_crucial_models_defaults(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  from engine.llm_model_roster import MODEL
   from engine.llm_task_router import crucial_model_for_task
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
 
   assert crucial_model_for_task("executive") == "claude-opus-4-8"
   assert crucial_model_for_task("architect") == "claude-fable-5"
@@ -60,6 +63,9 @@ def test_crucial_models_defaults(monkeypatch):
 def test_tiebreaker_route_planning_uses_luna_for_conditional(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "light_plan", "gpt-5.6-luna")
   route = tiebreaker_route("CONDITIONAL_GO", "medium")
   assert route is not None
   assert route[1] == "gpt-5.6-luna"
@@ -87,6 +93,9 @@ def test_tiebreaker_route_hard_go_high_uses_opus(monkeypatch):
 
 def test_routing_matrix_has_crucial_models(monkeypatch):
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   matrix = routing_matrix()
   assert matrix["crucial_models"]["opus"] == "claude-opus-4-8"
   assert matrix["crucial_models"]["fable"] == "claude-fable-5"

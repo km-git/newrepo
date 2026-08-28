@@ -11,13 +11,19 @@ from engine.llm_panel import (
 )
 
 
+def test_routine_mode_single_when_cheap_first(monkeypatch):
+  monkeypatch.setenv("EW_CHEAP_FIRST", "1")
+  monkeypatch.delenv("EW_LLM_ROUTINE_INTELLIGENCE", raising=False)
+  assert effective_intelligence_mode("routine") == "single"
+  assert effective_intelligence_mode("executive") == "ensemble"
+
+
 def test_effective_mode_falls_back_without_both_keys(monkeypatch):
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
   monkeypatch.setenv("EW_LLM_BACKEND", "direct")
   monkeypatch.delenv("CURSOR_API_KEY", raising=False)
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-  monkeypatch.delenv("CURSOR_API_KEY", raising=False)
   assert effective_intelligence_mode() == "single"
 
 
@@ -59,6 +65,7 @@ def test_run_panel_escalates_on_disagreement(monkeypatch):
   panel = run_panel("prompt", "GO", "high", fake_call)
 
   assert panel["disagreement"] is True
+  assert panel["escalated_tiebreaker"] is True
   assert panel["escalated_to_premium"] is True
   assert panel["consensus_stance"] == "caution"
   assert panel["tiebreaker"] is not None
@@ -108,7 +115,8 @@ def test_run_panel_mild_disagreement_uses_standard_tier(monkeypatch):
 
   assert panel["disagreement"] is True
   assert panel["disagreement_severity"] == "mild"
-  assert panel["escalated_to_premium"] is True
+  assert panel["escalated_tiebreaker"] is True
+  assert panel["escalated_to_premium"] is False
   tb_calls = [c for c in calls if c[3] == "tiebreaker"]
   assert len(tb_calls) == 1
   assert tb_calls[0][1] == "cursor-grok-4.5-high"

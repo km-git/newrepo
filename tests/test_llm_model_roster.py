@@ -30,6 +30,7 @@ def test_mild_disagreement_uses_grok_high_not_sol():
 
 def test_mild_disagreement_falls_back_to_terra_when_grok_disabled(monkeypatch):
   monkeypatch.setenv("EW_USE_GROK_HIGH", "0")
+  monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
   monkeypatch.setenv("EW_MODEL_MILD_TB", "gpt-5.6-terra")
   model, tier, reason = escalate_task_model("tiebreaker", "GO", "high", ["agree", "caution"])
   assert model == "gpt-5.6-terra"
@@ -42,20 +43,29 @@ def test_hard_disagreement_go_high_uses_opus():
   assert tier == "flagship"
 
 
-def test_hard_disagreement_default_uses_sol():
+def test_hard_disagreement_default_uses_sol(monkeypatch):
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   model, tier, _ = escalate_task_model("tiebreaker", "NO_GO", "low", ["agree", "reject"])
   assert model == "gpt-5.6-sol"
   assert tier == "crucial"
 
 
-def test_light_planning_uses_luna():
+def test_light_planning_uses_luna(monkeypatch):
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "light_plan", "gpt-5.6-luna")
   model, tier, reason = escalate_task_model("planning", "CONDITIONAL_GO", "medium")
   assert model == "gpt-5.6-luna"
   assert tier == "standard"
   assert "luna" in reason.lower()
 
 
-def test_full_planning_uses_sol():
+def test_full_planning_uses_sol(monkeypatch):
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   model, _, _ = escalate_task_model("planning", "GO", "high")
   assert model == "gpt-5.6-sol"
 
@@ -65,11 +75,22 @@ def test_workhorse_defaults_composer(monkeypatch):
   assert workhorse_model() == "composer-2.5"
 
 
-def test_screen_slots_default_grok_high_plus_mini():
+def test_screen_slots_default_grok_high_plus_composer_when_cheap_first():
   slots = screen_model_slots()
   assert len(slots) == 2
   models = {m for _, m in slots}
   assert "cursor-grok-4.5-high" in models
+  assert "composer-2.5" in models
+
+
+def test_screen_slots_gpt_mini_when_minimize_gpt_off(monkeypatch):
+  monkeypatch.setenv("EW_CHEAP_FIRST", "0")
+  monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
+  from engine.llm_model_roster import MODEL
+
+  monkeypatch.setitem(MODEL, "screen_b", "gpt-5-mini")
+  slots = screen_model_slots()
+  models = {m for _, m in slots}
   assert "gpt-5-mini" in models
 
 

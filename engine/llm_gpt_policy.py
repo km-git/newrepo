@@ -20,12 +20,22 @@ def session_token_limit() -> int:
   return per_model_token_limit()
 
 
+def cheap_first_enabled() -> bool:
+  """Master cheap-first switch — default on (90% workhorse target)."""
+  return os.environ.get("EW_CHEAP_FIRST", "1").lower() not in ("0", "false", "no")
+
+
 def minimize_gpt_enabled() -> bool:
   """
-  Optional preference for first-party models over GPT API.
-  Default off — GPT is allowed; per-model budget enforces the limit.
+  Prefer first-party Cursor models over GPT API slots.
+  Default follows EW_CHEAP_FIRST=1; override with EW_MINIMIZE_GPT=0|1.
   """
-  return os.environ.get("EW_MINIMIZE_GPT", "0").lower() in ("1", "true", "yes")
+  raw = os.environ.get("EW_MINIMIZE_GPT", "").lower().strip()
+  if raw in ("1", "true", "yes"):
+    return True
+  if raw in ("0", "false", "no"):
+    return False
+  return cheap_first_enabled()
 
 
 def gpt_free_screen_slot_b() -> str:

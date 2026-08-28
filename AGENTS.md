@@ -39,6 +39,10 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - **Token budget is critical.** Each model capped at 10,000 tokens/day (`EW_LLM_MAX_TOKENS_PER_MODEL`).
   Install saver libraries: `python3 ew_tool.py --install-token-savers` or `python3 scripts/install_token_savers.py`.
   Inspect: `python3 ew_tool.py --llm-savers`.
+- **Cheap-first AI routing (~90% workhorse):** `engine/llm_budget_policy.py` — Composer/Grok/Gemini for routine;
+  Opus/Fable/Sol only for executive GO + hard disagree or self-improvement escalation. Env: `EW_CHEAP_FIRST=1`,
+  `EW_LLM_CHEAP_TARGET_PCT=90`, `EW_LLM_ROUTINE_INTELLIGENCE=single`, `EW_MINIMIZE_GPT=1`, `EW_LLM_EW_BYPASS=1`.
+  Matrix: `python3 ew_tool.py --llm-tasks`.
 - **PR auto-approve:** `python3 ew_tool.py --pr-approve <N>` or `--pr-approve-all`.
   Agent: `python3 scripts/pr_executive_consensus.py`. 5/7 model consensus rule.
   GitHub Action: `.github/workflows/pr-executive-consensus.yml`. Results in `output/pr_reviews/`.

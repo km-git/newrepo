@@ -56,7 +56,7 @@ def test_run_improvement_with_mock_panel(monkeypatch, tmp_path):
   monkeypatch.setenv("EW_OKF_BRAIN_DIR", str(tmp_path / "okf"))
   monkeypatch.setenv("EW_USE_ALL_CURSOR_MODELS", "1")
 
-  def mock_panel(prompt, verdict, conviction, call_provider):
+  def mock_panel(prompt, verdict, conviction, call_provider, **kwargs):
     return {
       "consensus_stance": "caution",
       "blended_summary": "mock panel",

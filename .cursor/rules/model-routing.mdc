@@ -5,6 +5,10 @@ alwaysApply: true
 
 # Model routing
 
+- **~90% cheap Cursor workhorses** (Composer, Grok, Gemini) for routine screens, batch export, execution consensus.
+- **Premium models** (Opus, Fable, Sol) only for executive GO + hard disagreement, or self-improvement when metrics are poor / models disagree hard.
+- **Token savers always on:** tiktoken, llm-token-optimizer, tokenpruner, diskcache, zstd, `EW_LLM_EW_BYPASS=1`, per-model 10K cap.
+- Env: `EW_CHEAP_FIRST=1`, `EW_LLM_ROUTINE_INTELLIGENCE=single`, `EW_MINIMIZE_GPT=1`.
 - Treat model names, availability, pricing, usage limits, and routing as changeable product configuration.
 - Prefer the currently available model appropriate to the task. Use Auto for routine work unless explicit model control is materially useful.
 - Reserve frontier reasoning models for architecture, security, high-risk decisions, and hard disagreements. Use fast workhorse models for bounded edits, extraction, formatting, and repetitive test generation.

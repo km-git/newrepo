@@ -244,7 +244,7 @@ def get_llm_advisory(
   verdict = executive.get("verdict", "")
   conviction = executive.get("conviction", "")
   fp = structure_fingerprint(symbol, executive, consensus, wave_structure)
-  mode = effective_intelligence_mode()
+  mode = effective_intelligence_mode("executive")
   routes = cheap_screen_routes(verdict, conviction) if mode in ("ensemble", "dual") else routing_plan(verdict, conviction)
   cache_key = (
     llm_backend(),
@@ -296,7 +296,7 @@ def get_llm_advisory(
     def _call_provider(provider: str, model: str, tier: str, task: str, max_output: int) -> dict:
       return _call_advisory(provider, model, tier, task, max_output, prompt)
 
-    panel = run_panel(prompt, verdict, conviction, _call_provider)
+    panel = run_panel(prompt, verdict, conviction, _call_provider, context="executive")
     responses = panel["screen"]
     result = {
       "critical": True,

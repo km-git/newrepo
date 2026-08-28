@@ -17,6 +17,7 @@ from engine.llm_backend import llm_backend
 from engine.llm_model_roster import MODEL, ROSTER, disagreement_severity, escalate_task_model
 from engine.llm_panel import blend_stances, models_disagree, run_panel
 from engine.llm_task_router import TaskKind, max_output_for_task, provider_for_task
+from engine.llm_budget_policy import allow_premium_escalation
 from engine.token_saver_registry import optimize_prompt_text
 
 NAMESPACE = "ai_improvement"
@@ -112,19 +113,28 @@ def improvement_escalation_routes(
   if sev == "hard" or metrics_poor:
     for task_name in ("planning", "synthesis", "architect", "executive"):
       task = task_name  # type: ignore[assignment]
+      if not allow_premium_escalation(
+        task, verdict, conviction, stances, context="self_improvement", metrics_poor=metrics_poor,
+      ) and task in ("executive", "architect", "synthesis"):
+        continue
       model, _, _ = escalate_task_model(task, verdict, conviction, stances)
       if model in {r[1] for r in routes}:
         continue
       tier = "premium" if task in ("executive", "architect") else "standard"
       routes.append((provider_for_task(task, model), model, tier, task, max_output_for_task(task)))
 
-  if use_all_cursor_models() and (sev != "none" or metrics_poor):
+  if use_all_cursor_models() and (sev == "hard" or metrics_poor):
     for model in cursor_api_pool_models():
       if model in {r[1] for r in routes}:
         continue
       tier_meta = ROSTER.get(model, {})
       if tier_meta.get("tier") in ("standard", "crucial", "flagship"):
         task = "synthesis" if model == MODEL["sol"] else "tiebreaker"
+        if tier_meta.get("tier") in ("crucial", "flagship"):
+          if not allow_premium_escalation(
+            task, verdict, conviction, stances, context="self_improvement", metrics_poor=metrics_poor,
+          ):
+            continue
         routes.append((provider_for_task(task, model), model, "standard", task, max_output_for_task(task)))
 
   return routes
@@ -258,7 +268,7 @@ def run_multi_model_improvement_review(
   poor = _metrics_poor(metrics)
 
   # Phase 2: standard ensemble panel (dual screen + tiebreaker)
-  panel = run_panel(prompt, verdict, conviction, call_provider)
+  panel = run_panel(prompt, verdict, conviction, call_provider, context="self_improvement")
 
   # Phase 3: premium specialists only on disagreement or poor metrics
   escalation_responses: Dict[str, dict] = {}

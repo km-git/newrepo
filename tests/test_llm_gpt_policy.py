@@ -25,7 +25,12 @@ def test_session_token_limit_alias(monkeypatch):
   assert session_token_limit() == 5000
 
 
-def test_minimize_gpt_default_off():
+def test_minimize_gpt_follows_cheap_first():
+  assert minimize_gpt_enabled() is True
+
+
+def test_minimize_gpt_explicit_off(monkeypatch):
+  monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
   assert minimize_gpt_enabled() is False
 
 
