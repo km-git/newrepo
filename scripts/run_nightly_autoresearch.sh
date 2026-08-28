@@ -16,8 +16,12 @@ export EW_HEALTH_REQUIRE_ARTIFACTS=0
 export EW_GOAL_MODE_AUTORESEARCH=0
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
-echo "==> Nightly autoresearch: top-${N} crypto batch"
-"$PY" ew_tool.py --top "$N" --crypto
+if [[ "${EW_NIGHTLY_SKIP_BATCH:-0}" != "1" ]] && [[ "$N" -gt 0 ]]; then
+  echo "==> Nightly autoresearch: top-${N} crypto batch"
+  "$PY" ew_tool.py --top "$N" --crypto
+else
+  echo "==> Nightly autoresearch: skip batch (EW_NIGHTLY_SKIP_BATCH or N=0)"
+fi
 
 LATEST="$(ls -t output/top*_analysis_*.json 2>/dev/null | head -1 || true)"
 if [ -z "$LATEST" ]; then

@@ -71,6 +71,7 @@ def run_goal_mode_cycle(
   from engine.outcome_tracker import load_metrics
 
   goal_text = goal or os.environ.get("EW_GOAL_MODE_TEXT", DEFAULT_GOAL)
+  os.environ.setdefault("EW_HEALTH_REQUIRE_ARTIFACTS", "0")
   paper = execute_paper if execute_paper is not None else auto_deploy_allowed()
 
   live_req = bool(e2e_kwargs.pop("execute_live", False))
