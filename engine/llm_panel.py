@@ -9,7 +9,10 @@ from typing import Callable, Dict, List, Literal, Optional, Tuple
 from engine.llm_token_router import (
   CHEAP_ANTHROPIC,
   CHEAP_OPENAI,
+  STANDARD_ANTHROPIC,
+  STANDARD_OPENAI,
   Provider,
+  model_for,
 )
 from engine.llm_model_roster import MODEL, disagreement_severity
 from engine.llm_task_router import (
@@ -22,13 +25,8 @@ from engine.llm_task_router import (
 )
 from engine.llm_backend import llm_backend
 from engine.llm_cursor import cursor_available, cursor_model_for
-from engine.llm_budget_policy import (
-  LLMContext,
-  allow_premium_escalation,
-  executive_intelligence_mode,
-  is_premium_task,
-  routine_intelligence_mode,
-)
+from engine.model_budget_governor import Purpose, is_cursor_pro_model, record_model_call, route_model_for_task, should_escalate_to_premium, should_use_other_model
+from engine.llm_budget_policy import cursor_models_only, other_models_override
 
 IntelligenceMode = Literal["ensemble", "single", "dual"]
 Stance = Literal["agree", "caution", "reject", "unknown"]
@@ -38,10 +36,12 @@ STANCE_RANK = {"reject": 0, "caution": 1, "agree": 2, "unknown": -1}
 
 def intelligence_mode() -> IntelligenceMode:
   """
-  Explicit EW_LLM_INTELLIGENCE override (ensemble | single | dual).
-  When unset, executive paths use ensemble; routine uses single via effective_intelligence_mode.
+  How to combine models when --llm-advisory is on:
+  - ensemble (default): cheap dual screen + premium tiebreaker on disagreement
+  - single: one cheap model (token-minimal)
+  - dual: both cheap models, no tiebreaker
   """
-  raw = os.environ.get("EW_LLM_INTELLIGENCE", "").lower().strip()
+  raw = os.environ.get("EW_LLM_INTELLIGENCE", "ensemble").lower().strip()
   if raw in ("ensemble", "single", "dual"):
     return raw  # type: ignore[return-value]
   return "ensemble"
@@ -53,43 +53,43 @@ def _has_both_keys() -> bool:
   )
 
 
-def effective_intelligence_mode(context: LLMContext = "executive") -> IntelligenceMode:
-  """Routine/batch → single cheap workhorse; executive → ensemble cheap screen + gated tiebreaker."""
+def effective_intelligence_mode(context: Optional[str] = None) -> IntelligenceMode:
+  from engine.llm_budget_policy import (
+    cheap_first_enabled,
+    executive_intelligence_mode,
+    routine_intelligence_mode,
+  )
+
   if context == "routine":
-    mode = routine_intelligence_mode()
-  else:
-    mode = executive_intelligence_mode()
-  if mode not in ("ensemble", "single", "dual"):
-    mode = "ensemble"
-  resolved: IntelligenceMode = mode  # type: ignore[assignment]
-  if resolved == "ensemble" and llm_backend() == "cursor" and cursor_available():
+    if cheap_first_enabled():
+      raw = routine_intelligence_mode()
+      return raw if raw in ("ensemble", "single", "dual") else "single"  # type: ignore[return-value]
+    return intelligence_mode()
+  if context == "executive":
+    raw = executive_intelligence_mode()
+    return raw if raw in ("ensemble", "single", "dual") else "dual"  # type: ignore[return-value]
+
+  mode = intelligence_mode()
+  if mode == "ensemble" and llm_backend() == "cursor" and cursor_available():
     return "ensemble"
-  if resolved == "ensemble" and not _has_both_keys():
+  if mode == "ensemble" and not _has_both_keys():
     return "single"
-  return resolved
+  return mode
 
 
-def cheap_screen_routes(
-  verdict: str,
-  conviction: str = "",
-  *,
-  context: LLMContext = "executive",
-) -> List[Tuple[Provider, str, str]]:
-  mode = effective_intelligence_mode(context)
+def cheap_screen_routes(verdict: str, conviction: str = "") -> List[Tuple[Provider, str, str]]:
+  """Always cheap tier — workhorse (single) or dual screen (ensemble)."""
+  mode = effective_intelligence_mode()
   return [(p, m, t) for p, m, t, _task, _out in screen_routes(mode)]
 
 
-def screen_route_details(
-  verdict: str,
-  conviction: str = "",
-  *,
-  context: LLMContext = "executive",
-) -> List[tuple]:
-  mode = effective_intelligence_mode(context)
-  return screen_routes(mode)
+def screen_route_details(verdict: str, conviction: str = "") -> List[tuple]:
+  """Full route tuples including task + max_output for panel execution."""
+  return screen_routes(effective_intelligence_mode())
 
 
 def tiebreaker_routes(verdict: str, conviction: str = "") -> List[Tuple[Provider, str, str]]:
+  """Premium escalation — executive / planning / tiebreaker by verdict."""
   route = tiebreaker_route(verdict, conviction)
   if not route:
     return []
@@ -102,6 +102,7 @@ def _stance_values(responses: List[dict]) -> List[str]:
 
 
 def models_disagree(responses: List[dict]) -> bool:
+  """True when cheap models materially disagree (not unanimous)."""
   stances = _stance_values(responses)
   if len(stances) < 2:
     return False
@@ -116,6 +117,7 @@ def models_disagree(responses: List[dict]) -> bool:
 
 
 def blend_stances(responses: List[dict], tiebreaker: Optional[dict] = None) -> Stance:
+  """Consensus stance — tiebreaker wins when present."""
   if tiebreaker and tiebreaker.get("stance"):
     return tiebreaker["stance"]  # type: ignore[return-value]
   stances = _stance_values(responses)
@@ -143,6 +145,10 @@ def avg_confidence_adjustment(responses: List[dict], tiebreaker: Optional[dict] 
 
 
 def apply_panel_to_trade(trade_setup: dict, panel: dict) -> dict:
+  """
+  Adjust trade confidence from panel — never silently override executive verdict.
+  Returns updated trade_setup copy + panel audit fields.
+  """
   trade = dict(trade_setup)
   adj = panel.get("confidence_adjustment")
   if not isinstance(adj, (int, float)):
@@ -169,20 +175,24 @@ def run_panel(
   conviction: str,
   call_provider: Callable[..., dict],
   *,
-  context: LLMContext = "executive",
+  purpose: Purpose = "screen",
+  metrics_poor: bool = False,
 ) -> dict:
   """
   Execute intelligence panel:
   1. Cheap screen (parallel when 2+ routes)
-  2. Tiebreaker on disagreement — premium only when budget policy allows
+  2. Premium tiebreaker on disagreement (ensemble only)
   """
-  mode = effective_intelligence_mode(context)
-  screen_detail = screen_route_details(verdict, conviction, context=context)
+  mode = effective_intelligence_mode()
+  screen_detail = screen_route_details(verdict, conviction)
   responses: Dict[str, dict] = {}
 
   def _invoke(route: tuple) -> Tuple[str, dict]:
     provider, model, tier, task, max_out = route
-    return provider, call_provider(provider, model, tier, task, max_out)
+    resp = call_provider(provider, model, tier, task, max_out)
+    if resp.get("available") and resp.get("stance"):
+      record_model_call(tier, model)
+    return provider, resp
 
   if len(screen_detail) > 1:
     with ThreadPoolExecutor(max_workers=len(screen_detail)) as pool:
@@ -207,47 +217,59 @@ def run_panel(
 
   tiebreaker: Optional[dict] = None
   tiebreaker_route_meta: Optional[dict] = None
-  escalated = False
+  escalated_tiebreaker = False
   escalated_premium = False
 
   stances = _stance_values(ok_screen)
   severity = disagreement_severity(stances)
 
   if mode == "ensemble" and models_disagree(ok_screen):
-    tb_task = tiebreaker_task(verdict, conviction, stances)
     tb = tiebreaker_route(verdict, conviction, stances=stances)
     if tb:
       provider, model, tier, task, max_out = tb
-      from engine.llm_budget_policy import is_other_quota_model, resolve_to_cursor_pro
-
-      model = resolve_to_cursor_pro(
-        model,
-        task=task,
-        context=context,
-        verdict=verdict,
-        conviction=conviction,
-        stances=stances,
+      model, tier, substituted = route_model_for_task(
+        model, tier, purpose=purpose,
+        force_critical=(purpose == "executive" and verdict == "GO"),
       )
-      premium_call = is_premium_task(task) and is_other_quota_model(model)
-      if premium_call:
-        allowed = allow_premium_escalation(
-          task, verdict, conviction, stances, context=context,
+      allow_tiebreaker = (
+        is_cursor_pro_model(model)
+        or (other_models_override() and not cursor_models_only())
+        or (
+          purpose == "executive"
+          and should_escalate_to_premium(
+            purpose,
+            verdict=verdict,
+            conviction=conviction,
+            stances=stances,
+            metrics_poor=metrics_poor,
+          )
+          and should_use_other_model(
+            purpose,
+            verdict=verdict,
+            conviction=conviction,
+            stances=stances,
+            force_critical=(purpose == "executive" and verdict == "GO" and conviction == "high"),
+          )
         )
-      else:
-        allowed = context != "routine" or task == "tiebreaker"
-      if allowed:
-        escalated = True
-        escalated_premium = premium_call
+      )
+      if allow_tiebreaker:
+        escalated_tiebreaker = True
+        escalated_premium = tier == "premium" or not is_cursor_pro_model(model)
         tiebreaker_route_meta = {
           "provider": provider,
           "model": model,
           "tier": tier,
           "task": task,
           "disagreement_severity": severity,
-          "premium": premium_call,
+          "cursor_substituted": substituted,
+          "other_model_allowed": should_use_other_model(purpose),
         }
         tiebreaker = call_provider(provider, model, tier, task, max_out)
         tiebreaker["role"] = task
+        if tiebreaker.get("available") and tiebreaker.get("stance"):
+          record_model_call(tier, model)
+      else:
+        tiebreaker_route_meta = {"skipped": "premium_budget_or_purpose_gate"}
 
   consensus = blend_stances(ok_screen, tiebreaker)
   conf_adj = avg_confidence_adjustment(ok_screen, tiebreaker)
@@ -262,7 +284,6 @@ def run_panel(
 
   result = {
     "intelligence_mode": mode,
-    "llm_context": context,
     "screen": {
       "openai": responses["openai"],
       "anthropic": responses["anthropic"],
@@ -274,10 +295,11 @@ def run_panel(
     "disagreement": models_disagree(ok_screen),
     "disagreement_severity": severity if models_disagree(ok_screen) else "none",
     "escalated_to_premium": escalated_premium,
-    "escalated_tiebreaker": escalated,
+    "escalated_tiebreaker": escalated_tiebreaker,
+    "premium_gate": purpose,
     "tiebreaker": tiebreaker,
-    "tiebreaker_route": tiebreaker_route_meta if escalated else None,
-    "tiebreaker_task": tiebreaker_task(verdict, conviction, stances) if escalated else None,
+    "tiebreaker_route": tiebreaker_route_meta if escalated_tiebreaker else None,
+    "tiebreaker_task": tiebreaker_task(verdict, conviction, stances) if escalated_tiebreaker else None,
     "consensus_stance": consensus,
     "confidence_adjustment": conf_adj,
     "consulted": consulted,

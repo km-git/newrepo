@@ -11,7 +11,11 @@ from typing import Any, Dict, List, Optional
 
 from engine.autodream import build_monitor_queue, save_monitor_queue
 from engine.batch import run_batch, save_batch_json
-from engine.executive_board import apply_board_to_results, build_executive_board, save_executive_board
+from engine.executive_board import (
+  apply_board_to_results,
+  build_executive_board,
+  save_executive_board,
+)
 from engine.limit_orders_export import export_limit_orders
 from engine.timeframes import UNIVERSE_TFS
 from engine.top50_batch import save_batch_summary_csv
@@ -175,11 +179,35 @@ def finalize_universe_cycle(
   paper_targets = _top_results_for_paper(results, paper_max)
   print(f"\n[universe] Finalize cycle — {len(results)} symbols, export on {len(paper_targets)}")
 
+  from engine.accurate_setups import (
+    extract_accurate_setups,
+    extract_research_setups,
+    save_accurate_setups_csv,
+    save_research_setups_csv,
+  )
+
+  accurate_rows = extract_accurate_setups(results, min_tier="C")
+  accurate_csv = out / "latest_accurate_setups.csv"
+  save_accurate_setups_csv(accurate_rows, accurate_csv)
+  research_rows = extract_research_setups(results)
+  research_csv = out / "latest_research_setups.csv"
+  save_research_setups_csv(research_rows, research_csv)
+
+  # Executive board runs before export so picks filter limit orders + execution
+  executive_board = build_executive_board(results, picks_per_tf=8, max_total=60)
+  results = apply_board_to_results(results, executive_board)
+  board_paths = save_executive_board(executive_board)
+
   limit_meta = export_limit_orders(
     paper_targets,
     output_dir=out,
     account_equity=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
     usdt_d_pct=float(os.environ["USDT_D_PCT"]) if os.environ.get("USDT_D_PCT") else None,
+    board=executive_board,
+  )
+  print(
+    f"[universe] Export: {limit_meta.get('row_count')} rows "
+    f"(executive-filtered {limit_meta.get('executive_filtered_rows', 0)})"
   )
 
   paper_summary: Dict[str, Any] = {}
@@ -219,13 +247,6 @@ def finalize_universe_cycle(
     except Exception as exc:
       improvement = {"error": str(exc)}
 
-  from engine.accurate_setups import (
-    extract_accurate_setups,
-    extract_research_setups,
-    save_accurate_setups_csv,
-    save_research_setups_csv,
-  )
-
   deep_research: Dict[str, Any] = {}
   if os.environ.get("EW_DEEP_RESEARCH", "1").lower() not in ("0", "false", "no"):
     try:
@@ -235,17 +256,6 @@ def finalize_universe_cycle(
       deep_research = run_deep_research(symbols=symbols, use_ai=True)
     except Exception as exc:
       deep_research = {"error": str(exc)}
-
-  accurate_rows = extract_accurate_setups(results, min_tier="C")
-  accurate_csv = out / "latest_accurate_setups.csv"
-  save_accurate_setups_csv(accurate_rows, accurate_csv)
-  research_rows = extract_research_setups(results)
-  research_csv = out / "latest_research_setups.csv"
-  save_research_setups_csv(research_rows, research_csv)
-
-  executive_board = build_executive_board(results, picks_per_tf=8, max_total=60)
-  results = apply_board_to_results(results, executive_board)
-  board_paths = save_executive_board(executive_board)
 
   ai_review: Dict[str, Any] = {}
   if os.environ.get("EW_AI_IMPROVEMENT", "1").lower() not in ("0", "false", "no"):
@@ -284,6 +294,24 @@ def finalize_universe_cycle(
   except Exception as exc:
     best_trades_meta = {"error": str(exc)}
 
+  execution_result: Dict[str, Any] = {}
+  if os.environ.get("EW_UNIVERSE_AUTO_EXECUTE", "0").lower() in ("1", "true", "yes"):
+    try:
+      from engine.execution_agent import execute_from_csv
+
+      dry = os.environ.get("EW_EXECUTE_CONFIRM", "0") != "1"
+      execution_result = execute_from_csv(
+        limit_meta.get("latest_csv", str(out / "latest_limit_orders_all_tf.csv")),
+        dry_run=dry,
+        max_orders=int(os.environ.get("EW_UNIVERSE_MAX_ORDERS", "0")) or 0,
+      )
+      print(
+        f"[universe] Auto-execute: dry_run={execution_result.get('dry_run')} "
+        f"submitted={execution_result.get('orders_submitted')}"
+      )
+    except Exception as exc:
+      execution_result = {"ok": False, "error": str(exc)}
+
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
   save_batch_json(results, str(json_path))
@@ -304,6 +332,8 @@ def finalize_universe_cycle(
     "by_action": executive_board.get("by_action"),
     "by_timeframe": executive_board.get("by_timeframe"),
     "ai_improvement": ai_review,
+    "execution": execution_result,
+    "executive_filtered_rows": limit_meta.get("executive_filtered_rows", 0),
     "deep_research": deep_research,
     "json": str(json_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),

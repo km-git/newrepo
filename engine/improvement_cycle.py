@@ -64,7 +64,9 @@ def run_improvement_cycle(
     try:
       from engine.social_strategy_validation import run_social_strategy_validation
 
-      social_validation = run_social_strategy_validation(use_llm=llm_on)
+      social_validation = run_social_strategy_validation(
+        use_llm=llm_on and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      )
     except Exception as exc:
       social_validation = {"error": str(exc)}
 
@@ -73,7 +75,9 @@ def run_improvement_cycle(
     try:
       from engine.tv_oss_consensus import run_tv_oss_consensus
 
-      tv_oss = run_tv_oss_consensus(use_llm=llm_on)
+      tv_oss = run_tv_oss_consensus(
+        use_llm=llm_on and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      )
     except Exception as exc:
       tv_oss = {"error": str(exc)}
 

@@ -28,6 +28,9 @@ export EW_CURSOR_PRO_ONLY="${EW_CURSOR_PRO_ONLY:-1}"
 export EW_ALLOW_OTHER_MODELS="${EW_ALLOW_OTHER_MODELS:-0}"
 export EW_USE_CURSOR_API_POOL="${EW_USE_CURSOR_API_POOL:-0}"
 export EW_LLM_CHEAP_TARGET_PCT="${EW_LLM_CHEAP_TARGET_PCT:-98}"
+export EW_CURSOR_FALLBACK="${EW_CURSOR_FALLBACK:-1}"
+export EW_CURSOR_MODELS_ONLY="${EW_CURSOR_MODELS_ONLY:-0}"
+export EW_USE_OTHER_MODEL_POOL="${EW_USE_OTHER_MODEL_POOL:-1}"
 export EW_OTHER_MODELS_BUDGET_PCT="${EW_OTHER_MODELS_BUDGET_PCT:-2}"
 export EW_OTHER_MODELS_SHAME_PCT="${EW_OTHER_MODELS_SHAME_PCT:-5}"
 export EW_LLM_ROUTINE_INTELLIGENCE="${EW_LLM_ROUTINE_INTELLIGENCE:-single}"
@@ -109,7 +112,7 @@ print('social_ok', soc.get('ok', soc.get('skipped')))
 echo "=== Phase 5b: auto-resolve GitHub merge conflicts (Cursor Pro AI) ==="
 export EW_PR_AUTO_RESOLVE_CONFLICTS="${EW_PR_AUTO_RESOLVE_CONFLICTS:-1}"
 if command -v gh >/dev/null 2>&1; then
-  "$PY" ew_tool.py --resolve-conflicts-all ${EW_PR_DRY_RUN:+--pr-dry-run} || echo "[autonomous] conflict resolution note: $?"
+  "$PY" ew_tool.py --pr-resolve-conflicts ${EW_PR_DRY_RUN:+--pr-dry-run} || echo "[autonomous] conflict resolution note: $?"
 else
   echo "[autonomous] gh not available — skip conflict resolution"
 fi

@@ -17,6 +17,15 @@ from engine.llm_backend import llm_backend
 from engine.llm_model_roster import MODEL, ROSTER, disagreement_severity, escalate_task_model
 from engine.llm_panel import blend_stances, models_disagree, run_panel
 from engine.llm_task_router import TaskKind, max_output_for_task, provider_for_task
+from engine.model_budget_governor import (
+  filter_routes_to_cursor_pro,
+  governor_summary,
+  is_cursor_pro_model,
+  limit_cheap_routes,
+  record_model_call,
+  should_escalate_to_premium,
+  should_use_other_model,
+)
 from engine.llm_budget_policy import allow_premium_escalation
 from engine.token_saver_registry import optimize_prompt_text
 
@@ -29,14 +38,14 @@ def ai_improvement_enabled() -> bool:
 
 
 def use_all_cursor_models() -> bool:
-  """Parallel Cursor Pro screens only — never sweeps Other Models API pool by default."""
+  """When true, sweep every Cursor Pro first-party model (Composer, Grok)."""
   return os.environ.get("EW_USE_ALL_CURSOR_MODELS", "1").lower() not in ("0", "false", "no")
 
 
-def use_cursor_api_pool() -> bool:
-  from engine.llm_budget_policy import use_cursor_api_pool as _api_pool
-
-  return _api_pool()
+def use_other_model_pool() -> bool:
+  """When true, allow GPT/Claude/Gemini API pool (consumes Other Models quota)."""
+  from engine.model_budget_governor import other_model_pool_enabled
+  return other_model_pool_enabled()
 
 
 def cursor_hosted_models() -> List[Dict[str, str]]:
@@ -71,8 +80,8 @@ def cursor_api_pool_models() -> List[str]:
 
 def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
   """
-  Phase 1 — parallel cheap Cursor-hosted screens.
-  Uses every first-party model + optional diverse API slots when EW_USE_ALL_CURSOR_MODELS=1.
+  Phase 1 — parallel cheap Cursor Pro screens only (Composer, Grok).
+  Never uses Other Models — self-improvement stays on Cursor Pro pool.
   """
   task: TaskKind = "workhorse"
   max_out = max_output_for_task(task)
@@ -83,19 +92,9 @@ def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
     provider = provider_for_task(task, model)
     routes.append((provider, model, "cheap", task, max_out))
 
-  if use_all_cursor_models() and use_cursor_api_pool():
-    for model in cursor_api_pool_models():
-      if model in {r[1] for r in routes}:
-        continue
-      tier_meta = ROSTER.get(model, {})
-      roster_tier = tier_meta.get("tier", "workhorse")
-      if roster_tier in ("nano", "workhorse"):
-        provider = provider_for_task(task, model)
-        routes.append((provider, model, "cheap", task, max_out))
-
   if not routes:
     routes.append((provider_for_task(task, MODEL["workhorse_fp"]), MODEL["workhorse_fp"], "cheap", task, max_out))
-  return routes
+  return limit_cheap_routes(filter_routes_to_cursor_pro(routes, purpose="self_improvement"))
 
 
 def improvement_escalation_routes(
@@ -117,7 +116,7 @@ def improvement_escalation_routes(
     routes.append((provider_for_task(task, tb_model), tb_model, "standard", task, max_output_for_task(task)))
 
   if sev == "hard" or metrics_poor:
-    for task_name in ("planning", "synthesis", "architect", "executive"):
+    for task_name in ("planning", "synthesis", "architect"):
       task = task_name  # type: ignore[assignment]
       if not allow_premium_escalation(
         task, verdict, conviction, stances, context="self_improvement", metrics_poor=metrics_poor,
@@ -126,24 +125,9 @@ def improvement_escalation_routes(
       model, _, _ = escalate_task_model(task, verdict, conviction, stances)
       if model in {r[1] for r in routes}:
         continue
-      tier = "premium" if task in ("executive", "architect") else "standard"
-      routes.append((provider_for_task(task, model), model, tier, task, max_output_for_task(task)))
+      routes.append((provider_for_task(task, model), model, "standard", task, max_output_for_task(task)))
 
-  if use_all_cursor_models() and use_cursor_api_pool() and (sev == "hard" or metrics_poor):
-    for model in cursor_api_pool_models():
-      if model in {r[1] for r in routes}:
-        continue
-      tier_meta = ROSTER.get(model, {})
-      if tier_meta.get("tier") in ("standard", "crucial", "flagship"):
-        task = "synthesis" if model == MODEL["sol"] else "tiebreaker"
-        if tier_meta.get("tier") in ("crucial", "flagship"):
-          if not allow_premium_escalation(
-            task, verdict, conviction, stances, context="self_improvement", metrics_poor=metrics_poor,
-          ):
-            continue
-        routes.append((provider_for_task(task, model), model, "standard", task, max_output_for_task(task)))
-
-  return routes
+  return filter_routes_to_cursor_pro(routes, purpose="self_improvement")
 
 
 def _compact_payload(
@@ -214,7 +198,10 @@ def _invoke_routes(
   def _run(route: Tuple[str, str, str, TaskKind, int]) -> Tuple[str, dict]:
     provider, model, tier, task, max_out = route
     key = f"{model}:{task}"
-    return key, call_provider(provider, model, tier, task, max_out)
+    resp = call_provider(provider, model, tier, task, max_out)
+    if resp.get("available") and resp.get("stance"):
+      record_model_call(tier, model)
+    return key, resp
 
   if len(routes) > 1:
     with ThreadPoolExecutor(max_workers=min(len(routes), 6)) as pool:
@@ -272,14 +259,20 @@ def run_multi_model_improvement_review(
   ]
   stances = [r.get("stance") for r in ok_workhorse if r.get("stance")]
   poor = _metrics_poor(metrics)
+  unanimous = len(stances) >= 2 and len(set(stances)) == 1 and stances[0] == "agree"
 
-  # Phase 2: standard ensemble panel (dual screen + tiebreaker)
-  panel = run_panel(prompt, verdict, conviction, call_provider, context="self_improvement")
+  panel: Dict[str, Any] = {"consensus_stance": stances[0] if unanimous else "caution", "skipped": unanimous}
+  if not unanimous:
+    panel = run_panel(
+      prompt, verdict, conviction, call_provider,
+      purpose="self_improvement",
+      metrics_poor=poor,
+    )
 
   # Phase 3: premium specialists only on disagreement or poor metrics
   escalation_responses: Dict[str, dict] = {}
   escalated = False
-  if models_disagree(ok_workhorse) or panel.get("disagreement") or poor:
+  if not unanimous and (models_disagree(ok_workhorse) or panel.get("disagreement") or poor):
     esc_routes = improvement_escalation_routes(verdict, conviction, stances, metrics_poor=poor)
     if esc_routes:
       escalated = True
@@ -321,6 +314,8 @@ def run_multi_model_improvement_review(
     "models_consulted": models_used,
     "backend": llm_backend(),
     "use_all_cursor_models": use_all_cursor_models(),
+    "phase1_unanimous": unanimous,
+    "governor": governor_summary(),
     "cache_hit": False,
   }
 

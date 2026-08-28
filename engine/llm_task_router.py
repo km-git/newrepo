@@ -272,6 +272,7 @@ def routing_matrix() -> Dict[str, Any]:
   from engine.llm_token_saver import token_saver_summary
 
   roster = roster_summary()
+  from engine.llm_model_roster import MODEL as roster_model
   rows = []
   for task in TASK_DESCRIPTIONS:
     tier = tier_for_task(task)
@@ -310,12 +311,12 @@ def routing_matrix() -> Dict[str, Any]:
       "premium (Opus/Fable/Sol) only for executive GO + hard disagree or self-improvement escalation."
     ),
     "crucial_models": {
-      "opus": MODEL["opus"],
-      "fable": MODEL["fable"],
-      "sol": MODEL["sol"],
-      "grok_high": MODEL["grok_high"],
-      "terra": MODEL["mild_tb"],
-      "luna": MODEL["light_plan"],
+      "opus": roster_model["opus"],
+      "fable": roster_model["fable"],
+      "sol": roster_model["sol"],
+      "grok_high": roster_model["grok_high"],
+      "terra": roster_model["mild_tb"],
+      "luna": roster_model["light_plan"],
     },
     "tasks": rows,
     "roster": roster,

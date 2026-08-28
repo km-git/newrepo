@@ -7,7 +7,7 @@ from gateway.web_intel import okx_open_interest, build_web_intel
 
 def test_okx_open_interest_structure(monkeypatch):
   def fake_fetch(url, **kwargs):
-    return {"data": [{"oi": "12345.6", "oiCcy": "12345.6"}]}
+    return {"code": "0", "data": [{"oi": "12345.6", "oiCcy": "12345.6"}]}
 
   monkeypatch.setattr("gateway.web_intel._fetch_json", fake_fetch)
   oi = okx_open_interest("BTC/USDT")

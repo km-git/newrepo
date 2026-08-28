@@ -27,7 +27,7 @@ def cheap_first_enabled() -> bool:
 
 def minimize_gpt_enabled() -> bool:
   """
-  Prefer first-party Cursor models over GPT API slots.
+  Prefer Cursor Pro models over GPT/Claude API pool.
   Default follows EW_CHEAP_FIRST=1; override with EW_MINIMIZE_GPT=0|1.
   """
   raw = os.environ.get("EW_MINIMIZE_GPT", "").lower().strip()

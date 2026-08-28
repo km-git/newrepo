@@ -180,6 +180,8 @@ def _social_source_urls() -> List[str]:
     return [
       "https://www.reddit.com/r/CryptoCurrency/hot.json?limit=15",
       "https://www.reddit.com/r/algotrading/hot.json?limit=10",
+      "https://www.reddit.com/r/ethtrader/hot.json?limit=8",
+      "https://cryptopanic.com/news/rss/",
     ]
   return [u.strip() for u in raw.split(",") if u.strip()]
 

@@ -156,6 +156,7 @@ def build_market_confluence(
     tools["tv_confluence"] = score_tv_confluence(df_p, dir_norm, orderbook=orderbook)
     tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], dir_norm)
     tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], dir_norm)
+    tools["scored_direction"] = dir_norm
 
     from core.tv_market_structure import detect_market_structure, score_market_structure
 

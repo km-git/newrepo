@@ -57,7 +57,7 @@ def get_pr_llm_advisory(
   verdict = executive.get("verdict", "CONDITIONAL_MERGE")
   conviction = executive.get("conviction", "medium")
   prompt = build_pr_advisory_prompt(pr, executive)
-  mode = effective_intelligence_mode("routine")
+  mode = effective_intelligence_mode()
 
   def _call(provider, model, tier, task, max_output):
     return _call_advisory(provider, model, tier, task, max_output, prompt)
@@ -74,7 +74,7 @@ def get_pr_llm_advisory(
       "blended_summary": panel.get("blended_summary"),
     }
   elif mode in ("ensemble", "dual"):
-    panel = run_panel(prompt, verdict, conviction, _call, context="routine")
+    panel = run_panel(prompt, verdict, conviction, _call, purpose="screen")
     result = {
       "consulted": panel.get("consulted", []),
       "consensus_stance": panel.get("consensus_stance"),

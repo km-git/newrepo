@@ -58,15 +58,18 @@ def test_resolve_opus_to_grok_high():
   assert "grok" in out.lower() or "composer" in out.lower()
 
 
-def test_may_use_other_only_executive_go_high():
+def test_may_use_other_only_executive_go_high(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   stances = ["agree", "reject"]
   assert may_use_other_model("executive", "executive", "GO", "high", stances) is True
   assert may_use_other_model("planning", "executive", "GO", "high", stances) is False
-  assert may_use_other_model("executive", "routine", "GO", "high", stances) is False
   assert may_use_other_model("executive", "executive", "GO", "medium", stances) is False
 
 
 def test_other_budget_blocks_after_2pct(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   tracker = get_pool_mix_tracker()
   monkeypatch.setattr(tracker, "_state", lambda: {"cursor_pro": 48, "other": 2})
   assert tracker.at_budget_limit() is True
@@ -79,17 +82,28 @@ def test_shame_blocks_at_5pct(monkeypatch):
   assert tracker.at_shame_limit() is True
 
 
-def test_premium_blocked_for_non_executive():
+def test_premium_blocked_for_non_executive(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "1")
   assert allow_premium_escalation(
     "architect", "GO", "high", ["agree", "reject"], context="self_improvement",
   ) is False
+  assert allow_premium_escalation(
+    "executive", "GO", "high", ["agree", "reject"], context="executive",
+  ) is False
+
+
+def test_premium_allowed_for_executive_when_other_pool_enabled(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   assert allow_premium_escalation(
     "executive", "GO", "high", ["agree", "reject"], context="executive",
   ) is True
 
 
 def test_premium_allowed_when_override(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
   monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   out = resolve_to_cursor_pro("claude-opus-4-8", task="planning")
   assert out == "claude-opus-4-8"

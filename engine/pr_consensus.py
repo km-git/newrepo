@@ -98,8 +98,24 @@ def run_pr_executive_consensus(
       result["github_actions"].append(comment_pr(pr_number, slug, actions["comment_body"]))
 
     if actions.get("merge"):
-      result["github_actions"].append(merge_pr(pr_number, slug))
-      print(f"[pr] merged #{pr_number} ({executive['verdict']})")
+      try:
+        result["github_actions"].append(merge_pr(pr_number, slug))
+        print(f"[pr] merged #{pr_number} ({executive['verdict']})")
+      except RuntimeError as merge_err:
+        err = str(merge_err).lower()
+        if "conflict" in err and os.environ.get("EW_PR_AUTO_RESOLVE_CONFLICTS", "1").lower() not in ("0", "false", "no"):
+          from engine.pr_merge_conflict import resolve_pr_conflicts
+
+          print(f"[pr] merge blocked by conflicts — auto-resolving #{pr_number}")
+          resolved = resolve_pr_conflicts(pr_number, slug, dry_run=False)
+          result["conflict_resolution"] = resolved
+          if resolved.get("resolved"):
+            result["github_actions"].append(merge_pr(pr_number, slug))
+            print(f"[pr] merged #{pr_number} after conflict resolution")
+          else:
+            result["error"] = resolved.get("error") or str(merge_err)
+        else:
+          raise
     else:
       print(
         f"[pr] reviewed #{pr_number}: verdict={executive['verdict']} "

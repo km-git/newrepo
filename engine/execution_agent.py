@@ -16,6 +16,20 @@ from engine.risk_ops import emergency_flatten, is_halted, update_equity
 from gateway.data_hub import live_market_state
 
 
+def filter_by_executive_action(
+  rows: List[dict],
+  *,
+  allowed: Optional[frozenset] = None,
+) -> List[dict]:
+  """Drop export rows that the executive board marked as watch-only."""
+  if os.environ.get("EW_EXECUTIVE_FILTER", "1").lower() in ("0", "false", "no"):
+    return rows
+  from engine.executive_board import TRADABLE_EXECUTIVE_ACTIONS
+
+  allowed = allowed or TRADABLE_EXECUTIVE_ACTIONS
+  return [r for r in rows if r.get("executive_action") in allowed]
+
+
 def load_export_csv(path: str = "") -> List[dict]:
   p = Path(path or os.environ.get("EW_LIMIT_ORDERS_CSV", "output/latest_limit_orders_all_tf.csv"))
   if not p.exists():
@@ -82,12 +96,14 @@ def execute_rows(
 
   broker = get_broker()
   all_executable = filter_executable_rows(rows)
+  all_executable = filter_by_executive_action(all_executable)
   consensus_report: Optional[Dict[str, Any]] = None
   executable = all_executable
   if os.environ.get("EW_EXECUTION_CONSENSUS", "1").lower() not in ("0", "false", "no"):
     from engine.execution_consensus import review_executable_rows
 
-    consensus_report = review_executable_rows(all_executable, use_llm=True)
+    llm_on = os.environ.get("EW_EXECUTION_CONSENSUS_LLM", "0").lower() not in ("0", "false", "no")
+    consensus_report = review_executable_rows(all_executable, use_llm=llm_on)
     executable = consensus_report["allowed_rows"]
     print(
       f"[execute] consensus: {consensus_report['allowed']}/{consensus_report['total']} allowed "

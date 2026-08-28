@@ -763,6 +763,8 @@ def export_limit_orders(
   write_json: bool = False,
   account_equity: Optional[float] = None,
   usdt_d_pct: Optional[float] = None,
+  board: Optional[dict] = None,
+  filter_executive: Optional[bool] = None,
 ) -> dict:
   """Write pair×TF GTC limit order CSV + JSON summary."""
   output_dir = Path(output_dir)
@@ -780,6 +782,19 @@ def export_limit_orders(
   ctx.historical_metrics = metrics
   ts = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
   rows = build_all_limit_orders(results, ctx=ctx)
+
+  executive_filtered = 0
+  if board:
+    from engine.executive_board import filter_rows_by_executive_action, stamp_executive_on_export_rows
+
+    rows = stamp_executive_on_export_rows(rows, board)
+    do_filter = filter_executive
+    if do_filter is None:
+      do_filter = os.environ.get("EW_EXECUTIVE_EXPORT_FILTER", "1").lower() not in ("0", "false", "no")
+    if do_filter:
+      before = len(rows)
+      rows = filter_rows_by_executive_action(rows)
+      executive_filtered = before - len(rows)
 
   recorded = record_setups(rows)
   metrics["newly_recorded"] = recorded
@@ -823,6 +838,8 @@ def export_limit_orders(
     "macro": ctx.macro_eval,
     "high_beta_symbols": ctx.high_beta_symbols,
     "contingent_rows": sum(1 for r in rows if r.get("row_type") == "contingent_scenario"),
+    "executive_filtered_rows": executive_filtered,
+    "executive_board_applied": bool(board),
     "historical_learning": {
       "resolved": resolved,
       "newly_recorded": recorded,

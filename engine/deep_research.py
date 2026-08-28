@@ -101,7 +101,7 @@ def run_deep_research(
     try:
       from engine.social_strategy_validation import run_social_strategy_validation
 
-      social = run_social_strategy_validation(use_llm=use_ai)
+      social = run_social_strategy_validation(use_llm=use_ai and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true"))
     except Exception as exc:
       social = {"error": str(exc)}
 
@@ -110,7 +110,8 @@ def run_deep_research(
     try:
       from engine.tv_oss_consensus import run_tv_oss_consensus
 
-      tv_oss = run_tv_oss_consensus(use_llm=use_ai)
+      tv_llm = use_ai and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      tv_oss = run_tv_oss_consensus(use_llm=tv_llm)
     except Exception as exc:
       tv_oss = {"error": str(exc)}
 

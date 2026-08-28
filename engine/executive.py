@@ -162,6 +162,30 @@ def _apply_consensus(
   return direction, confidence, "; ".join(note_parts)
 
 
+def _finalize_tv_oss(
+  decision: dict,
+  data: Dict[str, pd.DataFrame],
+  direction: str,
+  market_tools: Optional[dict],
+) -> dict:
+  """Apply TV OSS + free-data executive layer when market_tools provided."""
+  if not market_tools:
+    return decision
+  try:
+    from engine.executive_tv_oss import (
+      apply_tv_oss_to_decision,
+      build_tv_executive_context,
+      tv_oss_executive_enabled,
+    )
+
+    if not tv_oss_executive_enabled():
+      return decision
+    ctx = build_tv_executive_context(direction, data, market_tools)
+    return apply_tv_oss_to_decision(decision, ctx)
+  except Exception:
+    return decision
+
+
 def executive_decide(
   symbol: str,
   data: Dict[str, pd.DataFrame],
@@ -178,6 +202,7 @@ def executive_decide(
   violations_sample: List[str],
   mc_result: Optional[dict] = None,
   consensus: Optional[dict] = None,
+  market_tools: Optional[dict] = None,
 ) -> dict:
   """
   Expert trader decision maker. Never returns no_trade — always a playbook.
@@ -220,7 +245,7 @@ def executive_decide(
     levels = _build_levels(direction, kz_low, kz_high, atr_15m, current)
     action = f"execute_{levels['action_base']}"
     conviction = "high" if exec_consensus.get("conviction") in ("high", "medium") else "high"
-    return {
+    return _finalize_tv_oss({
       "status": "execute",
       "trade_setup": {
         "action": action,
@@ -245,7 +270,7 @@ def executive_decide(
           {"if": "TP1 hit", "then": "move stop to breakeven, trail remainder"},
         ],
       },
-    }
+    }, data, direction, market_tools)
 
   # --- Tier 2: In zone but impulse not validated — conditional execute ---
   if in_zone and not execution_passes:
@@ -254,7 +279,7 @@ def executive_decide(
       direction, confidence, consensus, execution_passes, structural_gaps
     )
     levels = _build_levels(direction, kz_low, kz_high, atr_15m, current)
-    return {
+    return _finalize_tv_oss({
       "status": "conditional_execute",
       "trade_setup": {
         "action": f"conditional_{levels['action_base']}",
@@ -284,7 +309,7 @@ def executive_decide(
           {"if": "harmonic PRZ forms in zone", "then": "upgrade to full execute"},
         ],
       },
-    }
+    }, data, direction, market_tools)
 
   # --- Tier 3: Harmonics present, price not in zone — active monitor with entry orders ---
   if harmonic_overlaps and not in_zone:
@@ -295,7 +320,7 @@ def executive_decide(
       direction, confidence, consensus, execution_passes, structural_gaps
     )
     h_levels = _build_levels(direction, prz[0], prz[1], atr_15m, current)
-    return {
+    return _finalize_tv_oss({
       "status": "active_monitor",
       "trade_setup": {
         "action": f"prepare_{h_levels['action_base']}",
@@ -324,7 +349,7 @@ def executive_decide(
           {"if": "price blows through PRZ without reaction", "then": "cancel limits, switch to staged fib plan"},
         ],
       },
-    }
+    }, data, direction, market_tools)
 
   # --- Tier 4: No ideal setup — staged entry using fib + kill zone pathway ---
   staged = _staged_legs(direction, current, kz_low, kz_high, fib_low, fib_high, atr_15m)
@@ -335,7 +360,7 @@ def executive_decide(
   primary = _build_levels(direction, fib_low, fib_high, atr_15m, current)
   staged = _staged_legs(direction, current, kz_low, kz_high, fib_low, fib_high, atr_15m)
 
-  return {
+  return _finalize_tv_oss({
     "status": "staged_entry",
     "trade_setup": {
       "action": f"scale_{primary['action_base']}",
@@ -384,4 +409,4 @@ def executive_decide(
         },
       },
     },
-  }
+  }, data, direction, market_tools)

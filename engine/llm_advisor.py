@@ -33,6 +33,7 @@ from engine.llm_panel import (
   effective_intelligence_mode,
   run_panel,
 )
+from engine.model_budget_governor import record_model_call
 from engine.llm_cost import attach_cost_estimate
 from engine.llm_backend import advisory_credentials_available, credentials_hint, llm_backend
 from engine.llm_cursor import call_cursor_provider_advisory
@@ -190,22 +191,13 @@ def _call_advisory(
   task: str,
   max_output: int,
   prompt: str,
-  *,
-  context: str = "routine",
-  verdict: str = "",
-  conviction: str = "",
-  stances: Optional[List[str]] = None,
 ) -> dict:
-  from engine.llm_budget_policy import resolve_to_cursor_pro
-  from engine.llm_token_saver import get_pool_mix_tracker
+  from engine.model_budget_governor import purpose_from_task, route_model_for_task
 
-  model = resolve_to_cursor_pro(
-    model,
-    task=task,
-    context=context,  # type: ignore[arg-type]
-    verdict=verdict,
-    conviction=conviction,
-    stances=stances,
+  purpose = purpose_from_task(task)
+  model, tier, _substituted = route_model_for_task(
+    model, tier, purpose=purpose,
+    force_critical=(purpose == "executive"),
   )
   budget = get_model_budget()
   if budget.at_limit(model):
@@ -232,22 +224,49 @@ def _call_advisory(
     resp = call_openai_advisory(prompt, model, capped)
   else:
     resp = call_anthropic_advisory(prompt, model, capped)
+
+  from engine.model_budget_governor import (
+    cursor_fallback_enabled,
+    cursor_substitute_for,
+    is_other_model,
+    record_model_call,
+  )
+
+  if (
+    cursor_fallback_enabled()
+    and is_other_model(model)
+    and not resp.get("available")
+    and not resp.get("cursor_fallback")
+  ):
+    sub = cursor_substitute_for(model)
+    if sub != model:
+      sub_tier = "standard" if tier == "premium" else tier
+      if llm_backend() == "cursor":
+        resp = call_cursor_provider_advisory(
+          provider_for_task(task, sub), sub, sub_tier, prompt, task=task, max_output=capped,
+        )
+      elif provider == "openai":
+        resp = call_openai_advisory(prompt, sub, capped)
+      else:
+        resp = call_anthropic_advisory(prompt, sub, capped)
+      if resp.get("available"):
+        resp["cursor_fallback"] = True
+        resp["fallback_from"] = model
+        model = sub
+        tier = sub_tier
+
   if resp.get("available") and resp.get("stance"):
     budget.record(model, usage_from_response(resp, prompt, capped))
-    get_pool_mix_tracker().record(model)
+    record_model_call(tier, model)
   return resp
 
 
-def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai", *, context: str = "executive") -> dict:
+def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai") -> dict:
   """
   Run a named task (architect, planning, synthesis, etc.) with correct tier + token cap.
-  Premium tasks gated by cheap-first budget policy unless context warrants escalation.
+  Use for RepoMix review, batch synthesis, executive planning — not routine screen.
   """
-  from engine.llm_budget_policy import allow_premium_escalation, is_premium_task
-
   model, tier, max_out = resolve_model(provider_for_task(task), task)  # type: ignore[arg-type]
-  if is_premium_task(task) and not allow_premium_escalation(task, context=context):  # type: ignore[arg-type]
-    model, tier, max_out = resolve_model(provider_for_task("workhorse"), "workhorse")  # type: ignore[arg-type]
   return _call_advisory(provider_for_task(task), model, tier, task, max_out, prompt)
 
 
@@ -265,7 +284,7 @@ def get_llm_advisory(
   verdict = executive.get("verdict", "")
   conviction = executive.get("conviction", "")
   fp = structure_fingerprint(symbol, executive, consensus, wave_structure)
-  mode = effective_intelligence_mode("executive")
+  mode = effective_intelligence_mode()
   routes = cheap_screen_routes(verdict, conviction) if mode in ("ensemble", "dual") else routing_plan(verdict, conviction)
   cache_key = (
     llm_backend(),
@@ -317,7 +336,10 @@ def get_llm_advisory(
     def _call_provider(provider: str, model: str, tier: str, task: str, max_output: int) -> dict:
       return _call_advisory(provider, model, tier, task, max_output, prompt)
 
-    panel = run_panel(prompt, verdict, conviction, _call_provider, context="executive")
+    panel = run_panel(
+      prompt, verdict, conviction, _call_provider,
+      purpose="executive",
+    )
     responses = panel["screen"]
     result = {
       "critical": True,

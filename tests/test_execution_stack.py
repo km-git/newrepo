@@ -20,6 +20,7 @@ def _row(**kwargs):
     "honest_execution_tier": "probe",
     "gtc_size_cap_pct": 50,
     "executive_verdict": "CONDITIONAL_GO",
+    "executive_action": "EXECUTE_CAUTION",
     "macro_mode": "NEUTRAL",
     "stop_loss": 95000,
     "tp1": 105000,

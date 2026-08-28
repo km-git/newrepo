@@ -77,15 +77,23 @@ def main() -> None:
     help="Run executive consensus on all open PRs",
   )
   parser.add_argument(
+    "--pr-resolve-conflicts",
+    type=int,
+    nargs="?",
+    const=0,
+    metavar="N",
+    help="Auto-resolve merge conflicts for PR N (omit N with flag alone for all open PRs)",
+  )
+  parser.add_argument(
     "--resolve-conflicts",
     type=int,
     metavar="N",
-    help="Auto-resolve merge conflicts on PR N using Cursor Pro AI, then push",
+    help="Alias for --pr-resolve-conflicts N",
   )
   parser.add_argument(
     "--resolve-conflicts-all",
     action="store_true",
-    help="Auto-resolve merge conflicts on all conflicted open PRs",
+    help="Alias for --pr-resolve-conflicts (all open PRs)",
   )
   parser.add_argument(
     "--brain-ask",
@@ -276,6 +284,16 @@ def main() -> None:
       sys.exit(1)
     return
 
+  if args.pr_resolve_conflicts is not None:
+    from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
+
+    if args.pr_resolve_conflicts == 0:
+      result = resolve_open_pr_conflicts(dry_run=args.pr_dry_run)
+    else:
+      result = resolve_pr_conflicts(args.pr_resolve_conflicts, dry_run=args.pr_dry_run)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
   if args.pr_approve is not None or args.pr_approve_all:
     from engine.pr_agent import run_pr_agent
 
@@ -288,12 +306,12 @@ def main() -> None:
     return
 
   if args.resolve_conflicts is not None or args.resolve_conflicts_all:
-    from engine.merge_conflict_resolver import resolve_all_pr_conflicts, resolve_pr_conflicts
+    from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
 
     if args.resolve_conflicts_all:
-      result = resolve_all_pr_conflicts(dry_run=args.pr_dry_run, use_ai=True)
+      result = resolve_open_pr_conflicts(dry_run=args.pr_dry_run)
     else:
-      result = resolve_pr_conflicts(args.resolve_conflicts, dry_run=args.pr_dry_run, use_ai=True)
+      result = resolve_pr_conflicts(args.resolve_conflicts, dry_run=args.pr_dry_run)
     print(json.dumps(result, indent=2, default=str))
     return
 
