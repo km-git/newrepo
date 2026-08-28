@@ -37,8 +37,10 @@ def test_compact_prompt_smaller_than_legacy(monkeypatch):
 
 def test_auto_selects_single_provider(monkeypatch):
   monkeypatch.setenv("EW_LLM_PROVIDER", "auto")
+  monkeypatch.setenv("EW_LLM_BACKEND", "direct")
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+  monkeypatch.delenv("CURSOR_API_KEY", raising=False)
   assert select_providers() == ["openai"]
 
 
@@ -58,7 +60,10 @@ def test_cheap_tier_default(monkeypatch):
 
 def test_routing_plan_single_route(monkeypatch):
   monkeypatch.setenv("EW_LLM_PROVIDER", "openai")
+  monkeypatch.setenv("EW_LLM_BACKEND", "direct")
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+  monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+  monkeypatch.delenv("CURSOR_API_KEY", raising=False)
   routes = routing_plan("GO", "high")
   assert len(routes) == 1
   assert routes[0][0] == "openai"

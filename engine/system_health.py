@@ -45,7 +45,6 @@ def run_health_checks() -> Dict[str, Any]:
   )
   for name, path in [
     ("metrics", "output/autodream/metrics.json"),
-    ("scheduler", "output/autodream/scheduler_state.json"),
     ("limit_csv", "output/latest_limit_orders_all_tf.csv"),
   ]:
     p = Path(path)
@@ -55,6 +54,17 @@ def run_health_checks() -> Dict[str, Any]:
       checks.append(_fail(name, "missing", path=str(p)))
     else:
       checks.append(_ok(name, "skipped (CI)", path=str(p), optional=True))
+
+  sched_paths = [
+    Path("output/autodream/scheduler_state.json"),
+    Path("output/autodream/monitor_queue.json"),
+  ]
+  if any(p.exists() for p in sched_paths):
+    checks.append(_ok("scheduler", "exists"))
+  elif require_artifacts:
+    checks.append(_fail("scheduler", "missing", path=str(sched_paths[0])))
+  else:
+    checks.append(_ok("scheduler", "skipped (CI)", optional=True))
 
   # OKF brain
   try:

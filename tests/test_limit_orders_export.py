@@ -125,15 +125,16 @@ def test_build_limit_order_row_includes_notional_sizing():
 
 
 def test_build_all_limit_orders_row_count():
-  results = [_sample_result("A/USDT"), _sample_result("B/USDT")]
+  results = [_sample_result("BTC/USDT"), _sample_result("ETH/USDT")]
   rows = build_all_limit_orders(results)
-  assert len(rows) == 2 * len(ALL_TIMEFRAMES)
+  primaries = [r for r in rows if r.get("row_type", "primary") == "primary"]
+  assert len(primaries) == 2 * len(ALL_TIMEFRAMES)
 
 
 def test_export_limit_orders_writes_csv(tmp_path: Path):
-  results = [_sample_result("A/USDT"), _sample_result("B/USDT")]
+  results = [_sample_result("BTC/USDT"), _sample_result("ETH/USDT")]
   meta = export_limit_orders(results, output_dir=tmp_path, write_json=True)
-  assert meta["row_count"] == 2 * len(ALL_TIMEFRAMES)
+  assert meta["row_count"] >= 2 * len(ALL_TIMEFRAMES)
   assert meta["expected_rows"] == 250
   assert meta["account_equity"] == 10_000.0
   assert Path(meta["csv"]).exists()

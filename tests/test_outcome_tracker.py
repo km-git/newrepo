@@ -57,6 +57,43 @@ def test_record_setups_dedupes_open(tmp_path: Path, monkeypatch):
   assert record_setups(rows) == 0
 
 
+def test_skips_fixture_symbols_and_resolves_invalid(tmp_path: Path, monkeypatch):
+  monkeypatch.setattr("engine.outcome_tracker.TRACKED_PATH", tmp_path / "tracked.json")
+  assert record_setups([
+    {
+      "row_type": "primary",
+      "symbol": "B/USDT",
+      "timeframe": "1h",
+      "direction": "LONG",
+      "gtc_tier": "executable",
+      "wae": 1,
+      "stop_loss": 0.9,
+      "tp1": 1.1,
+    },
+  ]) == 0
+  tmp_path.joinpath("tracked.json").write_text(
+    json.dumps({
+      "open": [{
+        "id": "B/USDT|1h|LONG",
+        "symbol": "B/USDT",
+        "timeframe": "1h",
+        "direction": "LONG",
+        "wae": 1,
+        "stop_loss": 0.9,
+        "tp1": 1.1,
+        "recorded_at": "2026-01-01T00:00:00+00:00",
+        "status": "open",
+      }],
+      "closed": [],
+    }),
+    encoding="utf-8",
+  )
+  assert resolve_open_setups(is_crypto=True) == 1
+  state = json.loads(tmp_path.joinpath("tracked.json").read_text())
+  assert state["open"] == []
+  assert state["closed"][0]["status"] == "invalid_symbol"
+
+
 def test_feedback_downgrades_poor_history():
   metrics = {
     "by_pair_tf": {
