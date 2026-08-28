@@ -155,6 +155,22 @@ def executive_setup_score(
     score -= 5
 
   floor = _baseline_score(setup, style)
+
+  try:
+    from engine.executive_intel import executive_intel_enabled, setup_intel_boost
+
+    if executive_intel_enabled():
+      boost, intel_tags = setup_intel_boost(
+        setup=setup,
+        symbol=str(setup.get("symbol") or ""),
+        direction=str(setup.get("direction") or ""),
+        market_tools=setup.get("_market_tools"),
+      )
+      score += boost
+      tags.extend(intel_tags)
+  except ImportError:
+    pass
+
   return min(100, max(floor, score)), tags
 
 

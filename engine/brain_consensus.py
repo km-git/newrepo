@@ -115,6 +115,7 @@ def ask_brain(
         verdict="GO",
         conviction="medium",
         call_provider=make_prompt_call_provider(prompt),
+        context="self_improvement",
       )
     else:
       panel = _stub_panel(prompt)

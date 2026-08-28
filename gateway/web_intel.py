@@ -119,6 +119,64 @@ def scrape_page_text(url: str, max_chars: int = 4000) -> Dict[str, Any]:
     return {"available": False, "url": url, "error": str(e)}
 
 
+def okx_funding_public(symbol: str = "BTC/USDT") -> Dict[str, Any]:
+  """OKX public funding rate — fallback when Binance returns 451."""
+  sym = symbol.replace("/", "-").upper()
+  if not sym.endswith("-USDT"):
+    sym += "-USDT"
+  inst = f"{sym}-SWAP"
+  data = _fetch_json(
+    f"https://www.okx.com/api/v5/public/funding-rate?instId={inst}",
+    host="www.okx.com",
+  )
+  if not data or data.get("error"):
+    return {"available": False, "source": "okx"}
+  rows = data.get("data") or []
+  if not rows:
+    return {"available": False, "source": "okx"}
+  row = rows[0]
+  try:
+    rate = float(row.get("fundingRate") or 0)
+  except (TypeError, ValueError):
+    rate = 0.0
+  return {
+    "available": True,
+    "symbol": inst,
+    "funding_rate": rate,
+    "funding_rate_pct": round(rate * 100, 4),
+    "source": "okx",
+  }
+
+
+def okx_open_interest(symbol: str = "BTC/USDT") -> Dict[str, Any]:
+  """OKX public open interest (USDT swaps)."""
+  sym = symbol.replace("/", "-").upper()
+  if not sym.endswith("-USDT"):
+    sym += "-USDT"
+  inst = f"{sym}-SWAP"
+  data = _fetch_json(
+    f"https://www.okx.com/api/v5/public/open-interest?instId={inst}",
+    host="www.okx.com",
+  )
+  if not data or data.get("error"):
+    return {"available": False, "source": "okx"}
+  rows = data.get("data") or []
+  if not rows:
+    return {"available": False, "source": "okx"}
+  row = rows[0]
+  try:
+    oi = float(row.get("oi") or row.get("oiCcy") or 0)
+  except (TypeError, ValueError):
+    oi = 0.0
+  return {
+    "available": True,
+    "symbol": inst,
+    "open_interest": oi,
+    "open_interest_usd": oi,
+    "source": "okx",
+  }
+
+
 def build_web_intel(symbol: str = "") -> Dict[str, Any]:
   """Aggregate web/API intel for execution pre-flight."""
   intel: Dict[str, Any] = {
@@ -126,7 +184,17 @@ def build_web_intel(symbol: str = "") -> Dict[str, Any]:
     "global": coingecko_global(),
   }
   if symbol:
-    intel["funding_binance"] = binance_funding_public(symbol)
+    fb = binance_funding_public(symbol)
+    intel["funding_binance"] = fb
+    intel["funding_okx"] = okx_funding_public(symbol)
+    intel["open_interest"] = okx_open_interest(symbol)
+    # Prefer OKX funding when Binance blocked
+    if not fb.get("available") and intel["funding_okx"].get("available"):
+      intel["funding"] = intel["funding_okx"]
+    elif fb.get("available"):
+      intel["funding"] = fb
+    else:
+      intel["funding"] = intel.get("funding_okx") or {"available": False}
   signals: List[str] = []
   fg = intel["fear_greed"]
   if fg.get("available"):
@@ -134,5 +202,8 @@ def build_web_intel(symbol: str = "") -> Dict[str, Any]:
   gl = intel["global"]
   if gl.get("available"):
     signals.append(f"BTC.D {gl.get('btc_dominance')}%")
+  oi = intel.get("open_interest") or {}
+  if oi.get("available") and oi.get("open_interest"):
+    signals.append(f"OI {oi['open_interest']:,.0f}")
   intel["signals"] = signals
   return intel

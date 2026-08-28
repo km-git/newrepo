@@ -221,12 +221,16 @@ def _call_advisory(
   return resp
 
 
-def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai") -> dict:
+def call_llm_task(task: TaskKind, prompt: str, provider: str = "openai", *, context: str = "executive") -> dict:
   """
   Run a named task (architect, planning, synthesis, etc.) with correct tier + token cap.
-  Use for RepoMix review, batch synthesis, executive planning — not routine screen.
+  Premium tasks gated by cheap-first budget policy unless context warrants escalation.
   """
+  from engine.llm_budget_policy import allow_premium_escalation, is_premium_task
+
   model, tier, max_out = resolve_model(provider_for_task(task), task)  # type: ignore[arg-type]
+  if is_premium_task(task) and not allow_premium_escalation(task, context=context):  # type: ignore[arg-type]
+    model, tier, max_out = resolve_model(provider_for_task("workhorse"), "workhorse")  # type: ignore[arg-type]
   return _call_advisory(provider_for_task(task), model, tier, task, max_out, prompt)
 
 

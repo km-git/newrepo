@@ -39,6 +39,8 @@ CANDIDATE_SOURCES: Tuple[Dict[str, str], ...] = (
   {"id": "social_forum_rejected", "category": "sentiment", "desc": "Forum hype rejected by consensus"},
   {"id": "btc_correlation_filter", "category": "macro", "desc": "BTC correlation alignment"},
   {"id": "orderbook_imbalance", "category": "microstructure", "desc": "Bid/ask imbalance supports trade"},
+  {"id": "open_interest_available", "category": "derivatives", "desc": "OKX open interest snapshot available"},
+  {"id": "market_structure_aligned", "category": "structure", "desc": "BOS/CHoCH aligned with direction"},
   {"id": "cvd_aligned", "category": "microstructure", "desc": "CVD slope aligned with direction"},
   {"id": "cvd_divergence", "category": "microstructure", "desc": "CVD divergence confirms reversal"},
   {"id": "volume_profile_poc", "category": "microstructure", "desc": "Price at VP POC / value area edge"},

@@ -118,4 +118,10 @@ def enrich_market_tools(symbol: str, data: Dict[str, pd.DataFrame], tools: dict)
       sig = f"social validated: {c.get('name')}"
       tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [sig]
       tools["confluence_boost"] = min(int(tools.get("confluence_boost", 0)) + 2, 25)
+  oi = (state.get("web_intel") or {}).get("open_interest") or {}
+  if oi.get("available"):
+    tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [
+      f"OI {oi.get('open_interest', 0):,.0f}"
+    ]
+    tools["confluence_boost"] = min(int(tools.get("confluence_boost", 0)) + 2, 28)
   return tools

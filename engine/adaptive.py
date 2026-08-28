@@ -300,7 +300,10 @@ def adaptive_pipeline(
       btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
     except Exception:
       pass
-  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
+  market_tools = build_market_confluence(
+    symbol, data, tfs, btc_1d=btc_1d,
+    direction=executive.get("direction", exec_direction),
+  )
   try:
     from gateway.data_hub import enrich_market_tools
     market_tools = enrich_market_tools(symbol, data, market_tools)
