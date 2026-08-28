@@ -81,6 +81,16 @@ def row_risk_pct(row: dict, equity: Optional[float] = None) -> float:
     return 0.0
 
 
+def _row_equity(row: dict, state: PortfolioState) -> float:
+  eq = row.get("account_equity")
+  try:
+    if eq and float(eq) > 0:
+      return float(eq)
+  except (TypeError, ValueError):
+    pass
+  return state.equity
+
+
 @dataclass
 class PortfolioState:
   equity: float = 10_000.0
@@ -149,7 +159,8 @@ def portfolio_heat_multiplier(state: PortfolioState, row: dict) -> Tuple[float, 
   factors: List[str] = []
   max_heat = max_portfolio_heat_pct()
   max_cluster = max_cluster_heat_pct()
-  proposed = row_risk_pct(row, state.equity)
+  eq = _row_equity(row, state)
+  proposed = row_risk_pct(row, eq)
   projected = state.total_heat_pct + proposed
 
   if projected >= max_heat:

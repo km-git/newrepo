@@ -123,6 +123,11 @@ def main() -> None:
     help="Show portfolio heat, cluster exposure, and hedge status",
   )
   parser.add_argument(
+    "--effectiveness",
+    action="store_true",
+    help="Run full effectiveness validation (win rate, paper P&L, fitness gates)",
+  )
+  parser.add_argument(
     "--data-intel",
     metavar="SYMBOL",
     help="Fetch WS + web intel snapshot for symbol",
@@ -325,6 +330,12 @@ def main() -> None:
     from engine.portfolio_risk import portfolio_risk_status
     print(json.dumps(portfolio_risk_status(), indent=2, default=str))
     return
+
+  if args.effectiveness:
+    from engine.effectiveness_validation import run_effectiveness_validation
+    report = run_effectiveness_validation()
+    print(json.dumps(report.to_dict(), indent=2, default=str))
+    sys.exit(0 if report.ok else 1)
 
   if args.data_intel:
     from gateway.data_hub import live_market_state

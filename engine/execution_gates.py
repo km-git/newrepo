@@ -10,7 +10,7 @@ def execution_gates_enabled() -> bool:
   return os.environ.get("EW_EXECUTION_GATES", "1").lower() not in ("0", "false", "no")
 
 
-def gate_row(row: dict, *, intel: Optional[dict] = None) -> Tuple[bool, List[str]]:
+def gate_row(row: dict, *, intel: Optional[dict] = None, portfolio_state=None) -> Tuple[bool, List[str]]:
   """
   Returns (allowed, reasons).
   Never bypasses honest gates — only adds macro/risk/intel blocks.
@@ -62,7 +62,7 @@ def gate_row(row: dict, *, intel: Optional[dict] = None) -> Tuple[bool, List[str
     from engine.portfolio_risk import gate_portfolio_heat, portfolio_risk_enabled
 
     if portfolio_risk_enabled():
-      allowed_heat, heat_reasons = gate_portfolio_heat(row)
+      allowed_heat, heat_reasons = gate_portfolio_heat(row, portfolio_state)
       if not allowed_heat:
         reasons.extend(heat_reasons)
         return False, reasons

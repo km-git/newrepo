@@ -130,7 +130,7 @@ def gate_paper_row(
   portfolio_state=None,
 ) -> Tuple[bool, List[str]]:
   """Honest export gates + paper portfolio rules."""
-  allowed, reasons = gate_row(row, intel={})
+  allowed, reasons = gate_row(row, intel={}, portfolio_state=portfolio_state)
   if not allowed:
     return False, reasons
 
@@ -143,20 +143,6 @@ def gate_paper_row(
 
   if open_positions >= max_positions():
     return False, [f"max_positions={max_positions()}"]
-
-  try:
-    from engine.portfolio_risk import PortfolioState, gate_portfolio_heat, portfolio_risk_enabled
-
-    if portfolio_risk_enabled():
-      state = portfolio_state if portfolio_state is not None else None
-      if state is None:
-        from engine.portfolio_risk import load_portfolio_state
-        state = load_portfolio_state()
-      allowed_heat, heat_reasons = gate_portfolio_heat(row, state)
-      if not allowed_heat:
-        return False, heat_reasons
-  except Exception:
-    pass
 
   legs = extract_legs(row)
   if not legs:
@@ -398,12 +384,25 @@ def run_paper_simulation(
   selected: List[dict] = []
   blocked: List[dict] = []
   open_count = 0
+  portfolio_state = None
+  try:
+    from engine.portfolio_risk import PortfolioState, apply_portfolio_risk_to_row, portfolio_risk_enabled
+    if portfolio_risk_enabled():
+      portfolio_state = PortfolioState(equity=equity)
+  except Exception:
+    portfolio_state = None
 
   for row in ranked:
-    ok, reasons = gate_paper_row(row, open_positions=open_count)
+    ok, reasons = gate_paper_row(row, open_positions=open_count, portfolio_state=portfolio_state)
     if ok:
       selected.append(row)
       open_count += 1
+      if portfolio_state is not None:
+        try:
+          from engine.portfolio_risk import apply_portfolio_risk_to_row
+          apply_portfolio_risk_to_row(row, portfolio_state, update_state=True)
+        except Exception:
+          pass
     else:
       blocked.append({
         "symbol": row.get("symbol"),

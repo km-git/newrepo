@@ -64,6 +64,10 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   `python3 ew_tool.py --e2e-cycle --e2e-batch 50` or `python3 scripts/e2e_trading_cycle.py`.
   Daemon: `./scripts/run_e2e_daemon.sh`. Status: `--e2e-status`, `--health`.
   CI: `.github/workflows/ci.yml` + scheduled `.github/workflows/e2e-improvement.yml`.
+- **Effectiveness validation:** Prove geometry edge + fee-adjusted expectancy on resolved setups.
+  CLI: `python3 ew_tool.py --effectiveness` or `PYTHONPATH=/workspace python3 scripts/run_effectiveness_validation.py`.
+  Fast (no live OHLC paper): `--fast`. Reports: `reports/EFFECTIVENESS_VALIDATION.md`, `output/system/effectiveness_latest.json`.
+  Gates: pytest subset, outcome WR ≥55%, 1h WR ≥70%, fitness ≥0.45, tracked fee backtest (WR + R expectancy), impact discovery, health.
 - **Nightly AutoResearch:** Top-N batch → `--autoresearch-eval` → goal-mode quick.
   Script: `bash scripts/run_nightly_autoresearch.sh` (`EW_NIGHTLY_BATCH_N`, default 15).
   Workflow: `.github/workflows/autoresearch-nightly.yml` (03:00 UTC + manual dispatch); artifacts: `output/nightly/`, `experiments.jsonl`.
