@@ -74,6 +74,19 @@ def test_gate_allows_executable():
   assert ok is True
 
 
+def test_gate_blocks_weak_regime_tf(monkeypatch):
+  monkeypatch.setenv("EW_REGIME_GATES", "1")
+  metrics = {
+    "by_timeframe": {
+      "1d": {"decided": 50, "win_rate": 0.38, "wins": 19, "losses": 31},
+    },
+  }
+  monkeypatch.setattr("engine.outcome_tracker.load_metrics", lambda: metrics)
+  ok, reasons = gate_row(_row(timeframe="1d"))
+  assert ok is False
+  assert any("regime_weak" in r for r in reasons)
+
+
 def test_filter_executable_rows():
   rows = [_row(), _row(gtc_tier="monitor"), _row(macro_mode="NUKE")]
   out = filter_executable_rows(rows)
