@@ -247,6 +247,16 @@ def finalize_universe_cycle(
     except Exception as exc:
       improvement = {"error": str(exc)}
 
+  deep_research: Dict[str, Any] = {}
+  if os.environ.get("EW_DEEP_RESEARCH", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.deep_research import run_deep_research
+
+      symbols = [r.get("symbol") for r in results[:8] if r.get("symbol")]
+      deep_research = run_deep_research(symbols=symbols, use_ai=True)
+    except Exception as exc:
+      deep_research = {"error": str(exc)}
+
   ai_review: Dict[str, Any] = {}
   if os.environ.get("EW_AI_IMPROVEMENT", "1").lower() not in ("0", "false", "no"):
     try:
@@ -324,6 +334,7 @@ def finalize_universe_cycle(
     "ai_improvement": ai_review,
     "execution": execution_result,
     "executive_filtered_rows": limit_meta.get("executive_filtered_rows", 0),
+    "deep_research": deep_research,
     "json": str(json_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
   }
