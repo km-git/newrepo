@@ -32,10 +32,11 @@ def _r_from_setup(setup: dict) -> Optional[float]:
   risk = abs(wae - stop)
   if risk <= 0:
     return None
+  partial = float(setup.get("tp1_exit_pct") or os.environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
   if st == "sl_hit":
     return -1.0
   reward = abs(tp1 - wae)
-  return (reward / risk) * 0.4
+  return (reward / risk) * partial
 
 
 def _metrics_from_returns(returns: Sequence[float], equity_start: float = 10000.0) -> Dict[str, Any]:
@@ -44,10 +45,12 @@ def _metrics_from_returns(returns: Sequence[float], equity_start: float = 10000.
   wins = sum(1 for r in returns if r > 0)
   losses = sum(1 for r in returns if r < 0)
   n = len(returns)
+  # Fraction of equity risked per 1R — matches probe/default account_risk_pct (0.75%)
+  risk_frac = float(os.environ.get("EW_WF_RISK_PCT", os.environ.get("EW_ACCOUNT_RISK_PCT", "0.75"))) / 100.0
   equity = equity_start
   curve = [equity]
   for r in returns:
-    equity *= 1.0 + r * 0.01
+    equity *= 1.0 + r * risk_frac
     curve.append(equity)
   cum_r = sum(returns)
   return {
@@ -117,14 +120,17 @@ def run_walk_forward_validation(
   Walk-forward OOS validation on tracked closed setups.
   Stitches OOS returns across folds for gate evaluation.
   """
-  from engine.outcome_tracker import _load_state
+  from engine.outcome_tracker import _dedupe_closed, _load_state
+  from engine.execution_gates import filter_closed_for_policy
 
   n_folds = n_folds or int(os.environ.get("EW_WF_FOLDS", "5"))
   state = _load_state()
-  closed = [
+  closed = _dedupe_closed([
     s for s in state.get("closed", [])
     if s.get("status") in ("tp1_hit", "sl_hit")
-  ]
+  ])
+
+  closed = filter_closed_for_policy(closed)
 
   if len(closed) < 10:
     return {

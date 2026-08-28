@@ -151,6 +151,17 @@ def run_autonomous_tick(
     except Exception as exc:
       tick["phases"]["backtest"] = {"error": str(exc)}
 
+  if os.environ.get("EW_EFFECTIVENESS_AUTONOMOUS", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.effectiveness_audit import run_full_effectiveness_audit
+
+      tick["phases"]["effectiveness"] = run_full_effectiveness_audit(
+        fetch_ohlc=os.environ.get("EW_EFFECTIVENESS_PAPER", "0") == "1",
+      )
+      tick["effectiveness_verdict"] = tick["phases"]["effectiveness"].get("composite_verdict")
+    except Exception as exc:
+      tick["phases"]["effectiveness"] = {"error": str(exc)}
+
   if not skip_pr:
     tick["phases"]["pr_merge"] = run_pr_auto_merge(dry_run=pr_dry_run)
 

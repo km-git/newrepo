@@ -59,36 +59,42 @@ def run_paper_gate_audit(*, fetch_ohlc: bool = False) -> Dict[str, Any]:
 
 def run_outcome_gate_audit() -> Dict[str, Any]:
   """Tracked outcome gate — forward resolution path."""
-  from engine.outcome_tracker import compute_metrics, save_metrics
+  from engine.outcome_tracker import _dedupe_closed, _load_state, compute_metrics, save_metrics
+  from engine.execution_gates import filter_closed_for_policy
+  from engine.strategy_fitness import r_returns_from_closed
+  from engine.walk_forward_validator import _metrics_from_returns
 
   metrics = compute_metrics()
   save_metrics(metrics)
   regime = evaluate_regime_gates(metrics)
 
+  state = _load_state()
+  closed = _dedupe_closed([
+    s for s in state.get("closed", []) if s.get("status") in ("tp1_hit", "sl_hit")
+  ])
+  policy_closed = filter_closed_for_policy(closed, metrics)
+  rets = r_returns_from_closed(policy_closed)
+  policy_metrics = _metrics_from_returns(rets)
+
   fit = fitness_from_metrics(metrics)
   overall = metrics.get("overall") or {}
-  rets = []
-  from engine.strategy_fitness import _r_returns_from_closed
-  from engine.outcome_tracker import _load_state
-
-  state = _load_state()
-  closed = [s for s in state.get("closed", []) if s.get("status") in ("tp1_hit", "sl_hit")]
-  rets = _r_returns_from_closed(closed)
 
   gate = evaluate_gate(
-    n_trades=overall.get("decided", 0),
-    win_rate=overall.get("win_rate"),
-    sharpe=fit.get("raw", {}).get("sharpe"),
-    profit_factor=fit.get("raw", {}).get("profit_factor"),
-    return_pct=fit.get("raw", {}).get("return_pct"),
-    max_dd_pct=None,
-    returns=rets,
-    wins=overall.get("wins"),
+    n_trades=policy_metrics.get("n", 0),
+    win_rate=policy_metrics.get("win_rate"),
+    sharpe=policy_metrics.get("sharpe"),
+    profit_factor=policy_metrics.get("profit_factor"),
+    return_pct=policy_metrics.get("return_pct"),
+    max_dd_pct=policy_metrics.get("max_drawdown_pct"),
+    returns=policy_metrics.get("returns"),
+    wins=policy_metrics.get("wins"),
     num_trials=int(os.environ.get("EW_AUTORESEARCH_TRIALS", "5")),
   )
   return {
     "ok": True,
     "metrics": metrics,
+    "policy_filtered_n": len(policy_closed),
+    "policy_metrics": {k: v for k, v in policy_metrics.items() if k != "returns"},
     "fitness": fit,
     "regime": regime,
     "gate": gate,

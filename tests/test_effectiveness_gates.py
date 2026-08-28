@@ -71,7 +71,8 @@ def test_evaluate_gate_insufficient_trades():
   assert gate["verdict"] == "INSUFFICIENT_DATA"
 
 
-def test_regime_gates_flags_weak_tf():
+def test_regime_gates_flags_weak_tf(monkeypatch):
+  monkeypatch.setenv("EW_BLOCKED_TFS", "")
   metrics = {
     "by_timeframe": {
       "15m": {"decided": 100, "win_rate": 0.65, "wins": 65, "losses": 35},
@@ -82,6 +83,18 @@ def test_regime_gates_flags_weak_tf():
   assert "1d" in regime["weak_timeframes"]
   assert "15m" in regime["strong_timeframes"]
   assert regime["regime_gate_passed"] is False
+
+
+def test_regime_gates_skips_blocked_tf():
+  metrics = {
+    "by_timeframe": {
+      "1d": {"decided": 50, "win_rate": 0.38, "wins": 19, "losses": 31},
+      "15m": {"decided": 100, "win_rate": 0.65, "wins": 65, "losses": 35},
+    },
+  }
+  regime = evaluate_regime_gates(metrics)
+  assert "1d" not in regime["weak_timeframes"]
+  assert regime["regime_gate_passed"] is True
 
 
 def test_r_from_setup_tp_and_sl():

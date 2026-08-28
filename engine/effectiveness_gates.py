@@ -227,9 +227,19 @@ def evaluate_regime_gates(metrics: dict) -> Dict[str, Any]:
   weak_tfs: List[str] = []
   strong_tfs: List[str] = []
 
+  try:
+    from engine.execution_gates import blocked_timeframes
+
+    skip_tfs = blocked_timeframes()
+  except Exception:
+    skip_tfs = set()
+
   for tf, bucket in sorted(by_tf.items()):
     decided = int(bucket.get("decided") or 0)
     wr = bucket.get("win_rate")
+    if skip_tfs and tf in skip_tfs:
+      regimes.append({"timeframe": tf, "status": "blocked", "n": decided, "win_rate": wr})
+      continue
     if decided < th["min_tf_samples"]:
       regimes.append({"timeframe": tf, "status": "insufficient", "n": decided, "win_rate": wr})
       continue

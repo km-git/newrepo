@@ -628,7 +628,7 @@ def dynamic_targets(
     if c_target_161 and c_target_161 < entry:
       t3 = min(t3, c_target_161)
 
-  exits = [40, 30, 30]
+  exits = [50, 25, 25]
   labels = ["TP1", "TP2", "TP3"]
   prices = [t1, t2, t3]
   out = []
