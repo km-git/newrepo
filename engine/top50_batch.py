@@ -18,7 +18,7 @@ from engine.autodream import build_monitor_queue, save_monitor_queue
 from engine.limit_orders_export import export_limit_orders
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
-DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
+from engine.timeframes import DEFAULT_TFS  # re-export for CLI scripts
 
 _REPORTS_DIR = Path("reports")
 _EXECUTABLE_FIELDS = [

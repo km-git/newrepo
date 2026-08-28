@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from engine.autodream_monitor import DEFAULT_QUEUE_PATH, run_monitor_cycle
-from engine.top50_batch import DEFAULT_TFS, run_top_crypto_batch
+from engine.top50_batch import run_top_crypto_batch
+from engine.timeframes import DEFAULT_TFS
 
 STATE_PATH = Path("output/autodream/scheduler_state.json")
 LATEST_PATHS = Path("output/autodream/latest_paths.json")
