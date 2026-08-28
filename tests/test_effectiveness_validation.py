@@ -89,13 +89,31 @@ def test_reconcile_models():
   assert recon["delta"] is not None
 
 
-def test_tracked_fee_backtest_on_state():
+def test_tracked_fee_backtest_on_state(tmp_path, monkeypatch):
+  tracked = {
+    "closed": [
+      {
+        "id": f"BTC/USDT|1h|LONG",
+        "wae": 60000.0,
+        "stop_loss": 59000.0,
+        "tp1": 61500.0,
+        "status": "tp1_hit" if i % 3 else "sl_hit",
+      }
+      for i in range(150)
+    ],
+    "open": [],
+  }
+  tracked_path = tmp_path / "tracked_setups.json"
+  tracked_path.write_text(json.dumps(tracked), encoding="utf-8")
+  monkeypatch.setattr("engine.outcome_tracker.TRACKED_PATH", tracked_path)
+
   from engine.effectiveness_validation import run_tracked_fee_backtest
 
   result = run_tracked_fee_backtest(equity=50_000)
   assert result.get("ok") is True
   assert result.get("decided", 0) >= 100
   assert result.get("win_rate") is not None
+  assert result.get("expectancy_r") is not None
 
 
 def test_summarize_metrics_dimensions():

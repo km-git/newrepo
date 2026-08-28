@@ -1,0 +1,25 @@
+{
+  "overall": {
+    "wins": 80,
+    "losses": 40,
+    "decided": 120,
+    "win_rate": 0.667
+  },
+  "by_timeframe": {
+    "1h": {
+      "wins": 80,
+      "losses": 40,
+      "n": 120,
+      "win_rate": 0.75
+    }
+  },
+  "by_direction": {
+    "LONG": {
+      "wins": 80,
+      "losses": 40,
+      "n": 120,
+      "win_rate": 0.667
+    }
+  },
+  "open_count": 0
+}
