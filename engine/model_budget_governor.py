@@ -1,9 +1,8 @@
 """
-Model budget governor — 98% Cursor Pro, max 2% Other Models (ashamed above 2%, hard stop at 5%).
+Model budget governor — 100% Cursor Pro by default (Other Models pool off).
 
-Other Models (GPT/Claude/Gemini) are a last resort for executive GO + high conviction +
-hard disagreement only. Using them beyond 2% daily share is tracked as shame events.
-Hard ceiling at 5% — never exceeded regardless of outcome pressure.
+GPT/Claude/Gemini consume the exhausted "Other Models" quota — blocked unless
+EW_CURSOR_MODELS_ONLY=0 and EW_USE_OTHER_MODEL_POOL=1 explicitly enabled.
 """
 
 from __future__ import annotations
@@ -65,14 +64,21 @@ def min_cursor_calls_before_other() -> int:
   return int(os.environ.get("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "50"))
 
 
+def cursor_models_only() -> bool:
+  """100% Cursor Pro — block GPT/Claude/Gemini (Other Models quota consumed)."""
+  return os.environ.get("EW_CURSOR_MODELS_ONLY", "1").lower() not in ("0", "false", "no")
+
+
 def other_models_executive_only() -> bool:
   """When true, GPT/Claude/Gemini only for executive purpose (default on)."""
   return os.environ.get("EW_OTHER_MODELS_EXECUTIVE_ONLY", "1").lower() not in ("0", "false", "no")
 
 
 def other_model_pool_enabled() -> bool:
-  """Allow Other Models when executive budget permits (default on, capped at 2%)."""
-  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "1").lower() not in ("0", "false", "no")
+  """Allow Other Models only when cursor_models_only is off and pool explicitly enabled."""
+  if cursor_models_only():
+    return False
+  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "0").lower() not in ("0", "false", "no")
 
 
 def premium_escalation_mode() -> str:
@@ -242,8 +248,8 @@ class ModelBudgetGovernor:
     """
     Gate Other Models — only executive GO + high conviction + hard disagreement.
     Ashamed to use beyond 2%; hard blocked at 5%.
-    """
-    if not other_model_pool_enabled():
+  """
+    if not other_model_pool_enabled() or cursor_models_only():
       return False
     if other_models_executive_only() and purpose != "executive":
       return False
@@ -320,6 +326,7 @@ class ModelBudgetGovernor:
       "governor_enabled": governor_enabled(),
       "cursor_pool_governor": cursor_pool_governor_enabled(),
       "other_model_pool_enabled": other_model_pool_enabled(),
+      "cursor_models_only": cursor_models_only(),
       "other_models_executive_only": other_models_executive_only(),
       "premium_escalation": premium_escalation_mode(),
     }

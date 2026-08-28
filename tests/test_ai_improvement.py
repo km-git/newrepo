@@ -73,6 +73,7 @@ def test_escalation_includes_other_models_for_executive_task_only(tmp_path, monk
   from engine.model_budget_governor import ModelBudgetGovernor, reset_governor
 
   monkeypatch.setenv("EW_LLM_CACHE_DIR", str(tmp_path))
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
   monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
   monkeypatch.setenv("EW_MINIMIZE_GPT", "0")

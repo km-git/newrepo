@@ -109,9 +109,10 @@ def test_cursor_target_ratio_default():
   assert cursor_target_ratio() == 0.98
 
 
-def test_other_model_pool_on_by_default(monkeypatch):
+def test_other_model_pool_off_by_default(monkeypatch):
   monkeypatch.delenv("EW_USE_OTHER_MODEL_POOL", raising=False)
-  assert other_model_pool_enabled() is True
+  monkeypatch.delenv("EW_CURSOR_MODELS_ONLY", raising=False)
+  assert other_model_pool_enabled() is False
 
 
 def test_prefer_cursor_substitutes_gpt():
@@ -180,6 +181,8 @@ def test_other_model_blocked_when_ashamed(monkeypatch):
 def test_other_model_allowed_under_budget_for_critical_executive(monkeypatch):
   from engine.model_budget_governor import reset_governor
 
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
   monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
   monkeypatch.setenv("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "50")
   reset_governor()

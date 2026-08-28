@@ -1,4 +1,4 @@
-"""Cheap-first LLM budget policy — ~98% Cursor Pro (Composer/Grok), 2% Other Models (executive only)."""
+"""Cheap-first LLM budget policy — 100% Cursor Pro (Composer/Grok) by default."""
 
 from __future__ import annotations
 
@@ -32,11 +32,24 @@ def cheap_first_enabled() -> bool:
   return os.environ.get("EW_CHEAP_FIRST", "1").lower() not in ("0", "false", "no")
 
 
+def cursor_models_only() -> bool:
+  """100% Cursor Pro — block GPT/Claude/Gemini (Other Models quota consumed)."""
+  return os.environ.get("EW_CURSOR_MODELS_ONLY", "1").lower() not in ("0", "false", "no")
+
+
+def _other_model_pool_enabled() -> bool:
+  if cursor_models_only():
+    return False
+  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "0").lower() not in ("0", "false", "no")
+
+
 def cursor_pro_only() -> bool:
   """
-  Default on — route ~98% of calls to Cursor Pro (Composer/Grok).
-  Other Models only via may_use_other_model() executive gate (2% budget).
+  Default on — route 100% of calls to Cursor Pro (Composer/Grok).
+  Other Models blocked when EW_CURSOR_MODELS_ONLY=1 (default).
   """
+  if cursor_models_only():
+    return True
   raw = os.environ.get("EW_CURSOR_PRO_ONLY", "").lower().strip()
   if raw in ("0", "false", "no"):
     return False
@@ -46,7 +59,9 @@ def cursor_pro_only() -> bool:
 
 
 def other_models_override() -> bool:
-  """Dev/test override — lifts all gates (not for production daemons)."""
+  """Dev/test override — lifts gates only when cursor_models_only is off."""
+  if cursor_models_only():
+    return False
   return os.environ.get("EW_ALLOW_OTHER_MODELS", "0").lower() in ("1", "true", "yes")
 
 
@@ -127,7 +142,13 @@ def may_use_other_model(
   Strict gate for the 2% Other Models budget — executive decision-making ONLY.
   Requires: task=executive, context=executive, hard disagreement, GO, high conviction.
   Blocks at 2% budget; hard-blocks at 5% shame threshold.
+  Returns False when EW_CURSOR_MODELS_ONLY=1 (default).
   """
+  if cursor_models_only():
+    return False
+  if not _other_model_pool_enabled():
+    return False
+
   if task != "executive" or context != "executive":
     return False
 

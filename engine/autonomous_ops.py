@@ -169,9 +169,10 @@ def run_autonomous_tick(
   )
 
   try:
-    from engine.model_budget_governor import governor_summary, other_model_shame_status
+    from engine.model_budget_governor import cursor_models_only, governor_summary, other_model_shame_status
 
     tick["model_budget"] = governor_summary()
+    tick["model_budget"]["cursor_models_only"] = cursor_models_only()
     shame = other_model_shame_status()
     tick["model_budget"]["shame"] = shame
     if shame.get("ashamed"):

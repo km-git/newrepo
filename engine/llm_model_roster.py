@@ -99,7 +99,7 @@ MODEL = {
   "screen_a": _m("EW_MODEL_SCREEN_A", "cursor-grok-4.5-high"),
   "screen_b": gpt_replacement_for("screen_b", _m("EW_MODEL_SCREEN_B", "gpt-5-mini")),
   "screen_alt": _m("EW_MODEL_SCREEN_ALT", "grok-4.5"),
-  "screen_c": _m("EW_MODEL_SCREEN_C", "gemini-3-flash"),
+  "screen_c": gpt_replacement_for("screen_c", _m("EW_MODEL_SCREEN_C", "gemini-3-flash")),
   "review": _m("EW_MODEL_REVIEW", "cursor-grok-4.5-high"),
   "mild_tb": gpt_replacement_for("mild_tb", _m("EW_MODEL_MILD_TB", "gpt-5.6-terra")),
   "light_plan": gpt_replacement_for("light_plan", _m("EW_MODEL_LIGHT_PLAN", "gpt-5.6-luna")),
@@ -125,9 +125,11 @@ def mild_tb_model() -> str:
 
 
 def workhorse_model() -> str:
-  """Prefer first-party composer; API workhorse when EW_LLM_WORKHORSE_POOL=api."""
+  """Prefer first-party composer; API workhorse only when Other Models pool enabled."""
+  from engine.model_budget_governor import cursor_models_only, other_model_pool_enabled
+
   pool = os.environ.get("EW_LLM_WORKHORSE_POOL", "first_party").lower()
-  if pool == "api":
+  if pool == "api" and not cursor_models_only() and other_model_pool_enabled():
     return MODEL["workhorse_api"]
   return MODEL["workhorse_fp"]
 
