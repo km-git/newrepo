@@ -415,10 +415,14 @@ def build_limit_order_row(
 
     metrics = load_metrics()
     wr, n = lookup_win_rate(metrics, result["symbol"], tf, direction)
+    mkt = result.get("step9_market_confluence") or {}
+    tv_c = mkt.get("tv_confluence") or {}
+    tv_score = tv_c.get("score")
     risk_ctx = compute_risk_multiplier(
       symbol=result["symbol"],
       timeframe=tf,
       direction=direction,
+      tv_score=int(tv_score) if tv_score is not None else None,
       readiness_score=int(readiness) if readiness is not None else None,
       hist_win_rate=wr,
       hist_n=n,
@@ -426,6 +430,15 @@ def build_limit_order_row(
       honest_tier=honest_tier,
       wave_structure=str(wave.get("structure") or ""),
     )
+    try:
+      from engine.executive_intel import global_risk_adjustment
+
+      adj = global_risk_adjustment()
+      if adj:
+        risk_ctx["mult"] = round(float(risk_ctx.get("mult", 1.0)) * (1 + adj), 4)
+        risk_ctx.setdefault("factors", []).append(f"global_risk_adj {adj:+.0%}")
+    except Exception:
+      pass
   except Exception:
     pass
 
