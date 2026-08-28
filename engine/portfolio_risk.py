@@ -372,36 +372,51 @@ def apply_portfolio_risk_to_row(
     return row
   state = state or PortfolioState(equity=resolve_account_equity(row.get("account_equity")))
   mult, factors = portfolio_heat_multiplier(state, row)
-  if mult >= 1.0 and not factors:
-    return row
-  row = dict(row)
-  if mult <= 0:
-    row["gtc_tier"] = "watch"
-    row["gtc_size_cap_pct"] = 0
-    row["portfolio_heat_block"] = True
-    row["portfolio_risk_note"] = "; ".join(factors)
-    return row
-  cap = float(row.get("gtc_size_cap_pct") or 100)
-  new_cap = round(cap * mult, 1)
-  row["gtc_size_cap_pct"] = new_cap
-  base_risk = float(row.get("account_risk_pct") or 0)
-  row["account_risk_pct"] = round(base_risk * mult, 4)
-  row["portfolio_heat_mult"] = mult
-  existing = str(row.get("dynamic_risk_factors") or "")
-  row["dynamic_risk_factors"] = "; ".join(filter(None, [existing, "; ".join(factors)]))
-  row["portfolio_risk_note"] = "; ".join(factors)
+  out = dict(row) if (mult < 1.0 or factors) else row
+  if mult < 1.0 or factors:
+    if mult <= 0:
+      out = dict(row)
+      out["gtc_tier"] = "watch"
+      out["gtc_size_cap_pct"] = 0
+      out["portfolio_heat_block"] = True
+      out["portfolio_risk_note"] = "; ".join(factors)
+    elif mult < 1.0:
+      out = dict(row)
+      cap = float(row.get("gtc_size_cap_pct") or 100)
+      new_cap = round(cap * mult, 1)
+      out["gtc_size_cap_pct"] = new_cap
+      base_risk = float(row.get("account_risk_pct") or 0)
+      out["account_risk_pct"] = round(base_risk * mult, 4)
+      out["portfolio_heat_mult"] = mult
+      existing = str(row.get("dynamic_risk_factors") or "")
+      out["dynamic_risk_factors"] = "; ".join(filter(None, [existing, "; ".join(factors)]))
+      out["portfolio_risk_note"] = "; ".join(factors)
+    elif factors:
+      out = dict(row)
+      existing = str(row.get("dynamic_risk_factors") or "")
+      out["dynamic_risk_factors"] = "; ".join(filter(None, [existing, "; ".join(factors)]))
+      out["portfolio_risk_note"] = "; ".join(factors)
+
   if update_state and mult > 0:
-    risk = row_risk_pct(row, state.equity)
-    cluster = symbol_cluster(row.get("symbol", ""))
-    state.total_heat_pct += risk
-    state.cluster_heat[cluster] = state.cluster_heat.get(cluster, 0.0) + risk
-    direction = str(row.get("direction", "")).upper()
-    if direction in ("LONG", "BULL"):
-      state.long_heat_pct += risk
-    elif direction in ("SHORT", "BEAR"):
-      state.short_heat_pct += risk
-    state.open_count += 1
-  return row
+    risk = row_risk_pct(out if isinstance(out, dict) else row, state.equity)
+    if risk > 0:
+      cluster = symbol_cluster(row.get("symbol", ""))
+      state.total_heat_pct += risk
+      state.cluster_heat[cluster] = state.cluster_heat.get(cluster, 0.0) + risk
+      direction = str(row.get("direction", "")).upper()
+      if direction in ("LONG", "BULL"):
+        state.long_heat_pct += risk
+      elif direction in ("SHORT", "BEAR"):
+        state.short_heat_pct += risk
+      state.open_count += 1
+      state.positions.append({
+        "symbol": row.get("symbol"),
+        "timeframe": row.get("timeframe"),
+        "direction": direction,
+        "risk_pct": risk,
+        "cluster": cluster,
+      })
+  return out
 
 
 def load_portfolio_state() -> PortfolioState:

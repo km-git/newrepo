@@ -395,14 +395,14 @@ def run_paper_simulation(
   for row in ranked:
     ok, reasons = gate_paper_row(row, open_positions=open_count, portfolio_state=portfolio_state)
     if ok:
-      selected.append(row)
-      open_count += 1
       if portfolio_state is not None:
         try:
           from engine.portfolio_risk import apply_portfolio_risk_to_row
-          apply_portfolio_risk_to_row(row, portfolio_state, update_state=True)
+          row = apply_portfolio_risk_to_row(row, portfolio_state, update_state=True)
         except Exception:
           pass
+      selected.append(row)
+      open_count += 1
     else:
       blocked.append({
         "symbol": row.get("symbol"),

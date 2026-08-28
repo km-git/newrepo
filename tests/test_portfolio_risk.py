@@ -137,6 +137,21 @@ def test_apply_portfolio_risk_to_row_shrinks_cap(monkeypatch):
   assert out.get("portfolio_heat_mult") is not None
 
 
+def test_apply_portfolio_risk_update_state_accumulates(monkeypatch):
+  monkeypatch.setenv("EW_PORTFOLIO_RISK", "1")
+  monkeypatch.setenv("EW_PORTFOLIO_HEAT_PCT", "6")
+  from engine.portfolio_risk import PortfolioState, apply_portfolio_risk_to_row
+
+  state = PortfolioState(equity=10000)
+  row = _row(symbol="BTC/USDT", risk_pct=1.0, risk_budget=100)
+  out = apply_portfolio_risk_to_row(row, state, update_state=True)
+  assert out.get("gtc_size_cap_pct", 100) == 100
+  assert state.total_heat_pct > 0
+  assert state.open_count == 1
+  assert len(state.positions) == 1
+  assert state.positions[0]["symbol"] == "BTC/USDT"
+
+
 def test_execution_gate_blocks_heat(monkeypatch):
   monkeypatch.setenv("EW_PORTFOLIO_RISK", "1")
   monkeypatch.setenv("EW_PORTFOLIO_HEAT_PCT", "6")

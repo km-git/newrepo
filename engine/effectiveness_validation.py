@@ -541,12 +541,7 @@ def run_effectiveness_validation(
 ) -> EffectivenessReport:
   report = EffectivenessReport(generated_at=_utcnow())
 
-  # Fresh portfolio state for validation (avoid test pollution)
-  try:
-    from engine.portfolio_risk import PortfolioState, save_portfolio_state
-    save_portfolio_state(PortfolioState(equity=equity))
-  except Exception:
-    pass
+  # Paper sim builds its own in-memory portfolio state; do not wipe persisted state.
 
   pytest_result: Dict[str, Any] = {"ok": True, "skipped": True}
   if run_tests:
