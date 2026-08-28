@@ -77,13 +77,8 @@ def _fetch_ohlcv_crypto_uncached(
   exchange_chain: Tuple[str, ...] = tuple(EXCHANGE_CHAIN),
 ) -> Dict[str, pd.DataFrame]:
   last_err = None
-<<<<<<< HEAD
-  tf_limits = {"1w": 300, "1d": 500, "4h": 500, "1h": 500, "15m": 500}
-  for ex_name in exchange_chain:
-=======
   tf_limits = {"1w": 300, "1d": 500, "12h": 500, "4h": 500, "1h": 500, "15m": 500}
-  for ex_name in EXCHANGE_CHAIN:
->>>>>>> 6e704aa (Add 24/7 universe scanner for 1000 pairs across 6 timeframes)
+  for ex_name in exchange_chain:
     try:
       ex = _make_exchange(ex_name)
       ex_sym = _symbol_for_exchange(symbol, ex_name)

@@ -22,10 +22,6 @@ def analyze_timeframe(mws: List[dict], tf: str, current_price: float) -> dict:
   if not mws:
     return {"tf": tf, "status": "no_data", "structure": "no_data", "monowave_count": 0}
 
-<<<<<<< HEAD
-=======
-  adaptive_tf = tf in ("15m", "1h", "4h", "12h")
->>>>>>> 6e704aa (Add 24/7 universe scanner for 1000 pairs across 6 timeframes)
   best_impulse: Optional[dict] = None
   best_start = -1
   for start in range(len(mws) - 4):

@@ -29,6 +29,9 @@ def main() -> None:
   p.add_argument("--once", action="store_true", help="Run one tick and exit")
   p.add_argument("--refresh-pairs", action="store_true", help="Force refresh pair list")
   p.add_argument("--skip-monitor", action="store_true")
+  p.add_argument("--llm-advisory", action="store_true",
+                 default=os.environ.get("EW_LLM_ADVISORY", "").lower() in ("1", "true", "yes"))
+  p.add_argument("--llm-max", type=int, default=int(os.environ.get("EW_UNIVERSE_LLM_MAX", "3")))
   args = p.parse_args()
 
   tfs = [t.strip() for t in args.tfs.split(",") if t.strip()]
@@ -44,6 +47,8 @@ def main() -> None:
         quote=args.quote,
         paper_max=args.paper_max,
         refresh_pairs=args.refresh_pairs,
+        llm_advisory=args.llm_advisory,
+        llm_advisory_max=args.llm_max,
       )
       print(
         f"\n[universe] Tick done — chunk {result['chunk_index'] + 1}/{result['n_chunks']}, "

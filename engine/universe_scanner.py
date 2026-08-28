@@ -112,6 +112,8 @@ def run_pairs_chunk(
   pairs: List[str],
   tfs: List[str],
   output_dir: str = "output",
+  llm_advisory: bool = False,
+  llm_advisory_max: int = 3,
 ) -> List[dict]:
   """Run EW pipeline on a subset of pairs."""
   out = Path(output_dir)
@@ -121,8 +123,15 @@ def run_pairs_chunk(
   chunk_csv.parent.mkdir(parents=True, exist_ok=True)
   write_pairs_csv(pairs, str(chunk_csv))
 
-  print(f"\n[universe] Chunk: {len(pairs)} pairs × {tfs}")
-  results = run_batch(str(chunk_csv), tfs, is_crypto=True)
+  llm_on = llm_advisory or os.environ.get("EW_LLM_ADVISORY", "").lower() in ("1", "true", "yes")
+  max_slots = llm_advisory_max if llm_advisory_max else int(os.environ.get("EW_UNIVERSE_LLM_MAX", "3"))
+
+  print(f"\n[universe] Chunk: {len(pairs)} pairs × {tfs} (llm_advisory={llm_on}, max={max_slots})")
+  results = run_batch(
+    str(chunk_csv), tfs, is_crypto=True,
+    llm_advisory=llm_on,
+    llm_advisory_max=max_slots,
+  )
   return results
 
 
@@ -193,7 +202,12 @@ def finalize_universe_cycle(
       from engine.improvement_cycle import run_improvement_cycle
 
       rows = list(csv.DictReader(Path(limit_meta["latest_csv"]).open())) if Path(limit_meta["latest_csv"]).exists() else []
-      improvement = run_improvement_cycle(is_crypto=True, record_rows=rows)
+      improvement = run_improvement_cycle(
+        is_crypto=True,
+        record_rows=rows,
+        use_llm=False,
+        paper=paper_summary,
+      )
       print(
         f"[universe] Improvement: resolved={improvement.get('resolved')} "
         f"win_rate={improvement.get('overall_win_rate')}"
@@ -218,6 +232,24 @@ def finalize_universe_cycle(
   executive_board = build_executive_board(results, picks_per_tf=8, max_total=60)
   results = apply_board_to_results(results, executive_board)
   board_paths = save_executive_board(executive_board)
+
+  ai_review: Dict[str, Any] = {}
+  if os.environ.get("EW_AI_IMPROVEMENT", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.ai_improvement import run_multi_model_improvement_review
+
+      ai_review = run_multi_model_improvement_review(
+        metrics=improvement.get("metrics") if improvement else None,
+        board=executive_board,
+        paper=paper_summary,
+      )
+      print(
+        f"[universe] AI improvement: {ai_review.get('consensus_stance')} "
+        f"({len(ai_review.get('models_consulted') or [])} models, "
+        f"escalated={ai_review.get('escalated_to_premium')})"
+      )
+    except Exception as exc:
+      ai_review = {"error": str(exc)}
 
   picks = executive_board.get("picks", [])
   BEST_TRADES_CSV.parent.mkdir(parents=True, exist_ok=True)
@@ -245,6 +277,7 @@ def finalize_universe_cycle(
     "board_picks": executive_board.get("board_picks"),
     "by_action": executive_board.get("by_action"),
     "by_timeframe": executive_board.get("by_timeframe"),
+    "ai_improvement": ai_review,
     "json": str(json_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
   }
@@ -259,6 +292,8 @@ def run_universe_tick(
   quote: str = "USDT",
   paper_max: int = 150,
   refresh_pairs: bool = False,
+  llm_advisory: bool = False,
+  llm_advisory_max: int = 3,
 ) -> Dict[str, Any]:
   """
   One universe tick:
@@ -283,7 +318,11 @@ def run_universe_tick(
     f"({len(chunk_pairs)} pairs) cycle={cycle}"
   )
 
-  chunk_results = run_pairs_chunk(chunk_pairs, tfs, output_dir=output_dir)
+  chunk_results = run_pairs_chunk(
+    chunk_pairs, tfs, output_dir=output_dir,
+    llm_advisory=llm_advisory,
+    llm_advisory_max=llm_advisory_max,
+  )
   by_symbol = merge_results(load_results(), chunk_results)
   save_results(by_symbol)
 

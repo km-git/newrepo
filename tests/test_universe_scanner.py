@@ -55,7 +55,7 @@ def test_universe_tick_state_persists(tmp_path, monkeypatch):
   )
   monkeypatch.setattr(
     "engine.universe_scanner.run_pairs_chunk",
-    lambda pairs, tfs, output_dir: [
+    lambda pairs, tfs, output_dir, llm_advisory=False, llm_advisory_max=3: [
       {"symbol": p, "status": "active", "step8_outcomes": {"setups": {}}}
       for p in pairs
     ],
