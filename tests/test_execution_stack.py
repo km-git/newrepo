@@ -111,6 +111,26 @@ def test_gate_blocks_weak_long_direction(monkeypatch):
   assert ok_short is True
 
 
+def test_filter_closed_applies_regime_weak_tf(monkeypatch):
+  from engine.execution_gates import filter_closed_for_policy
+
+  monkeypatch.setenv("EW_BLOCKED_TFS", "")
+  monkeypatch.setenv("EW_DIRECTION_GATES", "0")
+  metrics = {
+    "by_timeframe": {
+      "4h": {"decided": 40, "win_rate": 0.35, "wins": 14, "losses": 26},
+    },
+    "by_direction": {},
+  }
+  closed = [
+    {"timeframe": "4h", "direction": "SHORT", "status": "tp1_hit"},
+    {"timeframe": "15m", "direction": "SHORT", "status": "tp1_hit"},
+  ]
+  out = filter_closed_for_policy(closed, metrics)
+  assert len(out) == 1
+  assert out[0]["timeframe"] == "15m"
+
+
 def test_filter_executable_rows():
   rows = [_row(), _row(gtc_tier="monitor"), _row(macro_mode="NUKE")]
   out = filter_executable_rows(rows)

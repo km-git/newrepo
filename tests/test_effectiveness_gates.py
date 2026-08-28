@@ -116,6 +116,30 @@ def test_chronological_folds_preserve_order():
     assert len(test) > 0
 
 
+def test_chronological_folds_use_resolved_at():
+  closed = [
+    {
+      "recorded_at": "2024-01-01T00:00:00+00:00",
+      "resolved_at": "2024-03-01T00:00:00+00:00",
+      "status": "tp1_hit",
+      "wae": 100,
+      "stop_loss": 95,
+      "tp1": 110,
+    },
+    {
+      "recorded_at": "2024-02-01T00:00:00+00:00",
+      "resolved_at": "2024-01-15T00:00:00+00:00",
+      "status": "tp1_hit",
+      "wae": 100,
+      "stop_loss": 95,
+      "tp1": 110,
+    },
+  ]
+  folds = chronological_folds(closed, n_folds=2)
+  test_ids = [s.get("resolved_at") for _, test in folds for s in test]
+  assert test_ids[0] == "2024-01-15T00:00:00+00:00"
+
+
 def test_gate_thresholds_defaults():
   th = gate_thresholds()
   assert th["min_trades_moderate"] >= 100

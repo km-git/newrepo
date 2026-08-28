@@ -81,7 +81,9 @@ def chronological_folds(
 
   sorted_closed = sorted(
     closed,
-    key=lambda s: _parse_ts(s.get("closed_at") or s.get("recorded_at") or ""),
+    key=lambda s: _parse_ts(
+      s.get("resolved_at") or s.get("closed_at") or s.get("recorded_at") or "",
+    ),
   )
   n = len(sorted_closed)
   if n < n_folds * 4:

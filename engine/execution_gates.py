@@ -88,12 +88,38 @@ def direction_allowed(row: dict, metrics: Optional[dict] = None) -> Tuple[bool, 
 
 def filter_closed_for_policy(closed: List[dict], metrics: Optional[dict] = None) -> List[dict]:
   """Apply live execution policy to historical closed setups (walk-forward / audit)."""
+  if metrics is None:
+    try:
+      from engine.outcome_tracker import load_metrics
+
+      metrics = load_metrics()
+    except Exception:
+      metrics = {}
+
   blocked_tfs = blocked_timeframes()
   blocked_dirs = blocked_directions(metrics)
+  regime_weak_tfs: Set[str] = set()
+  if os.environ.get("EW_REGIME_GATES", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.effectiveness_gates import gate_thresholds
+
+      th = gate_thresholds()
+      for tf, bucket in (metrics.get("by_timeframe") or {}).items():
+        if tf in blocked_tfs:
+          continue
+        decided = int(bucket.get("decided") or 0)
+        wr = bucket.get("win_rate")
+        if decided >= th["min_tf_samples"] and wr is not None and wr < th["min_tf_win_rate"]:
+          regime_weak_tfs.add(tf)
+    except Exception:
+      pass
+
   out: List[dict] = []
   for s in closed:
     tf = str(s.get("timeframe") or "")
     if blocked_tfs and tf in blocked_tfs:
+      continue
+    if regime_weak_tfs and tf in regime_weak_tfs:
       continue
     direction = _normalize_direction(s.get("direction", ""))
     if blocked_dirs and direction in blocked_dirs:

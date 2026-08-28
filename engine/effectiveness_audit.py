@@ -140,9 +140,15 @@ def run_full_effectiveness_audit(
   outcomes_gate = (result.get("outcomes") or {}).get("gate") or {}
   verdicts.append(outcomes_gate.get("verdict"))
   regime_ok = (result.get("outcomes") or {}).get("regime", {}).get("regime_gate_passed", True)
-  paper_gate = (result.get("paper") or {}).get("gate") or {}
-  if paper_gate:
-    verdicts.append(paper_gate.get("verdict"))
+  paper = result.get("paper") or {}
+  if paper.get("skipped"):
+    pass
+  elif not paper.get("ok"):
+    verdicts.append("NO_GO")
+  else:
+    paper_gate = paper.get("gate") or {}
+    if paper_gate:
+      verdicts.append(paper_gate.get("verdict"))
 
   if "NO_GO" in verdicts:
     composite = "NO_GO"
