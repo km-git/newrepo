@@ -7,11 +7,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-01T12:00:00+00:00"
+      "resolved_at": "2026-03-01T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|1",
@@ -19,11 +19,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-02T12:00:00+00:00"
+      "resolved_at": "2026-03-02T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|2",
@@ -31,11 +31,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-03T12:00:00+00:00"
+      "resolved_at": "2026-03-03T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|3",
@@ -43,11 +43,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-04T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-04T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|4",
@@ -55,11 +55,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-05T12:00:00+00:00"
+      "resolved_at": "2026-03-05T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|5",
@@ -67,11 +67,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-06T12:00:00+00:00"
+      "resolved_at": "2026-03-06T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|6",
@@ -79,11 +79,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-07T12:00:00+00:00"
+      "resolved_at": "2026-03-07T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|7",
@@ -91,11 +91,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-08T12:00:00+00:00"
+      "resolved_at": "2026-03-08T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|8",
@@ -103,11 +103,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-09T12:00:00+00:00"
+      "resolved_at": "2026-03-09T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|9",
@@ -115,11 +115,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-10T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-10T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|10",
@@ -127,11 +127,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-11T12:00:00+00:00"
+      "resolved_at": "2026-03-11T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|11",
@@ -139,11 +139,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-12T12:00:00+00:00"
+      "resolved_at": "2026-03-12T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|12",
@@ -151,11 +151,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-13T12:00:00+00:00"
+      "resolved_at": "2026-03-13T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|13",
@@ -163,11 +163,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-14T12:00:00+00:00"
+      "resolved_at": "2026-03-14T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|14",
@@ -175,11 +175,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-15T12:00:00+00:00"
+      "resolved_at": "2026-03-15T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|15",
@@ -187,11 +187,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-16T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-16T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|16",
@@ -199,11 +199,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-17T12:00:00+00:00"
+      "resolved_at": "2026-03-17T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|17",
@@ -211,11 +211,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-18T12:00:00+00:00"
+      "resolved_at": "2026-03-18T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|18",
@@ -223,11 +223,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-19T12:00:00+00:00"
+      "resolved_at": "2026-03-19T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|19",
@@ -235,11 +235,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-20T12:00:00+00:00"
+      "resolved_at": "2026-03-20T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|20",
@@ -247,11 +247,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-21T12:00:00+00:00"
+      "resolved_at": "2026-03-21T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|21",
@@ -259,11 +259,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-22T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-22T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|22",
@@ -271,11 +271,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-23T12:00:00+00:00"
+      "resolved_at": "2026-03-23T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|23",
@@ -283,11 +283,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-24T12:00:00+00:00"
+      "resolved_at": "2026-03-24T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|24",
@@ -295,11 +295,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-25T12:00:00+00:00"
+      "resolved_at": "2026-03-25T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|25",
@@ -307,11 +307,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-26T12:00:00+00:00"
+      "resolved_at": "2026-03-26T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|26",
@@ -319,11 +319,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-27T12:00:00+00:00"
+      "resolved_at": "2026-03-27T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|27",
@@ -331,11 +331,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-28T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-28T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|28",
@@ -343,11 +343,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-01T12:00:00+00:00"
+      "resolved_at": "2026-03-01T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|29",
@@ -355,11 +355,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-02T12:00:00+00:00"
+      "resolved_at": "2026-03-02T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|30",
@@ -367,11 +367,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-03T12:00:00+00:00"
+      "resolved_at": "2026-03-03T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|31",
@@ -379,11 +379,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-04T12:00:00+00:00"
+      "resolved_at": "2026-03-04T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|32",
@@ -391,11 +391,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-05T12:00:00+00:00"
+      "resolved_at": "2026-03-05T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|33",
@@ -403,11 +403,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-06T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-06T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|34",
@@ -415,11 +415,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-07T12:00:00+00:00"
+      "resolved_at": "2026-03-07T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|35",
@@ -427,11 +427,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-08T12:00:00+00:00"
+      "resolved_at": "2026-03-08T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|36",
@@ -439,11 +439,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-09T12:00:00+00:00"
+      "resolved_at": "2026-03-09T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|37",
@@ -451,11 +451,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-10T12:00:00+00:00"
+      "resolved_at": "2026-03-10T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|38",
@@ -463,11 +463,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-11T12:00:00+00:00"
+      "resolved_at": "2026-03-11T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|39",
@@ -475,11 +475,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-12T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-12T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|40",
@@ -487,11 +487,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-13T12:00:00+00:00"
+      "resolved_at": "2026-03-13T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|41",
@@ -499,11 +499,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-14T12:00:00+00:00"
+      "resolved_at": "2026-03-14T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|42",
@@ -511,11 +511,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-15T12:00:00+00:00"
+      "resolved_at": "2026-03-15T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|43",
@@ -523,11 +523,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-16T12:00:00+00:00"
+      "resolved_at": "2026-03-16T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|44",
@@ -535,11 +535,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-17T12:00:00+00:00"
+      "resolved_at": "2026-03-17T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|45",
@@ -547,11 +547,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-18T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-18T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|46",
@@ -559,11 +559,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-19T12:00:00+00:00"
+      "resolved_at": "2026-03-19T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|47",
@@ -571,11 +571,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-20T12:00:00+00:00"
+      "resolved_at": "2026-03-20T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|48",
@@ -583,11 +583,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-21T12:00:00+00:00"
+      "resolved_at": "2026-03-21T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|49",
@@ -595,11 +595,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-22T12:00:00+00:00"
+      "resolved_at": "2026-03-22T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|50",
@@ -607,11 +607,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-23T12:00:00+00:00"
+      "resolved_at": "2026-03-23T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|51",
@@ -619,11 +619,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-24T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-24T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|52",
@@ -631,11 +631,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-25T12:00:00+00:00"
+      "resolved_at": "2026-03-25T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|53",
@@ -643,11 +643,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-26T12:00:00+00:00"
+      "resolved_at": "2026-03-26T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|54",
@@ -655,11 +655,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-27T12:00:00+00:00"
+      "resolved_at": "2026-03-27T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|55",
@@ -667,11 +667,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-28T12:00:00+00:00"
+      "resolved_at": "2026-03-28T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|56",
@@ -679,11 +679,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-01T12:00:00+00:00"
+      "resolved_at": "2026-03-01T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|57",
@@ -691,11 +691,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-02T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-02T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|58",
@@ -703,11 +703,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-03T12:00:00+00:00"
+      "resolved_at": "2026-03-03T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|59",
@@ -715,11 +715,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-04T12:00:00+00:00"
+      "resolved_at": "2026-03-04T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|60",
@@ -727,11 +727,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-05T12:00:00+00:00"
+      "resolved_at": "2026-03-05T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|61",
@@ -739,11 +739,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-06T12:00:00+00:00"
+      "resolved_at": "2026-03-06T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|62",
@@ -751,11 +751,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-07T12:00:00+00:00"
+      "resolved_at": "2026-03-07T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|63",
@@ -763,11 +763,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-08T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-08T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|64",
@@ -775,11 +775,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-09T12:00:00+00:00"
+      "resolved_at": "2026-03-09T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|65",
@@ -787,11 +787,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-10T12:00:00+00:00"
+      "resolved_at": "2026-03-10T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|66",
@@ -799,11 +799,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-11T12:00:00+00:00"
+      "resolved_at": "2026-03-11T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|67",
@@ -811,11 +811,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-12T12:00:00+00:00"
+      "resolved_at": "2026-03-12T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|68",
@@ -823,11 +823,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-13T12:00:00+00:00"
+      "resolved_at": "2026-03-13T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|69",
@@ -835,11 +835,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-14T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-14T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|70",
@@ -847,11 +847,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-15T12:00:00+00:00"
+      "resolved_at": "2026-03-15T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|71",
@@ -859,11 +859,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-16T12:00:00+00:00"
+      "resolved_at": "2026-03-16T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|72",
@@ -871,11 +871,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-17T12:00:00+00:00"
+      "resolved_at": "2026-03-17T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|73",
@@ -883,11 +883,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-18T12:00:00+00:00"
+      "resolved_at": "2026-03-18T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|74",
@@ -895,11 +895,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-19T12:00:00+00:00"
+      "resolved_at": "2026-03-19T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|75",
@@ -907,11 +907,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-20T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-20T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|76",
@@ -919,11 +919,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-21T12:00:00+00:00"
+      "resolved_at": "2026-03-21T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|77",
@@ -931,11 +931,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-22T12:00:00+00:00"
+      "resolved_at": "2026-03-22T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|78",
@@ -943,11 +943,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-23T12:00:00+00:00"
+      "resolved_at": "2026-03-23T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|79",
@@ -955,11 +955,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-24T12:00:00+00:00"
+      "resolved_at": "2026-03-24T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|80",
@@ -967,11 +967,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-25T12:00:00+00:00"
+      "resolved_at": "2026-03-25T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|81",
@@ -979,11 +979,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-26T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-26T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|82",
@@ -991,11 +991,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-27T12:00:00+00:00"
+      "resolved_at": "2026-03-27T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|83",
@@ -1003,11 +1003,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-28T12:00:00+00:00"
+      "resolved_at": "2026-03-28T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|84",
@@ -1015,11 +1015,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-01T12:00:00+00:00"
+      "resolved_at": "2026-03-01T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|85",
@@ -1027,11 +1027,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-02T12:00:00+00:00"
+      "resolved_at": "2026-03-02T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|86",
@@ -1039,11 +1039,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-03T12:00:00+00:00"
+      "resolved_at": "2026-03-03T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|87",
@@ -1051,11 +1051,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-04T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-04T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|88",
@@ -1063,11 +1063,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-05T12:00:00+00:00"
+      "resolved_at": "2026-03-05T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|89",
@@ -1075,11 +1075,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-06T12:00:00+00:00"
+      "resolved_at": "2026-03-06T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|90",
@@ -1087,11 +1087,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-07T12:00:00+00:00"
+      "resolved_at": "2026-03-07T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|91",
@@ -1099,11 +1099,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-08T12:00:00+00:00"
+      "resolved_at": "2026-03-08T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|92",
@@ -1111,11 +1111,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-09T12:00:00+00:00"
+      "resolved_at": "2026-03-09T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|93",
@@ -1123,11 +1123,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-10T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-10T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|94",
@@ -1135,11 +1135,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-11T12:00:00+00:00"
+      "resolved_at": "2026-03-11T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|95",
@@ -1147,11 +1147,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-12T12:00:00+00:00"
+      "resolved_at": "2026-03-12T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|96",
@@ -1159,11 +1159,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-13T12:00:00+00:00"
+      "resolved_at": "2026-03-13T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|97",
@@ -1171,11 +1171,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-14T12:00:00+00:00"
+      "resolved_at": "2026-03-14T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|98",
@@ -1183,11 +1183,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-15T12:00:00+00:00"
+      "resolved_at": "2026-03-15T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|99",
@@ -1195,11 +1195,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-16T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-16T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|100",
@@ -1207,11 +1207,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-17T12:00:00+00:00"
+      "resolved_at": "2026-03-17T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|101",
@@ -1219,11 +1219,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-18T12:00:00+00:00"
+      "resolved_at": "2026-03-18T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|102",
@@ -1231,11 +1231,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-19T12:00:00+00:00"
+      "resolved_at": "2026-03-19T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|103",
@@ -1243,11 +1243,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-20T12:00:00+00:00"
+      "resolved_at": "2026-03-20T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|104",
@@ -1255,11 +1255,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-21T12:00:00+00:00"
+      "resolved_at": "2026-03-21T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|105",
@@ -1267,11 +1267,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-22T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-22T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|106",
@@ -1279,11 +1279,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-23T12:00:00+00:00"
+      "resolved_at": "2026-03-23T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|107",
@@ -1291,11 +1291,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-24T12:00:00+00:00"
+      "resolved_at": "2026-03-24T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|108",
@@ -1303,11 +1303,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-25T12:00:00+00:00"
+      "resolved_at": "2026-03-25T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|109",
@@ -1315,11 +1315,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-26T12:00:00+00:00"
+      "resolved_at": "2026-03-26T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|110",
@@ -1327,11 +1327,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-27T12:00:00+00:00"
+      "resolved_at": "2026-03-27T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|111",
@@ -1339,11 +1339,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-28T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-28T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|112",
@@ -1351,11 +1351,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-01T12:00:00+00:00"
+      "resolved_at": "2026-03-01T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|113",
@@ -1363,11 +1363,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-02T12:00:00+00:00"
+      "resolved_at": "2026-03-02T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|114",
@@ -1375,11 +1375,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "sl_hit",
-      "resolved_at": "2026-01-03T12:00:00+00:00"
+      "resolved_at": "2026-03-03T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|115",
@@ -1387,11 +1387,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-04T12:00:00+00:00"
+      "resolved_at": "2026-03-04T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|116",
@@ -1399,11 +1399,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-05T12:00:00+00:00"
+      "resolved_at": "2026-03-05T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|117",
@@ -1411,11 +1411,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
-      "status": "sl_hit",
-      "resolved_at": "2026-01-06T12:00:00+00:00"
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-06T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|118",
@@ -1423,11 +1423,11 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-07T12:00:00+00:00"
+      "resolved_at": "2026-03-07T12:00:00+00:00"
     },
     {
       "id": "TEST/USDT|1h|SHORT|119",
@@ -1435,11 +1435,371 @@
       "timeframe": "1h",
       "direction": "SHORT",
       "wae": 100.0,
-      "stop_loss": 102.0,
-      "tp1": 97.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
       "tp1_exit_pct": 50,
       "status": "tp1_hit",
-      "resolved_at": "2026-01-08T12:00:00+00:00"
+      "resolved_at": "2026-03-08T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|120",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "sl_hit",
+      "resolved_at": "2026-03-09T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|121",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-10T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|122",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-11T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|123",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-12T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|124",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-13T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|125",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-14T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|126",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "sl_hit",
+      "resolved_at": "2026-03-15T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|127",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-16T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|128",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-17T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|129",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-18T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|130",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-19T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|131",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-20T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|132",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "sl_hit",
+      "resolved_at": "2026-03-21T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|133",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-22T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|134",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-23T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|135",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-24T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|136",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-25T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|137",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-26T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|138",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "sl_hit",
+      "resolved_at": "2026-03-27T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|139",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-28T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|140",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-01T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|141",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-02T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|142",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-03T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|143",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-04T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|144",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "sl_hit",
+      "resolved_at": "2026-03-05T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|145",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-06T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|146",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-07T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|147",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-08T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|148",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-09T12:00:00+00:00"
+    },
+    {
+      "id": "TEST/USDT|1h|SHORT|149",
+      "symbol": "TEST/USDT",
+      "timeframe": "1h",
+      "direction": "SHORT",
+      "wae": 100.0,
+      "stop_loss": 101.0,
+      "tp1": 94.0,
+      "tp1_exit_pct": 50,
+      "status": "tp1_hit",
+      "resolved_at": "2026-03-10T12:00:00+00:00"
     }
   ]
 }

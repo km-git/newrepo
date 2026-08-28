@@ -1,24 +1,24 @@
 {
   "overall": {
-    "wins": 80,
-    "losses": 40,
-    "decided": 120,
-    "win_rate": 0.667
+    "wins": 125,
+    "losses": 25,
+    "decided": 150,
+    "win_rate": 0.833
   },
   "by_timeframe": {
     "1h": {
-      "wins": 80,
-      "losses": 40,
-      "n": 120,
-      "win_rate": 0.667
+      "wins": 125,
+      "losses": 25,
+      "n": 150,
+      "win_rate": 0.833
     }
   },
   "by_direction": {
     "SHORT": {
-      "wins": 80,
-      "losses": 40,
-      "n": 120,
-      "win_rate": 0.667
+      "wins": 125,
+      "losses": 25,
+      "n": 150,
+      "win_rate": 0.833
     }
   },
   "open_count": 0
