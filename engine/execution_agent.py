@@ -105,13 +105,29 @@ def execute_rows(
         "reasons": [f"execution_consensus_{rev.get('stance')}", rev.get("summary", "")[:120]],
       })
   order_count = 0
+  portfolio_state = None
+  state_dirty = False
+  try:
+    from engine.portfolio_risk import PortfolioState, apply_portfolio_risk_to_row, portfolio_risk_enabled, save_portfolio_state
+    from engine.execution_advanced import resolve_account_equity
+
+    if portfolio_risk_enabled():
+      portfolio_state = PortfolioState(equity=resolve_account_equity())
+  except Exception:
+    portfolio_state = None
 
   for row in executable:
     intel = live_market_state(row["symbol"], start_ws=True)
-    allowed, reasons = gate_row(row, intel=intel)
+    allowed, reasons = gate_row(row, intel=intel, portfolio_state=portfolio_state)
     if not allowed:
       blocked.append({"symbol": row.get("symbol"), "tf": row.get("timeframe"), "reasons": reasons})
       continue
+    if portfolio_state is not None:
+      try:
+        row = apply_portfolio_risk_to_row(row, portfolio_state, update_state=True)
+        state_dirty = True
+      except Exception:
+        pass
     for order in row_to_orders(row):
       if max_orders and order_count >= max_orders:
         break
@@ -132,6 +148,12 @@ def execute_rows(
         submitted.append({"order": order, "error": str(e)})
     if max_orders and order_count >= max_orders:
       break
+
+  if portfolio_state is not None and state_dirty and not dry:
+    try:
+      save_portfolio_state(portfolio_state)
+    except Exception:
+      pass
 
   eq = float(os.environ.get("ACCOUNT_EQUITY", "10000"))
   risk = update_equity(eq)
