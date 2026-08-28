@@ -23,6 +23,9 @@ def run_improvement_cycle(
   is_crypto: bool = True,
   record_rows: Optional[List[dict]] = None,
   persist_okf: bool = True,
+  use_llm: Optional[bool] = None,
+  board: Optional[dict] = None,
+  paper: Optional[dict] = None,
 ) -> Dict[str, Any]:
   """
   Close the feedback loop:
@@ -33,6 +36,14 @@ def run_improvement_cycle(
   """
   if not improvement_enabled():
     return {"skipped": True, "reason": "EW_IMPROVEMENT_CYCLE disabled"}
+
+  llm_on = use_llm
+  if llm_on is None:
+    try:
+      from engine.ai_improvement import improvement_llm_enabled
+      llm_on = improvement_llm_enabled()
+    except ImportError:
+      llm_on = False
 
   metrics = run_learning_phase(is_crypto=is_crypto, record_rows=record_rows)
   okf = {}
@@ -53,7 +64,7 @@ def run_improvement_cycle(
     try:
       from engine.social_strategy_validation import run_social_strategy_validation
 
-      social_validation = run_social_strategy_validation(use_llm=False)
+      social_validation = run_social_strategy_validation(use_llm=llm_on)
     except Exception as exc:
       social_validation = {"error": str(exc)}
 
@@ -62,7 +73,7 @@ def run_improvement_cycle(
     try:
       from engine.tv_oss_consensus import run_tv_oss_consensus
 
-      tv_oss = run_tv_oss_consensus(use_llm=False)
+      tv_oss = run_tv_oss_consensus(use_llm=llm_on)
     except Exception as exc:
       tv_oss = {"error": str(exc)}
 
@@ -97,11 +108,31 @@ def run_improvement_cycle(
   try:
     from engine.risk_consensus import run_risk_consensus
 
-    risk_consensus = run_risk_consensus(metrics, use_llm=False)
+    risk_consensus = run_risk_consensus(metrics, use_llm=llm_on)
     cycle["risk_consensus"] = risk_consensus
   except Exception as exc:
     cycle["risk_consensus_error"] = str(exc)
     risk_consensus = {"error": str(exc)}
+
+  ai_review: Dict[str, Any] = {}
+  if llm_on:
+    try:
+      from engine.ai_improvement import run_multi_model_improvement_review
+
+      ai_review = run_multi_model_improvement_review(
+        metrics=metrics,
+        board=board,
+        paper=paper,
+      )
+      cycle["ai_improvement"] = {
+        "stance": ai_review.get("consensus_stance"),
+        "summary": (ai_review.get("blended_summary") or "")[:500],
+        "models_consulted": len(ai_review.get("models_consulted") or []),
+        "escalated": ai_review.get("escalated_to_premium"),
+        "cursor_hosted": ai_review.get("cursor_hosted_models"),
+      }
+    except Exception as exc:
+      cycle["ai_improvement_error"] = str(exc)
 
   _append_cycle_log(cycle)
   return {
@@ -113,6 +144,7 @@ def run_improvement_cycle(
     "impact": impact_report,
     "social_validation": social_validation,
     "tv_oss": tv_oss,
+    "ai_improvement": ai_review,
   }
 
 
