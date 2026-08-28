@@ -342,3 +342,94 @@ def run_autoresearch_eval_loop(
   out["log_path"] = str(EXPERIMENT_LOG)
   out["catalog"] = {k: by_id[k]["hypothesis"] for k in by_id}
   return out
+
+
+PROMOTED_ENV_PATH = Path(os.environ.get("EW_AUTORESEARCH_ACTIVE_ENV", "output/autoresearch/active_env.json"))
+
+
+def _promoted_env_path() -> Path:
+  return Path(os.environ.get("EW_AUTORESEARCH_ACTIVE_ENV", "output/autoresearch/active_env.json"))
+
+
+def auto_promote_enabled() -> bool:
+  return os.environ.get("EW_AUTORESEARCH_AUTO_PROMOTE", "1").lower() not in ("0", "false", "no")
+
+
+def auto_promote_best_experiment(eval_result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+  """
+  Auto-promote best experiment when fitness beats baseline by threshold.
+  Writes active env overlay to output/autoresearch/active_env.json (not live keys).
+  """
+  if not auto_promote_enabled():
+    return {"skipped": True, "reason": "EW_AUTORESEARCH_AUTO_PROMOTE off"}
+
+  eval_result = eval_result or run_autoresearch_eval_loop()
+  if not eval_result.get("ok"):
+    return {"promoted": False, "reason": eval_result.get("error", "eval failed")}
+
+  best = eval_result.get("best") or {}
+  best_id = best.get("experiment_id", "")
+  best_score = float(best.get("fitness") or 0)
+
+  baseline_scores = [
+    float((e.get("fitness") or {}).get("fitness") or 0)
+    for e in eval_result.get("evaluated", [])
+    if e.get("experiment_id") in ("baseline_eval", "baseline")
+  ]
+  baseline = baseline_scores[0] if baseline_scores else 0.0
+  threshold = float(os.environ.get("EW_AUTORESEARCH_PROMOTE_DELTA", "0.02"))
+  min_score = float(os.environ.get("EW_AUTORESEARCH_MIN_FITNESS", "0.35"))
+
+  if best_id in ("baseline_eval", "baseline") or best_score < min_score:
+    return {"promoted": False, "reason": "baseline still best or below min fitness", "best": best}
+
+  if best_score < baseline + threshold:
+    return {
+      "promoted": False,
+      "reason": f"improvement {best_score - baseline:.4f} < threshold {threshold}",
+      "best": best,
+      "baseline": baseline,
+    }
+
+  by_id = {p["id"]: p for p in propose_experiments()}
+  prop = by_id.get(best_id)
+  if not prop:
+    return {"promoted": False, "reason": f"unknown experiment {best_id}"}
+
+  env_delta = prop.get("env", {})
+  out_path = _promoted_env_path()
+  out_path.parent.mkdir(parents=True, exist_ok=True)
+  doc = {
+    "promoted_at": datetime.now(timezone.utc).isoformat(),
+    "experiment_id": best_id,
+    "fitness": best_score,
+    "baseline_fitness": baseline,
+    "env_delta": env_delta,
+    "hypothesis": prop.get("hypothesis"),
+  }
+  out_path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+
+  record = {
+    "ts": datetime.now(timezone.utc).isoformat(),
+    "experiment_id": best_id,
+    "action": "auto_promoted",
+    "env_delta": env_delta,
+    "fitness": {"fitness": best_score},
+    "promoted": True,
+    "note": f"Auto-promoted: fitness {best_score:.4f} vs baseline {baseline:.4f}",
+  }
+  _append(record)
+
+  try:
+    from engine.brain_self_improve import persist_lesson, self_improve_enabled
+
+    if self_improve_enabled():
+      persist_lesson(
+        "GLOBAL",
+        f"autoresearch promoted {best_id}: {prop.get('hypothesis', '')[:120]}",
+        source="autoresearch",
+      )
+  except Exception:
+    pass
+
+  return {"promoted": True, "experiment_id": best_id, "fitness": best_score, "env_path": str(out_path)}
