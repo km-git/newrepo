@@ -11,6 +11,34 @@ from engine.pr_consensus import run_pr_executive_consensus
 from engine.pr_github import ensure_gh_auth, list_open_prs
 
 
+def _ready_open_drafts(repo: str = "") -> int:
+  """Mark draft PRs ready so executive consensus can review them."""
+  import subprocess
+
+  slug = repo or ""
+  try:
+    proc = subprocess.run(
+      ["gh", "pr", "list", "--state", "open", "--json", "number,isDraft", "-q", ".[] | select(.isDraft==true) | .number"]
+      + (["--repo", slug] if slug else []),
+      capture_output=True,
+      text=True,
+      env={**os.environ, **({"GH_TOKEN": os.environ.get("GITHUB_TOKEN", "")} if os.environ.get("GITHUB_TOKEN") else {})},
+    )
+    if proc.returncode != 0:
+      return 0
+    ready = 0
+    for line in proc.stdout.splitlines():
+      num = line.strip()
+      if not num:
+        continue
+      r = subprocess.run(["gh", "pr", "ready", num] + (["--repo", slug] if slug else []), capture_output=True)
+      if r.returncode == 0:
+        ready += 1
+    return ready
+  except OSError:
+    return 0
+
+
 def pr_output_dir() -> Path:
   d = Path(os.environ.get("EW_PR_OUTPUT_DIR", "output/pr_reviews"))
   d.mkdir(parents=True, exist_ok=True)
@@ -57,6 +85,8 @@ def run_pr_agent_batch(
   use_llm: Optional[bool] = None,
 ) -> Dict[str, Any]:
   """Review all open non-draft PRs."""
+  if os.environ.get("EW_PR_READY_DRAFTS", "1").lower() not in ("0", "false", "no"):
+    _ready_open_drafts(repo)
   prs = list_open_prs(repo)
   results: List[Dict[str, Any]] = []
   for pr in prs:

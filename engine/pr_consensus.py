@@ -88,7 +88,12 @@ def run_pr_executive_consensus(
     if actions.get("request_changes"):
       result["github_actions"].append(request_changes_pr(pr_number, slug, actions["comment_body"]))
     elif actions.get("approve"):
-      result["github_actions"].append(approve_pr(pr_number, slug, actions["comment_body"]))
+      try:
+        result["github_actions"].append(approve_pr(pr_number, slug, actions["comment_body"]))
+      except RuntimeError as approve_err:
+        result["approve_error"] = str(approve_err)
+        if actions.get("merge"):
+          print(f"[pr] approve failed ({approve_err}); attempting merge-only")
     elif actions.get("comment_only"):
       result["github_actions"].append(comment_pr(pr_number, slug, actions["comment_body"]))
 

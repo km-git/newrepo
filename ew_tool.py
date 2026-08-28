@@ -181,6 +181,11 @@ def main() -> None:
     action="store_true",
     help="Goal mode without batch/monitor fetch; optional --execute for paper",
   )
+  parser.add_argument(
+    "--autonomous-daily",
+    action="store_true",
+    help="Run full daily autonomous loop (test → learn → research → PR merge)",
+  )
   parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
@@ -329,6 +334,16 @@ def main() -> None:
     from engine.e2e_pipeline import e2e_status
     print(json.dumps(e2e_status(), indent=2, default=str))
     return
+
+  if args.autonomous_daily:
+    import subprocess
+
+    env = os.environ.copy()
+    if args.pr_dry_run:
+      env["EW_PR_AUTO_MERGE"] = "0"
+      env["EW_PR_AUTO_APPROVE"] = "0"
+    proc = subprocess.run(["bash", "scripts/run_autonomous_daily.sh"], env=env)
+    sys.exit(proc.returncode)
 
   if args.goal_mode_agents:
     from engine.goal_mode import swarm_agent_map

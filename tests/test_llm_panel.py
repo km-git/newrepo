@@ -14,10 +14,7 @@ from engine.llm_panel import (
 def test_effective_mode_falls_back_without_both_keys(monkeypatch):
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
   monkeypatch.setenv("EW_LLM_BACKEND", "direct")
-<<<<<<< HEAD
   monkeypatch.delenv("CURSOR_API_KEY", raising=False)
-=======
->>>>>>> origin/main
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
   monkeypatch.delenv("CURSOR_API_KEY", raising=False)

@@ -77,8 +77,18 @@ def test_actions_merge_on_approve_merge_agree(monkeypatch):
 
 def test_actions_no_merge_on_caution(monkeypatch):
   monkeypatch.setenv("EW_PR_AUTO_MERGE", "1")
+  monkeypatch.setenv("EW_PR_MERGE_WITHOUT_PANEL", "0")
   actions = pr_actions_for_verdict("APPROVE_MERGE", "caution", {})
   assert actions["merge"] is False
+
+
+def test_actions_merge_without_panel_on_approve_merge(monkeypatch):
+  monkeypatch.setenv("EW_PR_AUTO_APPROVE", "1")
+  monkeypatch.setenv("EW_PR_AUTO_MERGE", "1")
+  monkeypatch.setenv("EW_PR_MERGE_WITHOUT_PANEL", "1")
+  actions = pr_actions_for_verdict("APPROVE_MERGE", "caution", {"verdict": "APPROVE_MERGE"})
+  assert actions["approve"] is True
+  assert actions["merge"] is True
 
 
 def test_executive_consensus_enabled_default():
