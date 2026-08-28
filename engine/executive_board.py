@@ -171,6 +171,31 @@ def executive_setup_score(
     score += symbol_bonus
     tags.append(f"multi_tf+{symbol_bonus}")
 
+  # Historical TF reliability — penalize weak regimes (e.g. 1d at 39.8% WR)
+  tf = STYLE_TF.get(style, setup.get("timeframe", ""))
+  if tf:
+    try:
+      from engine.outcome_tracker import load_metrics
+
+      tf_bucket = (load_metrics().get("by_timeframe") or {}).get(tf) or {}
+      tf_wr = tf_bucket.get("win_rate")
+      tf_n = int(tf_bucket.get("decided") or 0)
+      if tf_n >= 30 and tf_wr is not None:
+        if tf_wr >= 0.60:
+          score += 10
+          tags.append(f"tf_strong_{tf}_{tf_wr:.0%}")
+        elif tf_wr >= 0.55:
+          score += 5
+          tags.append(f"tf_good_{tf}")
+        elif tf_wr < 0.40:
+          score -= 12
+          tags.append(f"tf_weak_{tf}_{tf_wr:.0%}")
+        elif tf_wr < 0.45:
+          score -= 6
+          tags.append(f"tf_caution_{tf}")
+    except Exception:
+      pass
+
   # TV OSS + free data + global risk (Fear&Greed, WS, social, impact)
   try:
     from engine.executive_intel import setup_intel_boost

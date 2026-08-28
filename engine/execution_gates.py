@@ -35,6 +35,23 @@ def gate_row(row: dict, *, intel: Optional[dict] = None) -> Tuple[bool, List[str
     reasons.append("autodream_downgrade")
     return False, reasons
 
+  # Regime gate — block historically weak timeframes (effectiveness audit)
+  if os.environ.get("EW_REGIME_GATES", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.effectiveness_gates import gate_thresholds
+      from engine.outcome_tracker import load_metrics
+
+      tf = str(row.get("timeframe") or "")
+      bucket = (load_metrics().get("by_timeframe") or {}).get(tf) or {}
+      decided = int(bucket.get("decided") or 0)
+      wr = bucket.get("win_rate")
+      th = gate_thresholds()
+      if decided >= th["min_tf_samples"] and wr is not None and wr < th["min_tf_win_rate"]:
+        reasons.append(f"regime_weak_tf_{tf}_wr_{wr:.0%}")
+        return False, reasons
+    except Exception:
+      pass
+
   cap = row.get("gtc_size_cap_pct", 100)
   if cap is not None and float(cap) <= 0:
     reasons.append("size_cap_zero")

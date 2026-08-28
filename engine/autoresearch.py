@@ -271,17 +271,39 @@ def evaluate_experiment(
   path = analysis_path or find_latest_analysis_json()
   export_fit: Optional[Dict[str, Any]] = None
   analysis_used: Optional[str] = None
+  walk_forward_fit: Optional[Dict[str, Any]] = None
 
   with env_overlay(env_delta):
     outcome_fit = fitness_from_metrics()
-    if path and path.exists():
-      try:
-        results = load_analysis_results(path)
+  if path and path.exists():
+    try:
+      results = load_analysis_results(path)
+      with env_overlay(env_delta):
         export_fit = export_strategy_proxy(results)
-        analysis_used = str(path)
-      except (OSError, ValueError, json.JSONDecodeError) as exc:
-        export_fit = {"error": str(exc), "proxy": True, "fitness": outcome_fit.get("fitness", 0.0)}
-    fitness = merge_outcome_and_export_fitness(outcome_fit, export_fit)
+        # Re-run paper backtest under env_delta when export rows exist
+        try:
+          from engine.backtest_runner import run_walk_forward_backtest
+
+          bt = run_walk_forward_backtest(fetch_ohlc=os.environ.get("EW_BACKTEST_FETCH_OHLC", "0") == "1")
+          if bt.get("ok"):
+            walk_forward_fit = bt.get("fitness")
+            export_fit["walk_forward"] = {
+              "win_rate": bt.get("win_rate"),
+              "return_pct": bt.get("return_pct"),
+              "simulated": bt.get("simulated"),
+            }
+        except Exception as exc:
+          export_fit["walk_forward_error"] = str(exc)
+      analysis_used = str(path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+      export_fit = {"error": str(exc), "proxy": True, "fitness": outcome_fit.get("fitness", 0.0)}
+  fitness = merge_outcome_and_export_fitness(outcome_fit, export_fit)
+  if walk_forward_fit and walk_forward_fit.get("fitness") is not None:
+    # Blend walk-forward fitness when paper backtest ran
+    wf_score = float(walk_forward_fit.get("fitness") or 0)
+    base_score = float(fitness.get("fitness") or 0)
+    fitness["fitness"] = round(0.6 * wf_score + 0.4 * base_score, 4)
+    fitness["walk_forward_fitness"] = walk_forward_fit
 
   record = {
     "ts": datetime.now(timezone.utc).isoformat(),
