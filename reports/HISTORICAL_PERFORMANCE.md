@@ -1,67 +1,67 @@
 # Historical Setup Performance
 
-Updated: **2026-07-17T12:17:03.648381+00:00**
+Updated: **2026-07-20T00:38:29.467791+00:00**
 
 ## Overall
 
 | Wins | Losses | Decided | Win rate | Open |
 |------|--------|---------|----------|------|
-| 103 | 61 | 164 | 62.8% | 21 |
+| 1977 | 1023 | 3000 | 65.9% | 107 |
 
 ## By timeframe
 
 | TF | Wins | Losses | Win rate | n |
 |----|------|--------|----------|---|
-| 1w | 20 | 17 | 54.1% | 37 |
-| 1d | 23 | 15 | 60.5% | 38 |
-| 4h | 6 | 1 | 85.7% | 7 |
-| 1h | 25 | 15 | 62.5% | 40 |
-| 15m | 29 | 13 | 69.0% | 42 |
+| 1w | 457 | 277 | 62.3% | 734 |
+| 1d | 464 | 223 | 67.5% | 687 |
+| 4h | 56 | 41 | 57.7% | 97 |
+| 1h | 487 | 244 | 66.6% | 731 |
+| 15m | 513 | 238 | 68.3% | 751 |
 
 ## By pair × TF (decided ≥ 1)
 
 | Key | Wins | Losses | Win rate | n |
 |-----|------|--------|----------|---|
-| A/USDT|15m|LONG | 0 | 1 | 0.0% | 1 |
-| A/USDT|1h|LONG | 0 | 1 | 0.0% | 1 |
-| A/USDT|1w|LONG | 0 | 1 | 0.0% | 1 |
-| A/USDT|4h|LONG | 0 | 1 | 0.0% | 1 |
-| AAVE/USDT|15m|LONG | 0 | 1 | 0.0% | 1 |
-| AAVE/USDT|1d|LONG | 0 | 1 | 0.0% | 1 |
-| AAVE/USDT|1h|LONG | 0 | 1 | 0.0% | 1 |
-| AAVE/USDT|1w|LONG | 0 | 1 | 0.0% | 1 |
-| ADA/USDT|15m|SHORT | 1 | 0 | 100.0% | 1 |
-| ADA/USDT|1d|SHORT | 1 | 0 | 100.0% | 1 |
-| ADA/USDT|1h|SHORT | 1 | 0 | 100.0% | 1 |
-| ADA/USDT|1w|SHORT | 1 | 0 | 100.0% | 1 |
-| ADA/USDT|4h|SHORT | 1 | 0 | 100.0% | 1 |
-| AI/USDT|15m|LONG | 0 | 1 | 0.0% | 1 |
-| AI/USDT|1d|LONG | 0 | 1 | 0.0% | 1 |
-| ALLO/USDT|1d|SHORT | 0 | 1 | 0.0% | 1 |
-| ALLO/USDT|1w|SHORT | 0 | 1 | 0.0% | 1 |
-| AVAX/USDT|15m|SHORT | 0 | 1 | 0.0% | 1 |
-| AVAX/USDT|1d|SHORT | 0 | 1 | 0.0% | 1 |
-| AVAX/USDT|1h|SHORT | 0 | 1 | 0.0% | 1 |
-| AVAX/USDT|1w|SHORT | 0 | 1 | 0.0% | 1 |
-| BASED/USDT|1h|LONG | 0 | 1 | 0.0% | 1 |
-| BCH/USDT|1d|SHORT | 1 | 0 | 100.0% | 1 |
-| BCH/USDT|1h|SHORT | 1 | 0 | 100.0% | 1 |
-| BNB/USDT|15m|SHORT | 1 | 0 | 100.0% | 1 |
-| BNB/USDT|1d|SHORT | 1 | 0 | 100.0% | 1 |
-| BNB/USDT|1h|SHORT | 1 | 0 | 100.0% | 1 |
-| BNB/USDT|1w|SHORT | 1 | 0 | 100.0% | 1 |
-| BTC/USDT|15m|SHORT | 1 | 0 | 100.0% | 1 |
-| BTC/USDT|1d|SHORT | 1 | 0 | 100.0% | 1 |
-| BTC/USDT|1h|SHORT | 1 | 0 | 100.0% | 1 |
-| BTC/USDT|1w|SHORT | 1 | 0 | 100.0% | 1 |
-| BTC/USDT|4h|SHORT | 1 | 0 | 100.0% | 1 |
-| CRO/USDT|15m|LONG | 0 | 1 | 0.0% | 1 |
-| CRO/USDT|1d|LONG | 0 | 1 | 0.0% | 1 |
-| DATA/USDT|1w|SHORT | 0 | 1 | 0.0% | 1 |
-| DOGE/USDT|15m|LONG | 1 | 0 | 100.0% | 1 |
-| DOGE/USDT|1d|LONG | 1 | 0 | 100.0% | 1 |
-| DOGE/USDT|1h|LONG | 1 | 0 | 100.0% | 1 |
-| DOGE/USDT|1w|LONG | 1 | 0 | 100.0% | 1 |
+| ETH/USDT|15m|SHORT | 18 | 0 | 100.0% | 18 |
+| LTC/USDT|15m|SHORT | 18 | 0 | 100.0% | 18 |
+| ETH/USDT|1d|SHORT | 17 | 0 | 100.0% | 17 |
+| ETH/USDT|1w|SHORT | 17 | 0 | 100.0% | 17 |
+| HYPE/USDT|1d|SHORT | 17 | 0 | 100.0% | 17 |
+| HYPE/USDT|1h|SHORT | 17 | 0 | 100.0% | 17 |
+| ETH/USDT|1h|SHORT | 16 | 0 | 100.0% | 16 |
+| ALLO/USDT|1d|SHORT | 10 | 5 | 66.7% | 15 |
+| ALLO/USDT|1w|SHORT | 10 | 5 | 66.7% | 15 |
+| BCH/USDT|15m|SHORT | 15 | 0 | 100.0% | 15 |
+| BCH/USDT|1d|SHORT | 15 | 0 | 100.0% | 15 |
+| BCH/USDT|1h|SHORT | 15 | 0 | 100.0% | 15 |
+| BCH/USDT|1w|SHORT | 15 | 0 | 100.0% | 15 |
+| BNB/USDT|15m|SHORT | 15 | 0 | 100.0% | 15 |
+| BNB/USDT|1d|SHORT | 15 | 0 | 100.0% | 15 |
+| BTC/USDT|15m|SHORT | 15 | 0 | 100.0% | 15 |
+| BTC/USDT|1d|SHORT | 15 | 0 | 100.0% | 15 |
+| FIL/USDT|1w|SHORT | 15 | 0 | 100.0% | 15 |
+| HYPE/USDT|15m|SHORT | 15 | 0 | 100.0% | 15 |
+| HYPE/USDT|1w|SHORT | 15 | 0 | 100.0% | 15 |
+| LTC/USDT|1h|SHORT | 15 | 0 | 100.0% | 15 |
+| UNI/USDT|1d|SHORT | 15 | 0 | 100.0% | 15 |
+| XRP/USDT|1w|LONG | 15 | 0 | 100.0% | 15 |
+| XSPY/USDT|15m|LONG | 15 | 0 | 100.0% | 15 |
+| XSPY/USDT|1h|LONG | 15 | 0 | 100.0% | 15 |
+| ALLO/USDT|1h|SHORT | 5 | 9 | 35.7% | 14 |
+| LINK/USDT|1d|SHORT | 14 | 0 | 100.0% | 14 |
+| LINK/USDT|1w|SHORT | 14 | 0 | 100.0% | 14 |
+| LIT/USDT|1w|SHORT | 14 | 0 | 100.0% | 14 |
+| AAVE/USDT|1d|LONG | 0 | 13 | 0.0% | 13 |
+| ALLO/USDT|15m|SHORT | 11 | 2 | 84.6% | 13 |
+| ARG/USDT|1w|SHORT | 13 | 0 | 100.0% | 13 |
+| BNB/USDT|1w|SHORT | 13 | 0 | 100.0% | 13 |
+| LTC/USDT|1d|SHORT | 13 | 0 | 100.0% | 13 |
+| LTC/USDT|1w|SHORT | 13 | 0 | 100.0% | 13 |
+| ADA/USDT|1w|LONG | 12 | 0 | 100.0% | 12 |
+| DOGE/USDT|15m|LONG | 12 | 0 | 100.0% | 12 |
+| DOGE/USDT|1d|LONG | 12 | 0 | 100.0% | 12 |
+| DOGE/USDT|1h|LONG | 12 | 0 | 100.0% | 12 |
+| DOGE/USDT|1w|LONG | 12 | 0 | 100.0% | 12 |
 
 > Source: `output/autodream/tracked_setups.json` · Metrics: `output/autodream/metrics.json`
 

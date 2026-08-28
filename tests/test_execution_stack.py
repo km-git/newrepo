@@ -94,8 +94,11 @@ def test_browser_headers():
 def test_execution_agent_dry_run(monkeypatch):
   monkeypatch.setenv("EW_WEB_INTEL", "0")
   monkeypatch.setenv("EW_WS_ENABLED", "0")
+  monkeypatch.setenv("EW_EXECUTION_CONSENSUS_LLM", "0")
+  monkeypatch.setenv("EW_LLM_EW_BYPASS", "1")
+  monkeypatch.delenv("CURSOR_API_KEY", raising=False)
   from engine.execution_agent import execute_rows
-  row = _row()
+  row = _row(consensus="BULL", agreement_pct=85, engines_valid=3)
   result = execute_rows([row], dry_run=True)
   assert result["ok"] is True
   assert result["orders_submitted"] >= 1

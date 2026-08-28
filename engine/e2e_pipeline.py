@@ -122,7 +122,8 @@ def run_e2e_cycle(
     if execute_live:
       os.environ["EW_EXECUTION_MODE"] = "live"
     from engine.execution_agent import execute_from_csv
-    ex = execute_from_csv(dry_run=not execute_live)
+    # Paper submit when execute=True; live only with execute_live + EW_EXECUTE_CONFIRM.
+    ex = execute_from_csv(dry_run=False)
     result["phases"]["execute"] = {
       "dry_run": ex.get("dry_run"),
       "orders": ex.get("orders_submitted"),

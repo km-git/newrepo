@@ -128,7 +128,7 @@ def call_openai_advisory(prompt: str, model: str, max_tokens: Optional[int] = No
       **parsed,
     }
   except (urllib.error.URLError, KeyError, json.JSONDecodeError, IndexError) as e:
-    return {"available": True, "provider": "openai", "model": model, "error": str(e)}
+    return {"available": False, "provider": "openai", "model": model, "error": str(e)}
 
 
 def call_anthropic_advisory(prompt: str, model: str, max_tokens: Optional[int] = None) -> dict:
@@ -169,7 +169,7 @@ def call_anthropic_advisory(prompt: str, model: str, max_tokens: Optional[int] =
       **parsed,
     }
   except (urllib.error.URLError, KeyError, json.JSONDecodeError, IndexError) as e:
-    return {"available": True, "provider": "anthropic", "model": model, "error": str(e)}
+    return {"available": False, "provider": "anthropic", "model": model, "error": str(e)}
 
 
 def _blend_stances(responses: List[dict]) -> str:
