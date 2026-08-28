@@ -108,12 +108,14 @@ def test_build_limit_order_row_executable_and_monitor_tiers():
 
 def test_build_limit_order_row_has_dca_legs():
   row = build_limit_order_row(_sample_result(), "15m")
-  assert len(row["dca_legs"]) in (2, 4)
+  assert len(row["dca_legs"]) == 4
   assert sum(leg["size_pct"] for leg in row["dca_legs"]) == 100
   assert all(leg["order_type"] == "limit" for leg in row["dca_legs"])
   assert all(leg["time_in_force"] == "GTC" for leg in row["dca_legs"])
   assert row.get("wae")
-  assert row.get("dca_profile")
+  assert row.get("dca_profile") == "pyramid_4"
+  assert row.get("stop_architecture") == "smart_dynamic_sl"
+  assert row.get("target_architecture") == "smart_dynamic_tp"
 
 
 def test_build_limit_order_row_includes_notional_sizing():
