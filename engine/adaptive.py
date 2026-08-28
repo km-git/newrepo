@@ -337,6 +337,26 @@ def adaptive_pipeline(
     consensus=consensus,
     market_tools=market_tools,
   )
+  try:
+    from engine.portfolio_risk import augment_analysis_with_portfolio_risk
+
+    btc_corr = None
+    if is_crypto and not symbol.upper().startswith("BTC"):
+      try:
+        from core.market_tools import btc_correlation
+        btc_corr = btc_correlation(data.get("1d"))
+      except Exception:
+        pass
+    decision = augment_analysis_with_portfolio_risk(
+      decision,
+      symbol=symbol,
+      consensus=consensus,
+      in_zone=in_zone,
+      execution_passes=execution_passes,
+      btc_correlation=btc_corr,
+    )
+  except Exception:
+    pass
   status = decision["status"]
   trade = decision["trade_setup"]
   executive = decision["executive_decision"]

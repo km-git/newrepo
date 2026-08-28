@@ -128,7 +128,7 @@ def filter_closed_for_policy(closed: List[dict], metrics: Optional[dict] = None)
   return out
 
 
-def gate_row(row: dict, *, intel: Optional[dict] = None) -> Tuple[bool, List[str]]:
+def gate_row(row: dict, *, intel: Optional[dict] = None, portfolio_state=None) -> Tuple[bool, List[str]]:
   """
   Returns (allowed, reasons).
   Never bypasses honest gates — only adds macro/risk/intel blocks.
@@ -205,5 +205,16 @@ def gate_row(row: dict, *, intel: Optional[dict] = None) -> Tuple[bool, List[str
   if ws.get("age_sec") is not None and ws["age_sec"] > float(os.environ.get("EW_WS_MAX_AGE_SEC", "120")):
     reasons.append(f"stale_ws_{ws['age_sec']}s")
     # warn only — don't block by default
+
+  try:
+    from engine.portfolio_risk import gate_portfolio_heat, portfolio_risk_enabled
+
+    if portfolio_risk_enabled():
+      allowed_heat, heat_reasons = gate_portfolio_heat(row, portfolio_state)
+      if not allowed_heat:
+        reasons.extend(heat_reasons)
+        return False, reasons
+  except Exception:
+    pass
 
   return True, reasons

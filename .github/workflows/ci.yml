@@ -30,3 +30,13 @@ jobs:
         env:
           EW_OKF_BRAIN_DIR: /tmp/ew-okf-test
           EW_PAPER_LEDGER: /tmp/ew-paper-test.json
+
+      - name: Effectiveness validation (fast)
+        run: |
+          mkdir -p output/autodream
+          cp tests/fixtures/tracked_setups_ci.json output/autodream/tracked_setups.json
+          cp tests/fixtures/metrics_ci.json output/autodream/metrics.json
+          PYTHONPATH=$PWD EW_WEB_INTEL=0 EW_WS_ENABLED=0 EW_HEALTH_REQUIRE_ARTIFACTS=0 .venv/bin/python scripts/run_effectiveness_validation.py --fast --no-tests
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-test
+          EW_PORTFOLIO_STATE: /tmp/ew-portfolio-test.json

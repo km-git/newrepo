@@ -553,9 +553,24 @@ def build_all_limit_orders(
   tfs = list(tfs or ALL_TIMEFRAMES)
   ctx = ctx or build_export_context(results)
   rows: List[dict] = []
+  portfolio_state = None
+  try:
+    from engine.portfolio_risk import PortfolioState, apply_portfolio_risk_to_row, portfolio_risk_enabled
+    from engine.execution_advanced import resolve_account_equity
+
+    if portfolio_risk_enabled():
+      portfolio_state = PortfolioState(equity=resolve_account_equity(ctx.account_equity))
+  except Exception:
+    portfolio_state = None
   for result in results:
     for tf in tfs:
       primary = build_limit_order_row(result, tf, ctx)
+      if portfolio_state is not None:
+        try:
+          from engine.portfolio_risk import apply_portfolio_risk_to_row
+          primary = apply_portfolio_risk_to_row(primary, portfolio_state, update_state=True)
+        except Exception:
+          pass
       rows.append(primary)
       contingent = primary.get("contingent_scenarios")
       if contingent:

@@ -106,7 +106,8 @@ def test_dynamic_risk_poor_history():
   assert any("hist_wr" in f for f in ctx["factors"])
 
 
-def test_dynamic_risk_strong_history():
+def test_dynamic_risk_strong_history(monkeypatch, tmp_path):
+  monkeypatch.setenv("EW_PORTFOLIO_STATE", str(tmp_path / "empty_portfolio.json"))
   from engine.dynamic_risk import compute_risk_multiplier
 
   ctx = compute_risk_multiplier(

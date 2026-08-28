@@ -163,6 +163,33 @@ def test_execution_agent_dry_run(monkeypatch):
   assert result["orders_submitted"] >= 1
 
 
+def test_execution_agent_batch_portfolio_heat(monkeypatch, tmp_path):
+  monkeypatch.setenv("EW_WEB_INTEL", "0")
+  monkeypatch.setenv("EW_WS_ENABLED", "0")
+  monkeypatch.setenv("EW_EXECUTION_CONSENSUS", "0")
+  monkeypatch.setenv("EW_PORTFOLIO_RISK", "1")
+  monkeypatch.setenv("EW_PORTFOLIO_HEAT_PCT", "6")
+  monkeypatch.setenv("EW_PORTFOLIO_STATE", str(tmp_path / "portfolio_state.json"))
+  from engine.execution_agent import execute_rows
+
+  row = _row(
+    consensus="BULL",
+    agreement_pct=85,
+    engines_valid=3,
+    account_risk_pct=2.9,
+    risk_budget_usd=290,
+    account_equity=10000,
+  )
+  result = execute_rows(
+    [row, dict(row, symbol="ETH/USDT"), dict(row, symbol="SOL/USDT")],
+    dry_run=True,
+  )
+  assert result["ok"] is True
+  assert result["orders_submitted"] >= 1
+  assert len(result["blocked"]) >= 1
+  assert any("portfolio heat" in " ".join(b.get("reasons", [])).lower() for b in result["blocked"])
+
+
 def test_web_intel_fear_greed(monkeypatch):
   from gateway import web_intel
 
