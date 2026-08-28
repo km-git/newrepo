@@ -169,6 +169,8 @@ def test_execution_agent_batch_portfolio_heat(monkeypatch, tmp_path):
   monkeypatch.setenv("EW_EXECUTION_CONSENSUS", "0")
   monkeypatch.setenv("EW_PORTFOLIO_RISK", "1")
   monkeypatch.setenv("EW_PORTFOLIO_HEAT_PCT", "6")
+  monkeypatch.setenv("EW_DIRECTION_GATES", "0")
+  monkeypatch.setenv("EW_REGIME_GATES", "0")
   monkeypatch.setenv("EW_PORTFOLIO_STATE", str(tmp_path / "portfolio_state.json"))
   from engine.execution_agent import execute_rows
 
