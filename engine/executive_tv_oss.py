@@ -144,8 +144,27 @@ def build_tv_executive_context(
   oi = web.get("open_interest") or {}
   if oi.get("available") and oi.get("oi_change_24h_pct") is not None:
     chg = oi["oi_change_24h_pct"]
-    if abs(chg) > 5:
-      web_boost += 2 if (dir_label == "LONG" and chg > 0) or (dir_label == "SHORT" and chg < 0) else -2
+    web_boost += 2 if (dir_label == "LONG" and chg > 0) or (dir_label == "SHORT" and chg < 0) else -2
+
+  ls = web.get("long_short_ratio") or {}
+  if ls.get("available"):
+    if (dir_label == "LONG" and ls.get("bias") == "short_crowded") or (
+      dir_label == "SHORT" and ls.get("bias") == "long_crowded"
+    ):
+      web_boost += 3
+
+  liq = web.get("liquidations") or {}
+  if liq.get("available"):
+    if (dir_label == "LONG" and liq.get("bias") == "short_liquidated") or (
+      dir_label == "SHORT" and liq.get("bias") == "long_liquidated"
+    ):
+      web_boost += 2
+
+  basis = web.get("spot_perp_basis") or {}
+  if basis.get("available") and basis.get("bias") == "backwardation" and dir_label == "LONG":
+    web_boost += 2
+  elif basis.get("available") and basis.get("bias") == "contango" and dir_label == "SHORT":
+    web_boost += 2
 
   composite = max(0, min(100, composite + web_boost))
   aligned = composite >= 58 and tv.get("aligned", composite >= 55)

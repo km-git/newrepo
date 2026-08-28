@@ -76,7 +76,20 @@ def coingecko_coin_stats(symbol: str) -> Dict[str, Any]:
     "LTC": "litecoin", "BCH": "bitcoin-cash", "NEAR": "near", "APT": "aptos",
     "ARB": "arbitrum", "OP": "optimism", "SUI": "sui", "SEI": "sei-network",
   }
-  slug = slug_map.get(base, base.lower())
+  slug = slug_map.get(base)
+  if not slug:
+    search = _fetch_json(
+      f"https://api.coingecko.com/api/v3/search?query={base}",
+      host="coingecko.com",
+    )
+    if search and not search.get("error"):
+      coins = search.get("coins") or []
+      for c in coins:
+        if str(c.get("symbol", "")).upper() == base:
+          slug = c.get("id")
+          break
+  if not slug:
+    slug = base.lower()
   url = (
     f"https://api.coingecko.com/api/v3/simple/price"
     f"?ids={slug}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true"
@@ -222,6 +235,189 @@ def funding_cross_check(symbol: str) -> Dict[str, Any]:
   }
 
 
+def _sym_usdt(symbol: str) -> str:
+  base = symbol.split("/")[0].upper()
+  return f"{base}USDT"
+
+
+def binance_long_short_ratio(symbol: str = "BTC/USDT", period: str = "1h") -> Dict[str, Any]:
+  """Binance futures global long/short account ratio (public)."""
+  sym = _sym_usdt(symbol)
+  url = (
+    f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio"
+    f"?symbol={sym}&period={period}&limit=1"
+  )
+  data = _fetch_json(url, host="fapi.binance.com")
+  if not data or data.get("error") or not isinstance(data, list) or not data:
+    return {"available": False}
+  row = data[-1]
+  ratio = float(row.get("longShortRatio") or 1)
+  long_pct = round(ratio / (1 + ratio) * 100, 1)
+  bias = "long_crowded" if ratio > 1.15 else "short_crowded" if ratio < 0.85 else "neutral"
+  return {
+    "available": True,
+    "symbol": sym,
+    "long_short_ratio": round(ratio, 4),
+    "long_account_pct": long_pct,
+    "bias": bias,
+    "source": "binance",
+  }
+
+
+def binance_taker_ratio(symbol: str = "BTC/USDT", period: str = "1h") -> Dict[str, Any]:
+  """Taker buy/sell volume ratio — aggressive flow direction."""
+  sym = _sym_usdt(symbol)
+  url = (
+    f"https://fapi.binance.com/futures/data/takerlongshortRatio"
+    f"?symbol={sym}&period={period}&limit=1"
+  )
+  data = _fetch_json(url, host="fapi.binance.com")
+  if not data or data.get("error") or not isinstance(data, list) or not data:
+    return {"available": False}
+  row = data[-1]
+  ratio = float(row.get("buySellRatio") or 1)
+  bias = "buy_pressure" if ratio > 1.05 else "sell_pressure" if ratio < 0.95 else "neutral"
+  return {
+    "available": True,
+    "symbol": sym,
+    "buy_sell_ratio": round(ratio, 4),
+    "bias": bias,
+    "source": "binance",
+  }
+
+
+def spot_perp_basis(symbol: str = "BTC/USDT") -> Dict[str, Any]:
+  """Spot–perp basis from Binance premium index (mark vs index)."""
+  sym = _sym_usdt(symbol)
+  url = f"https://fapi.binance.com/fapi/v1/premiumIndex?symbol={sym}"
+  data = _fetch_json(url, host="fapi.binance.com")
+  if not data or data.get("error"):
+    return {"available": False}
+  mark = float(data.get("markPrice") or 0)
+  index = float(data.get("indexPrice") or mark)
+  if index <= 0:
+    return {"available": False}
+  basis_pct = round((mark - index) / index * 100, 4)
+  bias = "contango" if basis_pct > 0.05 else "backwardation" if basis_pct < -0.05 else "neutral"
+  return {
+    "available": True,
+    "symbol": sym,
+    "basis_pct": basis_pct,
+    "mark_price": mark,
+    "index_price": index,
+    "bias": bias,
+    "source": "binance",
+  }
+
+
+def okx_open_interest(symbol: str = "BTC/USDT") -> Dict[str, Any]:
+  base = symbol.split("/")[0].upper()
+  inst = f"{base}-USDT-SWAP"
+  url = f"https://www.okx.com/api/v5/public/open-interest?instId={inst}"
+  data = _fetch_json(url, host="okx.com")
+  if not data or data.get("error") or data.get("code") != "0":
+    return {"available": False}
+  rows = data.get("data") or []
+  if not rows:
+    return {"available": False}
+  oi = float(rows[0].get("oi") or 0)
+  return {"available": True, "symbol": inst, "open_interest": oi, "source": "okx"}
+
+
+def bybit_open_interest(symbol: str = "BTC/USDT") -> Dict[str, Any]:
+  sym = _sym_usdt(symbol)
+  url = f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={sym}"
+  data = _fetch_json(url, host="api.bybit.com")
+  if not data or data.get("error") or data.get("retCode") != 0:
+    return {"available": False}
+  rows = (data.get("result") or {}).get("list") or []
+  if not rows:
+    return {"available": False}
+  oi = float(rows[0].get("openInterest") or 0)
+  return {"available": True, "symbol": sym, "open_interest": oi, "source": "bybit"}
+
+
+def oi_cross_check(symbol: str) -> Dict[str, Any]:
+  """Cross-venue open interest snapshot."""
+  sources = {
+    "binance": binance_open_interest(symbol),
+    "okx": okx_open_interest(symbol),
+    "bybit": bybit_open_interest(symbol),
+  }
+  vals = {k: v["open_interest"] for k, v in sources.items() if v.get("available")}
+  if not vals:
+    return {"available": False}
+  total = sum(vals.values())
+  return {
+    "available": True,
+    "total_oi": round(total, 2),
+    "sources": vals,
+    "count": len(vals),
+  }
+
+
+def binance_recent_liquidations(symbol: str = "BTC/USDT", limit: int = 20) -> Dict[str, Any]:
+  """Recent force-liquidation orders from Binance public API."""
+  sym = _sym_usdt(symbol)
+  url = f"https://fapi.binance.com/fapi/v1/allForceOrders?symbol={sym}&limit={limit}"
+  data = _fetch_json(url, host="fapi.binance.com")
+  if not data or data.get("error") or not isinstance(data, list):
+    return {"available": False}
+  long_liq = sum(1 for o in data if o.get("side") == "SELL")
+  short_liq = sum(1 for o in data if o.get("side") == "BUY")
+  bias = "long_liquidated" if long_liq > short_liq else "short_liquidated" if short_liq > long_liq else "balanced"
+  return {
+    "available": True,
+    "symbol": sym,
+    "count": len(data),
+    "long_liq_count": long_liq,
+    "short_liq_count": short_liq,
+    "bias": bias,
+    "source": "binance",
+  }
+
+
+def defillama_total_tvl() -> Dict[str, Any]:
+  data = _fetch_json("https://api.llama.fi/v2/historicalChainTvl", host="api.llama.fi")
+  if not data or not isinstance(data, list) or not data:
+    if isinstance(data, dict) and data.get("error"):
+      return {"available": False, "error": data.get("error")}
+    return {"available": False}
+  latest = data[-1]
+  tvl = float(latest.get("tvl") or 0)
+  prev = float(data[-2].get("tvl") or tvl) if len(data) > 1 else tvl
+  chg = round((tvl - prev) / prev * 100, 2) if prev else 0
+  return {
+    "available": True,
+    "total_tvl_usd": round(tvl, 0),
+    "tvl_change_pct": chg,
+    "source": "defillama",
+  }
+
+
+def macro_tradfi_snapshot() -> Dict[str, Any]:
+  """DXY / VIX / SPY via yfinance — macro risk context for BTC."""
+  try:
+    import yfinance as yf
+  except ImportError:
+    return {"available": False, "reason": "yfinance not installed"}
+  out: Dict[str, Any] = {"available": True, "tickers": {}, "source": "yfinance"}
+  for ticker, label in (("DX-Y.NYB", "dxy"), ("^VIX", "vix"), ("SPY", "spy")):
+    try:
+      hist = yf.Ticker(ticker).history(period="5d")
+      if hist is None or len(hist) < 2:
+        continue
+      chg = float((hist["Close"].iloc[-1] - hist["Close"].iloc[-2]) / hist["Close"].iloc[-2] * 100)
+      out["tickers"][label] = {"change_1d_pct": round(chg, 2)}
+    except Exception:
+      continue
+  if not out["tickers"]:
+    return {"available": False}
+  vix = (out["tickers"].get("vix") or {}).get("change_1d_pct", 0)
+  out["risk_bias"] = "risk_off" if vix > 3 else "risk_on" if vix < -3 else "neutral"
+  return out
+
+
 def scrape_page_text(url: str, max_chars: int = 4000) -> Dict[str, Any]:
   """
   Polite HTML fetch with anti-bot headers.
@@ -261,6 +457,8 @@ def build_web_intel(symbol: str = "") -> Dict[str, Any]:
     "fear_greed": fear_greed_index(),
     "global": coingecko_global(),
     "stablecoins": defillama_stablecoins(),
+    "defi_tvl": defillama_total_tvl(),
+    "macro_tradfi": macro_tradfi_snapshot(),
   }
   if symbol:
     intel["coin_stats"] = coingecko_coin_stats(symbol)
@@ -269,6 +467,11 @@ def build_web_intel(symbol: str = "") -> Dict[str, Any]:
     intel["funding_bybit"] = bybit_funding_public(symbol)
     intel["funding_cross"] = funding_cross_check(symbol)
     intel["open_interest"] = binance_open_interest(symbol)
+    intel["oi_cross"] = oi_cross_check(symbol)
+    intel["long_short_ratio"] = binance_long_short_ratio(symbol)
+    intel["taker_ratio"] = binance_taker_ratio(symbol)
+    intel["spot_perp_basis"] = spot_perp_basis(symbol)
+    intel["liquidations"] = binance_recent_liquidations(symbol)
 
   signals: List[str] = []
   fg = intel["fear_greed"]
@@ -292,6 +495,24 @@ def build_web_intel(symbol: str = "") -> Dict[str, Any]:
   oi = intel.get("open_interest") or {}
   if oi.get("available") and oi.get("oi_change_24h_pct") is not None:
     signals.append(f"OI 24h {oi['oi_change_24h_pct']:+.1f}%")
+  ls = intel.get("long_short_ratio") or {}
+  if ls.get("available"):
+    signals.append(f"L/S ratio {ls.get('long_short_ratio')} ({ls.get('bias')})")
+  tk = intel.get("taker_ratio") or {}
+  if tk.get("available") and tk.get("bias") != "neutral":
+    signals.append(f"taker {tk['bias']}")
+  basis = intel.get("spot_perp_basis") or {}
+  if basis.get("available") and basis.get("bias") != "neutral":
+    signals.append(f"basis {basis['basis_pct']:+.3f}% ({basis['bias']})")
+  liq = intel.get("liquidations") or {}
+  if liq.get("available") and liq.get("count", 0) > 0:
+    signals.append(f"liq {liq['bias']} ({liq['count']} recent)")
+  tvl = intel.get("defi_tvl") or {}
+  if tvl.get("available"):
+    signals.append(f"DeFi TVL ${tvl['total_tvl_usd']/1e9:.0f}B")
+  macro = intel.get("macro_tradfi") or {}
+  if macro.get("available") and macro.get("risk_bias") != "neutral":
+    signals.append(f"macro {macro['risk_bias']}")
 
   intel["signals"] = signals
   return intel

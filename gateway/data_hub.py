@@ -138,6 +138,24 @@ def enrich_market_tools(symbol: str, data: Dict[str, pd.DataFrame], tools: dict)
       f"{cs['symbol']} momentum {cs['momentum']}"
     ]
 
+  ls = web_intel.get("long_short_ratio") or {}
+  if ls.get("available") and ls.get("bias") != "neutral":
+    tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [
+      f"L/S {ls.get('bias')} ({ls.get('long_short_ratio')})"
+    ]
+
+  liq = web_intel.get("liquidations") or {}
+  if liq.get("available") and liq.get("bias") not in ("balanced", None):
+    tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [
+      f"liquidations {liq['bias']}"
+    ]
+
+  basis = web_intel.get("spot_perp_basis") or {}
+  if basis.get("available") and basis.get("bias") != "neutral":
+    tools["confluence_signals"] = list(tools.get("confluence_signals") or []) + [
+      f"basis {basis['basis_pct']:+.2f}%"
+    ]
+
   tv = tools.get("tv_confluence") or {}
   if tv.get("aligned"):
     tools["confluence_boost"] = min(int(tools.get("confluence_boost", 0)) + 5, 28)

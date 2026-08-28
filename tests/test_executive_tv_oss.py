@@ -155,6 +155,13 @@ def test_build_web_intel_structure(monkeypatch):
   monkeypatch.setattr("gateway.web_intel.binance_funding_public", lambda s: {"available": False})
   monkeypatch.setattr("gateway.web_intel.okx_funding_public", lambda s: {"available": False})
   monkeypatch.setattr("gateway.web_intel.bybit_funding_public", lambda s: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.defillama_total_tvl", lambda: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.macro_tradfi_snapshot", lambda: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.oi_cross_check", lambda s: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.binance_long_short_ratio", lambda s: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.binance_taker_ratio", lambda s: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.spot_perp_basis", lambda s: {"available": False})
+  monkeypatch.setattr("gateway.web_intel.binance_recent_liquidations", lambda s: {"available": False})
 
   intel = build_web_intel("BTC/USDT")
   assert intel["fear_greed"]["available"] is True

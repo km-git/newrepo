@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -276,11 +277,34 @@ def adaptive_pipeline(
       btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
     except Exception:
       pass
-  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d, direction=exec_direction)
+  exchange = None
+  if is_crypto and os.environ.get("EW_ORDERBOOK_ENABLED", "1").lower() not in ("0", "false", "no"):
+    try:
+      from fetchers.pairs import _make_exchange
+
+      ex_id = (exchange_preference or os.environ.get("EW_OHLCV_CHAIN", "okx")).split(",")[0].strip()
+      exchange = _make_exchange(ex_id)
+    except Exception:
+      exchange = None
+  market_tools = build_market_confluence(
+    symbol, data, tfs, btc_1d=btc_1d, exchange=exchange, direction=exec_direction,
+  )
   try:
     from gateway.data_hub import enrich_market_tools
 
     market_tools = enrich_market_tools(symbol, data, market_tools)
+  except Exception:
+    pass
+  try:
+    from engine.deep_research import load_deep_research
+
+    dr = load_deep_research()
+    if dr:
+      market_tools["deep_research"] = {
+        "fg": ((dr.get("intel") or {}).get("macro") or {}).get("fear_greed", {}).get("value"),
+        "ai_stance": (dr.get("ai_synthesis") or {}).get("stance"),
+        "tv_oss_stance": (dr.get("tv_oss") or {}).get("consensus_stance"),
+      }
   except Exception:
     pass
   try:

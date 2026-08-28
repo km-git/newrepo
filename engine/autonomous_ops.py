@@ -65,6 +65,7 @@ def run_self_learning(*, use_llm: bool = True) -> Dict[str, Any]:
     except ImportError:
       pass
 
+    # Self-improvement uses LLM; routine sub-tasks stay cheap/off via governor
     return run_improvement_cycle(
       is_crypto=True,
       persist_okf=True,
@@ -110,6 +111,14 @@ def run_autonomous_tick(
 
   if not skip_learning:
     tick["phases"]["learning"] = run_self_learning(use_llm=True)
+
+  if os.environ.get("EW_TOOL_AUDIT", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.tool_resource_audit import run_tool_resource_audit
+
+      tick["phases"]["tool_audit"] = run_tool_resource_audit(persist=True)
+    except Exception as exc:
+      tick["phases"]["tool_audit"] = {"error": str(exc)}
 
   if not skip_research:
     try:
