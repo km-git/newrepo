@@ -29,8 +29,14 @@ def ai_improvement_enabled() -> bool:
 
 
 def use_all_cursor_models() -> bool:
-  """When true, sweep every Cursor-hosted model in the roster (cheap parallel first)."""
+  """Parallel Cursor Pro screens only — never sweeps Other Models API pool by default."""
   return os.environ.get("EW_USE_ALL_CURSOR_MODELS", "1").lower() not in ("0", "false", "no")
+
+
+def use_cursor_api_pool() -> bool:
+  from engine.llm_budget_policy import use_cursor_api_pool as _api_pool
+
+  return _api_pool()
 
 
 def cursor_hosted_models() -> List[Dict[str, str]]:
@@ -77,7 +83,7 @@ def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
     provider = provider_for_task(task, model)
     routes.append((provider, model, "cheap", task, max_out))
 
-  if use_all_cursor_models():
+  if use_all_cursor_models() and use_cursor_api_pool():
     for model in cursor_api_pool_models():
       if model in {r[1] for r in routes}:
         continue
@@ -123,7 +129,7 @@ def improvement_escalation_routes(
       tier = "premium" if task in ("executive", "architect") else "standard"
       routes.append((provider_for_task(task, model), model, tier, task, max_output_for_task(task)))
 
-  if use_all_cursor_models() and (sev == "hard" or metrics_poor):
+  if use_all_cursor_models() and use_cursor_api_pool() and (sev == "hard" or metrics_poor):
     for model in cursor_api_pool_models():
       if model in {r[1] for r in routes}:
         continue

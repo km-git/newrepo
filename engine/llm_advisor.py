@@ -191,6 +191,9 @@ def _call_advisory(
   max_output: int,
   prompt: str,
 ) -> dict:
+  from engine.llm_budget_policy import resolve_to_cursor_pro
+
+  model = resolve_to_cursor_pro(model, task=task)
   budget = get_model_budget()
   if budget.at_limit(model):
     ms = budget.model_summary(model)

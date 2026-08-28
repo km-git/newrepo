@@ -15,7 +15,7 @@ def test_routine_mode_single_when_cheap_first(monkeypatch):
   monkeypatch.setenv("EW_CHEAP_FIRST", "1")
   monkeypatch.delenv("EW_LLM_ROUTINE_INTELLIGENCE", raising=False)
   assert effective_intelligence_mode("routine") == "single"
-  assert effective_intelligence_mode("executive") == "ensemble"
+  assert effective_intelligence_mode("executive") == "dual"
 
 
 def test_effective_mode_falls_back_without_both_keys(monkeypatch):
@@ -50,6 +50,8 @@ def test_blend_stances_tiebreaker_wins():
 
 def test_run_panel_escalates_on_disagreement(monkeypatch):
   monkeypatch.setenv("EW_LLM_INTELLIGENCE", "ensemble")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
   monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
 

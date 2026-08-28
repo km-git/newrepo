@@ -39,6 +39,8 @@ def test_is_gpt_model():
   assert is_gpt_model("composer-2.5") is False
 
 
-def test_gpt_allowed_by_default(monkeypatch):
+def test_gpt_allowed_when_other_models_enabled(monkeypatch):
   monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   assert gpt_replacement_for("screen_b", "gpt-5-mini") == "gpt-5-mini"

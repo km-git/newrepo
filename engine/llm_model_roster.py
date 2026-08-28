@@ -7,6 +7,15 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from engine.llm_gpt_policy import gpt_replacement_for, minimize_gpt_enabled
 
+try:
+  from engine.llm_budget_policy import cursor_pro_only, resolve_to_cursor_pro
+except ImportError:
+  def cursor_pro_only() -> bool:
+    return False
+
+  def resolve_to_cursor_pro(model_id: str, *, task: str = "") -> str:
+    return model_id
+
 ModelTier = Literal["nano", "workhorse", "standard", "crucial", "flagship"]
 ModelPool = Literal["first_party", "api"]
 DisagreementSeverity = Literal["none", "mild", "hard"]
@@ -134,8 +143,13 @@ def workhorse_model() -> str:
   return MODEL["workhorse_fp"]
 
 
+def _cursor_pro_escalate(model: str, task: str = "") -> str:
+  """Map Other-Models-quota IDs to Cursor Pro when EW_CURSOR_PRO_ONLY=1."""
+  return resolve_to_cursor_pro(model, task=task)
+
+
 def screen_model_slots() -> List[Tuple[str, str]]:
-  """Dual screen — Grok High + GPT-mini (or Composer when EW_MINIMIZE_GPT=1)."""
+  """Dual screen — Cursor Pro only: Grok High + Composer (no GPT/Other Models)."""
   if os.environ.get("EW_LLM_SCREEN_DIVERSE", "").lower() in ("1", "true"):
     a = MODEL["screen_alt"]
   elif grok_high_enabled():
@@ -143,8 +157,8 @@ def screen_model_slots() -> List[Tuple[str, str]]:
   else:
     a = MODEL["workhorse_fp"]
   b = MODEL["screen_b"]
-  if minimize_gpt_enabled():
-    return [("cursor", a), ("composer", b)]
+  if minimize_gpt_enabled() or cursor_pro_only():
+    return [("cursor", _cursor_pro_escalate(a, "screen")), ("composer", _cursor_pro_escalate(b, "screen"))]
   return [("cursor", a), ("openai", b)]
 
 
@@ -176,18 +190,22 @@ def escalate_task_model(
     return "", "workhorse", "Grok+Composer parallel — no GPT"
 
   if task == "architect":
-    return MODEL["fable"], "flagship", "multi-file deep reasoning"
+    return _cursor_pro_escalate(MODEL["fable"], "architect"), "workhorse", "Cursor Pro substitute for architect"
 
   if task == "executive":
+    if cursor_pro_only():
+      return grok_high_model(), "standard", "Cursor Pro executive — Grok High"
     return MODEL["opus"], "flagship", "GO + high conviction"
 
   if task == "synthesis":
-    return MODEL["sol"], "crucial", "Sol synthesis — budget-limited"
+    return _cursor_pro_escalate(MODEL["sol"], "synthesis"), "standard", "Cursor Pro synthesis"
 
   if task == "planning":
     if verdict == "CONDITIONAL_GO" and conviction != "high":
-      return MODEL["light_plan"], "standard", "Luna light plan"
-    return MODEL["sol"], "crucial", "Sol full plan"
+      model = _cursor_pro_escalate(MODEL["light_plan"], "planning")
+      return model, "standard", f"light plan — {model}"
+    model = _cursor_pro_escalate(MODEL["sol"], "planning")
+    return model, "standard", f"full plan — {model}"
 
   if task in ("tiebreaker", "review"):
     if sev == "mild":
@@ -195,8 +213,12 @@ def escalate_task_model(
         return grok_high_model(), "standard", "mild — Grok High only"
       return mild_tb_model(), "standard", "mild — Terra fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
+      if cursor_pro_only():
+        return grok_high_model(), "standard", "hard disagree — Grok High (Pro pool)"
       return MODEL["opus"], "flagship", "hard disagree executive GO"
     if sev == "hard":
+      if cursor_pro_only():
+        return grok_high_model(), "standard", "hard disagreement — Grok High (Pro pool)"
       return MODEL["sol"], "crucial", "hard disagreement — Sol"
     if grok_high_enabled():
       return grok_high_model(), "standard", "mid review — Grok High"

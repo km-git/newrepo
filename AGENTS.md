@@ -39,9 +39,9 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - **Token budget is critical.** Each model capped at 10,000 tokens/day (`EW_LLM_MAX_TOKENS_PER_MODEL`).
   Install saver libraries: `python3 ew_tool.py --install-token-savers` or `python3 scripts/install_token_savers.py`.
   Inspect: `python3 ew_tool.py --llm-savers`.
-- **Cheap-first AI routing (~90% workhorse):** `engine/llm_budget_policy.py` — Composer/Grok/Gemini for routine;
-  Opus/Fable/Sol only for executive GO + hard disagree or self-improvement escalation. Env: `EW_CHEAP_FIRST=1`,
-  `EW_LLM_CHEAP_TARGET_PCT=90`, `EW_LLM_ROUTINE_INTELLIGENCE=single`, `EW_MINIMIZE_GPT=1`, `EW_LLM_EW_BYPASS=1`.
+- **Cheap-first AI routing (~95% Cursor Pro):** `engine/llm_budget_policy.py` — Composer/Grok/Grok High for ~95% of calls.
+  Other Models (GPT/Claude/Gemini) blocked unless `EW_ALLOW_OTHER_MODELS=1`. Env: `EW_CURSOR_PRO_ONLY=1`,
+  `EW_LLM_CHEAP_TARGET_PCT=95`, `EW_ALLOW_OTHER_MODELS=0`, `EW_USE_CURSOR_API_POOL=0`, `EW_MINIMIZE_GPT=1`.
   Matrix: `python3 ew_tool.py --llm-tasks`.
 - **Resource gap audit (self-challenge):** `engine/resource_gap_audit.py` questions missing free data, TV OSS,
   GitHub tools, and Python libs each improvement cycle. CLI: `python3 ew_tool.py --gap-audit`.

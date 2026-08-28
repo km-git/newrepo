@@ -218,7 +218,10 @@ def run_panel(
     tb = tiebreaker_route(verdict, conviction, stances=stances)
     if tb:
       provider, model, tier, task, max_out = tb
-      premium_call = is_premium_task(task)
+      from engine.llm_budget_policy import is_other_quota_model, resolve_to_cursor_pro
+
+      model = resolve_to_cursor_pro(model, task=task)
+      premium_call = is_premium_task(task) and is_other_quota_model(model)
       if premium_call:
         allowed = allow_premium_escalation(
           task, verdict, conviction, stances, context=context,

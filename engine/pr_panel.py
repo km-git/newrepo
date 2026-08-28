@@ -6,6 +6,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Dict, List, Tuple
 
+from engine.llm_budget_policy import cursor_pro_only, is_cursor_pro_model, other_models_allowed, resolve_to_cursor_pro
 from engine.llm_model_roster import MODEL
 from engine.llm_task_router import max_output_for_task
 
@@ -22,20 +23,43 @@ def pr_expanded_panel_enabled() -> bool:
   return os.environ.get("EW_PR_EXPANDED_PANEL", "1").lower() not in ("0", "false", "no")
 
 
+def _pr_slot_provider(model: str) -> str:
+  m = (model or "").lower()
+  if m.startswith("composer"):
+    return "composer"
+  if "grok" in m or m.startswith("cursor"):
+    return "cursor"
+  if m.startswith("gpt"):
+    return "openai"
+  if m.startswith("claude"):
+    return "anthropic"
+  if m.startswith("gemini"):
+    return "google"
+  return "cursor"
+
+
 def pr_panel_slots() -> List[Tuple[str, str, str, str]]:
   """
-  Specialist slots for PR review (no GPT — per pr-consensus-review.md).
+  Specialist slots for PR review.
+  Default: Cursor Pro pool only (Composer/Grok) — no Other Models quota.
   Returns (provider, model, tier, role).
   """
-  slots = [
-    ("anthropic", MODEL["opus"], "premium", "architect"),
-    ("anthropic", MODEL["fable"], "premium", "hard_architect"),
-    ("cursor", MODEL["grok_high"], "standard", "verify"),
-    ("composer", MODEL["workhorse_fp"], "cheap", "workhorse"),
-    ("cursor", MODEL["screen_alt"], "cheap", "boilerplate"),
-    ("openai", MODEL["screen_c"], "cheap", "boilerplate_alt"),
-    ("anthropic", MODEL.get("review", MODEL["grok_high"]), "standard", "review"),
+  raw = [
+    (MODEL["opus"], "premium", "architect"),
+    (MODEL["fable"], "premium", "hard_architect"),
+    (MODEL["grok_high"], "standard", "verify"),
+    (MODEL["workhorse_fp"], "cheap", "workhorse"),
+    (MODEL["screen_alt"], "cheap", "boilerplate"),
+    (MODEL["screen_c"], "cheap", "boilerplate_alt"),
+    (MODEL.get("review", MODEL["grok_high"]), "standard", "review"),
   ]
+  slots: List[Tuple[str, str, str, str]] = []
+  for model, tier, role in raw:
+    task = "architect" if tier == "premium" else ("tiebreaker" if tier == "standard" else "screen")
+    resolved = resolve_to_cursor_pro(model, task=task)
+    if cursor_pro_only() and not other_models_allowed() and is_cursor_pro_model(resolved) and tier == "premium":
+      tier = "standard"
+    slots.append((_pr_slot_provider(resolved), resolved, tier, role))
   return slots[: pr_panel_size()]
 
 

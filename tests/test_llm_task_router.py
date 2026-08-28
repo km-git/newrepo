@@ -38,9 +38,20 @@ def test_screen_routes_ensemble_dual_cheap(monkeypatch):
   assert all(r[3] == "screen" for r in routes)
 
 
-def test_tiebreaker_route_executive_uses_opus(monkeypatch):
+def test_tiebreaker_route_executive_uses_grok_pro(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  route = tiebreaker_route("GO", "high")
+  assert route is not None
+  assert route[1] == "cursor-grok-4.5-high"
+  assert route[3] == "executive"
+
+
+def test_tiebreaker_route_executive_uses_opus_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   route = tiebreaker_route("GO", "high")
   assert route is not None
   assert route[1] == "claude-opus-4-8"
@@ -53,6 +64,8 @@ def test_crucial_models_defaults(monkeypatch):
   from engine.llm_model_roster import MODEL
   from engine.llm_task_router import crucial_model_for_task
 
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
 
   assert crucial_model_for_task("executive") == "claude-opus-4-8"
@@ -60,9 +73,20 @@ def test_crucial_models_defaults(monkeypatch):
   assert crucial_model_for_task("planning") == "gpt-5.6-sol"
 
 
-def test_tiebreaker_route_planning_uses_luna_for_conditional(monkeypatch):
+def test_tiebreaker_route_planning_uses_grok_pro(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  route = tiebreaker_route("CONDITIONAL_GO", "medium")
+  assert route is not None
+  assert route[1] == "cursor-grok-4.5-high"
+  assert route[3] == "planning"
+
+
+def test_tiebreaker_route_planning_uses_luna_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   from engine.llm_model_roster import MODEL
 
   monkeypatch.setitem(MODEL, "light_plan", "gpt-5.6-luna")
@@ -82,9 +106,20 @@ def test_tiebreaker_route_mild_uses_grok_high_not_opus(monkeypatch):
   assert route[3] == "tiebreaker"
 
 
-def test_tiebreaker_route_hard_go_high_uses_opus(monkeypatch):
+def test_tiebreaker_route_hard_go_high_uses_grok_pro(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
+  assert route is not None
+  assert route[1] == "cursor-grok-4.5-high"
+  assert route[3] == "executive"
+
+
+def test_tiebreaker_route_hard_go_high_uses_opus_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
   assert route is not None
   assert route[1] == "claude-opus-4-8"

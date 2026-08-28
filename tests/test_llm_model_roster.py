@@ -37,24 +37,49 @@ def test_mild_disagreement_falls_back_to_terra_when_grok_disabled(monkeypatch):
   assert "Terra" in reason
 
 
-def test_hard_disagreement_go_high_uses_opus():
+def test_hard_disagreement_go_high_uses_grok_pro():
+  model, tier, _ = escalate_task_model("tiebreaker", "GO", "high", ["agree", "reject"])
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
+
+
+def test_hard_disagreement_go_high_uses_opus_when_other_allowed(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   model, tier, _ = escalate_task_model("tiebreaker", "GO", "high", ["agree", "reject"])
   assert model == "claude-opus-4-8"
   assert tier == "flagship"
 
 
-def test_hard_disagreement_default_uses_sol(monkeypatch):
+def test_hard_disagreement_default_uses_grok_pro():
+  model, tier, _ = escalate_task_model("tiebreaker", "NO_GO", "low", ["agree", "reject"])
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
+
+
+def test_hard_disagreement_default_uses_sol_when_other_allowed(monkeypatch):
   from engine.llm_model_roster import MODEL
 
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   model, tier, _ = escalate_task_model("tiebreaker", "NO_GO", "low", ["agree", "reject"])
   assert model == "gpt-5.6-sol"
   assert tier == "crucial"
 
 
-def test_light_planning_uses_luna(monkeypatch):
+def test_light_planning_uses_grok_pro():
+  model, tier, reason = escalate_task_model("planning", "CONDITIONAL_GO", "medium")
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
+
+
+def test_light_planning_uses_luna_when_other_allowed(monkeypatch):
   from engine.llm_model_roster import MODEL
 
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
+  monkeypatch.setenv("EW_MINIMIZE_GPT", "0")
   monkeypatch.setitem(MODEL, "light_plan", "gpt-5.6-luna")
   model, tier, reason = escalate_task_model("planning", "CONDITIONAL_GO", "medium")
   assert model == "gpt-5.6-luna"
@@ -62,9 +87,16 @@ def test_light_planning_uses_luna(monkeypatch):
   assert "luna" in reason.lower()
 
 
-def test_full_planning_uses_sol(monkeypatch):
+def test_full_planning_uses_grok_pro():
+  model, _, _ = escalate_task_model("planning", "GO", "high")
+  assert model == "cursor-grok-4.5-high"
+
+
+def test_full_planning_uses_sol_when_other_allowed(monkeypatch):
   from engine.llm_model_roster import MODEL
 
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   model, _, _ = escalate_task_model("planning", "GO", "high")
   assert model == "gpt-5.6-sol"
