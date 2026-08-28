@@ -10,11 +10,11 @@
       "wins": 80,
       "losses": 40,
       "n": 120,
-      "win_rate": 0.75
+      "win_rate": 0.667
     }
   },
   "by_direction": {
-    "LONG": {
+    "SHORT": {
       "wins": 80,
       "losses": 40,
       "n": 120,

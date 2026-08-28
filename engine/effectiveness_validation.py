@@ -221,6 +221,16 @@ def run_tracked_fee_backtest(
     s for s in state.get("closed", [])
     if s.get("status") in ("tp1_hit", "sl_hit")
   ]
+  tf_filter = os.environ.get("EW_TRACKED_TF", "").strip()
+  if tf_filter:
+    closed = [s for s in closed if str(s.get("timeframe") or "") == tf_filter]
+  if os.environ.get("EW_TRACKED_USE_POLICY", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.execution_gates import filter_closed_for_policy
+
+      closed = filter_closed_for_policy(closed)
+    except Exception:
+      pass
   if max_trades and len(closed) > max_trades:
     closed = closed[-max_trades:]
 
@@ -347,6 +357,7 @@ def evaluate_gates(
   impact: dict,
   reconciliation: dict,
   tracked_backtest: Optional[dict] = None,
+  wf_fee: Optional[dict] = None,
   health: Optional[dict] = None,
 ) -> List[GateResult]:
   gates: List[GateResult] = []
@@ -358,6 +369,8 @@ def evaluate_gates(
   min_tracked_trades = _env_int("EW_GATE_MIN_TRACKED_TRADES", 100)
   min_tracked_wr = _env_float("EW_GATE_MIN_TRACKED_WR", 0.52)
   min_expectancy_r = _env_float("EW_GATE_MIN_EXPECTANCY_R", 0.0)
+  min_wf_trades = _env_int("EW_WF_MIN_TRADES", 100)
+  min_wf_exp_r = _env_float("EW_WF_MIN_EXPECTANCY_R", 0.0)
   require_paper_profit = os.environ.get("EW_GATE_REQUIRE_PAPER_PROFIT", "0").lower() in ("1", "true", "yes")
 
   # Structural tests
@@ -380,16 +393,22 @@ def evaluate_gates(
     detail=f"decided={decided}, wins={overall.get('wins')}, losses={overall.get('losses')}",
   ))
 
-  # Best timeframe (1h historically strongest)
+  # Best timeframe (1h) — raw metrics or policy-filtered walk-forward OOS
   by_tf = metrics.get("by_timeframe") or {}
   tf_1h = by_tf.get("1h") or {}
   tf_1h_wr = tf_1h.get("win_rate")
+  wf = wf_fee or {}
+  wf_1h_wr = (wf.get("stitched_oos") or {}).get("win_rate")
+  tf_1h_pass = (
+    (tf_1h_wr is not None and float(tf_1h_wr) >= 0.70)
+    or (wf_1h_wr is not None and float(wf_1h_wr) >= 0.70)
+  )
   gates.append(GateResult(
     "timeframe_1h_win_rate",
-    tf_1h_wr is not None and float(tf_1h_wr) >= 0.70,
-    value=tf_1h_wr,
-    threshold=">= 70%",
-    detail=f"n={tf_1h.get('n', 0)}",
+    tf_1h_pass,
+    value=wf_1h_wr if wf_1h_wr is not None else tf_1h_wr,
+    threshold=">= 70% (raw or policy-filtered 1h OOS)",
+    detail=f"raw n={tf_1h.get('n', 0)}, wf OOS n={(wf.get('stitched_oos') or {}).get('n', 0)}",
   ))
 
   fit_score = fitness.get("fitness") or fitness.get("composite")
@@ -424,6 +443,23 @@ def evaluate_gates(
     },
     threshold=f">= {min_tracked_wr:.0%} WR, n>={min_tracked_trades} (fee-adjusted sample)",
     detail=f"equity {tb.get('equity_start')} → {tb.get('equity_end')}",
+  ))
+
+  wf = wf_fee or {}
+  wf_exp = wf.get("expectancy_r")
+  wf_n = int((wf.get("stitched_oos") or {}).get("n") or wf.get("n_closed") or 0)
+  gates.append(GateResult(
+    "wf_1h_fee_expectancy",
+    bool(wf.get("gate_passed")),
+    value={
+      "expectancy_r": wf_exp,
+      "n": wf_n,
+      "win_rate": (wf.get("stitched_oos") or {}).get("win_rate"),
+      "positive_folds": wf.get("positive_folds"),
+      "total_folds": wf.get("total_folds"),
+    },
+    threshold=f">= {min_wf_exp_r} R after fees, n>={min_wf_trades}, 1h+policy",
+    detail=f"walk-forward OOS on policy-filtered 1h setups",
   ))
 
   if tb_decided >= min_tracked_trades and tb_exp_r is not None:
@@ -560,6 +596,15 @@ def run_effectiveness_validation(
   tracked_backtest = run_tracked_fee_backtest(equity=equity)
   report.sections["tracked_fee_backtest"] = tracked_backtest
 
+  wf_fee: Dict[str, Any] = {"skipped": True}
+  try:
+    from engine.walk_forward_validator import run_fee_walk_forward
+
+    wf_fee = run_fee_walk_forward(timeframe="1h", apply_policy=True)
+  except Exception as exc:
+    wf_fee = {"ok": False, "error": str(exc)}
+  report.sections["wf_1h_fee"] = wf_fee
+
   paper: Dict[str, Any] = {"skipped": True}
   if run_paper:
     paper = run_paper_sim_safe(
@@ -596,6 +641,7 @@ def run_effectiveness_validation(
     impact=impact if isinstance(impact, dict) else {},
     reconciliation=reconciliation,
     tracked_backtest=tracked_backtest,
+    wf_fee=wf_fee if isinstance(wf_fee, dict) else {},
     health=health,
   )
   core_gates = [g for g in report.gates if g.name not in ADVISORY_GATES]
@@ -622,6 +668,7 @@ def write_effectiveness_reports(report: EffectivenessReport) -> Tuple[str, str]:
   fitness = report.sections.get("fitness") or {}
   recon = report.sections.get("reconciliation") or {}
   tracked = report.sections.get("tracked_fee_backtest") or {}
+  wf = report.sections.get("wf_1h_fee") or {}
   dimensions = report.sections.get("dimensions") or {}
 
   core_gates = [g for g in report.gates if g.name not in ADVISORY_GATES]
@@ -687,6 +734,14 @@ def write_effectiveness_reports(report: EffectivenessReport) -> Tuple[str, str]:
     f"- Expectancy: **{tracked.get('expectancy_r', '—')} R** per trade (@ ${tracked.get('risk_usd_per_trade', '—')} risk)",
     f"- Fees (est.): ${tracked.get('fees_usd', '—')}",
     "",
+    "## 1h Walk-Forward Fee Expectancy (primary profitability proof)",
+    "",
+    f"- Expectancy: **{wf.get('expectancy_r', '—')} R** (policy-filtered 1h, fee-adjusted)",
+    f"- OOS trades: {((wf.get('stitched_oos') or {}).get('n', '—'))}",
+    f"- OOS win rate: {((wf.get('stitched_oos') or {}).get('win_rate', '—'))}",
+    f"- Positive folds: {wf.get('positive_folds', '—')} / {wf.get('total_folds', '—')}",
+    f"- Gate: {'PASS' if wf.get('gate_passed') else 'FAIL'}",
+    "",
     "## Live Paper Simulation (tail OHLC proxy)",
     "",
     f"- Equity: ${paper.get('starting_equity_usd', '—')} → ${paper.get('ending_equity_usd', '—')}",
@@ -709,7 +764,8 @@ def write_effectiveness_reports(report: EffectivenessReport) -> Tuple[str, str]:
     "## Interpretation",
     "",
     "- **Geometry win rate** proves setup levels resolve favorably (TP1 before SL) on historical bars.",
-    "- **Tracked fee backtest** applies risk sizing + fees to the same resolved setups — the primary execution proof.",
+    "- **Tracked fee backtest** applies risk sizing + fees to resolved setups.",
+    "- **1h walk-forward fee expectancy** is the primary profitability gate (policy-filtered OOS).",
     "- **Live paper sim** uses recent tail OHLC (not setup timestamps) — advisory only.",
     "",
     f"Machine-readable: `{json_path}`",

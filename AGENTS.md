@@ -67,7 +67,8 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - **Effectiveness validation:** Prove geometry edge + fee-adjusted expectancy on resolved setups.
   CLI: `python3 ew_tool.py --effectiveness` or `PYTHONPATH=/workspace python3 scripts/run_effectiveness_validation.py`.
   Fast (no live OHLC paper): `--fast`. Reports: `reports/EFFECTIVENESS_VALIDATION.md`, `output/system/effectiveness_latest.json`.
-  Gates: pytest subset, outcome WR ≥55%, 1h WR ≥70%, fitness ≥0.45, tracked fee backtest (WR + R expectancy), impact discovery, health.
+  Gates: pytest subset, outcome WR ≥55%, 1h WR ≥70%, fitness ≥0.45, **wf_1h_fee_expectancy ≥0 R** (policy-filtered walk-forward), tracked fee backtest, impact discovery, health.
+  Policy filters block weak TFs (1d/12h) and underperforming directions (LONG) by default — see `engine/execution_gates.py`.
 - **Nightly AutoResearch:** Top-N batch → `--autoresearch-eval` → goal-mode quick.
   Script: `bash scripts/run_nightly_autoresearch.sh` (`EW_NIGHTLY_BATCH_N`, default 15).
   Workflow: `.github/workflows/autoresearch-nightly.yml` (03:00 UTC + manual dispatch); artifacts: `output/nightly/`, `experiments.jsonl`.
