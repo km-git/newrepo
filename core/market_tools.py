@@ -116,8 +116,10 @@ def build_market_confluence(
   tfs: List[str],
   btc_1d: Optional[pd.DataFrame] = None,
   exchange=None,
+  direction: str = "LONG",
 ) -> dict:
   """Aggregate supplementary tools (EW remains primary)."""
+  dir_norm = "LONG" if str(direction).upper() in ("BULL", "LONG") else "SHORT"
   primary_tf = "1h" if "1h" in data else "1d"
   df_p = data.get(primary_tf)
   if df_p is None:
@@ -151,9 +153,14 @@ def build_market_confluence(
     tools["tv_signals"] = compute_tv_signals(df_p, orderbook=orderbook)
     tools["microstructure"] = compute_microstructure_signals(df_p, orderbook)
     tools["cycles"] = compute_cycle_signals(df_p)
-    tools["tv_confluence"] = score_tv_confluence(df_p, "LONG", orderbook=orderbook)
-    tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], "LONG")
-    tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], "LONG")
+    tools["tv_confluence"] = score_tv_confluence(df_p, dir_norm, orderbook=orderbook)
+    tools["ms_confluence"] = score_microstructure_confluence(tools["microstructure"], dir_norm)
+    tools["cycle_confluence"] = score_cycle_confluence(tools["cycles"], dir_norm)
+
+    from core.tv_market_structure import detect_market_structure, score_market_structure
+
+    tools["market_structure"] = detect_market_structure(df_p)
+    tools["ms_structure"] = score_market_structure(tools["market_structure"], dir_norm)
   else:
     tools["tv_signals"] = {"available": False}
     tools["microstructure"] = {"available": False}
@@ -165,13 +172,23 @@ def build_market_confluence(
   # Confluence score boost for readiness (0-20)
   boost = 0
   signals: List[str] = []
+  is_long = dir_norm == "LONG"
   rsi_stack = tools["multi_tf_rsi"]
-  if rsi_stack.get("bias") == "BULL":
+  ms_struct = tools.get("ms_structure") or {}
+  if ms_struct.get("aligned"):
+    boost += 7
+    signals.extend((ms_struct.get("signals") or [])[:2])
+
+  if is_long and rsi_stack.get("bias") == "BULL":
     boost += 5
     signals.append(f"RSI stack bullish ({rsi_stack.get('bull_count')} TFs)")
-  elif rsi_stack.get("bias") == "BEAR":
+  elif not is_long and rsi_stack.get("bias") == "BEAR":
     boost += 5
     signals.append(f"RSI stack bearish ({rsi_stack.get('bear_count')} TFs)")
+  elif rsi_stack.get("bias") == "BEAR" and is_long:
+    signals.append("RSI caution: bearish RSI stack vs long")
+  elif rsi_stack.get("bias") == "BULL" and not is_long:
+    signals.append("RSI caution: bullish RSI stack vs short")
 
   div = tools.get("rsi_divergence")
   if div:
@@ -224,4 +241,5 @@ def build_market_confluence(
 
   tools["confluence_boost"] = min(boost, 28)
   tools["confluence_signals"] = signals
+  tools["trade_direction"] = dir_norm
   return tools
