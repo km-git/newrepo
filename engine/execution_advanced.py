@@ -106,7 +106,8 @@ def _btc_corr(result: dict) -> float:
   return abs(float(corr)) if corr is not None else 0.0
 
 
-def select_dca_profile(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
+def select_dca_profile_legacy(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
+  """Legacy two-layer profiles — only when EW_ALLOW_ALT_DCA_PROFILES=1."""
   corr = _btc_corr(result)
   if symbol in CONTINGENT_SYMBOLS and tf in ("1h", "4h"):
     return DCA_PROFILE_10_90, "PTJ contingent cap — dual-scenario 10/90 two-layer"
@@ -115,6 +116,12 @@ def select_dca_profile(symbol: str, tf: str, result: dict, ctx: ExportContext) -
   if corr >= 0.85 and tf in ("1d", "1w"):
     return DCA_PROFILE_30_70, f"high-beta |BTC corr| {corr:.2f} — 30/70 two-layer"
   return DCA_PROFILE_PYRAMID, "standard asymmetric pyramid 10/20/30/40"
+
+
+def select_dca_profile(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
+  from engine.smart_risk import resolve_dca_profile
+
+  return resolve_dca_profile(symbol, tf, result, ctx)
 
 
 def apply_macro_to_row(row: dict, ctx: ExportContext) -> dict:
@@ -227,7 +234,10 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
 
   short_l1 = kz_hi if kz_hi > 0 else current
   short_l2 = kz_lo if kz_lo > 0 else short_l1 - atr
-  short_dca = _manual_two_layer_dca("SHORT", short_l1, short_l2, [10, 90])
+  short_dca = build_dca_ladder(
+    "SHORT", short_l1, atr, short_l2, short_l1,
+    gtc=True, profile=DCA_PROFILE_PYRAMID, current=current,
+  )
   short_wae = compute_wae(short_dca)
   short_stop = dynamic_stop(
     "SHORT", short_wae, atr, s_low, s_high, cfg["atr_mult_sl"],
@@ -244,7 +254,10 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
 
   long_l1 = kz_lo if kz_lo > 0 else current
   long_l2 = long_l1 - max(atr * 1.5, (kz_hi - kz_lo) if kz_hi > kz_lo else atr)
-  long_dca = _manual_two_layer_dca("LONG", long_l1, long_l2, [10, 90])
+  long_dca = build_dca_ladder(
+    "LONG", long_l1, atr, long_l2, kz_hi if kz_hi > kz_lo else long_l1 + atr,
+    gtc=True, profile=DCA_PROFILE_PYRAMID, current=current,
+  )
   long_wae = compute_wae(long_dca)
   long_stop = dynamic_stop(
     "LONG", long_wae, atr, s_low, s_high, cfg["atr_mult_sl"],
@@ -264,7 +277,7 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
       "scenario_id": "short_breakdown",
       "scenario_trigger": f"fires if {short_l1} ticks first (breakdown node)",
       "direction": "SHORT",
-      "dca_profile": DCA_PROFILE_10_90,
+      "dca_profile": DCA_PROFILE_PYRAMID,
       "dca": short_dca,
       "wae": short_wae,
       "stop": short_stop,
@@ -277,7 +290,7 @@ def build_contingent_scenarios(result: dict, tf: str, cfg: dict, ctx: ExportCont
       "scenario_id": "long_floor",
       "scenario_trigger": f"fires if {long_l1} ticks first (structural floor)",
       "direction": "LONG",
-      "dca_profile": DCA_PROFILE_10_90,
+      "dca_profile": DCA_PROFILE_PYRAMID,
       "dca": long_dca,
       "wae": long_wae,
       "stop": long_stop,

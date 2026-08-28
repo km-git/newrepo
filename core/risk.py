@@ -426,7 +426,7 @@ def _smart_stop_distance_pct(
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo if hi > lo else 0.0
   zone_pct = span / ref * 100.0 * 1.2 if span > 0 else 0.0
-  atr_pct = atr / ref * 100.0 * 1.15 if atr > 0 else 0.0
+  atr_pct = atr / ref * 100.0 * 1.75 if atr > 0 else 0.0
   effective_min = max(min_pct, zone_pct, atr_pct)
   return min(effective_min, max_pct), max_pct
 
