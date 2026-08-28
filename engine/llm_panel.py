@@ -220,7 +220,14 @@ def run_panel(
       provider, model, tier, task, max_out = tb
       from engine.llm_budget_policy import is_other_quota_model, resolve_to_cursor_pro
 
-      model = resolve_to_cursor_pro(model, task=task)
+      model = resolve_to_cursor_pro(
+        model,
+        task=task,
+        context=context,
+        verdict=verdict,
+        conviction=conviction,
+        stances=stances,
+      )
       premium_call = is_premium_task(task) and is_other_quota_model(model)
       if premium_call:
         allowed = allow_premium_escalation(

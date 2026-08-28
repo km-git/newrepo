@@ -190,10 +190,23 @@ def _call_advisory(
   task: str,
   max_output: int,
   prompt: str,
+  *,
+  context: str = "routine",
+  verdict: str = "",
+  conviction: str = "",
+  stances: Optional[List[str]] = None,
 ) -> dict:
   from engine.llm_budget_policy import resolve_to_cursor_pro
+  from engine.llm_token_saver import get_pool_mix_tracker
 
-  model = resolve_to_cursor_pro(model, task=task)
+  model = resolve_to_cursor_pro(
+    model,
+    task=task,
+    context=context,  # type: ignore[arg-type]
+    verdict=verdict,
+    conviction=conviction,
+    stances=stances,
+  )
   budget = get_model_budget()
   if budget.at_limit(model):
     ms = budget.model_summary(model)
@@ -221,6 +234,7 @@ def _call_advisory(
     resp = call_anthropic_advisory(prompt, model, capped)
   if resp.get("available") and resp.get("stance"):
     budget.record(model, usage_from_response(resp, prompt, capped))
+    get_pool_mix_tracker().record(model)
   return resp
 
 

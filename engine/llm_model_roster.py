@@ -193,9 +193,15 @@ def escalate_task_model(
     return _cursor_pro_escalate(MODEL["fable"], "architect"), "workhorse", "Cursor Pro substitute for architect"
 
   if task == "executive":
-    if cursor_pro_only():
-      return grok_high_model(), "standard", "Cursor Pro executive — Grok High"
-    return MODEL["opus"], "flagship", "GO + high conviction"
+    from engine.llm_budget_policy import may_use_other_model, other_models_override
+
+    if other_models_override() and not cursor_pro_only():
+      return MODEL["opus"], "flagship", "dev override — Opus"
+    if may_use_other_model(
+      "executive", context="executive", verdict=verdict, conviction=conviction, stances=stances,
+    ):
+      return MODEL["opus"], "flagship", "executive Opus — 2% Other Models budget"
+    return grok_high_model(), "standard", "Cursor Pro executive — Grok High"
 
   if task == "synthesis":
     return _cursor_pro_escalate(MODEL["sol"], "synthesis"), "standard", "Cursor Pro synthesis"
@@ -213,13 +219,9 @@ def escalate_task_model(
         return grok_high_model(), "standard", "mild — Grok High only"
       return mild_tb_model(), "standard", "mild — Terra fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
-      if cursor_pro_only():
-        return grok_high_model(), "standard", "hard disagree — Grok High (Pro pool)"
-      return MODEL["opus"], "flagship", "hard disagree executive GO"
+      return grok_high_model(), "standard", "hard disagree — Grok High (Pro pool)"
     if sev == "hard":
-      if cursor_pro_only():
-        return grok_high_model(), "standard", "hard disagreement — Grok High (Pro pool)"
-      return MODEL["sol"], "crucial", "hard disagreement — Sol"
+      return grok_high_model(), "standard", "hard disagreement — Grok High (Pro pool)"
     if grok_high_enabled():
       return grok_high_model(), "standard", "mid review — Grok High"
     return mild_tb_model(), "standard", "mid review — Terra fallback"

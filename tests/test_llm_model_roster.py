@@ -43,29 +43,34 @@ def test_hard_disagreement_go_high_uses_grok_pro():
   assert tier == "standard"
 
 
-def test_hard_disagreement_go_high_uses_opus_when_other_allowed(monkeypatch):
+def test_hard_disagreement_go_high_stays_grok_even_with_override(monkeypatch):
   monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
   monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
   model, tier, _ = escalate_task_model("tiebreaker", "GO", "high", ["agree", "reject"])
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
+
+
+def test_executive_uses_opus_when_override(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
+  monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
+  model, tier, _ = escalate_task_model("executive", "GO", "high", ["agree", "reject"])
   assert model == "claude-opus-4-8"
   assert tier == "flagship"
 
 
-def test_hard_disagreement_default_uses_grok_pro():
+def test_hard_disagreement_always_grok_pro():
   model, tier, _ = escalate_task_model("tiebreaker", "NO_GO", "low", ["agree", "reject"])
   assert model == "cursor-grok-4.5-high"
   assert tier == "standard"
 
 
-def test_hard_disagreement_default_uses_sol_when_other_allowed(monkeypatch):
-  from engine.llm_model_roster import MODEL
-
+def test_hard_disagreement_stays_grok_with_override(monkeypatch):
   monkeypatch.setenv("EW_CURSOR_PRO_ONLY", "0")
   monkeypatch.setenv("EW_ALLOW_OTHER_MODELS", "1")
-  monkeypatch.setitem(MODEL, "sol", "gpt-5.6-sol")
   model, tier, _ = escalate_task_model("tiebreaker", "NO_GO", "low", ["agree", "reject"])
-  assert model == "gpt-5.6-sol"
-  assert tier == "crucial"
+  assert model == "cursor-grok-4.5-high"
+  assert tier == "standard"
 
 
 def test_light_planning_uses_grok_pro():

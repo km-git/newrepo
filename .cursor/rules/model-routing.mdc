@@ -5,9 +5,11 @@ alwaysApply: true
 
 # Model routing
 
-- **~95% Cursor Pro** (Composer, Grok, Grok High) — included in Pro subscription.
-- **Other Models** (GPT/Claude/Gemini API) blocked by default — set `EW_ALLOW_OTHER_MODELS=1` only when needed.
-- Env: `EW_CURSOR_PRO_ONLY=1`, `EW_LLM_CHEAP_TARGET_PCT=95`, `EW_ALLOW_OTHER_MODELS=0`, `EW_USE_CURSOR_API_POOL=0`.
+- **98% Cursor Pro** (Composer, Grok, Grok High) — default `EW_LLM_CHEAP_TARGET_PCT=98`.
+- **2% Other Models** budget — executive GO + high conviction ONLY (`EW_OTHER_MODELS_BUDGET_PCT=2`).
+- **5% shame ceiling** — hard block above this (`EW_OTHER_MODELS_SHAME_PCT=5`).
+- Dev override: `EW_ALLOW_OTHER_MODELS=1` + `EW_CURSOR_PRO_ONLY=0` (not for daemons).
+- Env: `EW_CURSOR_PRO_ONLY=1`, `EW_USE_CURSOR_API_POOL=0`.
 - Treat model names, availability, pricing, usage limits, and routing as changeable product configuration.
 - Prefer the currently available model appropriate to the task. Use Auto for routine work unless explicit model control is materially useful.
 - Reserve frontier reasoning models for architecture, security, high-risk decisions, and hard disagreements. Use fast workhorse models for bounded edits, extraction, formatting, and repetitive test generation.

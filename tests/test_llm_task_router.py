@@ -106,9 +106,22 @@ def test_tiebreaker_route_mild_uses_grok_high_not_opus(monkeypatch):
   assert route[3] == "tiebreaker"
 
 
-def test_tiebreaker_route_hard_go_high_uses_grok_pro(monkeypatch):
+def test_tiebreaker_route_hard_go_high_uses_opus_within_2pct_budget(monkeypatch):
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
+  assert route is not None
+  assert route[1] == "claude-opus-4-8"
+  assert route[3] == "executive"
+
+
+def test_tiebreaker_route_hard_go_high_falls_back_when_budget_exhausted(monkeypatch):
+  from engine.llm_token_saver import get_pool_mix_tracker
+
+  monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
+  monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  tracker = get_pool_mix_tracker()
+  monkeypatch.setattr(tracker, "_state", lambda: {"cursor_pro": 98, "other": 2})
   route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
   assert route is not None
   assert route[1] == "cursor-grok-4.5-high"
