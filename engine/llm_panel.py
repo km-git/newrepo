@@ -25,6 +25,7 @@ from engine.llm_task_router import (
 )
 from engine.llm_backend import llm_backend
 from engine.llm_cursor import cursor_available, cursor_model_for
+from engine.model_budget_governor import Purpose, record_model_call, should_escalate_to_premium
 
 IntelligenceMode = Literal["ensemble", "single", "dual"]
 Stance = Literal["agree", "caution", "reject", "unknown"]
@@ -157,6 +158,9 @@ def run_panel(
   verdict: str,
   conviction: str,
   call_provider: Callable[..., dict],
+  *,
+  purpose: Purpose = "screen",
+  metrics_poor: bool = False,
 ) -> dict:
   """
   Execute intelligence panel:
@@ -169,7 +173,10 @@ def run_panel(
 
   def _invoke(route: tuple) -> Tuple[str, dict]:
     provider, model, tier, task, max_out = route
-    return provider, call_provider(provider, model, tier, task, max_out)
+    resp = call_provider(provider, model, tier, task, max_out)
+    if resp.get("available") and resp.get("stance"):
+      record_model_call(tier, model)
+    return provider, resp
 
   if len(screen_detail) > 1:
     with ThreadPoolExecutor(max_workers=len(screen_detail)) as pool:
@@ -200,19 +207,31 @@ def run_panel(
   severity = disagreement_severity(stances)
 
   if mode == "ensemble" and models_disagree(ok_screen):
-    tb = tiebreaker_route(verdict, conviction, stances=stances)
-    if tb:
-      escalated = True
-      provider, model, tier, task, max_out = tb
-      tiebreaker_route_meta = {
-        "provider": provider,
-        "model": model,
-        "tier": tier,
-        "task": task,
-        "disagreement_severity": severity,
-      }
-      tiebreaker = call_provider(provider, model, tier, task, max_out)
-      tiebreaker["role"] = task
+    allow_premium = should_escalate_to_premium(
+      purpose,
+      verdict=verdict,
+      conviction=conviction,
+      stances=stances,
+      metrics_poor=metrics_poor,
+    )
+    if allow_premium:
+      tb = tiebreaker_route(verdict, conviction, stances=stances)
+      if tb:
+        escalated = True
+        provider, model, tier, task, max_out = tb
+        tiebreaker_route_meta = {
+          "provider": provider,
+          "model": model,
+          "tier": tier,
+          "task": task,
+          "disagreement_severity": severity,
+        }
+        tiebreaker = call_provider(provider, model, tier, task, max_out)
+        tiebreaker["role"] = task
+        if tiebreaker.get("available") and tiebreaker.get("stance"):
+          record_model_call(tier, model)
+    else:
+      tiebreaker_route_meta = {"skipped": "premium_budget_or_purpose_gate"}
 
   consensus = blend_stances(ok_screen, tiebreaker)
   conf_adj = avg_confidence_adjustment(ok_screen, tiebreaker)
@@ -238,6 +257,7 @@ def run_panel(
     "disagreement": models_disagree(ok_screen),
     "disagreement_severity": severity if models_disagree(ok_screen) else "none",
     "escalated_to_premium": escalated,
+    "premium_gate": purpose,
     "tiebreaker": tiebreaker,
     "tiebreaker_route": tiebreaker_route_meta if escalated else None,
     "tiebreaker_task": tiebreaker_task(verdict, conviction, stances) if escalated else None,

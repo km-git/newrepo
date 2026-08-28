@@ -33,6 +33,7 @@ from engine.llm_panel import (
   effective_intelligence_mode,
   run_panel,
 )
+from engine.model_budget_governor import record_model_call
 from engine.llm_cost import attach_cost_estimate
 from engine.llm_backend import advisory_credentials_available, credentials_hint, llm_backend
 from engine.llm_cursor import call_cursor_provider_advisory
@@ -218,6 +219,7 @@ def _call_advisory(
     resp = call_anthropic_advisory(prompt, model, capped)
   if resp.get("available") and resp.get("stance"):
     budget.record(model, usage_from_response(resp, prompt, capped))
+    record_model_call(tier, model)
   return resp
 
 
@@ -296,7 +298,10 @@ def get_llm_advisory(
     def _call_provider(provider: str, model: str, tier: str, task: str, max_output: int) -> dict:
       return _call_advisory(provider, model, tier, task, max_output, prompt)
 
-    panel = run_panel(prompt, verdict, conviction, _call_provider)
+    panel = run_panel(
+      prompt, verdict, conviction, _call_provider,
+      purpose="executive",
+    )
     responses = panel["screen"]
     result = {
       "critical": True,

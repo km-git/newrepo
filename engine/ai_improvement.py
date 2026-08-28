@@ -17,6 +17,12 @@ from engine.llm_backend import llm_backend
 from engine.llm_model_roster import MODEL, ROSTER, disagreement_severity, escalate_task_model
 from engine.llm_panel import blend_stances, models_disagree, run_panel
 from engine.llm_task_router import TaskKind, max_output_for_task, provider_for_task
+from engine.model_budget_governor import (
+  governor_summary,
+  limit_cheap_routes,
+  record_model_call,
+  should_escalate_to_premium,
+)
 from engine.token_saver_registry import optimize_prompt_text
 
 NAMESPACE = "ai_improvement"
@@ -88,7 +94,7 @@ def improvement_workhorse_routes() -> List[Tuple[str, str, str, TaskKind, int]]:
 
   if not routes:
     routes.append((provider_for_task(task, MODEL["workhorse_fp"]), MODEL["workhorse_fp"], "cheap", task, max_out))
-  return routes
+  return limit_cheap_routes(routes)
 
 
 def improvement_escalation_routes(
@@ -105,6 +111,14 @@ def improvement_escalation_routes(
   routes: List[Tuple[str, str, str, TaskKind, int]] = []
 
   if sev in ("mild", "hard") or metrics_poor:
+    if not should_escalate_to_premium(
+      "self_improvement",
+      verdict=verdict,
+      conviction=conviction,
+      stances=stances,
+      metrics_poor=metrics_poor,
+    ):
+      return routes
     tb_model, _, _ = escalate_task_model("tiebreaker", verdict, conviction, stances)
     task: TaskKind = "tiebreaker"
     routes.append((provider_for_task(task, tb_model), tb_model, "standard", task, max_output_for_task(task)))
@@ -198,7 +212,10 @@ def _invoke_routes(
   def _run(route: Tuple[str, str, str, TaskKind, int]) -> Tuple[str, dict]:
     provider, model, tier, task, max_out = route
     key = f"{model}:{task}"
-    return key, call_provider(provider, model, tier, task, max_out)
+    resp = call_provider(provider, model, tier, task, max_out)
+    if resp.get("available") and resp.get("stance"):
+      record_model_call(tier, model)
+    return key, resp
 
   if len(routes) > 1:
     with ThreadPoolExecutor(max_workers=min(len(routes), 6)) as pool:
@@ -256,14 +273,21 @@ def run_multi_model_improvement_review(
   ]
   stances = [r.get("stance") for r in ok_workhorse if r.get("stance")]
   poor = _metrics_poor(metrics)
+  unanimous = len(stances) >= 2 and len(set(stances)) == 1 and stances[0] == "agree"
 
-  # Phase 2: standard ensemble panel (dual screen + tiebreaker)
-  panel = run_panel(prompt, verdict, conviction, call_provider)
+  # Phase 2: standard ensemble panel — skip when phase 1 unanimous agree (token save)
+  panel: Dict[str, Any] = {"consensus_stance": stances[0] if unanimous else "caution", "skipped": unanimous}
+  if not unanimous:
+    panel = run_panel(
+      prompt, verdict, conviction, call_provider,
+      purpose="self_improvement",
+      metrics_poor=poor,
+    )
 
   # Phase 3: premium specialists only on disagreement or poor metrics
   escalation_responses: Dict[str, dict] = {}
   escalated = False
-  if models_disagree(ok_workhorse) or panel.get("disagreement") or poor:
+  if not unanimous and (models_disagree(ok_workhorse) or panel.get("disagreement") or poor):
     esc_routes = improvement_escalation_routes(verdict, conviction, stances, metrics_poor=poor)
     if esc_routes:
       escalated = True
@@ -305,6 +329,8 @@ def run_multi_model_improvement_review(
     "models_consulted": models_used,
     "backend": llm_backend(),
     "use_all_cursor_models": use_all_cursor_models(),
+    "phase1_unanimous": unanimous,
+    "governor": governor_summary(),
     "cache_hit": False,
   }
 

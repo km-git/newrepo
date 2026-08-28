@@ -108,6 +108,7 @@ def _llm_panel_for_row(row: dict) -> Optional[dict]:
     verdict=verdict,
     conviction="medium",
     call_provider=make_prompt_call_provider(prompt),
+    purpose="executive",
   )
 
 

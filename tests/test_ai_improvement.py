@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from engine.ai_improvement import (
   ai_improvement_enabled,
   build_improvement_prompt,
@@ -12,6 +14,15 @@ from engine.ai_improvement import (
   use_all_cursor_models,
 )
 from engine.llm_model_roster import MODEL
+
+
+@pytest.fixture(autouse=True)
+def _reset_governor_state():
+  from engine.model_budget_governor import reset_governor
+
+  reset_governor()
+  yield
+  reset_governor()
 
 
 def test_cursor_hosted_models_includes_first_party():
@@ -28,12 +39,17 @@ def test_workhorse_routes_use_cursor_hosted():
   assert all(r[2] == "cheap" for r in routes)
 
 
-def test_escalation_includes_premium_on_hard_disagree():
+def test_escalation_includes_premium_on_hard_disagree(tmp_path, monkeypatch):
+  from engine.model_budget_governor import reset_governor
+
+  monkeypatch.setenv("EW_LLM_CACHE_DIR", str(tmp_path))
+  monkeypatch.setenv("EW_MODEL_BUDGET_GOVERNOR", "1")
+  reset_governor()
   mild = improvement_escalation_routes(stances=["agree", "caution"], metrics_poor=False)
   hard = improvement_escalation_routes(stances=["agree", "reject"], metrics_poor=True)
   hard_models = {r[1] for r in hard}
   assert MODEL["opus"] in hard_models or MODEL["fable"] in hard_models or MODEL["sol"] in hard_models
-  assert len(mild) >= 1
+  assert len(mild) == 0
 
 
 def test_build_improvement_prompt_compact():
@@ -52,11 +68,15 @@ def test_run_improvement_skipped_when_disabled(monkeypatch):
 
 
 def test_run_improvement_with_mock_panel(monkeypatch, tmp_path):
+  from engine.model_budget_governor import reset_governor
+
   monkeypatch.setenv("EW_AI_IMPROVEMENT", "1")
   monkeypatch.setenv("EW_OKF_BRAIN_DIR", str(tmp_path / "okf"))
   monkeypatch.setenv("EW_USE_ALL_CURSOR_MODELS", "1")
+  monkeypatch.setenv("EW_LLM_CACHE_DIR", str(tmp_path / "cache"))
+  reset_governor()
 
-  def mock_panel(prompt, verdict, conviction, call_provider):
+  def mock_panel(prompt, verdict, conviction, call_provider, **kwargs):
     return {
       "consensus_stance": "caution",
       "blended_summary": "mock panel",
