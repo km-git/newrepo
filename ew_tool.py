@@ -118,6 +118,11 @@ def main() -> None:
     help="Show broker, proxy, WS, risk halt status",
   )
   parser.add_argument(
+    "--portfolio-risk",
+    action="store_true",
+    help="Show portfolio heat, cluster exposure, and hedge status",
+  )
+  parser.add_argument(
     "--data-intel",
     metavar="SYMBOL",
     help="Fetch WS + web intel snapshot for symbol",
@@ -314,6 +319,11 @@ def main() -> None:
   if args.execution_status:
     from engine.execution_agent import execution_status
     print(json.dumps(execution_status(), indent=2, default=str))
+    return
+
+  if args.portfolio_risk:
+    from engine.portfolio_risk import portfolio_risk_status
+    print(json.dumps(portfolio_risk_status(), indent=2, default=str))
     return
 
   if args.data_intel:

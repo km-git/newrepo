@@ -138,6 +138,27 @@ def compute_risk_multiplier(
     except Exception:
       pass
 
+  # Portfolio heat — shrink when aggregate exposure elevated (gates handle hard blocks)
+  try:
+    from engine.portfolio_risk import load_portfolio_state, portfolio_heat_multiplier, portfolio_risk_enabled
+
+    if portfolio_risk_enabled() and symbol:
+      state = load_portfolio_state()
+      stub_row = {
+        "symbol": symbol,
+        "direction": direction,
+        "account_risk_pct": 0.5,
+        "gtc_size_cap_pct": 100,
+        "account_equity": state.equity,
+        "risk_budget_usd": state.equity * 0.005,
+      }
+      ph_mult, ph_factors = portfolio_heat_multiplier(state, stub_row)
+      if 0 < ph_mult < 1.0:
+        mult *= ph_mult
+        factors.extend(ph_factors)
+  except Exception:
+    pass
+
   # Probe tier cap
   if honest_tier == "probe":
     mult = min(mult, 0.85)

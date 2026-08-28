@@ -123,7 +123,12 @@ def extract_legs(row: dict) -> List[dict]:
   return legs
 
 
-def gate_paper_row(row: dict, *, open_positions: int = 0) -> Tuple[bool, List[str]]:
+def gate_paper_row(
+  row: dict,
+  *,
+  open_positions: int = 0,
+  portfolio_state=None,
+) -> Tuple[bool, List[str]]:
   """Honest export gates + paper portfolio rules."""
   allowed, reasons = gate_row(row, intel={})
   if not allowed:
@@ -138,6 +143,20 @@ def gate_paper_row(row: dict, *, open_positions: int = 0) -> Tuple[bool, List[st
 
   if open_positions >= max_positions():
     return False, [f"max_positions={max_positions()}"]
+
+  try:
+    from engine.portfolio_risk import PortfolioState, gate_portfolio_heat, portfolio_risk_enabled
+
+    if portfolio_risk_enabled():
+      state = portfolio_state if portfolio_state is not None else None
+      if state is None:
+        from engine.portfolio_risk import load_portfolio_state
+        state = load_portfolio_state()
+      allowed_heat, heat_reasons = gate_portfolio_heat(row, state)
+      if not allowed_heat:
+        return False, heat_reasons
+  except Exception:
+    pass
 
   legs = extract_legs(row)
   if not legs:

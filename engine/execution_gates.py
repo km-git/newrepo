@@ -58,4 +58,15 @@ def gate_row(row: dict, *, intel: Optional[dict] = None) -> Tuple[bool, List[str
     reasons.append(f"stale_ws_{ws['age_sec']}s")
     # warn only — don't block by default
 
+  try:
+    from engine.portfolio_risk import gate_portfolio_heat, portfolio_risk_enabled
+
+    if portfolio_risk_enabled():
+      allowed_heat, heat_reasons = gate_portfolio_heat(row)
+      if not allowed_heat:
+        reasons.extend(heat_reasons)
+        return False, reasons
+  except Exception:
+    pass
+
   return True, reasons
