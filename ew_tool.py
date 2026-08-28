@@ -77,6 +77,17 @@ def main() -> None:
     help="Run executive consensus on all open PRs",
   )
   parser.add_argument(
+    "--resolve-conflicts",
+    type=int,
+    metavar="N",
+    help="Auto-resolve merge conflicts on PR N using Cursor Pro AI, then push",
+  )
+  parser.add_argument(
+    "--resolve-conflicts-all",
+    action="store_true",
+    help="Auto-resolve merge conflicts on all conflicted open PRs",
+  )
+  parser.add_argument(
     "--brain-ask",
     metavar="QUESTION",
     help="Query OKF secondary brain with multi-model consensus",
@@ -263,6 +274,16 @@ def main() -> None:
       dry_run=args.pr_dry_run,
       approve_all=args.pr_approve_all,
     )
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.resolve_conflicts is not None or args.resolve_conflicts_all:
+    from engine.merge_conflict_resolver import resolve_all_pr_conflicts, resolve_pr_conflicts
+
+    if args.resolve_conflicts_all:
+      result = resolve_all_pr_conflicts(dry_run=args.pr_dry_run, use_ai=True)
+    else:
+      result = resolve_pr_conflicts(args.resolve_conflicts, dry_run=args.pr_dry_run, use_ai=True)
     print(json.dumps(result, indent=2, default=str))
     return
 

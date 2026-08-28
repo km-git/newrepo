@@ -33,9 +33,18 @@ def _save_state(state: dict) -> None:
 
 
 def run_pr_auto_merge(*, dry_run: bool = False) -> Dict[str, Any]:
-  """Ready draft PRs and auto-approve/merge all open PRs via executive consensus."""
+  """Resolve conflicts, then ready draft PRs and auto-approve/merge via executive consensus."""
   if os.environ.get("EW_PR_AUTO_MERGE", "1").lower() in ("0", "false", "no"):
     return {"skipped": True, "reason": "EW_PR_AUTO_MERGE off"}
+
+  conflict_result: Dict[str, Any] = {}
+  try:
+    from engine.merge_conflict_resolver import auto_resolve_conflicts_enabled, resolve_all_pr_conflicts
+
+    if auto_resolve_conflicts_enabled():
+      conflict_result = resolve_all_pr_conflicts(dry_run=dry_run, use_ai=True)
+  except Exception as exc:
+    conflict_result = {"ok": False, "error": str(exc)}
 
   try:
     from engine.pr_agent import run_pr_agent
@@ -47,9 +56,10 @@ def run_pr_auto_merge(*, dry_run: bool = False) -> Dict[str, Any]:
     os.environ.setdefault("EW_LLM_BACKEND", "cursor")
 
     result = run_pr_agent(approve_all=True, dry_run=dry_run)
+    result["conflict_resolution"] = conflict_result
     return result
   except Exception as exc:
-    return {"ok": False, "error": str(exc)}
+    return {"ok": False, "error": str(exc), "conflict_resolution": conflict_result}
 
 
 def run_self_learning(*, use_llm: bool = True) -> Dict[str, Any]:

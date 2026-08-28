@@ -49,6 +49,8 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   State: `output/system/resource_gap_audit.json`. Env: `EW_GAP_AUDIT=1`.
 - **PR auto-approve:** `python3 ew_tool.py --pr-approve <N>` or `--pr-approve-all`.
   Agent: `python3 scripts/pr_executive_consensus.py`. 5/7 model consensus rule.
+  **Auto conflict resolution:** `EW_PR_AUTO_RESOLVE_CONFLICTS=1` (default) — Cursor Pro AI resolves
+  merge conflicts before approve/merge. CLI: `--resolve-conflicts-all` or `--resolve-conflicts <N>`.
   GitHub Action: `.github/workflows/pr-executive-consensus.yml`. Results in `output/pr_reviews/`.
 - **OKF secondary brain:** Multi-model consensus persisted as OKF v0.1 concepts in `okf/brain/`.
   Self-improvement loop writes autodream lessons + honesty audits after each run.

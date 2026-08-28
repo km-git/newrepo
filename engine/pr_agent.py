@@ -72,7 +72,17 @@ def run_pr_agent(
   if pr_number is None:
     raise ValueError("pr_number required unless approve_all=True")
 
+  from engine.merge_conflict_resolver import auto_resolve_conflicts_enabled, resolve_pr_conflicts
+
+  conflict_result: Dict[str, Any] = {}
+  if auto_resolve_conflicts_enabled():
+    try:
+      conflict_result = resolve_pr_conflicts(pr_number, repo, dry_run=dry_run, use_ai=True)
+    except Exception as exc:
+      conflict_result = {"ok": False, "error": str(exc)}
+
   result = run_pr_executive_consensus(pr_number, repo, dry_run=dry_run, use_llm=use_llm)
+  result["conflict_resolution"] = conflict_result
   path = save_pr_result(result)
   result["saved_to"] = path
   return result
@@ -84,7 +94,16 @@ def run_pr_agent_batch(
   dry_run: bool = False,
   use_llm: Optional[bool] = None,
 ) -> Dict[str, Any]:
-  """Review all open non-draft PRs."""
+  """Review all open non-draft PRs — auto-resolve conflicts first."""
+  from engine.merge_conflict_resolver import auto_resolve_conflicts_enabled, resolve_all_pr_conflicts
+
+  conflict_summary: Dict[str, Any] = {}
+  if auto_resolve_conflicts_enabled():
+    try:
+      conflict_summary = resolve_all_pr_conflicts(repo, dry_run=dry_run, use_ai=True)
+    except Exception as exc:
+      conflict_summary = {"ok": False, "error": str(exc)}
+
   if os.environ.get("EW_PR_READY_DRAFTS", "1").lower() not in ("0", "false", "no"):
     _ready_open_drafts(repo)
   prs = list_open_prs(repo)
@@ -104,6 +123,7 @@ def run_pr_agent_batch(
     "reviewed": len(results),
     "merged": sum(1 for r in results if any(a.get("action") == "merge" for a in r.get("github_actions", []))),
     "approved": sum(1 for r in results if any(a.get("action") == "approve" for a in r.get("github_actions", []))),
+    "conflict_resolution": conflict_summary,
     "results": results,
   }
   batch_path = pr_output_dir() / "batch_latest.json"

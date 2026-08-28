@@ -33,6 +33,7 @@ jobs:
       EW_PR_AUTO_APPROVE: "1"
       EW_PR_AUTO_MERGE: "1"
       EW_PR_MERGE_WITHOUT_PANEL: "1"
+      EW_PR_AUTO_RESOLVE_CONFLICTS: "1"
       EW_PR_LLM_ADVISORY: "1"
       EW_LLM_BACKEND: cursor
       EW_LLM_INTELLIGENCE: ensemble

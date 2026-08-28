@@ -106,6 +106,14 @@ print('web_intel_keys', list(wi.keys())[:8])
 print('social_ok', soc.get('ok', soc.get('skipped')))
 " || echo "[autonomous] web/social phase skipped: $?"
 
+echo "=== Phase 5b: auto-resolve GitHub merge conflicts (Cursor Pro AI) ==="
+export EW_PR_AUTO_RESOLVE_CONFLICTS="${EW_PR_AUTO_RESOLVE_CONFLICTS:-1}"
+if command -v gh >/dev/null 2>&1; then
+  "$PY" ew_tool.py --resolve-conflicts-all ${EW_PR_DRY_RUN:+--pr-dry-run} || echo "[autonomous] conflict resolution note: $?"
+else
+  echo "[autonomous] gh not available — skip conflict resolution"
+fi
+
 echo "=== Phase 6: ready draft PRs + executive consensus merge ==="
 if command -v gh >/dev/null 2>&1; then
   gh pr list --state open --json number,isDraft -q '.[] | select(.isDraft==true) | .number' 2>/dev/null | while read -r n; do
