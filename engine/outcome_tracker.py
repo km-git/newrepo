@@ -8,14 +8,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-_TF_ORDER = ("1w", "1d", "4h", "1h", "15m")
+_TF_ORDER = ("1w", "1d", "12h", "4h", "1h", "15m")
 
 TRACKED_PATH = Path("output/autodream/tracked_setups.json")
 METRICS_PATH = Path("output/autodream/metrics.json")
 PERFORMANCE_MD = Path("reports/HISTORICAL_PERFORMANCE.md")
 
 # Max forward bars to resolve a setup before marking expired.
-_MAX_FORWARD_BARS = {"15m": 96, "1h": 72, "4h": 42, "1d": 30, "1w": 12}
+_MAX_FORWARD_BARS = {"15m": 96, "1h": 72, "4h": 42, "12h": 36, "1d": 30, "1w": 12}
 
 _MIN_SAMPLES = 3
 _POOR_WIN_RATE = 0.40

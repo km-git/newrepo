@@ -63,3 +63,8 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Workflow: `.github/workflows/autonomous-daily.yml` (04:00 UTC). Summary: `output/autonomous/daily/latest_summary.json`.
   Env: `EW_PR_AUTO_APPROVE=1`, `EW_PR_AUTO_MERGE=1`, `EW_PR_MERGE_WITHOUT_PANEL=1` (merge on rules-only APPROVE_MERGE when GitHub review API blocked).
   Set `CURSOR_API_KEY` in Cloud Agent secrets for full multi-model panel in CI/daily runs.
+- **V6 scanner (1000 pairs, 6 TFs):** Continuous large-scale validation across `15m,1h,4h,12h,1d,1w`.
+  Universe: OKX spot USDT + USDT perps (~835 symbols max). Chunked scans rotate every 30 min; full refresh every 6h.
+  CLI: `python3 ew_tool.py --v6-scan` (chunk) or `--v6-scan-full` (full universe).
+  Scripts: `python3 scripts/run_v6_scanner.py`, `bash scripts/run_v6_scanner_daemon.sh` (24/7).
+  Best trades: `output/v6_scanner/best_trades_latest.json`. Env: `EW_V6_SETUP=1`, `EW_SCANNER_PAIRS=1000`, `EW_SCANNER_CHUNK=50`.

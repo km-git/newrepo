@@ -186,6 +186,16 @@ def main() -> None:
     action="store_true",
     help="Run full daily autonomous loop (test → learn → research → PR merge)",
   )
+  parser.add_argument(
+    "--v6-scan",
+    action="store_true",
+    help="V6 chunk scan: up to 1000 pairs × 6 TFs (15m,1h,4h,12h,1d,1w), rank best trades",
+  )
+  parser.add_argument(
+    "--v6-scan-full",
+    action="store_true",
+    help="V6 full universe scan (slow — all pairs in one run)",
+  )
   parser.add_argument("--goal-text", default=None, help="Custom goal string for --goal-mode")
   parser.add_argument("--health", action="store_true", help="System health checks")
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
@@ -344,6 +354,17 @@ def main() -> None:
       env["EW_PR_AUTO_APPROVE"] = "0"
     proc = subprocess.run(["bash", "scripts/run_autonomous_daily.sh"], env=env)
     sys.exit(proc.returncode)
+
+  if args.v6_scan or args.v6_scan_full:
+    from engine.v6_scanner import run_v6_chunk_scan, run_v6_full_batch
+
+    os.environ.setdefault("EW_V6_SETUP", "1")
+    if args.v6_scan_full:
+      result = run_v6_full_batch()
+    else:
+      result = run_v6_chunk_scan()
+    print(json.dumps(result, indent=2, default=str))
+    return
 
   if args.goal_mode_agents:
     from engine.goal_mode import swarm_agent_map
