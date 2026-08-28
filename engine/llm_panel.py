@@ -223,7 +223,13 @@ def run_panel(
           stances=stances,
           metrics_poor=metrics_poor,
         )
-        and should_use_other_model(purpose, force_critical=(verdict == "GO"))
+        and should_use_other_model(
+          purpose,
+          verdict=verdict,
+          conviction=conviction,
+          stances=stances,
+          force_critical=(purpose == "executive" and verdict == "GO" and conviction == "high"),
+        )
       )
       if allow_tiebreaker:
         escalated = True

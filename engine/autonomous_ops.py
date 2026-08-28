@@ -169,9 +169,13 @@ def run_autonomous_tick(
   )
 
   try:
-    from engine.model_budget_governor import governor_summary
+    from engine.model_budget_governor import governor_summary, other_model_shame_status
 
     tick["model_budget"] = governor_summary()
+    shame = other_model_shame_status()
+    tick["model_budget"]["shame"] = shame
+    if shame.get("ashamed"):
+      print(f"[autonomous] ASHAMED: Other Models at {shame.get('other_share', 0):.1%} — use Cursor Pro")
   except Exception:
     pass
 

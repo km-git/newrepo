@@ -13,7 +13,10 @@ from engine.model_budget_governor import (
   is_other_model,
   limit_cheap_routes,
   llm_allowed_for_routine,
+  other_model_hard_ceiling,
   other_model_pool_enabled,
+  other_model_shame_status,
+  other_model_target_max,
   prefer_cursor_pool_model,
   purpose_for_brain_domain,
   should_escalate_to_premium,
@@ -137,3 +140,82 @@ def test_governor_tracks_cursor_ratio(tmp_path, monkeypatch):
   assert summary["other_calls"] == 1
   assert summary["cursor_ratio"] >= 0.66
   assert is_other_model("claude-opus-4-8")
+
+
+def test_ashamed_when_other_share_exceeds_target(monkeypatch):
+  from engine.model_budget_governor import reset_governor
+
+  monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
+  monkeypatch.setenv("EW_OTHER_MODEL_TARGET_MAX", "0.02")
+  monkeypatch.setenv("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "1")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(2):
+    g.record_call("cheap", "composer-2.5")
+  g.record_call("premium", "claude-opus-4-8")
+  assert g.is_ashamed() is True
+  shame = other_model_shame_status()
+  assert shame["ashamed"] is True
+  assert shame["shame_events"] >= 1
+
+
+def test_other_model_blocked_when_ashamed(monkeypatch):
+  from engine.model_budget_governor import reset_governor
+
+  monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
+  monkeypatch.setenv("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "1")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  g.record_call("cheap", "composer-2.5")
+  g.record_call("premium", "claude-opus-4-8")
+  assert should_use_other_model(
+    "executive",
+    verdict="GO",
+    conviction="high",
+    stances=["agree", "reject"],
+    force_critical=True,
+  ) is False
+
+
+def test_other_model_allowed_under_budget_for_critical_executive(monkeypatch):
+  from engine.model_budget_governor import reset_governor
+
+  monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
+  monkeypatch.setenv("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "50")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(50):
+    g.record_call("cheap", "composer-2.5")
+  assert should_use_other_model(
+    "executive",
+    verdict="GO",
+    conviction="high",
+    stances=["agree", "reject"],
+    force_critical=True,
+  ) is True
+
+
+def test_other_model_hard_ceiling_blocks_at_five_percent(monkeypatch):
+  from engine.model_budget_governor import reset_governor
+
+  monkeypatch.setenv("EW_CURSOR_POOL_GOVERNOR", "1")
+  monkeypatch.setenv("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "1")
+  monkeypatch.setenv("EW_OTHER_MODEL_HARD_CEILING", "0.05")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(19):
+    g.record_call("cheap", "composer-2.5")
+  g.record_call("premium", "claude-opus-4-8")
+  assert g.other_share() <= other_model_hard_ceiling() + 0.001
+  assert should_use_other_model(
+    "executive",
+    verdict="GO",
+    conviction="high",
+    stances=["agree", "reject"],
+    force_critical=True,
+  ) is False
+
+
+def test_other_model_target_defaults():
+  assert other_model_target_max() == 0.02
+  assert other_model_hard_ceiling() == 0.05

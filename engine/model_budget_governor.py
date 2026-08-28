@@ -1,12 +1,9 @@
 """
-Model budget governor — 98% Cursor Pro models, 2% Other Models (executive only).
+Model budget governor — 98% Cursor Pro, max 2% Other Models (ashamed above 2%, hard stop at 5%).
 
-Tracks two budgets:
-  1. Cursor Pro pool (composer, grok) vs Other Models quota (GPT, Claude, Gemini)
-  2. Cheap vs premium tier for executive escalation
-
-Other Models are reserved exclusively for executive decision-making and capped at 2%.
-All other tasks (screen, self-improvement, PR, research) use Cursor Pro only.
+Other Models (GPT/Claude/Gemini) are a last resort for executive GO + high conviction +
+hard disagreement only. Using them beyond 2% daily share is tracked as shame events.
+Hard ceiling at 5% — never exceeded regardless of outcome pressure.
 """
 
 from __future__ import annotations
@@ -51,6 +48,21 @@ def cheap_target_ratio() -> float:
 def cursor_target_ratio() -> float:
   """Target fraction of calls on Cursor Pro models (default 98%)."""
   return float(os.environ.get("EW_CURSOR_MODEL_RATIO", "0.98"))
+
+
+def other_model_target_max() -> float:
+  """Target max Other Models share — ashamed to exceed (default 2%)."""
+  return float(os.environ.get("EW_OTHER_MODEL_TARGET_MAX", "0.02"))
+
+
+def other_model_hard_ceiling() -> float:
+  """Absolute hard stop for Other Models share (default 5%, never exceed)."""
+  return float(os.environ.get("EW_OTHER_MODEL_HARD_CEILING", "0.05"))
+
+
+def min_cursor_calls_before_other() -> int:
+  """Cursor Pro calls required before first Other Model (default 50 ≈ 2% budget)."""
+  return int(os.environ.get("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "50"))
 
 
 def other_models_executive_only() -> bool:
@@ -128,7 +140,7 @@ class ModelBudgetGovernor:
     self._day = date.today().isoformat()
 
   def _state(self) -> dict:
-    base = {"cheap": 0, "premium": 0, "cursor": 0, "other": 0}
+    base = {"cheap": 0, "premium": 0, "cursor": 0, "other": 0, "shame_events": 0}
     stored = self._daily.get(self._day, {})
     base.update(stored)
     return base
@@ -144,6 +156,12 @@ class ModelBudgetGovernor:
     if model:
       pool_bucket = "cursor" if is_cursor_pro_model(model) else "other"
       state[pool_bucket] = int(state.get(pool_bucket, 0)) + 1
+      if pool_bucket == "other":
+        cursor = int(state.get("cursor", 0))
+        other = int(state.get("other", 0))
+        total = cursor + other
+        if total > 0 and (other / total) > other_model_target_max() + 0.001:
+          state["shame_events"] = int(state.get("shame_events", 0)) + 1
     self._save(state)
 
   def cheap_ratio(self) -> float:
@@ -170,6 +188,18 @@ class ModelBudgetGovernor:
   def other_share(self) -> float:
     return 1.0 - self.cursor_ratio()
 
+  def is_ashamed(self) -> bool:
+    """True when Other Models share exceeds 2% target — ashamed to use them."""
+    if not cursor_pool_governor_enabled():
+      return False
+    state = self._state()
+    cursor = int(state.get("cursor", 0))
+    other = int(state.get("other", 0))
+    total = cursor + other
+    if total == 0:
+      return False
+    return (other / total) > other_model_target_max() + 0.001
+
   def premium_budget_allows(self) -> bool:
     if not governor_enabled():
       return True
@@ -181,7 +211,7 @@ class ModelBudgetGovernor:
     return self.premium_share() < max_premium + 0.001
 
   def other_model_budget_allows(self) -> bool:
-    """True when adding one Other Model call keeps share at or below 2%."""
+    """True only when projected Other share stays ≤2% and below 5% hard ceiling."""
     if not cursor_pool_governor_enabled():
       return other_model_pool_enabled()
     if not other_model_pool_enabled():
@@ -190,27 +220,45 @@ class ModelBudgetGovernor:
     cursor = int(state.get("cursor", 0))
     other = int(state.get("other", 0))
     total = cursor + other
-    if total == 0:
+    if total == 0 or cursor < min_cursor_calls_before_other():
       return False
-    max_other = 1.0 - cursor_target_ratio()
+    current_share = other / total if total else 0.0
+    if current_share >= other_model_hard_ceiling():
+      return False
     projected_share = (other + 1) / (total + 1)
-    return projected_share <= max_other + 0.001
+    if projected_share > other_model_hard_ceiling():
+      return False
+    return projected_share <= other_model_target_max() + 0.001
 
   def should_use_other_model(
     self,
     purpose: Purpose,
     *,
+    verdict: str = "",
+    conviction: str = "",
+    stances: Optional[List[str]] = None,
     force_critical: bool = False,
   ) -> bool:
-    """Gate Other Models — executive decision-making only, max 2% daily share."""
+    """
+    Gate Other Models — only executive GO + high conviction + hard disagreement.
+    Ashamed to use beyond 2%; hard blocked at 5%.
+    """
     if not other_model_pool_enabled():
       return False
-    if purpose != "executive":
+    if other_models_executive_only() and purpose != "executive":
+      return False
+    if self.is_ashamed():
+      return False
+    sev = disagreement_severity(stances or [])
+    if not (
+      force_critical
+      and verdict == "GO"
+      and conviction == "high"
+      and sev == "hard"
+    ):
       return False
     if not cursor_pool_governor_enabled():
       return True
-    if force_critical:
-      return self.other_model_budget_allows()
     return self.other_model_budget_allows()
 
   def should_escalate_to_premium(
@@ -262,6 +310,11 @@ class ModelBudgetGovernor:
       "cursor_ratio": round(self.cursor_ratio(), 3) if pool_total else 1.0,
       "other_share": round(self.other_share(), 3) if pool_total else 0.0,
       "target_cursor_ratio": cursor_target_ratio(),
+      "other_model_target_max": other_model_target_max(),
+      "other_model_hard_ceiling": other_model_hard_ceiling(),
+      "other_model_ashamed": self.is_ashamed(),
+      "shame_events": int(state.get("shame_events", 0)),
+      "min_cursor_before_other": min_cursor_calls_before_other(),
       "other_model_budget_allows": self.other_model_budget_allows(),
       "premium_budget_allows": self.premium_budget_allows(),
       "governor_enabled": governor_enabled(),
@@ -299,6 +352,24 @@ def should_escalate_to_premium(purpose: Purpose, **kwargs: Any) -> bool:
 
 def should_use_other_model(purpose: Purpose, **kwargs: Any) -> bool:
   return get_governor().should_use_other_model(purpose, **kwargs)
+
+
+def other_model_shame_status() -> Dict[str, Any]:
+  """Report whether we should be ashamed of Other Models usage today."""
+  g = get_governor()
+  share = g.other_share()
+  return {
+    "ashamed": g.is_ashamed(),
+    "other_share": round(share, 4),
+    "target_max": other_model_target_max(),
+    "hard_ceiling": other_model_hard_ceiling(),
+    "shame_events": g._state().get("shame_events", 0),
+    "message": (
+      "Other Models over 2% target — use Cursor Pro"
+      if g.is_ashamed()
+      else "Within 2% Other Models budget"
+    ),
+  }
 
 
 def purpose_from_task(task: str) -> Purpose:

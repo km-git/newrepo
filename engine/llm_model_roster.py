@@ -193,10 +193,18 @@ def escalate_task_model(
 
   if task == "executive":
     model = MODEL["opus"]
-    if not should_use_other_model("executive", force_critical=(verdict == "GO" and conviction == "high")):
-      model, _ = prefer_cursor_pool_model(model, purpose="executive")
+    critical = verdict == "GO" and conviction == "high" and sev == "hard"
+    if should_use_other_model(
+      "executive",
+      verdict=verdict,
+      conviction=conviction,
+      stances=stances,
+      force_critical=critical,
+    ):
+      return model, "flagship", "GO + high conviction + hard disagree (Other Models — use sparingly)"
+    model, _ = prefer_cursor_pool_model(model, purpose="executive")
     tier = "flagship" if model == MODEL["opus"] else "standard"
-    return model, tier, "GO + high conviction"
+    return model, tier, "GO — Cursor Pro (Other Models withheld for success)"
 
   if task == "synthesis":
     model, _ = prefer_cursor_pool_model(MODEL["sol"], purpose="self_improvement")
@@ -216,10 +224,16 @@ def escalate_task_model(
       return mild_tb_model(), "standard", "mild — Composer fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
       model = MODEL["opus"]
-      if should_use_other_model("executive", force_critical=True):
-        return model, "flagship", "hard disagree executive GO"
+      if should_use_other_model(
+        "executive",
+        verdict=verdict,
+        conviction=conviction,
+        stances=stances,
+        force_critical=True,
+      ):
+        return model, "flagship", "hard disagree executive GO (Other Models — ashamed if >2%)"
       model, _ = prefer_cursor_pool_model(model, purpose="executive", force_critical=True)
-      return model, "standard", "hard disagree — Cursor Grok High"
+      return model, "standard", "hard disagree — Cursor Grok High (success without Other Models)"
     if sev == "hard":
       model, _ = prefer_cursor_pool_model(MODEL["sol"], purpose="self_improvement")
       return model, "standard", "hard disagreement — Cursor Grok High"
