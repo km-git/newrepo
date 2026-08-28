@@ -425,9 +425,13 @@ def prefer_cursor_pool_model(
   Return (model, substituted).
   Use Other Models when available; otherwise Cursor Pro fallback.
   """
+  from engine.llm_budget_policy import cursor_models_only, other_models_override
+
   if is_cursor_pro_model(model_id):
     return model_id, False
   if not is_other_model(model_id):
+    return model_id, False
+  if other_models_override() and not cursor_models_only():
     return model_id, False
   if should_use_other_model(purpose, force_critical=force_critical):
     return model_id, False

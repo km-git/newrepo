@@ -108,7 +108,7 @@ def ask_brain(
     "false",
     "no",
   )
-  if purpose == "routine" and not llm_allowed_for_routine():
+  if purpose == "routine" and not llm_allowed_for_routine() and use_llm is not True:
     llm_on = False
 
   context_docs = search_concepts(question, limit=5) if search_memory else []

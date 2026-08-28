@@ -137,8 +137,13 @@ def workhorse_model() -> str:
 def screen_model_slots() -> List[Tuple[str, str]]:
   """Dual screen — Cursor Pro only by default (95% pool target)."""
   from engine.model_budget_governor import cursor_only_screen, other_model_pool_enabled
+  from engine.llm_budget_policy import cursor_models_only, other_models_override
 
-  if cursor_only_screen() or not other_model_pool_enabled():
+  use_api_screen = (other_models_override() and not cursor_models_only()) or (
+    not cursor_only_screen() and other_model_pool_enabled()
+  )
+
+  if not use_api_screen:
     a = grok_high_model() if grok_high_enabled() else MODEL["workhorse_fp"]
     b = MODEL["workhorse_fp"] if a != MODEL["workhorse_fp"] else MODEL["screen_alt"]
     return [("cursor", a), ("composer", b)]
@@ -168,20 +173,47 @@ def disagreement_severity(stances: List[str]) -> DisagreementSeverity:
   return "hard"
 
 
+def _allow_other_model_for_task(
+  task: str,
+  verdict: str = "",
+  conviction: str = "",
+  stances: Optional[List[str]] = None,
+  *,
+  force_critical: bool = False,
+) -> bool:
+  """True when Other Models quota/budget permits this escalation."""
+  from engine.llm_budget_policy import (
+    cursor_models_only,
+    may_use_other_model,
+    other_models_override,
+  )
+  from engine.model_budget_governor import should_use_other_model as gov_should
+
+  if other_models_override() and not cursor_models_only():
+    return True
+  llm_task = task if task in ("executive", "planning", "architect", "tiebreaker") else "executive"
+  context = "executive" if task in ("executive", "tiebreaker") else "routine"
+  if may_use_other_model(llm_task, context, verdict, conviction, stances):
+    return True
+  purpose = "executive" if task in ("executive", "tiebreaker") else "self_improvement"
+  return gov_should(
+    purpose,
+    verdict=verdict,
+    conviction=conviction,
+    stances=stances,
+    force_critical=force_critical,
+  )
+
+
 def escalate_task_model(
   task: str,
   verdict: str = "",
   conviction: str = "",
   stances: Optional[List[str]] = None,
 ) -> Tuple[str, str, str]:
-  from engine.model_budget_governor import (
-    prefer_cursor_pool_model,
-    purpose_for_brain_domain,
-    should_use_other_model,
-  )
+  from engine.model_budget_governor import prefer_cursor_pool_model
 
   sev = disagreement_severity(stances or [])
-  purpose = "executive" if task in ("executive", "architect") else "self_improvement"
 
   if task == "workhorse":
     return workhorse_model(), "workhorse", "composer — cheapest"
@@ -196,8 +228,8 @@ def escalate_task_model(
   if task == "executive":
     model = MODEL["opus"]
     critical = verdict == "GO" and conviction == "high" and sev == "hard"
-    if should_use_other_model(
-      "executive",
+    if _allow_other_model_for_task(
+      task,
       verdict=verdict,
       conviction=conviction,
       stances=stances,
@@ -226,7 +258,7 @@ def escalate_task_model(
       return mild_tb_model(), "standard", "mild — Composer fallback"
     if sev == "hard" and verdict == "GO" and conviction == "high":
       model = MODEL["opus"]
-      if should_use_other_model(
+      if _allow_other_model_for_task(
         "executive",
         verdict=verdict,
         conviction=conviction,

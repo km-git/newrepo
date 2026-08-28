@@ -112,6 +112,7 @@ def _llm_resolve_hunk(path: str, hunk: ConflictHunk, repo_context: str = "") -> 
     return None, "llm_disabled"
   try:
     from engine.llm_advisor import call_llm_task
+    from engine.llm_model_roster import MODEL
 
     payload = {
       "file": path,
@@ -120,7 +121,10 @@ def _llm_resolve_hunk(path: str, hunk: ConflictHunk, repo_context: str = "") -> 
       "repo_context": repo_context[:2000],
     }
     prompt = f"{MERGE_CONFLICT_SYSTEM}\n\nDATA:{json.dumps(payload, separators=(',', ':'))}\n\nJSON:"
-    resp = call_llm_task("architect", prompt)
+    # Maximum Cursor Pro intelligence — Grok 4.5 High (executive tier)
+    conflict_model = os.environ.get("EW_PR_CONFLICT_MODEL", MODEL["grok_high"])
+    os.environ.setdefault("EW_MODEL_GROK_HIGH", conflict_model)
+    resp = call_llm_task("executive", prompt)
     if not resp.get("available"):
       return None, f"llm_unavailable:{resp.get('error', resp.get('skipped', 'unknown'))}"
     resolved = str(resp.get("resolved") or "")
