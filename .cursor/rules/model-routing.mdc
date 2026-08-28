@@ -5,9 +5,10 @@ alwaysApply: true
 
 # Model routing
 
-- **100% Cursor Pro** (Composer, Grok, Grok High) — default `EW_CURSOR_MODELS_ONLY=1`.
-- **Other Models OFF** — GPT/Claude/Gemini quota is consumed; `EW_USE_OTHER_MODEL_POOL=0`.
-- Dev override only: `EW_CURSOR_MODELS_ONLY=0` + `EW_USE_OTHER_MODEL_POOL=1` + `EW_ALLOW_OTHER_MODELS=1`.
+- **Either/or** — use Other Models (GPT/Claude/Gemini) when available; **auto-fallback to Cursor Pro** when not.
+- **Cursor fallback** — default `EW_CURSOR_FALLBACK=1` substitutes Composer/Grok when quota consumed.
+- **Other Models pool** — `EW_USE_OTHER_MODEL_POOL=1` (executive-only, 2% budget, 5% shame ceiling).
+- **Strict cursor-only** — opt-in `EW_CURSOR_MODELS_ONLY=1` (never try Other Models).
 - Env: `EW_CURSOR_PRO_ONLY=1`, `EW_USE_CURSOR_API_POOL=0`, `EW_LLM_BACKEND=cursor`.
 - Treat model names, availability, pricing, usage limits, and routing as changeable product configuration.
 - Prefer the currently available model appropriate to the task. Use Auto for routine work unless explicit model control is materially useful.

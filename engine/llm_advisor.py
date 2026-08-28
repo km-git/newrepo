@@ -224,6 +224,37 @@ def _call_advisory(
     resp = call_openai_advisory(prompt, model, capped)
   else:
     resp = call_anthropic_advisory(prompt, model, capped)
+
+  from engine.model_budget_governor import (
+    cursor_fallback_enabled,
+    cursor_substitute_for,
+    is_other_model,
+    record_model_call,
+  )
+
+  if (
+    cursor_fallback_enabled()
+    and is_other_model(model)
+    and not resp.get("available")
+    and not resp.get("cursor_fallback")
+  ):
+    sub = cursor_substitute_for(model)
+    if sub != model:
+      sub_tier = "standard" if tier == "premium" else tier
+      if llm_backend() == "cursor":
+        resp = call_cursor_provider_advisory(
+          provider_for_task(task, sub), sub, sub_tier, prompt, task=task, max_output=capped,
+        )
+      elif provider == "openai":
+        resp = call_openai_advisory(prompt, sub, capped)
+      else:
+        resp = call_anthropic_advisory(prompt, sub, capped)
+      if resp.get("available"):
+        resp["cursor_fallback"] = True
+        resp["fallback_from"] = model
+        model = sub
+        tier = sub_tier
+
   if resp.get("available") and resp.get("stance"):
     budget.record(model, usage_from_response(resp, prompt, capped))
     record_model_call(tier, model)

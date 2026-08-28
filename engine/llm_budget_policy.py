@@ -1,4 +1,4 @@
-"""Cheap-first LLM budget policy — 100% Cursor Pro (Composer/Grok) by default."""
+"""Cheap-first LLM budget policy — Other Models when available, Cursor Pro fallback."""
 
 from __future__ import annotations
 
@@ -33,20 +33,25 @@ def cheap_first_enabled() -> bool:
 
 
 def cursor_models_only() -> bool:
-  """100% Cursor Pro — block GPT/Claude/Gemini (Other Models quota consumed)."""
-  return os.environ.get("EW_CURSOR_MODELS_ONLY", "1").lower() not in ("0", "false", "no")
+  """Hard-block Other Models entirely (opt-in strict mode)."""
+  return os.environ.get("EW_CURSOR_MODELS_ONLY", "0").lower() in ("1", "true", "yes")
+
+
+def cursor_fallback_enabled() -> bool:
+  """When Other Models unavailable, auto-use Cursor Pro substitute (default on)."""
+  return os.environ.get("EW_CURSOR_FALLBACK", "1").lower() not in ("0", "false", "no")
 
 
 def _other_model_pool_enabled() -> bool:
   if cursor_models_only():
     return False
-  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "0").lower() not in ("0", "false", "no")
+  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "1").lower() not in ("0", "false", "no")
 
 
 def cursor_pro_only() -> bool:
   """
-  Default on — route 100% of calls to Cursor Pro (Composer/Grok).
-  Other Models blocked when EW_CURSOR_MODELS_ONLY=1 (default).
+  Prefer Cursor Pro when Other Models unavailable (fallback mode).
+  Hard cursor-only when EW_CURSOR_MODELS_ONLY=1.
   """
   if cursor_models_only():
     return True
@@ -176,14 +181,15 @@ def resolve_to_cursor_pro(
   stances: Optional[List[str]] = None,
 ) -> str:
   """
-  Substitute Other-Models-quota models with Cursor Pro equivalents.
-  Passthrough only when may_use_other_model() approves (executive + 2% budget).
+  Try Other Models when gates + budget allow; otherwise Cursor Pro substitute.
   """
   if not model_id or is_cursor_pro_model(model_id):
     return model_id
-  if other_models_override() and not cursor_pro_only():
+  if other_models_override() and not cursor_models_only():
     return model_id
   if may_use_other_model(task, context, verdict, conviction, stances):
+    return model_id
+  if not cursor_fallback_enabled():
     return model_id
 
   if cursor_pro_only() or cheap_first_enabled():

@@ -82,7 +82,8 @@ def test_shame_blocks_at_5pct(monkeypatch):
   assert tracker.at_shame_limit() is True
 
 
-def test_premium_blocked_for_non_executive():
+def test_premium_blocked_for_non_executive(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "1")
   assert allow_premium_escalation(
     "architect", "GO", "high", ["agree", "reject"], context="self_improvement",
   ) is False

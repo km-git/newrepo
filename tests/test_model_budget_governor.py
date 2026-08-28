@@ -109,10 +109,24 @@ def test_cursor_target_ratio_default():
   assert cursor_target_ratio() == 0.98
 
 
-def test_other_model_pool_off_by_default(monkeypatch):
+def test_other_model_pool_on_by_default(monkeypatch):
   monkeypatch.delenv("EW_USE_OTHER_MODEL_POOL", raising=False)
   monkeypatch.delenv("EW_CURSOR_MODELS_ONLY", raising=False)
-  assert other_model_pool_enabled() is False
+  assert other_model_pool_enabled() is True
+
+
+def test_cursor_fallback_substitutes_when_other_unavailable():
+  model, sub = prefer_cursor_pool_model("claude-opus-4-8", purpose="routine")
+  assert sub is True
+  assert is_cursor_pro_model(model)
+
+
+def test_cursor_fallback_disabled_keeps_other_model(monkeypatch):
+  monkeypatch.setenv("EW_CURSOR_FALLBACK", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
+  model, sub = prefer_cursor_pool_model("gpt-5.6-sol", purpose="routine")
+  assert model == "gpt-5.6-sol"
+  assert sub is False
 
 
 def test_prefer_cursor_substitutes_gpt():

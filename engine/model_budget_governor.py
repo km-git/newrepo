@@ -1,8 +1,9 @@
 """
-Model budget governor — 100% Cursor Pro by default (Other Models pool off).
+Model budget governor — either/or routing: Other Models when available,
+Cursor Pro fallback when quota consumed or gates block.
 
-GPT/Claude/Gemini consume the exhausted "Other Models" quota — blocked unless
-EW_CURSOR_MODELS_ONLY=0 and EW_USE_OTHER_MODEL_POOL=1 explicitly enabled.
+Use Other Models (GPT/Claude/Gemini) only when budget allows; otherwise
+automatically substitute Composer/Grok (EW_CURSOR_FALLBACK=1, default on).
 """
 
 from __future__ import annotations
@@ -65,8 +66,13 @@ def min_cursor_calls_before_other() -> int:
 
 
 def cursor_models_only() -> bool:
-  """100% Cursor Pro — block GPT/Claude/Gemini (Other Models quota consumed)."""
-  return os.environ.get("EW_CURSOR_MODELS_ONLY", "1").lower() not in ("0", "false", "no")
+  """Hard-block Other Models entirely (opt-in strict mode)."""
+  return os.environ.get("EW_CURSOR_MODELS_ONLY", "0").lower() in ("1", "true", "yes")
+
+
+def cursor_fallback_enabled() -> bool:
+  """When Other Models unavailable, auto-use Cursor Pro substitute (default on)."""
+  return os.environ.get("EW_CURSOR_FALLBACK", "1").lower() not in ("0", "false", "no")
 
 
 def other_models_executive_only() -> bool:
@@ -75,10 +81,28 @@ def other_models_executive_only() -> bool:
 
 
 def other_model_pool_enabled() -> bool:
-  """Allow Other Models only when cursor_models_only is off and pool explicitly enabled."""
+  """Allow Other Models when pool on and not in strict cursor-only mode."""
   if cursor_models_only():
     return False
-  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "0").lower() not in ("0", "false", "no")
+  return os.environ.get("EW_USE_OTHER_MODEL_POOL", "1").lower() not in ("0", "false", "no")
+
+
+def other_models_available(
+  purpose: Purpose = "routine",
+  *,
+  verdict: str = "",
+  conviction: str = "",
+  stances: Optional[List[str]] = None,
+  force_critical: bool = False,
+) -> bool:
+  """True when Other Models may be used (pool + budget + executive gates)."""
+  return get_governor().should_use_other_model(
+    purpose,
+    verdict=verdict,
+    conviction=conviction,
+    stances=stances,
+    force_critical=force_critical,
+  )
 
 
 def premium_escalation_mode() -> str:
@@ -327,6 +351,7 @@ class ModelBudgetGovernor:
       "cursor_pool_governor": cursor_pool_governor_enabled(),
       "other_model_pool_enabled": other_model_pool_enabled(),
       "cursor_models_only": cursor_models_only(),
+      "cursor_fallback_enabled": cursor_fallback_enabled(),
       "other_models_executive_only": other_models_executive_only(),
       "premium_escalation": premium_escalation_mode(),
     }
@@ -398,7 +423,7 @@ def prefer_cursor_pool_model(
 ) -> Tuple[str, bool]:
   """
   Return (model, substituted).
-  Substitutes Other Models with Cursor Pro when pool budget is exhausted or disabled.
+  Use Other Models when available; otherwise Cursor Pro fallback.
   """
   if is_cursor_pro_model(model_id):
     return model_id, False
@@ -406,8 +431,10 @@ def prefer_cursor_pool_model(
     return model_id, False
   if should_use_other_model(purpose, force_critical=force_critical):
     return model_id, False
-  sub = cursor_substitute_for(model_id)
-  return sub, sub != model_id
+  if cursor_fallback_enabled():
+    sub = cursor_substitute_for(model_id)
+    return sub, sub != model_id
+  return model_id, False
 
 
 def route_model_for_task(
