@@ -495,6 +495,16 @@ def main() -> None:
     ))
     return
 
+  if args.paper_forward:
+    from engine.autonomous_ops import run_paper_proof_tick
+
+    print(json.dumps(
+      run_paper_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
+      indent=2,
+      default=str,
+    ))
+    return
+
   if args.goal_mode or args.goal_mode_quick:
     from engine.goal_mode import run_goal_mode_cycle
 

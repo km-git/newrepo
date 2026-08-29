@@ -12,15 +12,21 @@ from typing import Any, Dict, Optional
 STATE_PATH = Path(os.environ.get("EW_RISK_STATE", "output/execution/risk_state.json"))
 
 
+def _state_path() -> Path:
+  return Path(os.environ.get("EW_RISK_STATE", str(STATE_PATH)))
+
+
 def _load() -> dict:
-  if not STATE_PATH.exists():
+  path = _state_path()
+  if not path.exists():
     return {"peak_equity_usd": None, "halted": False, "halt_reason": ""}
-  return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+  return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _save(state: dict) -> None:
-  STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-  STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+  path = _state_path()
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
 def drawdown_threshold_pct() -> float:

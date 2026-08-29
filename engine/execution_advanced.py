@@ -108,9 +108,6 @@ def _btc_corr(result: dict) -> float:
 
 def analyzed_select_dca_profile(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
   """Smart DCA per correlation / contingent analysis — pyramid default, 30/70 when warranted."""
-def select_dca_profile_legacy(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
-  """Legacy two-layer profiles — only when EW_ALLOW_ALT_DCA_PROFILES=1."""
-
   corr = _btc_corr(result)
   if symbol in CONTINGENT_SYMBOLS and tf in ("1h", "4h"):
     return DCA_PROFILE_10_90, "PTJ contingent cap — dual-scenario 10/90 two-layer"
@@ -121,6 +118,11 @@ def select_dca_profile_legacy(symbol: str, tf: str, result: dict, ctx: ExportCon
   return DCA_PROFILE_PYRAMID, "smart pyramid 10/20/30/40"
 
 
+def select_dca_profile_legacy(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
+  """Legacy two-layer profiles — only when EW_ALLOW_ALT_DCA_PROFILES=1."""
+  return analyzed_select_dca_profile(symbol, tf, result, ctx)
+
+
 # Backward-compatible alias
 _legacy_select_dca_profile = analyzed_select_dca_profile
 
@@ -129,12 +131,6 @@ def select_dca_profile(symbol: str, tf: str, result: dict, ctx: ExportContext) -
   from engine.smart_risk_policy import select_dca_profile as _policy_select
 
   return _policy_select(symbol, tf, result, ctx)
-
-
-def select_dca_profile(symbol: str, tf: str, result: dict, ctx: ExportContext) -> Tuple[str, str]:
-  from engine.smart_risk import resolve_dca_profile
-
-  return resolve_dca_profile(symbol, tf, result, ctx)
 
 
 def apply_macro_to_row(row: dict, ctx: ExportContext) -> dict:

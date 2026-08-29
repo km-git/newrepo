@@ -309,6 +309,20 @@ def run_paper_forward_tick(
     result["phases"]["paper"] = {"ok": False, "error": str(exc)}
     paper = {}
 
+  try:
+    ending = paper.get("ending_equity_usd")
+    if ending is not None:
+      from engine.risk_ops import update_equity
+
+      risk_state = update_equity(float(ending))
+      result["phases"]["risk_ops"] = {
+        "equity_usd": float(ending),
+        "drawdown_pct": risk_state.get("drawdown_pct"),
+        "halted": risk_state.get("halted"),
+      }
+  except Exception as exc:
+    result["phases"]["risk_ops"] = {"error": str(exc)}
+
   effectiveness_verdict = None
   if include_effectiveness and os.environ.get("EW_PAPER_FORWARD_SKIP_AUDIT", "0").lower() not in ("1", "true", "yes"):
     try:

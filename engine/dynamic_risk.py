@@ -170,6 +170,18 @@ def compute_risk_multiplier(
     mult = min(mult, 0.50)
 
   mult = round(max(0.25, min(1.25, mult)), 3)
+
+  try:
+    from engine.tactical_safeguard import tactical_risk_multiplier, tactical_safeguard_enabled
+
+    if tactical_safeguard_enabled():
+      t_mult, t_factors = tactical_risk_multiplier()
+      if 0 < t_mult != 1.0:
+        mult = round(max(0.25, min(1.25, mult * t_mult)), 3)
+        factors.extend(t_factors)
+  except Exception:
+    pass
+
   return {
     "enabled": True,
     "mult": mult,

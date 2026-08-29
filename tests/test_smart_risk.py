@@ -16,10 +16,10 @@ from tests.test_limit_orders_export import _sample_result
 def test_default_dca_profile_is_pyramid():
   ctx = ExportContext()
   result = {
-    "symbol": "BTC/USDT",
-    "step9_market_confluence": {"btc_correlation": {"correlation": 0.9}},
+    "symbol": "SOL/USDT",
+    "step9_market_confluence": {"btc_correlation": {"correlation": 0.35}},
   }
-  profile, reason = select_dca_profile("ADA/USDT", "1d", result, ctx)
+  profile, reason = select_dca_profile("SOL/USDT", "1h", result, ctx)
   assert profile == DCA_PROFILE_PYRAMID
   assert "10/20/30/40" in reason
 
