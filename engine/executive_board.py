@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,11 +61,24 @@ def _baseline_score(setup: dict, style: str) -> int:
 def _oos_score(setup: dict) -> Tuple[float, str]:
   oos = setup.get("oos_win_rate")
   n = int(setup.get("oos_trades") or 0)
+  partial = float(os.environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
+  tp1_r = None
+  targets = setup.get("targets") or []
+  if targets and isinstance(targets[0], dict):
+    try:
+      tp1_r = float(targets[0].get("rr") or targets[0].get("r_multiple") or 0)
+    except (TypeError, ValueError):
+      tp1_r = None
   if n >= 3 and oos is not None:
     wr = float(oos)
+    expectancy = None
+    if tp1_r and tp1_r > 0:
+      expectancy = wr * tp1_r * partial - (1.0 - wr)
+    if expectancy is not None and expectancy < 0:
+      return 2, f"OOS {wr:.0%} -EV ({expectancy:.2f}R)"
     if wr >= 0.65:
       return 25, f"OOS {wr:.0%} ({n})"
-    if wr >= 0.55:
+    if wr >= 0.58:
       return 18, f"OOS {wr:.0%} ({n})"
     if wr >= 0.50:
       return 10, f"OOS {wr:.0%} ({n})"
@@ -195,6 +209,30 @@ def executive_setup_score(
           tags.append(f"tf_caution_{tf}")
     except Exception:
       pass
+
+  # Historical direction reliability — block weak LONG (~46% WR) via execution gates
+  try:
+    from engine.outcome_tracker import load_metrics
+
+    direction = str(setup.get("direction") or "").upper()
+    dir_bucket = (load_metrics().get("by_direction") or {}).get(direction) or {}
+    dir_wr = dir_bucket.get("win_rate")
+    dir_n = int(dir_bucket.get("decided") or 0)
+    if dir_n >= 30 and dir_wr is not None:
+      if dir_wr >= 0.60:
+        score += 8
+        tags.append(f"dir_strong_{direction}_{dir_wr:.0%}")
+      elif dir_wr >= 0.55:
+        score += 4
+        tags.append(f"dir_good_{direction}")
+      elif dir_wr < 0.45:
+        score -= 10
+        tags.append(f"dir_weak_{direction}_{dir_wr:.0%}")
+      elif dir_wr < 0.48:
+        score -= 5
+        tags.append(f"dir_caution_{direction}")
+  except Exception:
+    pass
 
   # TV OSS + free data + global risk (Fear&Greed, WS, social, impact)
   try:

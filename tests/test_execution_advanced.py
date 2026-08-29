@@ -66,6 +66,20 @@ def test_select_correlation_cap_profile():
   assert "correlation" in reason.lower()
 
 
+def test_select_correlation_cap_profile_legacy(monkeypatch):
+  monkeypatch.setenv("EW_ALLOW_ALT_DCA_PROFILES", "1")
+  ctx = ExportContext()
+  result = {
+    "symbol": "ADA/USDT",
+    "step9_market_confluence": {"btc_correlation": {"correlation": 0.82, "high_beta": True}},
+  }
+  from engine.execution_advanced import select_dca_profile_legacy
+
+  profile, reason = select_dca_profile_legacy("ADA/USDT", "1d", result, ctx)
+  assert profile == "two_layer_30_70"
+  assert "correlation" in reason.lower()
+
+
 def test_btc_contingent_scenarios():
   result = {
     "symbol": "BTC/USDT",

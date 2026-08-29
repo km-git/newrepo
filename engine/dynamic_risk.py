@@ -9,6 +9,8 @@ import pandas as pd
 
 
 def dynamic_risk_enabled() -> bool:
+  if os.environ.get("EW_ALWAYS_SMART_RISK", "1").lower() not in ("0", "false", "no"):
+    return True
   return os.environ.get("EW_DYNAMIC_RISK", "1").lower() not in ("0", "false", "no")
 
 
@@ -138,6 +140,27 @@ def compute_risk_multiplier(
     except Exception:
       pass
 
+  # Portfolio heat — shrink when aggregate exposure elevated (gates handle hard blocks)
+  try:
+    from engine.portfolio_risk import load_portfolio_state, portfolio_heat_multiplier, portfolio_risk_enabled
+
+    if portfolio_risk_enabled() and symbol:
+      state = load_portfolio_state()
+      stub_row = {
+        "symbol": symbol,
+        "direction": direction,
+        "account_risk_pct": 0.5,
+        "gtc_size_cap_pct": 100,
+        "account_equity": state.equity,
+        "risk_budget_usd": state.equity * 0.005,
+      }
+      ph_mult, ph_factors = portfolio_heat_multiplier(state, stub_row)
+      if 0 < ph_mult < 1.0:
+        mult *= ph_mult
+        factors.extend(ph_factors)
+  except Exception:
+    pass
+
   # Probe tier cap
   if honest_tier == "probe":
     mult = min(mult, 0.85)
@@ -147,6 +170,18 @@ def compute_risk_multiplier(
     mult = min(mult, 0.50)
 
   mult = round(max(0.25, min(1.25, mult)), 3)
+
+  try:
+    from engine.tactical_safeguard import tactical_risk_multiplier, tactical_safeguard_enabled
+
+    if tactical_safeguard_enabled():
+      t_mult, t_factors = tactical_risk_multiplier()
+      if 0 < t_mult != 1.0:
+        mult = round(max(0.25, min(1.25, mult * t_mult)), 3)
+        factors.extend(t_factors)
+  except Exception:
+    pass
+
   return {
     "enabled": True,
     "mult": mult,

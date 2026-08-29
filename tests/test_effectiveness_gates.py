@@ -71,7 +71,8 @@ def test_evaluate_gate_insufficient_trades():
   assert gate["verdict"] == "INSUFFICIENT_DATA"
 
 
-def test_regime_gates_flags_weak_tf():
+def test_regime_gates_flags_weak_tf(monkeypatch):
+  monkeypatch.setenv("EW_BLOCKED_TFS", "")
   metrics = {
     "by_timeframe": {
       "15m": {"decided": 100, "win_rate": 0.65, "wins": 65, "losses": 35},
@@ -82,6 +83,19 @@ def test_regime_gates_flags_weak_tf():
   assert "1d" in regime["weak_timeframes"]
   assert "15m" in regime["strong_timeframes"]
   assert regime["regime_gate_passed"] is False
+
+
+
+def test_regime_gates_skips_blocked_tf():
+  metrics = {
+    "by_timeframe": {
+      "1d": {"decided": 50, "win_rate": 0.38, "wins": 19, "losses": 31},
+      "15m": {"decided": 100, "win_rate": 0.65, "wins": 65, "losses": 35},
+    },
+  }
+  regime = evaluate_regime_gates(metrics)
+  assert "1d" not in regime["weak_timeframes"]
+  assert regime["regime_gate_passed"] is True
 
 
 def test_r_from_setup_tp_and_sl():
@@ -101,6 +115,31 @@ def test_chronological_folds_preserve_order():
   assert len(folds) >= 1
   for train, test in folds:
     assert len(test) > 0
+
+
+
+def test_chronological_folds_use_resolved_at():
+  closed = [
+    {
+      "recorded_at": "2024-01-01T00:00:00+00:00",
+      "resolved_at": "2024-03-01T00:00:00+00:00",
+      "status": "tp1_hit",
+      "wae": 100,
+      "stop_loss": 95,
+      "tp1": 110,
+    },
+    {
+      "recorded_at": "2024-02-01T00:00:00+00:00",
+      "resolved_at": "2024-01-15T00:00:00+00:00",
+      "status": "tp1_hit",
+      "wae": 100,
+      "stop_loss": 95,
+      "tp1": 110,
+    },
+  ]
+  folds = chronological_folds(closed, n_folds=2)
+  test_ids = [s.get("resolved_at") for _, test in folds for s in test]
+  assert test_ids[0] == "2024-01-15T00:00:00+00:00"
 
 
 def test_gate_thresholds_defaults():

@@ -126,6 +126,16 @@ def main() -> None:
     help="Show broker, proxy, WS, risk halt status",
   )
   parser.add_argument(
+    "--portfolio-risk",
+    action="store_true",
+    help="Show portfolio heat, cluster exposure, and hedge status",
+  )
+  parser.add_argument(
+    "--effectiveness",
+    action="store_true",
+    help="Run full effectiveness validation (win rate, paper P&L, fitness gates)",
+  )
+  parser.add_argument(
     "--data-intel",
     metavar="SYMBOL",
     help="Fetch WS + web intel snapshot for symbol",
@@ -204,6 +214,16 @@ def main() -> None:
     "--effectiveness-paper",
     action="store_true",
     help="Include OHLC paper simulation in --effectiveness-audit (network)",
+  )
+  parser.add_argument(
+    "--paper-forward",
+    action="store_true",
+    help="LLM-free paper proof tick: OHLC sim + 30-day forward ledger (no AI models)",
+  )
+  parser.add_argument(
+    "--paper-forward-no-fetch",
+    action="store_true",
+    help="With --paper-forward: skip OHLC network fetch (structural test only)",
   )
   parser.add_argument(
     "--goal-mode-quick",
@@ -344,6 +364,17 @@ def main() -> None:
     print(json.dumps(execution_status(), indent=2, default=str))
     return
 
+  if args.portfolio_risk:
+    from engine.portfolio_risk import portfolio_risk_status
+    print(json.dumps(portfolio_risk_status(), indent=2, default=str))
+    return
+
+  if args.effectiveness:
+    from engine.effectiveness_validation import run_effectiveness_validation
+    report = run_effectiveness_validation()
+    print(json.dumps(report.to_dict(), indent=2, default=str))
+    sys.exit(0 if report.ok else 1)
+
   if args.data_intel:
     from gateway.data_hub import live_market_state
     print(json.dumps(live_market_state(args.data_intel), indent=2, default=str))
@@ -459,6 +490,16 @@ def main() -> None:
         fetch_ohlc=args.effectiveness_paper,
         include_walk_forward=True,
       ),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if args.paper_forward:
+    from engine.autonomous_ops import run_paper_proof_tick
+
+    print(json.dumps(
+      run_paper_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
       indent=2,
       default=str,
     ))

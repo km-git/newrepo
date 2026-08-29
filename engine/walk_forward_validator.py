@@ -32,10 +32,34 @@ def _r_from_setup(setup: dict) -> Optional[float]:
   risk = abs(wae - stop)
   if risk <= 0:
     return None
+  partial = float(setup.get("tp1_exit_pct") or os.environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
   if st == "sl_hit":
     return -1.0
   reward = abs(tp1 - wae)
-  return (reward / risk) * 0.4
+  return (reward / risk) * partial
+
+
+def net_r_from_setup(setup: dict, *, include_fees: bool = True) -> Optional[float]:
+  """Gross R from geometry resolution, minus round-trip fee drag when include_fees."""
+  gross = _r_from_setup(setup)
+  if gross is None or not include_fees:
+    return gross
+  try:
+    wae = float(setup["wae"])
+    stop = float(setup["stop_loss"])
+  except (KeyError, TypeError, ValueError):
+    return gross
+  risk = abs(wae - stop)
+  if risk <= 0 or wae <= 0:
+    return gross
+  try:
+    from engine.paper_simulator import fee_rate
+
+    fee = fee_rate()
+  except Exception:
+    fee = float(os.environ.get("EW_PAPER_FEE_RATE", "0.0026"))
+  fee_drag_r = (2.0 * fee) / (risk / wae)
+  return gross - fee_drag_r
 
 
 def _metrics_from_returns(returns: Sequence[float], equity_start: float = 10000.0) -> Dict[str, Any]:
@@ -44,10 +68,12 @@ def _metrics_from_returns(returns: Sequence[float], equity_start: float = 10000.
   wins = sum(1 for r in returns if r > 0)
   losses = sum(1 for r in returns if r < 0)
   n = len(returns)
+  # Fraction of equity risked per 1R — matches probe/default account_risk_pct (0.75%)
+  risk_frac = float(os.environ.get("EW_WF_RISK_PCT", os.environ.get("EW_ACCOUNT_RISK_PCT", "0.75"))) / 100.0
   equity = equity_start
   curve = [equity]
   for r in returns:
-    equity *= 1.0 + r * 0.01
+    equity *= 1.0 + r * risk_frac
     curve.append(equity)
   cum_r = sum(returns)
   return {
@@ -78,7 +104,9 @@ def chronological_folds(
 
   sorted_closed = sorted(
     closed,
-    key=lambda s: _parse_ts(s.get("closed_at") or s.get("recorded_at") or ""),
+    key=lambda s: _parse_ts(
+      s.get("resolved_at") or s.get("closed_at") or s.get("recorded_at") or "",
+    ),
   )
   n = len(sorted_closed)
   if n < n_folds * 4:
@@ -117,14 +145,17 @@ def run_walk_forward_validation(
   Walk-forward OOS validation on tracked closed setups.
   Stitches OOS returns across folds for gate evaluation.
   """
-  from engine.outcome_tracker import _load_state
+  from engine.outcome_tracker import _dedupe_closed, _load_state
+  from engine.execution_gates import filter_closed_for_policy
 
   n_folds = n_folds or int(os.environ.get("EW_WF_FOLDS", "5"))
   state = _load_state()
-  closed = [
+  closed = _dedupe_closed([
     s for s in state.get("closed", [])
     if s.get("status") in ("tp1_hit", "sl_hit")
-  ]
+  ])
+
+  closed = filter_closed_for_policy(closed)
 
   if len(closed) < 10:
     return {
@@ -174,4 +205,90 @@ def run_walk_forward_validation(
     "stitched_returns_count": len(stitched_returns),
     "mean_oos_sharpe": mean_oos_sharpe,
     "deployment_gate": gate,
+  }
+
+
+def run_fee_walk_forward(
+  *,
+  timeframe: str = "1h",
+  apply_policy: bool = True,
+  n_folds: Optional[int] = None,
+  include_fees: bool = True,
+) -> Dict[str, Any]:
+  """
+  Purged walk-forward on policy-filtered closed setups for one timeframe.
+  Uses fee-adjusted R-multiples — primary profitability proof path.
+  """
+  from engine.outcome_tracker import _dedupe_closed, _load_state
+  from engine.execution_gates import filter_closed_for_policy
+
+  n_folds = n_folds or int(os.environ.get("EW_WF_FOLDS", "5"))
+  min_trades = int(os.environ.get("EW_WF_MIN_TRADES", "100"))
+  min_expectancy_r = float(os.environ.get("EW_WF_MIN_EXPECTANCY_R", "0.0"))
+
+  state = _load_state()
+  closed = _dedupe_closed([
+    s for s in state.get("closed", [])
+    if s.get("status") in ("tp1_hit", "sl_hit")
+    and (not timeframe or str(s.get("timeframe") or "") == timeframe)
+  ])
+
+  if apply_policy:
+    closed = filter_closed_for_policy(closed)
+
+  if len(closed) < 10:
+    return {
+      "ok": False,
+      "reason": "insufficient_closed_setups",
+      "timeframe": timeframe,
+      "n_closed": len(closed),
+      "apply_policy": apply_policy,
+    }
+
+  folds = chronological_folds(closed, n_folds=n_folds)
+  fold_results: List[Dict[str, Any]] = []
+  stitched_returns: List[float] = []
+
+  for i, (_train, test) in enumerate(folds):
+    rets = [r for s in test if (r := net_r_from_setup(s, include_fees=include_fees)) is not None]
+    m = _metrics_from_returns(rets)
+    exp_r = round(sum(rets) / len(rets), 4) if rets else None
+    stitched_returns.extend(rets)
+    fold_results.append({
+      "fold": i + 1,
+      "test_n": len(test),
+      "expectancy_r": exp_r,
+      "metrics": {k: v for k, v in m.items() if k != "returns"},
+    })
+
+  stitched = _metrics_from_returns(stitched_returns)
+  expectancy_r = (
+    round(sum(stitched_returns) / len(stitched_returns), 4)
+    if stitched_returns else None
+  )
+  positive_folds = sum(1 for f in fold_results if (f.get("expectancy_r") or 0) > 0)
+
+  passed = (
+    expectancy_r is not None
+    and len(stitched_returns) >= min_trades
+    and expectancy_r >= min_expectancy_r
+  )
+
+  return {
+    "ok": True,
+    "timeframe": timeframe,
+    "apply_policy": apply_policy,
+    "include_fees": include_fees,
+    "n_closed": len(closed),
+    "n_folds": len(folds),
+    "folds": fold_results,
+    "stitched_oos": {k: v for k, v in stitched.items() if k != "returns"},
+    "expectancy_r": expectancy_r,
+    "positive_folds": positive_folds,
+    "total_folds": len(fold_results),
+    "gate_passed": passed,
+    "thresholds": {
+      "min_trades": min_trades,
+      "min_expectancy_r": min_expectancy_r,
+    },
   }

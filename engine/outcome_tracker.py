@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,7 +20,45 @@ _MAX_FORWARD_BARS = {"15m": 96, "1h": 72, "4h": 42, "12h": 36, "1d": 30, "1w": 1
 
 _MIN_SAMPLES = 3
 _POOR_WIN_RATE = 0.40
-_STRONG_WIN_RATE = 0.55
+_STRONG_WIN_RATE = 0.58
+_RERECORD_COOLDOWN_HOURS = float(os.environ.get("EW_SETUP_RERECORD_HOURS", "168"))
+
+
+def _parse_ts(value: str) -> float:
+  if not value:
+    return 0.0
+  try:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+  except (TypeError, ValueError):
+    return 0.0
+
+
+def _recently_closed_ids(closed: List[dict]) -> set:
+  """Setup IDs closed within cooldown window — skip re-recording duplicates."""
+  cutoff = datetime.now(timezone.utc).timestamp() - _RERECORD_COOLDOWN_HOURS * 3600
+  out = set()
+  for s in closed:
+    sid = s.get("id")
+    if not sid:
+      continue
+    if _parse_ts(s.get("resolved_at") or s.get("recorded_at") or "") >= cutoff:
+      out.add(sid)
+  return out
+
+
+def _dedupe_closed(closed: List[dict]) -> List[dict]:
+  """Keep latest outcome per setup id — prevents inflated win rates."""
+  latest: Dict[str, dict] = {}
+  for s in closed:
+    sid = s.get("id") or setup_key(
+      s.get("symbol", ""), s.get("timeframe", ""), s.get("direction", ""),
+    )
+    if not sid or sid == "||":
+      continue
+    prev = latest.get(sid)
+    if not prev or _parse_ts(s.get("resolved_at") or "") >= _parse_ts(prev.get("resolved_at") or ""):
+      latest[sid] = s
+  return list(latest.values())
 
 
 def _utcnow() -> str:
@@ -88,7 +127,7 @@ def simulate_forward(
 def _row_to_tracked(row: dict, recorded_at: str) -> Optional[dict]:
   if row.get("row_type", "primary") != "primary":
     return None
-  if row.get("gtc_tier") not in ("executable", "monitor"):
+  if row.get("gtc_tier") != "executable":
     return None
   try:
     wae = float(row.get("wae") or 0)
@@ -116,6 +155,7 @@ def _row_to_tracked(row: dict, recorded_at: str) -> Optional[dict]:
     "wae": wae,
     "stop_loss": stop,
     "tp1": tp1,
+    "tp1_exit_pct": float(row.get("tp1_exit_pct") or 50),
     "tp2": float(row.get("tp2") or 0) or None,
     "wave_structure": row.get("wave_structure"),
     "consensus": row.get("consensus"),
@@ -130,10 +170,11 @@ def record_setups(rows: List[dict], *, recorded_at: Optional[str] = None) -> int
   recorded_at = recorded_at or _utcnow()
   state = _load_state()
   open_ids = {s["id"] for s in state["open"]}
+  skip_ids = open_ids | _recently_closed_ids(state.get("closed", []))
   added = 0
   for row in rows:
     tracked = _row_to_tracked(row, recorded_at)
-    if not tracked or tracked["id"] in open_ids:
+    if not tracked or tracked["id"] in skip_ids:
       continue
     state["open"].append(tracked)
     open_ids.add(tracked["id"])
@@ -235,9 +276,10 @@ def resolve_open_setups(*, is_crypto: bool = True) -> int:
 
 
 def compute_metrics(state: Optional[dict] = None) -> dict:
-  """Aggregate win rates from closed tracked setups."""
+  """Aggregate win rates from closed tracked setups (deduped by setup id)."""
   state = state or _load_state()
-  closed = [s for s in state.get("closed", []) if s.get("status") in ("tp1_hit", "sl_hit", "expired")]
+  raw_closed = [s for s in state.get("closed", []) if s.get("status") in ("tp1_hit", "sl_hit", "expired")]
+  closed = _dedupe_closed(raw_closed)
 
   def _bucket(key: str, items: List[dict]) -> dict:
     wins = sum(1 for s in items if s.get("status") == "tp1_hit")
@@ -346,10 +388,27 @@ def feedback_for_row(row: dict, metrics: dict) -> dict:
       out["tier_override"] = "monitor"
     out["hist_note"] = f"poor track record {win_rate:.0%} over {n} — size −25%"
   elif win_rate > _STRONG_WIN_RATE:
-    out["hist_action"] = "boost"
-    out["size_cap_mult"] = 1.10
-    out["readiness_delta"] = 5
-    out["hist_note"] = f"strong track record {win_rate:.0%} over {n} — size +10%"
+    # Require positive R-expectancy before boosting size (partial TP geometry)
+    partial = float(os.environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
+    tp1_r = 1.5
+    try:
+      wae = float(row.get("wae") or 0)
+      stop = float(row.get("stop_loss") or 0)
+      tp1 = float(row.get("tp1") or 0)
+      risk = abs(wae - stop)
+      if risk > 0:
+        tp1_r = abs(tp1 - wae) / risk
+    except (TypeError, ValueError):
+      pass
+    expectancy = win_rate * tp1_r * partial - (1.0 - win_rate)
+    if expectancy > 0:
+      out["hist_action"] = "boost"
+      out["size_cap_mult"] = 1.10
+      out["readiness_delta"] = 5
+      out["hist_note"] = f"strong +EV {win_rate:.0%} E={expectancy:.2f}R over {n}"
+    else:
+      out["hist_action"] = "neutral"
+      out["hist_note"] = f"high WR {win_rate:.0%} but -EV ({expectancy:.2f}R) — no boost"
   else:
     out["hist_action"] = "neutral"
     out["hist_note"] = f"neutral history {win_rate:.0%} over {n}"

@@ -17,8 +17,19 @@ def _env_weights() -> Dict[str, float]:
   }
 
 
-def _r_returns_from_closed(closed: Sequence[dict]) -> List[float]:
-  """Approximate R-multiples from tp1/sl resolution (40% off at TP1)."""
+def _default_tp1_partial() -> float:
+  return float(os.environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
+
+
+def _dedupe_closed(closed: Sequence[dict]) -> List[dict]:
+  from engine.outcome_tracker import _dedupe_closed as dedupe
+
+  return dedupe(list(closed))
+
+
+def r_returns_from_closed(closed: Sequence[dict]) -> List[float]:
+  """R-multiples from tp1/sl resolution using actual partial exit %."""
+  partial_default = _default_tp1_partial()
   out: List[float] = []
   for s in closed:
     st = s.get("status")
@@ -33,13 +44,17 @@ def _r_returns_from_closed(closed: Sequence[dict]) -> List[float]:
     risk = abs(wae - stop)
     if risk <= 0:
       continue
+    partial = float(s.get("tp1_exit_pct") or partial_default * 100) / 100.0
     if st == "sl_hit":
       out.append(-1.0)
     else:
       reward = abs(tp1 - wae)
-      partial = 0.4
       out.append((reward / risk) * partial)
   return out
+
+
+# Backward-compatible alias
+_r_returns_from_closed = r_returns_from_closed
 
 
 def sharpe_ratio(returns: Sequence[float], annual_factor: float = 252.0) -> Optional[float]:
@@ -119,7 +134,7 @@ def composite_fitness(
 
 
 def fitness_from_metrics(metrics: Optional[dict] = None) -> Dict[str, Any]:
-  """Build fitness from outcome_tracker metrics + closed R-series."""
+  """Build fitness from outcome_tracker metrics + deduped closed R-series."""
   from engine.outcome_tracker import _load_state, compute_metrics
 
   metrics = metrics or compute_metrics()
@@ -127,8 +142,10 @@ def fitness_from_metrics(metrics: Optional[dict] = None) -> Dict[str, Any]:
   win_rate = overall.get("win_rate")
 
   state = _load_state()
-  closed = [s for s in state.get("closed", []) if s.get("status") in ("tp1_hit", "sl_hit")]
-  rets = _r_returns_from_closed(closed)
+  closed = _dedupe_closed([
+    s for s in state.get("closed", []) if s.get("status") in ("tp1_hit", "sl_hit")
+  ])
+  rets = r_returns_from_closed(closed)
   sh = sharpe_ratio(rets)
   so = sortino_ratio(rets)
   pf = profit_factor(rets)
@@ -144,4 +161,5 @@ def fitness_from_metrics(metrics: Optional[dict] = None) -> Dict[str, Any]:
   )
   fit["n_trades"] = len(rets)
   fit["decided"] = overall.get("decided", 0)
+  fit["deduped"] = True
   return fit

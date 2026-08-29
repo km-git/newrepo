@@ -182,27 +182,30 @@ def _allow_other_model_for_task(
   force_critical: bool = False,
 ) -> bool:
   """True when Other Models quota/budget permits this escalation."""
-  from engine.llm_budget_policy import (
-    cursor_models_only,
-    may_use_other_model,
-    other_models_override,
+  from engine.llm_budget_policy import cursor_models_only, other_models_override
+  from engine.model_budget_governor import (
+    cursor_pool_governor_enabled,
+    should_use_other_model as gov_should,
   )
-  from engine.model_budget_governor import should_use_other_model as gov_should
 
   if other_models_override() and not cursor_models_only():
     return True
+
+  purpose = "executive" if task in ("executive", "tiebreaker") else "self_improvement"
+  if cursor_pool_governor_enabled():
+    return gov_should(
+      purpose,
+      verdict=verdict,
+      conviction=conviction,
+      stances=stances,
+      force_critical=force_critical,
+    )
+
+  from engine.llm_budget_policy import may_use_other_model
+
   llm_task = task if task in ("executive", "planning", "architect", "tiebreaker") else "executive"
   context = "executive" if task in ("executive", "tiebreaker") else "routine"
-  if may_use_other_model(llm_task, context, verdict, conviction, stances):
-    return True
-  purpose = "executive" if task in ("executive", "tiebreaker") else "self_improvement"
-  return gov_should(
-    purpose,
-    verdict=verdict,
-    conviction=conviction,
-    stances=stances,
-    force_critical=force_critical,
-  )
+  return may_use_other_model(llm_task, context, verdict, conviction, stances)
 
 
 def escalate_task_model(

@@ -120,12 +120,21 @@ def extract_legs(row: dict) -> List[dict]:
   notional = float(row.get("position_notional_usd") or 0)
   if not legs and wae > 0 and notional > 0:
     legs.append({"leg": 1, "price": wae, "usd": round(notional * cap, 2)})
+
+  if row.get("honest_execution_tier") == "probe":
+    max_legs = int(os.environ.get("EW_PROBE_MAX_LEGS", "2"))
+    legs = legs[:max_legs]
   return legs
 
 
-def gate_paper_row(row: dict, *, open_positions: int = 0) -> Tuple[bool, List[str]]:
+def gate_paper_row(
+  row: dict,
+  *,
+  open_positions: int = 0,
+  portfolio_state=None,
+) -> Tuple[bool, List[str]]:
   """Honest export gates + paper portfolio rules."""
-  allowed, reasons = gate_row(row, intel={})
+  allowed, reasons = gate_row(row, intel={}, portfolio_state=portfolio_state)
   if not allowed:
     return False, reasons
 
@@ -150,6 +159,13 @@ def gate_paper_row(row: dict, *, open_positions: int = 0) -> Tuple[bool, List[st
     return False, ["invalid_sl_tp"]
   if stop <= 0 or tp1 <= 0:
     return False, ["invalid_sl_tp"]
+
+  from engine.smart_risk_policy import always_smart_enabled, validate_row_policy
+
+  if always_smart_enabled():
+    ok_policy, policy_issues = validate_row_policy(row)
+    if not ok_policy:
+      return False, [f"smart_risk:{i}" for i in policy_issues]
 
   return True, []
 
@@ -315,6 +331,15 @@ def simulate_trade_on_bars(
         })
         fees_paid += exit_fee
 
+    # Breakeven stop after TP1 — protect remaining position
+    if os.environ.get("EW_BREAKEVEN_AFTER_TP1", "1").lower() not in ("0", "false", "no"):
+      if any(e.get("type") == "tp1" for e in exits) and fills and total_qty > 0:
+        avg_entry = sum(f["price"] * f["qty"] for f in fills) / sum(f["qty"] for f in fills)
+        if long:
+          stop = max(stop, avg_entry)
+        elif stop > 0:
+          stop = min(stop, avg_entry)
+
     exited_qty = sum(e["qty"] for e in exits)
     if total_qty > 0 and exited_qty >= total_qty * 0.99:
       status = "closed_tp"
@@ -379,10 +404,23 @@ def run_paper_simulation(
   selected: List[dict] = []
   blocked: List[dict] = []
   open_count = 0
+  portfolio_state = None
+  try:
+    from engine.portfolio_risk import PortfolioState, apply_portfolio_risk_to_row, portfolio_risk_enabled
+    if portfolio_risk_enabled():
+      portfolio_state = PortfolioState(equity=equity)
+  except Exception:
+    portfolio_state = None
 
   for row in ranked:
-    ok, reasons = gate_paper_row(row, open_positions=open_count)
+    ok, reasons = gate_paper_row(row, open_positions=open_count, portfolio_state=portfolio_state)
     if ok:
+      if portfolio_state is not None:
+        try:
+          from engine.portfolio_risk import apply_portfolio_risk_to_row
+          row = apply_portfolio_risk_to_row(row, portfolio_state, update_state=True)
+        except Exception:
+          pass
       selected.append(row)
       open_count += 1
     else:

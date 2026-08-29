@@ -17,10 +17,8 @@ from core.risk import (
   compute_wae,
   dynamic_stop,
   dynamic_targets,
-  min_stop_distance_pct,
   risk_package,
   stop_distance_pct,
-  stop_is_sane,
 )
 from engine.execution_advanced import (
   CONTINGENT_SYMBOLS,
@@ -147,25 +145,9 @@ def _resolve_stop(
   timeframe: str = "",
   ladder_legs: Optional[List[dict]] = None,
 ) -> dict:
+  """Always smart dynamic SL from WAE + zone/ATR/structure (never reuse step8 stops)."""
   max_stop_atr = cfg.get("max_stop_atr", 5.0)
   tf = timeframe or None
-  min_pct = min_stop_distance_pct(tf)
-  if reused and isinstance(reused, dict) and reused.get("price") is not None:
-    px = float(reused["price"])
-    dist = stop_distance_pct(entry, px)
-    smart = reused.get("architecture") == "smart_dynamic_sl"
-    if (
-      smart
-      and dist >= min_pct
-      and stop_is_sane(
-        direction, entry, px, atr,
-        max_atr=max_stop_atr,
-        timeframe=tf,
-        zone_low=zone_low,
-        zone_high=zone_high,
-      )
-    ):
-      return {**reused, "price": px, "distance_pct": dist}
   return dynamic_stop(
     direction, entry, atr, s_low, s_high, cfg["atr_mult_sl"],
     zone_low=zone_low, zone_high=zone_high, max_stop_atr=max_stop_atr,
@@ -359,7 +341,6 @@ def build_limit_order_row(
     readiness = reuse.get("readiness_score")
     indicators = "; ".join((reuse.get("indicator_signals") or [])[:3])
     honest_status = reuse.get("status")
-    reused_stop = reuse.get("stop_loss")
   else:
     if harm_tf:
       zone_low, zone_high = float(harm_tf["prz_low"]), float(harm_tf["prz_high"])
@@ -369,7 +350,6 @@ def build_limit_order_row(
     readiness = None
     indicators = wave.get("structure", "")
     honest_status = "staged"
-    reused_stop = None
 
   ctx = ctx or ExportContext()
 
@@ -388,7 +368,7 @@ def build_limit_order_row(
   wae = compute_wae(dca)
 
   stop = _resolve_stop(
-    direction, wae, atr, s_low, s_high, cfg, zone_low, zone_high, reused_stop,
+    direction, wae, atr, s_low, s_high, cfg, zone_low, zone_high,
     timeframe=tf, ladder_legs=dca,
   )
   targets = dynamic_targets(
@@ -493,6 +473,7 @@ def build_limit_order_row(
     "tp3": targets[2]["price"],
     "tp3_exit_pct": targets[2]["exit_pct"],
     "tp3_r_multiple": targets[2].get("r_multiple") if len(targets) > 2 else None,
+    "target_architecture": targets[0].get("architecture", "smart_dynamic_tp") if targets else "smart_dynamic_tp",
     "rr_tp2": rr,
     "min_rr": cfg["min_rr"],
     "account_risk_pct": acct_risk,
@@ -515,6 +496,16 @@ def build_limit_order_row(
       [{"id": s["scenario_id"], "trigger": s["scenario_trigger"], "direction": s["direction"], "wae": s["wae"]} for s in contingent],
       default=str,
     )
+  from engine.smart_risk_policy import stamp_row_policy
+
+  row = stamp_row_policy(row)
+  try:
+    from engine.tactical_safeguard import apply_tactical_to_row, tactical_safeguard_enabled
+
+    if tactical_safeguard_enabled():
+      row = apply_tactical_to_row(row)
+  except Exception:
+    pass
   return row
 
 
@@ -553,9 +544,24 @@ def build_all_limit_orders(
   tfs = list(tfs or ALL_TIMEFRAMES)
   ctx = ctx or build_export_context(results)
   rows: List[dict] = []
+  portfolio_state = None
+  try:
+    from engine.portfolio_risk import PortfolioState, apply_portfolio_risk_to_row, portfolio_risk_enabled
+    from engine.execution_advanced import resolve_account_equity
+
+    if portfolio_risk_enabled():
+      portfolio_state = PortfolioState(equity=resolve_account_equity(ctx.account_equity))
+  except Exception:
+    portfolio_state = None
   for result in results:
     for tf in tfs:
       primary = build_limit_order_row(result, tf, ctx)
+      if portfolio_state is not None:
+        try:
+          from engine.portfolio_risk import apply_portfolio_risk_to_row
+          primary = apply_portfolio_risk_to_row(primary, portfolio_state, update_state=True)
+        except Exception:
+          pass
       rows.append(primary)
       contingent = primary.get("contingent_scenarios")
       if contingent:

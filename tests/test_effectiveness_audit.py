@@ -36,6 +36,37 @@ def test_full_audit_offline(tmp_path, monkeypatch):
   assert (tmp_path / "audit.json").exists()
 
 
+
+def test_paper_failure_forces_no_go(monkeypatch):
+  monkeypatch.setenv("EW_EFFECTIVENESS_PAPER", "1")
+
+  def fake_paper(**kwargs):
+    return {"ok": False, "reason": "backtest_failed"}
+
+  def fake_outcomes():
+    return {
+      "ok": True,
+      "gate": {"verdict": "GO"},
+      "regime": {"regime_gate_passed": True},
+    }
+
+  def fake_wf(**kwargs):
+    return {
+      "ok": True,
+      "deployment_gate": {"verdict": "GO"},
+      "stitched_oos": {"n": 300},
+      "n_folds": 5,
+      "n_closed": 300,
+    }
+
+  monkeypatch.setattr("engine.effectiveness_audit.run_paper_gate_audit", fake_paper)
+  monkeypatch.setattr("engine.effectiveness_audit.run_outcome_gate_audit", fake_outcomes)
+  monkeypatch.setattr("engine.effectiveness_audit.run_walk_forward_validation", fake_wf)
+
+  result = run_full_effectiveness_audit(fetch_ohlc=False, include_walk_forward=True)
+  assert result["composite_verdict"] == "NO_GO"
+
+
 def test_write_report(tmp_path):
   audit = {
     "audited_at": "2026-01-01T00:00:00+00:00",

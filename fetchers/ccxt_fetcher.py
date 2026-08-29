@@ -12,6 +12,12 @@ import pandas as pd
 from cache.disk_cache import get_cache
 from gateway.market_gateway import MarketDataGateway, get_gateway
 
+
+def _fetch_quiet() -> bool:
+  return os.environ.get("EW_GATEWAY_QUIET", "0").lower() in ("1", "true", "yes") or os.environ.get(
+    "EW_FETCH_QUIET", "0"
+  ).lower() in ("1", "true", "yes")
+
 EXCHANGE_CHAIN = tuple(
   x.strip()
   for x in os.environ.get("EW_OHLCV_CHAIN", "okx").split(",")
@@ -89,21 +95,25 @@ def _fetch_ohlcv_crypto_uncached(
           tf_limit = tf_limits.get(tf, limit)
           bars = ex.fetch_ohlcv(ex_sym, timeframe=ccxt_tf, limit=tf_limit)
           if not bars:
-            print(f"[fetch] {ex_name} {ex_sym} {tf}: no bars")
+            if not _fetch_quiet():
+              print(f"[fetch] {ex_name} {ex_sym} {tf}: no bars")
             continue
           df = pd.DataFrame(bars, columns=["timestamp", "Open", "High", "Low", "Close", "Volume"])
           df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
           df = df.set_index("timestamp")
           out[tf] = df
-          print(f"[fetch] {ex_name} {ex_sym} {tf}: {len(df)} bars, last={df['Close'].iloc[-1]:.4f}")
+          if not _fetch_quiet():
+            print(f"[fetch] {ex_name} {ex_sym} {tf}: {len(df)} bars, last={df['Close'].iloc[-1]:.4f}")
           time.sleep(ex.rateLimit / 1000 if ex.rateLimit else 0.2)
         except Exception as tf_err:
-          print(f"[fetch] {ex_name} {ex_sym} {tf} failed: {tf_err}")
+          if not _fetch_quiet():
+            print(f"[fetch] {ex_name} {ex_sym} {tf} failed: {tf_err}")
       if out:
         return out
       raise ValueError(f"No timeframes fetched for {ex_sym}")
     except Exception as e:
       last_err = e
-      print(f"[fetch] {ex_name} failed: {e}")
+      if not _fetch_quiet():
+        print(f"[fetch] {ex_name} failed: {e}")
       continue
   raise RuntimeError(f"All exchanges failed for {symbol}: {last_err}")

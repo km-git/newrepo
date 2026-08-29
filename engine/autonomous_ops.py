@@ -151,6 +151,17 @@ def run_autonomous_tick(
     except Exception as exc:
       tick["phases"]["backtest"] = {"error": str(exc)}
 
+  if os.environ.get("EW_EFFECTIVENESS_AUTONOMOUS", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.effectiveness_audit import run_full_effectiveness_audit
+
+      tick["phases"]["effectiveness"] = run_full_effectiveness_audit(
+        fetch_ohlc=os.environ.get("EW_EFFECTIVENESS_PAPER", "0") == "1",
+      )
+      tick["effectiveness_verdict"] = tick["phases"]["effectiveness"].get("composite_verdict")
+    except Exception as exc:
+      tick["phases"]["effectiveness"] = {"error": str(exc)}
+
   if not skip_pr:
     tick["phases"]["pr_merge"] = run_pr_auto_merge(dry_run=pr_dry_run)
 
@@ -209,3 +220,30 @@ def run_full_daily() -> int:
     return 1
   proc = subprocess.run(["bash", str(script)], env=os.environ.copy())
   return proc.returncode
+
+
+def run_paper_proof_tick(
+  *,
+  fetch_ohlc: bool = True,
+  equity_usd: Optional[float] = None,
+) -> Dict[str, Any]:
+  """
+  LLM-free proof tick — paper P&L forward test only.
+  No self-learning, research, PR merge, or AI models.
+  """
+  os.environ.setdefault("EW_IMPROVEMENT_LLM", "0")
+  os.environ.setdefault("EW_AI_IMPROVEMENT", "0")
+  os.environ.setdefault("EW_DEEP_RESEARCH", "0")
+  os.environ.setdefault("EW_PR_AUTO_MERGE", "0")
+  os.environ.setdefault("EW_GATEWAY_QUIET", "1")
+  os.environ.setdefault("EW_FETCH_QUIET", "1")
+
+  from engine.paper_forward_tracker import run_paper_forward_tick
+
+  tick = run_paper_forward_tick(
+    fetch_ohlc=fetch_ohlc,
+    equity_usd=equity_usd,
+    include_effectiveness=True,
+  )
+  _append_tick({"type": "paper_proof", **tick})
+  return tick

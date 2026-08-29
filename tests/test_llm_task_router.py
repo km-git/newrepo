@@ -107,8 +107,16 @@ def test_tiebreaker_route_mild_uses_grok_high_not_opus(monkeypatch):
 
 
 def test_tiebreaker_route_hard_go_high_uses_opus_within_2pct_budget(monkeypatch):
+  from engine.model_budget_governor import ModelBudgetGovernor, reset_governor
+
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(50):
+    g.record_call("cheap", "composer-2.5")
   route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
   assert route is not None
   assert route[1] == "claude-opus-4-8"
@@ -116,12 +124,19 @@ def test_tiebreaker_route_hard_go_high_uses_opus_within_2pct_budget(monkeypatch)
 
 
 def test_tiebreaker_route_hard_go_high_falls_back_when_budget_exhausted(monkeypatch):
-  from engine.llm_token_saver import get_pool_mix_tracker
+  from engine.model_budget_governor import ModelBudgetGovernor, reset_governor
 
   monkeypatch.setenv("EW_LLM_BACKEND", "cursor")
   monkeypatch.setenv("CURSOR_API_KEY", "crsr_test")
-  tracker = get_pool_mix_tracker()
-  monkeypatch.setattr(tracker, "_state", lambda: {"cursor_pro": 98, "other": 2})
+  monkeypatch.setenv("EW_CURSOR_MODELS_ONLY", "0")
+  monkeypatch.setenv("EW_USE_OTHER_MODEL_POOL", "1")
+  monkeypatch.setenv("EW_MIN_CURSOR_CALLS_BEFORE_OTHER", "1")
+  monkeypatch.setenv("EW_OTHER_MODEL_HARD_CEILING", "0.05")
+  reset_governor()
+  g = ModelBudgetGovernor()
+  for _ in range(19):
+    g.record_call("cheap", "composer-2.5")
+  g.record_call("premium", "claude-opus-4-8")
   route = tiebreaker_route("GO", "high", stances=["agree", "reject"])
   assert route is not None
   assert route[1] == "cursor-grok-4.5-high"
