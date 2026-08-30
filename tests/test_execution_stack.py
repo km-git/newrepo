@@ -10,6 +10,13 @@ from gateway.antibot import browser_headers, random_user_agent
 from gateway.proxy_pool import ProxyPool
 
 
+@pytest.fixture(autouse=True)
+def _isolated_execution_state(tmp_path, monkeypatch):
+  monkeypatch.setenv("EW_RISK_STATE", str(tmp_path / "risk.json"))
+  monkeypatch.setenv("EW_PORTFOLIO_STATE", str(tmp_path / "portfolio_state.json"))
+  monkeypatch.setenv("EW_TACTICAL_SAFEGUARD", "0")
+
+
 def _row(**kwargs):
   base = {
     "symbol": "BTC/USDT",
