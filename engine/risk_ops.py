@@ -46,6 +46,9 @@ def update_equity(equity_usd: float) -> Dict[str, Any]:
   if dd >= drawdown_threshold_pct():
     state["halted"] = True
     state["halt_reason"] = f"drawdown {dd:.1f}% >= {drawdown_threshold_pct()}%"
+  elif state.get("halted") and "drawdown" in str(state.get("halt_reason", "")):
+    state["halted"] = False
+    state["halt_reason"] = ""
   _save(state)
   return state
 
