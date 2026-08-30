@@ -226,6 +226,16 @@ def main() -> None:
     help="With --paper-forward: skip OHLC network fetch (structural test only)",
   )
   parser.add_argument(
+    "--daily-trading-tick",
+    action="store_true",
+    help="LLM-free composite tick: proof + GOAT audit + tactical posture + health readiness",
+  )
+  parser.add_argument(
+    "--daily-trading-tick-fetch",
+    action="store_true",
+    help="With --daily-trading-tick: include OHLC network fetch for paper sim",
+  )
+  parser.add_argument(
     "--goal-mode-quick",
     action="store_true",
     help="Goal mode without batch/monitor fetch; optional --execute for paper",
@@ -500,6 +510,16 @@ def main() -> None:
 
     print(json.dumps(
       run_paper_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if args.daily_trading_tick:
+    from engine.daily_trading_ops import run_daily_trading_tick
+
+    print(json.dumps(
+      run_daily_trading_tick(fetch_ohlc=args.daily_trading_tick_fetch),
       indent=2,
       default=str,
     ))

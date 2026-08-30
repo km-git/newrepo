@@ -74,6 +74,7 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Workflow: `.github/workflows/autoresearch-nightly.yml` (03:00 UTC + manual dispatch); artifacts: `output/nightly/`, `experiments.jsonl`.
 - **Autonomous daily ops:** Full self-improve loop: pytest → improvement/OKF → autoresearch → goal-mode → web/social intel → ready drafts + `--pr-approve-all` → summary JSON.
   CLI: `python3 ew_tool.py --autonomous-daily` or `bash scripts/run_autonomous_daily.sh`.
+  **Daily trading ops (LLM-free):** `python3 ew_tool.py --daily-trading-tick` or `bash scripts/run_daily_trading_tick.sh` — paper proof + GOAT audit + tactical posture + health readiness.
   24h daemon: `bash scripts/run_autonomous_daemon.sh` (`EW_AUTONOMOUS_INTERVAL`, default 86400s).
   Workflow: `.github/workflows/autonomous-daily.yml` (04:00 UTC). Summary: `output/autonomous/daily/latest_summary.json`.
   Env: `EW_PR_AUTO_APPROVE=1`, `EW_PR_AUTO_MERGE=1`, `EW_PR_MERGE_WITHOUT_PANEL=1` (merge on rules-only APPROVE_MERGE when GitHub review API blocked).

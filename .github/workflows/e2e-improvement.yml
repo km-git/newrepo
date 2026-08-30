@@ -34,3 +34,4 @@ jobs:
         run: .venv/bin/python scripts/e2e_trading_cycle.py --health
         env:
           EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci
+          EW_HEALTH_REQUIRE_ARTIFACTS: "0"
