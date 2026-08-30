@@ -36,6 +36,7 @@ def test_full_audit_offline(tmp_path, monkeypatch):
   assert (tmp_path / "audit.json").exists()
 
 
+
 def test_paper_failure_forces_no_go(monkeypatch):
   monkeypatch.setenv("EW_EFFECTIVENESS_PAPER", "1")
 

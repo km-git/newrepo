@@ -85,6 +85,7 @@ def test_regime_gates_flags_weak_tf(monkeypatch):
   assert regime["regime_gate_passed"] is False
 
 
+
 def test_regime_gates_skips_blocked_tf():
   metrics = {
     "by_timeframe": {
@@ -114,6 +115,7 @@ def test_chronological_folds_preserve_order():
   assert len(folds) >= 1
   for train, test in folds:
     assert len(test) > 0
+
 
 
 def test_chronological_folds_use_resolved_at():
