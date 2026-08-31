@@ -7,6 +7,9 @@ import pytest
 from core.risk import (
   build_dca_ladder,
   compute_wae,
+  dca_sl_target_pct,
+  dca_sl_wide_threshold,
+  dca_stop_metrics,
   dynamic_stop,
   dynamic_targets,
   sensible_entry_anchor,
@@ -169,3 +172,26 @@ def test_stop_is_sane_rejects_negative_and_distant():
     "SHORT", 0.1095, 0.1115, 0.005, max_atr=5.0,
     timeframe="15m", zone_low=0.10, zone_high=0.11,
   )
+
+
+def test_dca_sl_thresholds_tf_scaled():
+  assert dca_sl_wide_threshold("15m") == 3.0
+  assert dca_sl_target_pct("15m") == pytest.approx(2.3, abs=0.05)
+  assert dca_sl_wide_threshold("1w") > 3.0
+  assert dca_sl_target_pct("1w") > 2.3
+
+
+def test_dca_stop_metrics_pyramid_tightens_wide_l1():
+  legs = build_dca_ladder("SHORT", 0.1408, 0.002, 0.138, 0.142)
+  stop = dynamic_stop(
+    "SHORT", compute_wae(legs), 0.002, 0.138, 0.142,
+    zone_low=0.138, zone_high=0.142, timeframe="15m", ladder_legs=legs,
+  )
+  m = dca_stop_metrics(legs, float(stop["price"]), timeframe="15m")
+  assert m["l1_stop_distance_pct"] >= m["stop_distance_pct"]
+  assert m["dca_stop_reduction_pct"] >= 0.0
+  assert m["dca_staging_legs"] >= 1
+  assert m["dca_staging_note"]
+  if m["dca_sl_resolvable"] == "Y":
+    assert m["l1_stop_distance_pct"] > m["dca_sl_wide_threshold_pct"]
+    assert m["stop_distance_pct"] <= m["dca_sl_target_pct"]
