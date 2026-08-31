@@ -211,17 +211,94 @@ def _bars_after_record(df, recorded_at: str) -> Tuple[List[float], List[float], 
     )
 
 
-def resolve_open_setups(*, is_crypto: bool = True) -> int:
-  """Mark open setups tp1_hit / sl_hit / expired using live OHLC."""
-  from fetchers import fetch
+def _resolve_mode() -> str:
+  """skip | incremental | full — EW_PAPER_FORWARD_SKIP_RESOLVE=1 forces skip."""
+  if os.environ.get("EW_PAPER_FORWARD_SKIP_RESOLVE", "0").lower() in ("1", "true", "yes"):
+    return "skip"
+  mode = os.environ.get("EW_RESOLVE_MODE", "incremental").lower()
+  if mode in ("skip", "incremental", "full"):
+    return mode
+  return "incremental"
 
+
+def _resolve_min_age_hours() -> float:
+  return float(os.environ.get("EW_RESOLVE_MIN_AGE_HOURS", "0"))
+
+
+def _resolve_recheck_hours() -> float:
+  return float(os.environ.get("EW_RESOLVE_RECHECK_HOURS", "6"))
+
+
+def _setup_needs_resolve(setup: dict, *, now_ts: float, mode: str) -> bool:
+  if mode == "skip":
+    return False
+  if _likely_invalid_symbol(setup.get("symbol", "")):
+    return True
+  recorded_ts = _parse_ts(setup.get("recorded_at") or "")
+  min_age_h = _resolve_min_age_hours()
+  if min_age_h > 0 and recorded_ts and (now_ts - recorded_ts) < min_age_h * 3600:
+    return False
+  if mode == "full":
+    return True
+  recheck_h = _resolve_recheck_hours()
+  last_checked = _parse_ts(setup.get("last_checked_at") or "")
+  if recheck_h > 0 and last_checked and (now_ts - last_checked) < recheck_h * 3600:
+    return False
+  return True
+
+
+def _process_setup_with_ohlc(
+  setup: dict,
+  df: Any,
+  *,
+  state: dict,
+  still_open: List[dict],
+) -> bool:
+  """Resolve one setup using prefetched OHLC. Returns True if resolved (closed)."""
+  tf = setup["timeframe"]
+  max_bars = _MAX_FORWARD_BARS.get(tf, 48)
+  highs, lows, _closes = _bars_after_record(df, setup["recorded_at"])
+  highs = highs[:max_bars]
+  lows = lows[:max_bars]
+  setup["bars_checked"] = len(highs)
+  setup["last_checked_at"] = _utcnow()
+
+  if not highs:
+    still_open.append(setup)
+    return False
+
+  outcome = simulate_forward(
+    setup["direction"],
+    float(setup["wae"]),
+    float(setup["stop_loss"]),
+    float(setup["tp1"]),
+    highs,
+    lows,
+  )
+  if outcome == "open" and len(highs) >= max_bars:
+    outcome = "expired"
+  if outcome == "open":
+    still_open.append(setup)
+    return False
+
+  setup["status"] = outcome
+  setup["resolved_at"] = _utcnow()
+  state["closed"].append(setup)
+  return True
+
+
+def resolve_open_setups(*, is_crypto: bool = True, resolve_mode: Optional[str] = None) -> int:
+  """Mark open setups tp1_hit / sl_hit / expired using live OHLC."""
+  mode = resolve_mode or _resolve_mode()
   state = _load_state()
-  if not state["open"]:
+  if not state["open"] or mode == "skip":
     return 0
 
+  now_ts = datetime.now(timezone.utc).timestamp()
   resolved = 0
   still_open: List[dict] = []
-  fetch_cache: Dict[str, Any] = {}
+  to_check: List[dict] = []
+  fetch_pairs: List[Tuple[str, str]] = []
 
   for setup in state["open"]:
     sym = setup["symbol"]
@@ -232,42 +309,31 @@ def resolve_open_setups(*, is_crypto: bool = True) -> int:
       state["closed"].append(setup)
       resolved += 1
       continue
-    max_bars = _MAX_FORWARD_BARS.get(tf, 48)
-    cache_key = f"{sym}|{tf}"
-    if cache_key not in fetch_cache:
-      try:
-        fetch_cache[cache_key] = fetch(sym, [tf], is_crypto=is_crypto).get(tf)
-      except Exception:
-        fetch_cache[cache_key] = None
-
-    df = fetch_cache[cache_key]
-    highs, lows, _closes = _bars_after_record(df, setup["recorded_at"])
-    highs = highs[:max_bars]
-    lows = lows[:max_bars]
-    setup["bars_checked"] = len(highs)
-
-    if not highs:
+    if not _setup_needs_resolve(setup, now_ts=now_ts, mode=mode):
       still_open.append(setup)
       continue
+    to_check.append(setup)
+    fetch_pairs.append((sym, tf))
 
-    outcome = simulate_forward(
-      setup["direction"],
-      float(setup["wae"]),
-      float(setup["stop_loss"]),
-      float(setup["tp1"]),
-      highs,
-      lows,
-    )
-    if outcome == "open" and len(highs) >= max_bars:
-      outcome = "expired"
-    if outcome == "open":
-      still_open.append(setup)
-      continue
+  fetch_cache: Dict[str, Any] = {}
+  if fetch_pairs:
+    from engine.ohlc_fetch import prefetch_ohlc, prefetch_stats
 
-    setup["status"] = outcome
-    setup["resolved_at"] = _utcnow()
-    state["closed"].append(setup)
-    resolved += 1
+    fetch_cache = prefetch_ohlc(fetch_pairs, is_crypto=is_crypto)
+    stats = prefetch_stats(fetch_pairs)
+    if os.environ.get("EW_RESOLVE_VERBOSE", "0").lower() in ("1", "true", "yes"):
+      print(
+        f"[resolve] mode={mode} pairs={stats['unique_pairs']} "
+        f"symbols={stats['symbols']} fetch_calls={stats['fetch_calls']}",
+        flush=True,
+      )
+
+  for setup in to_check:
+    sym = setup["symbol"]
+    tf = setup["timeframe"]
+    df = fetch_cache.get(f"{sym}|{tf}")
+    if _process_setup_with_ohlc(setup, df, state=state, still_open=still_open):
+      resolved += 1
 
   state["open"] = still_open
   state["closed"] = state["closed"][-3000:]
@@ -494,16 +560,23 @@ def resolve_from_live_fills() -> int:
   return resolved
 
 
-def run_learning_phase(*, is_crypto: bool = True, record_rows: Optional[List[dict]] = None) -> dict:
+def run_learning_phase(
+  *,
+  is_crypto: bool = True,
+  record_rows: Optional[List[dict]] = None,
+  resolve_mode: Optional[str] = None,
+) -> dict:
   """
   Full loop: resolve open → compute metrics → save → optional record new setups.
   Returns metrics dict for export pipeline.
   """
   fill_resolved = resolve_from_live_fills()
-  resolved = resolve_open_setups(is_crypto=is_crypto)
+  mode = resolve_mode or _resolve_mode()
+  resolved = resolve_open_setups(is_crypto=is_crypto, resolve_mode=mode)
   metrics = compute_metrics()
   metrics["last_resolved"] = resolved
   metrics["fill_resolved"] = fill_resolved
+  metrics["resolve_mode"] = mode
   save_metrics(metrics)
   save_performance_report(metrics)
 

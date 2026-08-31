@@ -260,6 +260,7 @@ def run_paper_forward_tick(
   equity_usd: Optional[float] = None,
   csv_path: str = "",
   include_effectiveness: bool = True,
+  resolve_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
   """
   One proof tick (no LLM):
@@ -271,20 +272,28 @@ def run_paper_forward_tick(
   result: Dict[str, Any] = {"timestamp_utc": _utcnow(), "phases": {}}
 
   skip_resolve = os.environ.get("EW_PAPER_FORWARD_SKIP_RESOLVE", "0").lower() in ("1", "true", "yes")
+  mode = resolve_mode
   if skip_resolve:
+    mode = "skip"
+  if mode is None:
+    from engine.outcome_tracker import _resolve_mode
+
+    mode = _resolve_mode()
+
+  if mode == "skip":
     try:
       from engine.outcome_tracker import compute_metrics, load_metrics, save_metrics
 
       metrics = load_metrics() if load_metrics() else compute_metrics()
       save_metrics(metrics)
-      result["phases"]["outcomes"] = {"skipped_resolve": True, **metrics}
+      result["phases"]["outcomes"] = {"skipped_resolve": True, "resolve_mode": mode, **metrics}
     except Exception as exc:
       result["phases"]["outcomes"] = {"error": str(exc)}
   else:
     try:
       from engine.outcome_tracker import run_learning_phase
 
-      result["phases"]["outcomes"] = run_learning_phase(is_crypto=True)
+      result["phases"]["outcomes"] = run_learning_phase(is_crypto=True, resolve_mode=mode)
     except Exception as exc:
       result["phases"]["outcomes"] = {"error": str(exc)}
 
