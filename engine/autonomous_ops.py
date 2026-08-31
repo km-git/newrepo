@@ -247,3 +247,32 @@ def run_paper_proof_tick(
   )
   _append_tick({"type": "paper_proof", **tick})
   return tick
+
+
+def run_paper_backfill_tick(
+  *,
+  fetch_ohlc: bool = True,
+  force: bool = False,
+  days: Optional[int] = None,
+  equity_usd: Optional[float] = None,
+) -> Dict[str, Any]:
+  """Backfill the paper-forward proof window with point-in-time OHLC replay."""
+  os.environ.setdefault("EW_IMPROVEMENT_LLM", "0")
+  os.environ.setdefault("EW_AI_IMPROVEMENT", "0")
+  os.environ.setdefault("EW_DEEP_RESEARCH", "0")
+  os.environ.setdefault("EW_PR_AUTO_MERGE", "0")
+  os.environ.setdefault("EW_GATEWAY_QUIET", "1")
+  os.environ.setdefault("EW_FETCH_QUIET", "1")
+  os.environ.setdefault("EW_PAPER_FORWARD_SKIP_RESOLVE", "1")
+
+  from engine.paper_forward_tracker import backfill_paper_forward_window
+
+  tick = backfill_paper_forward_window(
+    days=days,
+    fetch_ohlc=fetch_ohlc,
+    force=force,
+    equity_usd=equity_usd,
+    include_effectiveness=False,
+  )
+  _append_tick({"type": "paper_backfill", **tick})
+  return tick
