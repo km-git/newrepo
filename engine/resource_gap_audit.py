@@ -28,7 +28,7 @@ def _importable(module: str) -> bool:
   try:
     importlib.import_module(module)
     return True
-  except ImportError:
+  except Exception:
     return False
 
 

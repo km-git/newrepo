@@ -113,7 +113,7 @@ def install_editable_libs() -> Dict[str, Any]:
 
 
 def install_runtime_extras() -> Dict[str, Any]:
-  return pip_install("numba", "plotly", "kaleido")
+  return pip_install("numba", "plotly>=6.1.1,<7.0.0", "kaleido")
 
 
 def install_token_savers() -> Dict[str, Any]:
