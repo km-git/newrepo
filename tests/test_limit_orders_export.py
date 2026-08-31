@@ -119,12 +119,17 @@ def test_build_limit_order_row_has_dca_stop_metrics():
     "dca_staging_note",
   ):
     assert key in row, key
+  assert row.get("stop_distance_pct") is not None
+  assert row.get("l1_stop_distance_pct") is not None
+  assert row.get("dca_stop_reduction_pct") is not None
+
   assert row["dca_sl_resolvable"] in ("Y", "N")
   assert row["l1_stop_distance_pct"] >= row["stop_distance_pct"]
   assert row["dca_stop_reduction_pct"] == pytest.approx(
     max(0.0, row["l1_stop_distance_pct"] - row["stop_distance_pct"]), abs=0.01
   )
   assert 1 <= int(row["dca_staging_legs"]) <= 4
+
 
 
 def test_build_limit_order_row_has_dca_legs():
