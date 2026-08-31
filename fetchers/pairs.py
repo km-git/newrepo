@@ -68,9 +68,12 @@ def fetch_scanner_pairs(
         market = ex.markets.get(sym, {})
         if market.get("active") is False:
           continue
+        last = float(t.get("last") or 0)
+        if last <= 0:
+          continue
         vol = float(t.get("quoteVolume") or t.get("baseVolume") or 0)
-        if t.get("last") and t.get("baseVolume") and not t.get("quoteVolume"):
-          vol = float(t["baseVolume"]) * float(t["last"])
+        if last and t.get("baseVolume") and not t.get("quoteVolume"):
+          vol = float(t["baseVolume"]) * last
         if vol < min_volume_usd:
           continue
         bid = float(t.get("bid") or 0)
@@ -121,9 +124,12 @@ def _fetch_okx_spot_pairs(
           continue
         if market.get("spot") is False and market.get("type") not in (None, "spot", "swap"):
           continue
+        last = float(t.get("last") or 0)
+        if last <= 0:
+          continue
         vol = float(t.get("quoteVolume") or t.get("baseVolume") or 0)
-        if t.get("last") and t.get("baseVolume") and not t.get("quoteVolume"):
-          vol = float(t["baseVolume"]) * float(t["last"])
+        if last and t.get("baseVolume") and not t.get("quoteVolume"):
+          vol = float(t["baseVolume"]) * last
         if vol < min_volume_usd:
           continue
         bid = float(t.get("bid") or 0)

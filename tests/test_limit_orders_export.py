@@ -139,6 +139,14 @@ def test_build_limit_order_row_has_dca_stop_metrics():
   assert row["rr_tp2"] <= 5.0
 
 
+def test_non_positive_price_is_geometry_invalid():
+  result = _sample_result()
+  result["step2_wave_structure"]["15m"]["current_price"] = -0.02
+  result["step1_htf_bias"]["wave_C_current"] = -0.02
+  row = build_limit_order_row(result, "15m")
+  assert row["geometry_valid"] == "N"
+  assert "non_positive_market_price" in row["geometry_errors"]
+
 
 def test_build_limit_order_row_has_dca_legs():
   row = build_limit_order_row(_sample_result(), "15m")

@@ -330,9 +330,25 @@ def build_limit_order_row(
   pivots = (result.get("step2_adaptive_pivots") or {}).get(tf) or {}
   atr = float(pivots.get("atr_14") or 0)
   current = float(wave.get("current_price") or result.get("step1_htf_bias", {}).get("wave_C_current") or 0)
-  if atr <= 0 and current > 0:
+  if current <= 0:
+    return {
+      "symbol": result.get("symbol"),
+      "timeframe": tf,
+      "row_type": "primary",
+      "gtc_tier": "watch",
+      "direction": direction,
+      "geometry_valid": "N",
+      "geometry_errors": "non_positive_market_price",
+      "wae": current,
+      "stop_loss": 0,
+      "tp1": 0,
+      "tp2": 0,
+      "tp3": 0,
+      "rr_tp2": 0,
+    }
+  if atr <= 0:
     atr = current * 0.01
-  if current > 0 and atr > abs(current) * 0.15:
+  if atr > abs(current) * 0.15:
     atr = abs(current) * 0.01
 
   setups = (result.get("step8_outcomes") or {}).get("setups") or {}
