@@ -167,6 +167,52 @@ def test_skip_no_ohlc_fills_next_candidate(monkeypatch, tmp_path):
   assert summary["trades"][0]["symbol"] == "GOODFILL/USDT"
 
 
+def test_parse_as_of_end_of_day():
+  dt = _parse_as_of("2026-08-15")
+  assert dt is not None
+  assert dt.hour == 23 and dt.minute == 59
+
+
+def test_tail_bars_requires_minimum():
+  import pandas as pd
+
+  idx = pd.date_range("2026-01-01", periods=3, freq="h", tz="UTC")
+  df = pd.DataFrame({"High": [1, 2, 3], "Low": [0.5, 1.5, 2.5]}, index=idx)
+  highs, lows = _tail_bars(df, 10)
+  assert highs == []
+
+
+def test_skip_no_ohlc_fills_next_candidate(monkeypatch):
+  monkeypatch.setenv("EW_PAPER_MAX_POSITIONS", "2")
+  monkeypatch.setenv("EW_PAPER_REQUIRE_KILL_ZONE", "0")
+  monkeypatch.setenv("EW_PAPER_DISABLE_TFS", "")
+  monkeypatch.setenv("EW_TACTICAL_SAFEGUARD", "0")
+
+  rows = [
+    _row(symbol="BAD/USDT", honest_execution_tier="full", in_kill_zone="Y"),
+    _row(symbol="GOOD/USDT", honest_execution_tier="full", in_kill_zone="Y"),
+  ]
+
+  def fake_fetch(sym, tfs, is_crypto=True):
+    import pandas as pd
+
+    if sym == "BAD/USDT":
+      return {"15m": pd.DataFrame()}
+    idx = pd.date_range("2026-01-01", periods=20, freq="h", tz="UTC")
+    df = pd.DataFrame(
+      {"High": [61000] * 20, "Low": [59000] * 20},
+      index=idx,
+    )
+    return {"15m": df}
+
+  monkeypatch.setattr("engine.paper_simulator._fetch_ohlc_frame", lambda sym, tf, cache, fetch_ohlc=True: fake_fetch(sym, [tf]).get(tf))
+
+  summary = run_paper_simulation(rows=rows, fetch_ohlc=True, write_report=False)
+  assert summary["simulated"] == 1
+  assert summary["skipped_count"] == 1
+  assert summary["trades"][0]["symbol"] == "GOOD/USDT"
+
+
 def test_write_report(tmp_path):
   summary = {
     "run_at": "2026-01-01T00:00:00+00:00",

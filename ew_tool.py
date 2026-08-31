@@ -247,6 +247,7 @@ def main() -> None:
     help="LLM-free learn→policy→paper-forward cycle (continuous improvement)",
   )
   parser.add_argument(
+
     "--daily-trading-tick",
     action="store_true",
     help="LLM-free composite tick: proof + GOAT audit + tactical posture + health readiness",
@@ -565,6 +566,7 @@ def main() -> None:
       default=str,
     ))
     return
+
 
   if args.daily_trading_tick:
     from engine.daily_trading_ops import run_daily_trading_tick
