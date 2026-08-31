@@ -268,6 +268,27 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--profit-lab",
+    action="store_true",
+    help="Run profit laboratory: fee expectancy, CPCV, quantstats, vectorbt sweep",
+  )
+  parser.add_argument(
+    "--profit-lab-sweep",
+    action="store_true",
+    help="With --profit-lab: run vectorbt parameter sweep (slower)",
+  )
+  parser.add_argument(
+    "--freqtrade-export",
+    action="store_true",
+    help="Export gated executable rows to Freqtrade signal JSON",
+  )
+  parser.add_argument(
+    "--freqtrade-export-max",
+    type=int,
+    default=0,
+    help="Max rows for --freqtrade-export (0 = all)",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -441,6 +462,24 @@ def main() -> None:
     path = save_gap_audit(result)
     print(json.dumps(result, indent=2, default=str))
     print(f"[gap-audit] saved {path}", file=sys.stderr)
+    return
+
+  if args.profit_lab:
+    from engine.profit_lab.runner import run_profit_lab
+
+    if args.profit_lab_sweep:
+      os.environ["EW_PROFIT_LAB_SWEEP"] = "1"
+    print(json.dumps(run_profit_lab(run_sweep=args.profit_lab_sweep), indent=2, default=str))
+    return
+
+  if args.freqtrade_export:
+    from engine.freqtrade_export import export_freqtrade_signals
+
+    print(json.dumps(
+      export_freqtrade_signals(max_rows=args.freqtrade_export_max or 0),
+      indent=2,
+      default=str,
+    ))
     return
 
   if args.health:
