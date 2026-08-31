@@ -161,6 +161,15 @@ def filter_closed_for_policy(closed: List[dict], metrics: Optional[dict] = None)
     direction = _normalize_direction(s.get("direction", ""))
     if blocked_dirs and direction in blocked_dirs:
       continue
+    try:
+      wae = float(s.get("wae") or 0)
+      stop = float(s.get("stop_loss") or 0)
+    except (TypeError, ValueError):
+      wae = stop = 0.0
+    if wae > 0 and stop > 0:
+      stop_ok, _ = _stop_distance_ok(s)
+      if not stop_ok:
+        continue
     out.append(s)
   return out
 

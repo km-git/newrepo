@@ -167,8 +167,9 @@ def run_profit_lab(
   from engine.profit_lab.vectorbt_sweep import run_vectorbt_sweep
 
   result: Dict[str, Any] = {"timestamp_utc": _utcnow(), "ok": False}
-  # Analyze full history — do not apply live policy/expectancy blocks to the sample (avoids circular filtering).
-  df = setups_to_returns_frame(apply_policy=False)
+  # Analyze full history — optionally apply live policy/expectancy blocks to the sample.
+  apply_policy = os.environ.get("EW_PROFIT_LAB_APPLY_POLICY", "0").lower() in ("1", "true", "yes")
+  df = setups_to_returns_frame(apply_policy=apply_policy)
 
   expectancy = build_expectancy_report(df)
   result["expectancy"] = expectancy
