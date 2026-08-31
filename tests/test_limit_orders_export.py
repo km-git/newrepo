@@ -176,6 +176,9 @@ def test_export_limit_orders_writes_csv(tmp_path: Path):
   exec_row = next(r for r in rows if r.get("gtc_tier") == "executable" and r.get("row_type") == "primary")
   assert float(exec_row.get("position_notional_usd") or 0) > 0
   assert float(exec_row.get("leg1_usd") or 0) > 0
+  assert "sqs_score" in exec_row
+  assert exec_row.get("sqs_tier") in ("EXECUTE", "STANDBY", "WATCH", "SKIP")
+  assert Path(meta.get("sqs_ranked_csv", "")).exists() or (tmp_path / "latest_sqs_ranked_setups.csv").exists()
 
 
 @pytest.mark.skipif(

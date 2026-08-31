@@ -328,6 +328,8 @@ def finalize_universe_cycle(
     "executive_board_csv": board_paths["csv"],
     "best_trades_csv": str(BEST_TRADES_CSV),
     "best_trades_ranked": best_trades_meta,
+    "sqs_ranked_csv": limit_meta.get("sqs_ranked_csv"),
+    "sqs": limit_meta.get("sqs"),
     "board_picks": executive_board.get("board_picks"),
     "by_action": executive_board.get("by_action"),
     "by_timeframe": executive_board.get("by_timeframe"),
