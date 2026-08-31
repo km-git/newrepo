@@ -433,8 +433,11 @@ def run_paper_simulation(
   results: List[dict] = []
   fetch_cache: Dict[str, Any] = {}
 
-  if fetch_ohlc:
-    from fetchers import fetch
+  if fetch_ohlc and selected:
+    from engine.ohlc_fetch import prefetch_ohlc
+
+    pairs = [(row["symbol"], row["timeframe"]) for row in selected]
+    fetch_cache = prefetch_ohlc(pairs, is_crypto=True)
 
   for row in selected:
     sym = row["symbol"]
@@ -444,9 +447,13 @@ def run_paper_simulation(
 
     if fetch_ohlc:
       cache_key = f"{sym}|{tf}"
-      if cache_key not in fetch_cache:
+      df = fetch_cache.get(cache_key)
+      if df is None and cache_key not in fetch_cache:
         try:
-          fetch_cache[cache_key] = fetch(sym, [tf], is_crypto=True).get(tf)
+          from fetchers import fetch
+
+          df = fetch(sym, [tf], is_crypto=True).get(tf)
+          fetch_cache[cache_key] = df
         except Exception as exc:
           fetch_cache[cache_key] = None
           results.append({
@@ -457,7 +464,7 @@ def run_paper_simulation(
             "error": str(exc),
           })
           continue
-      highs, lows = _tail_bars(fetch_cache[cache_key], max_bars)
+      highs, lows = _tail_bars(df, max_bars)
 
     if not highs:
       results.append({
