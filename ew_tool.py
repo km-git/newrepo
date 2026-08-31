@@ -226,6 +226,27 @@ def main() -> None:
     help="With --paper-forward: skip OHLC network fetch (structural test only)",
   )
   parser.add_argument(
+    "--paper-forward-backfill",
+    action="store_true",
+    help="Backfill missing days in the 30-day paper-forward proof window (point-in-time OHLC)",
+  )
+  parser.add_argument(
+    "--paper-forward-backfill-force",
+    action="store_true",
+    help="With --paper-forward-backfill: rerun all window days (replaces existing snapshots)",
+  )
+  parser.add_argument(
+    "--paper-forward-days",
+    type=int,
+    default=0,
+    help="Proof window length in days (default EW_PAPER_PROOF_DAYS or 30)",
+  )
+  parser.add_argument(
+    "--continuous-proof",
+    action="store_true",
+    help="LLM-free learn→policy→paper-forward cycle (continuous improvement)",
+  )
+  parser.add_argument(
     "--daily-trading-tick",
     action="store_true",
     help="LLM-free composite tick: proof + GOAT audit + tactical posture + health readiness",
@@ -555,6 +576,30 @@ def main() -> None:
 
     print(json.dumps(
       run_paper_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if args.paper_forward_backfill:
+    from engine.autonomous_ops import run_paper_backfill_tick
+
+    print(json.dumps(
+      run_paper_backfill_tick(
+        fetch_ohlc=not args.paper_forward_no_fetch,
+        force=args.paper_forward_backfill_force,
+        days=args.paper_forward_days or None,
+      ),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if getattr(args, "continuous_proof", False):
+    from engine.autonomous_ops import run_continuous_proof_tick
+
+    print(json.dumps(
+      run_continuous_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
       indent=2,
       default=str,
     ))

@@ -40,8 +40,8 @@ export EW_PAPER_MAX_POSITIONS="${EW_PAPER_MAX_POSITIONS:-5}"
 exec > >(tee -a "$LOG") 2>&1
 echo "[paper-proof] started $(date -u +%Y-%m-%dT%H:%M:%SZ) log=$LOG"
 
-echo "=== Phase 1: paper forward tick (no LLM) ==="
-"$PY" ew_tool.py --paper-forward
+echo "=== Phase 1: continuous proof (learn → policy → paper forward) ==="
+"$PY" ew_tool.py --continuous-proof
 
 echo "=== Phase 2: effectiveness audit with paper gate ==="
 EW_EFFECTIVENESS_PAPER=1 "$PY" ew_tool.py --effectiveness-audit --effectiveness-paper
