@@ -102,11 +102,20 @@ def test_gate_max_positions(monkeypatch):
 
 def test_rank_full_before_probe():
   rows = [
-    _row(honest_execution_tier="probe"),
-    _row(honest_execution_tier="full"),
+    _row(honest_execution_tier="probe", symbol="ALT/USDT"),
+    _row(honest_execution_tier="full", symbol="BTC/USDT"),
   ]
   ranked = rank_rows(rows)
-  assert ranked[0]["honest_execution_tier"] == "full"
+  assert ranked[0]["symbol"] == "BTC/USDT"
+
+
+def test_rank_major_before_probe_alt():
+  rows = [
+    _row(honest_execution_tier="full", symbol="GRVT/USDT", in_kill_zone="Y"),
+    _row(honest_execution_tier="probe", symbol="SOL/USDT", in_kill_zone="Y"),
+  ]
+  ranked = rank_rows(rows)
+  assert ranked[0]["symbol"] == "SOL/USDT"
 
 
 def test_parse_as_of_end_of_day():
@@ -124,21 +133,24 @@ def test_tail_bars_requires_minimum():
   assert highs == []
 
 
-def test_skip_no_ohlc_fills_next_candidate(monkeypatch):
+def test_skip_no_ohlc_fills_next_candidate(monkeypatch, tmp_path):
   monkeypatch.setenv("EW_PAPER_MAX_POSITIONS", "2")
   monkeypatch.setenv("EW_PAPER_REQUIRE_KILL_ZONE", "0")
   monkeypatch.setenv("EW_PAPER_DISABLE_TFS", "")
   monkeypatch.setenv("EW_TACTICAL_SAFEGUARD", "0")
+  monkeypatch.setenv("EW_PAPER_JUNK_SYMBOLS", "")
+  monkeypatch.setenv("EW_PAPER_LEARNED_POLICY", str(tmp_path / "policy.json"))
+  monkeypatch.setenv("EW_PAPER_RELAX_GATES", "0")
 
   rows = [
-    _row(symbol="BAD/USDT", honest_execution_tier="full", in_kill_zone="Y"),
-    _row(symbol="GOOD/USDT", honest_execution_tier="full", in_kill_zone="Y"),
+    _row(symbol="BADFILL/USDT", honest_execution_tier="full", in_kill_zone="Y"),
+    _row(symbol="GOODFILL/USDT", honest_execution_tier="full", in_kill_zone="Y"),
   ]
 
   def fake_fetch(sym, tfs, is_crypto=True):
     import pandas as pd
 
-    if sym == "BAD/USDT":
+    if sym == "BADFILL/USDT":
       return {"15m": pd.DataFrame()}
     idx = pd.date_range("2026-01-01", periods=20, freq="h", tz="UTC")
     df = pd.DataFrame(
@@ -152,7 +164,7 @@ def test_skip_no_ohlc_fills_next_candidate(monkeypatch):
   summary = run_paper_simulation(rows=rows, fetch_ohlc=True, write_report=False)
   assert summary["simulated"] == 1
   assert summary["skipped_count"] == 1
-  assert summary["trades"][0]["symbol"] == "GOOD/USDT"
+  assert summary["trades"][0]["symbol"] == "GOODFILL/USDT"
 
 
 def test_write_report(tmp_path):
