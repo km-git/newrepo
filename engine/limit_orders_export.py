@@ -784,13 +784,15 @@ def export_limit_orders(
   usdt_d_pct: Optional[float] = None,
   board: Optional[dict] = None,
   filter_executive: Optional[bool] = None,
+  resolve_history: bool = True,
+  track_setups: bool = True,
 ) -> dict:
   """Write pair×TF GTC limit order CSV + JSON summary."""
   output_dir = Path(output_dir)
   results = _normalize_results(batch_or_results)
   from engine.outcome_tracker import resolve_open_setups, compute_metrics, save_metrics, record_setups, save_performance_report
 
-  resolved = resolve_open_setups(is_crypto=True)
+  resolved = resolve_open_setups(is_crypto=True) if resolve_history else 0
   metrics = compute_metrics()
   metrics["last_resolved"] = resolved
   save_metrics(metrics)
@@ -821,7 +823,7 @@ def export_limit_orders(
   sqs_csv = save_sqs_ranked_csv(rows, output_dir / "latest_sqs_ranked_setups.csv")
   sqs_meta = sqs_summary(rows)
 
-  recorded = record_setups(rows)
+  recorded = record_setups(rows) if track_setups else 0
   metrics["newly_recorded"] = recorded
   save_metrics(metrics)
 

@@ -35,6 +35,8 @@ meta = export_limit_orders(
     account_equity=float(os.environ.get("ACCOUNT_EQUITY", "10000")),
     board=board,
     filter_executive=False,
+    resolve_history=False,
+    track_setups=False,
 )
 print(f"[dense] Export rows: {meta.get('row_count')}")
 print(f"[dense] SQS tiers: {meta.get('sqs', {}).get('sqs_by_tier')}")
