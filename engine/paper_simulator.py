@@ -42,6 +42,11 @@ def require_kill_zone() -> bool:
   return os.environ.get("EW_PAPER_REQUIRE_KILL_ZONE", "1").lower() not in ("0", "false", "no")
 
 
+def paper_relaxed_gates() -> bool:
+  """Paper-only: gather OHLC fills for learning without live execution blocks."""
+  return os.environ.get("EW_PAPER_RELAX_GATES", "0").lower() in ("1", "true", "yes")
+
+
 def disabled_timeframes() -> set:
   raw = os.environ.get("EW_PAPER_DISABLE_TFS", "1w")
   return {t.strip() for t in raw.split(",") if t.strip()}
@@ -134,12 +139,36 @@ def gate_paper_row(
   portfolio_state=None,
 ) -> Tuple[bool, List[str]]:
   """Honest export gates + paper portfolio rules."""
-  allowed, reasons = gate_row(row, intel={}, portfolio_state=portfolio_state)
-  if not allowed:
-    return False, reasons
+  reasons: List[str] = []
 
-  if require_kill_zone() and row.get("in_kill_zone") != "Y":
-    return False, ["not_in_kill_zone"]
+  if paper_relaxed_gates():
+    try:
+      from engine.paper_policy import is_symbol_blocked, major_symbols
+
+      if is_symbol_blocked(row.get("symbol", "")):
+        return False, [f"symbol_blocked={row.get('symbol')}"]
+      sym = row.get("symbol", "")
+      if require_kill_zone() and row.get("in_kill_zone") != "Y":
+        if sym not in major_symbols():
+          return False, ["not_in_kill_zone"]
+    except Exception:
+      if require_kill_zone() and row.get("in_kill_zone") != "Y":
+        return False, ["not_in_kill_zone"]
+  else:
+    allowed, reasons = gate_row(row, intel={}, portfolio_state=portfolio_state)
+    if not allowed:
+      return False, reasons
+
+    if require_kill_zone() and row.get("in_kill_zone") != "Y":
+      return False, ["not_in_kill_zone"]
+
+    try:
+      from engine.paper_policy import is_symbol_blocked
+
+      if is_symbol_blocked(row.get("symbol", "")):
+        return False, [f"symbol_blocked={row.get('symbol')}"]
+    except Exception:
+      pass
 
   tf = row.get("timeframe", "")
   if tf in disabled_timeframes():
@@ -171,15 +200,23 @@ def gate_paper_row(
 
 
 def rank_rows(rows: List[dict]) -> List[dict]:
-  """FULL before PROBE; in-zone first; shorter TF slightly preferred."""
+  """FULL before PROBE; majors first; in-zone first; shorter TF slightly preferred."""
+  try:
+    from engine.paper_policy import major_symbols
+
+    majors = major_symbols()
+  except Exception:
+    majors = frozenset()
 
   def key(r: dict) -> tuple:
+    sym = r.get("symbol", "")
+    major_rank = 0 if sym in majors else 1
     tier = 0 if r.get("honest_execution_tier") == "full" else 1
     zone = 0 if r.get("in_kill_zone") == "Y" else 1
     tf = r.get("timeframe", "1w")
     tf_rank = {"15m": 0, "1h": 1, "4h": 2, "1d": 3, "1w": 4}.get(tf, 5)
     hist = 0 if r.get("hist_action") == "downgrade" else 1
-    return (tier, zone, hist, tf_rank)
+    return (major_rank, tier, zone, hist, tf_rank)
 
   return sorted(rows, key=key)
 
@@ -596,6 +633,13 @@ def run_paper_simulation(
   if write_report:
     _save_state(summary)
     write_paper_pnl_report(summary)
+  try:
+    from engine.paper_policy import record_paper_trades
+
+    record_paper_trades(summary)
+  except Exception:
+    pass
+
   return summary
 
 

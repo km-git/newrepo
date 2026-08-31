@@ -276,3 +276,27 @@ def run_paper_backfill_tick(
   )
   _append_tick({"type": "paper_backfill", **tick})
   return tick
+
+
+def run_continuous_proof_tick(
+  *,
+  fetch_ohlc: bool = True,
+  equity_usd: Optional[float] = None,
+  skip_learning: bool = False,
+) -> Dict[str, Any]:
+  """One continuous improvement cycle: outcomes → policy → paper forward."""
+  os.environ.setdefault("EW_IMPROVEMENT_LLM", "0")
+  os.environ.setdefault("EW_AI_IMPROVEMENT", "0")
+  os.environ.setdefault("EW_GATEWAY_QUIET", "1")
+  os.environ.setdefault("EW_FETCH_QUIET", "1")
+
+  from engine.continuous_proof import run_continuous_proof_cycle
+
+  tick = run_continuous_proof_cycle(
+    fetch_ohlc=fetch_ohlc,
+    equity_usd=equity_usd,
+    skip_learning=skip_learning,
+  )
+  _append_tick({"type": "continuous_proof", **tick})
+  return tick
+

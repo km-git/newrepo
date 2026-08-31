@@ -242,6 +242,12 @@ def main() -> None:
     help="Proof window length in days (default EW_PAPER_PROOF_DAYS or 30)",
   )
   parser.add_argument(
+    "--continuous-proof",
+    action="store_true",
+    help="LLM-free learn→policy→paper-forward cycle (continuous improvement)",
+  )
+  parser.add_argument(
+
     "--daily-trading-tick",
     action="store_true",
     help="LLM-free composite tick: proof + GOAT audit + tactical posture + health readiness",
@@ -550,6 +556,17 @@ def main() -> None:
       default=str,
     ))
     return
+
+  if getattr(args, "continuous_proof", False):
+    from engine.autonomous_ops import run_continuous_proof_tick
+
+    print(json.dumps(
+      run_continuous_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
+      indent=2,
+      default=str,
+    ))
+    return
+
 
   if args.daily_trading_tick:
     from engine.daily_trading_ops import run_daily_trading_tick

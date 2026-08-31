@@ -456,6 +456,13 @@ def run_paper_forward_tick(
     except Exception as exc:
       result["phases"]["outcomes"] = {"error": str(exc)}
 
+  try:
+    from engine.paper_policy import refresh_paper_policy
+
+    result["phases"]["policy"] = refresh_paper_policy()
+  except Exception as exc:
+    result["phases"]["policy"] = {"error": str(exc)}
+
   tracked = result["phases"].get("outcomes") or {}
 
   try:
