@@ -75,6 +75,11 @@ def _clamp(x: float, lo: float, hi: float) -> float:
   return max(lo, min(hi, x))
 
 
+def _eps(reference: float) -> float:
+  """Scale-safe positive epsilon (fixed 1e-9 breaks micro-priced tokens)."""
+  return max(abs(float(reference)) * 1e-12, 1e-18)
+
+
 def _is_long(direction: str) -> bool:
   return direction.upper() in ("LONG", "BULL")
 
@@ -101,7 +106,7 @@ def sensible_entry_anchor(
     return current
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo if hi > lo else 0.0
-  buf = max(atr * 0.12, abs(current) * 0.0008, span * 0.04 if span else 0.0, 1e-9)
+  buf = max(atr * 0.12, abs(current) * 0.0008, span * 0.04 if span else 0.0, _eps(current))
   long = _is_long(direction)
 
   if long:
@@ -136,7 +141,7 @@ def clamp_ladder_no_chase(
     return prices
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo if hi > lo else 0.0
-  buf = max(atr * 0.1, abs(current) * 0.0005, span * 0.06 if span else 0.0, 1e-9)
+  buf = max(atr * 0.1, abs(current) * 0.0005, span * 0.06 if span else 0.0, _eps(current))
   long = _is_long(direction)
   out = [_r(p) for p in prices]
 
@@ -183,7 +188,7 @@ def clamp_ladder_no_chase(
 
 def _min_leg_separation(span: float, atr: float, anchor: float) -> float:
   """Minimum price gap between consecutive DCA legs (capped to fit 4 legs in zone)."""
-  raw = max(span * 0.08, atr * 0.05, abs(anchor) * 0.0004, 1e-9)
+  raw = max(span * 0.08, atr * 0.05, abs(anchor) * 0.0004, _eps(anchor))
   return min(raw, span / 4.5)
 
 
@@ -259,7 +264,7 @@ def _zone_pyramid_prices(
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo
   if span <= 0:
-    span = max(atr * 0.5, abs(anchor) * 0.002, 1e-9)
+    span = max(atr * 0.5, abs(anchor) * 0.002, _eps(anchor))
     lo = anchor - span / 2
     hi = anchor + span / 2
 
@@ -312,7 +317,7 @@ def build_dca_ladder(
   Profiles: pyramid_4 (10/20/30/40), two_layer_10_90, two_layer_30_70.
   """
   if atr <= 0:
-    atr = max(abs(anchor) * 0.01, 1e-9)
+    atr = max(abs(anchor) * 0.01, _eps(anchor))
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   if lo <= 0 and hi <= 0 and anchor > 0:
     pad = anchor * 0.005
@@ -321,7 +326,7 @@ def build_dca_ladder(
   span = hi - lo
   min_sep = _min_leg_separation(max(span, abs(anchor) * 0.002), atr, anchor)
   if span < min_sep * 3:
-    pad = max(min_sep * 2, atr * 0.15, abs(anchor) * 0.002, 1e-9)
+    pad = max(min_sep * 2, atr * 0.15, abs(anchor) * 0.002, _eps(anchor))
     if anchor > 0:
       lo, hi = min(lo, anchor - pad), max(hi, anchor + pad)
     else:
@@ -381,7 +386,7 @@ def _clamp_structure_to_entry(
   max_atr: float = DEFAULT_MAX_STRUCTURE_ATR,
 ) -> Tuple[float, float]:
   if atr <= 0:
-    atr = max(abs(entry) * 0.01, 1e-9)
+    atr = max(abs(entry) * 0.01, _eps(entry))
   band = max_atr * atr
   s_low = _clamp(structure_low, entry - band, entry)
   s_high = _clamp(structure_high, entry, entry + band)
@@ -599,7 +604,7 @@ def dynamic_stop(
   clipped to the minimum by a tight invalidation tick.
   """
   if atr <= 0:
-    atr = max(abs(entry) * 0.01, 1e-9)
+    atr = max(abs(entry) * 0.01, _eps(entry))
 
   ref = _ladder_extreme(direction, ladder_legs, entry)
   lo = hi = None
@@ -755,7 +760,7 @@ def dynamic_targets(
   prices = [t1, t2, t3]
   out = []
   for label, px, pct in zip(labels, prices, exits):
-    rr = abs(px - entry) / max(risk, 1e-9)
+    rr = abs(px - entry) / max(risk, _eps(entry))
     out.append({
       "label": label,
       "price": _r(px),
@@ -820,7 +825,7 @@ def _valid_structure_anchor(direction: str, entry: float, value: Optional[float]
     return False
   if v <= 0:
     return False
-  band = max(atr * 12, entry * 0.35, 1e-9)
+  band = max(atr * 12, entry * 0.35, _eps(entry))
   if _is_long(direction):
     return entry < v <= entry + band
   return entry - band <= v < entry
