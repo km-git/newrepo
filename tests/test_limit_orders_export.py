@@ -129,6 +129,14 @@ def test_build_limit_order_row_has_dca_stop_metrics():
     max(0.0, row["l1_stop_distance_pct"] - row["stop_distance_pct"]), abs=0.01
   )
   assert 1 <= int(row["dca_staging_legs"]) <= 4
+  assert row["geometry_valid"] == "Y"
+  assert row["geometry_errors"] == ""
+  assert row["stop_loss"] > 0
+  assert row["tp1"] > 0
+  assert row["tp2"] > 0
+  assert row["tp3"] > 0
+  assert row["stop_distance_pct"] <= 3.5 * 1.05
+  assert row["rr_tp2"] <= 5.0
 
 
 

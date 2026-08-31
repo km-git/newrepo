@@ -126,7 +126,16 @@ def main() -> int:
   ap.add_argument("--input", type=Path, default=ROOT / "output" / "latest_limit_orders_all_tf.csv")
   ap.add_argument("--csv-out", type=Path, default=ROOT / "reports" / "all_pair_tf_setups_dense.csv")
   ap.add_argument("--html-out", type=Path, default=ROOT / "reports" / "all_pair_tf_setups_dense.html")
-  ap.add_argument("--high-accuracy-only", action="store_true", help="Keep SQS EXECUTE/STANDBY or sqs_score>=60")
+  ap.add_argument(
+    "--high-accuracy-only",
+    action="store_true",
+    help="Keep only geometry-valid, pair-validated setups (pair×TF n>=5, EXECUTE)",
+  )
+  ap.add_argument(
+    "--candidate-only",
+    action="store_true",
+    help="Keep technically valid executable/monitor candidates; makes no accuracy claim",
+  )
   ap.add_argument("--min-sqs", type=float, default=None, help="Minimum sqs_score")
   ap.add_argument("--title", default="All Pair × TF Setups — Dense View")
   args = ap.parse_args()
@@ -139,10 +148,23 @@ def main() -> int:
   if args.high_accuracy_only:
     rows = [
       r for r in rows
-      if str(r.get("sqs_tier") or "") in ("EXECUTE", "STANDBY")
-      or float(r.get("sqs_score") or 0) >= 60
+      if str(r.get("geometry_valid") or "") == "Y"
+      and str(r.get("sqs_tier") or "") == "EXECUTE"
+      and str(r.get("hist_scope") or "") == "pair_tf"
+      and int(float(r.get("hist_n") or 0)) >= 5
+      and str(r.get("gtc_tier") or "") == "executable"
+      and not str(r.get("sqs_action") or "").startswith("WATCH")
     ]
-    args.title += " (High Accuracy)"
+    args.title += " (Pair-Validated)"
+  if args.candidate_only:
+    rows = [
+      r for r in rows
+      if str(r.get("geometry_valid") or "") == "Y"
+      and str(r.get("sqs_tier") or "") in ("EXECUTE", "STANDBY")
+      and str(r.get("gtc_tier") or "") in ("executable", "monitor")
+      and not str(r.get("sqs_action") or "").startswith("WATCH")
+    ]
+    args.title += " (Technical Candidates; Unvalidated)"
   if args.min_sqs is not None:
     rows = [r for r in rows if float(r.get("sqs_score") or 0) >= args.min_sqs]
 

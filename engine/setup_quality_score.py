@@ -85,6 +85,11 @@ def sqs_action(score: float, row: dict) -> str:
   """Action label aligned with executive + SQS bands."""
   tier = sqs_tier(score)
   exec_action = str(row.get("executive_action") or "")
+  gtc_tier = str(row.get("gtc_tier") or "")
+  if str(row.get("geometry_valid") or "Y").upper() != "Y":
+    return "SKIP"
+  if gtc_tier == "watch" or exec_action.startswith("WATCH"):
+    return "WATCH_ALERT" if tier != "SKIP" else "SKIP"
   if tier == "EXECUTE":
     if exec_action in ("EXECUTE_NOW", "EXECUTE_CAUTION", "SCALE_IN"):
       return exec_action
@@ -176,7 +181,9 @@ def _expectancy_score(row: dict) -> Tuple[float, List[str]]:
   tags: List[str] = []
   wr = row.get("hist_win_rate")
   n = _i(row, "hist_n")
-  if wr is not None and n >= 3:
+  scope = str(row.get("hist_scope") or "none")
+  pair_evidence = scope == "pair_tf"
+  if wr is not None and n >= 3 and pair_evidence:
     wr_f = float(wr)
     score += min(55.0, wr_f * 80.0)
     if wr_f >= 0.65:
@@ -199,7 +206,7 @@ def _expectancy_score(row: dict) -> Tuple[float, List[str]]:
     score += 5
 
   tp1_r = _f(row, "tp1_r_multiple")
-  if tp1_r > 0 and wr is not None and n >= 3:
+  if tp1_r > 0 and wr is not None and n >= 3 and pair_evidence:
     partial = float(__import__("os").environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
     exp = float(wr) * tp1_r * partial - (1.0 - float(wr))
     if exp > 0:
@@ -208,6 +215,8 @@ def _expectancy_score(row: dict) -> Tuple[float, List[str]]:
     else:
       score -= 10
       tags.append(f"-EV_{exp:.2f}R")
+  elif wr is not None and n >= 3:
+    tags.append(f"{scope}_context_only")
 
   exec_score = _i(row, "executive_score")
   if exec_score > 0:
@@ -228,8 +237,14 @@ def _readiness_score(row: dict) -> Tuple[float, List[str]]:
 
 
 def _historical_score(row: dict) -> Tuple[float, List[str]]:
-  score = 50.0
+  score = 40.0
   tags: List[str] = []
+  scope = str(row.get("hist_scope") or "none")
+  if scope != "pair_tf":
+    if scope in ("timeframe", "overall"):
+      tags.append(f"{scope}_history_not_pair_edge")
+    return score, tags
+
   action = str(row.get("hist_action") or "")
   if action == "boost":
     score += 35
@@ -289,6 +304,37 @@ def compute_setup_quality_score(row: dict) -> Dict[str, Any]:
       "sqs_components_json": "{}",
     }
 
+  hard_errors: List[str] = []
+  if str(row.get("geometry_valid") or "Y").upper() != "Y":
+    hard_errors.append("invalid_geometry")
+  entry = _f(row, "wae")
+  stop = _f(row, "stop_loss")
+  rr = _f(row, "rr_tp2")
+  min_rr = _f(row, "min_rr", 1.2)
+  direction = str(row.get("direction") or "").upper()
+  targets = [_f(row, f"tp{i}") for i in (1, 2, 3)]
+  if entry <= 0 or stop <= 0 or any(tp <= 0 for tp in targets):
+    hard_errors.append("non_positive_trade_level")
+  elif direction == "LONG":
+    if not (stop < entry < targets[0] <= targets[1] <= targets[2]):
+      hard_errors.append("invalid_long_level_order")
+  elif direction == "SHORT":
+    if not (stop > entry > targets[0] >= targets[1] >= targets[2]):
+      hard_errors.append("invalid_short_level_order")
+  else:
+    hard_errors.append("invalid_direction")
+  if rr < min_rr * 0.95 or rr > 5.25:
+    hard_errors.append("rr_out_of_bounds")
+
+  if hard_errors:
+    return {
+      "sqs_score": 0,
+      "sqs_tier": "SKIP",
+      "sqs_action": "SKIP",
+      "sqs_tags": "; ".join(hard_errors),
+      "sqs_components_json": "{}",
+    }
+
   s_struct, t_struct = _structure_score(row)
   s_mtf, t_mtf = _mtf_score(row)
   s_exp, t_exp = _expectancy_score(row)
@@ -306,6 +352,28 @@ def compute_setup_quality_score(row: dict) -> Dict[str, Any]:
   )
   total = round(min(100.0, max(0.0, total)), 1)
   tier = sqs_tier(total)
+
+  # Accuracy labels require setup-level evidence and executable routing.
+  # Market-wide/timeframe aggregate history is context, never proof that this pair works.
+  hist_scope = str(row.get("hist_scope") or "none")
+  hist_n = _i(row, "hist_n")
+  gtc_tier = str(row.get("gtc_tier") or "")
+  exec_action = str(row.get("executive_action") or "")
+  if tier == "EXECUTE" and (hist_scope != "pair_tf" or hist_n < 5):
+    tier = "STANDBY"
+  if gtc_tier == "watch" or exec_action.startswith("WATCH"):
+    tier = "WATCH" if total >= SQS_TIER_WATCH else "SKIP"
+  elif gtc_tier == "monitor" and tier == "EXECUTE":
+    tier = "STANDBY"
+
+  effective_score = total
+  if tier == "STANDBY":
+    effective_score = min(effective_score, SQS_TIER_EXECUTE - 0.1)
+  elif tier == "WATCH":
+    effective_score = min(effective_score, SQS_TIER_STANDBY - 0.1)
+  elif tier == "SKIP":
+    effective_score = min(effective_score, SQS_TIER_WATCH - 0.1)
+  total = round(effective_score, 1)
   action = sqs_action(total, row)
   all_tags = t_struct + t_mtf + t_exp + t_ready + t_hist + t_dca
 

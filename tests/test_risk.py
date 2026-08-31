@@ -6,6 +6,7 @@ import pytest
 
 from core.risk import (
   build_dca_ladder,
+  cap_stop_for_entry,
   compute_wae,
   dca_sl_target_pct,
   dca_sl_wide_threshold,
@@ -14,6 +15,7 @@ from core.risk import (
   dynamic_targets,
   sensible_entry_anchor,
   stop_is_sane,
+  validate_trade_geometry,
 )
 
 
@@ -97,6 +99,22 @@ def test_dynamic_stop_btc_short_zone_not_21pct():
   assert s["price"] > zone_hi
   assert s["distance_pct"] < 12.0
   assert s["price"] < zone_hi * 1.10
+
+
+def test_dynamic_stop_caps_wae_distance_not_only_ladder_extreme():
+  legs = build_dca_ladder("LONG", 100.0, 2.0, 80.0, 105.0)
+  wae = compute_wae(legs)
+  s = dynamic_stop(
+    "LONG", wae, 2.0, 60.0, 110.0,
+    zone_low=80.0, zone_high=105.0, timeframe="15m", ladder_legs=legs,
+  )
+  assert s["distance_pct"] <= 3.5 * 1.02
+  assert s["reference_price"] == pytest.approx(wae)
+
+
+def test_cap_stop_for_entry_respects_tf_max():
+  assert cap_stop_for_entry("LONG", 100.0, 80.0, timeframe="15m") == pytest.approx(96.5)
+  assert cap_stop_for_entry("SHORT", 100.0, 120.0, timeframe="15m") == pytest.approx(103.5)
 
 
 def test_dynamic_stop_tokenized_not_razor_thin():
@@ -195,3 +213,42 @@ def test_dca_stop_metrics_pyramid_tightens_wide_l1():
   if m["dca_sl_resolvable"] == "Y":
     assert m["l1_stop_distance_pct"] > m["dca_sl_wide_threshold_pct"]
     assert m["stop_distance_pct"] <= m["dca_sl_target_pct"]
+
+
+def test_targets_reject_negative_stale_anchors_and_cap_rr():
+  targets = dynamic_targets(
+    "SHORT",
+    100.0,
+    2.0,
+    c_target_100=-50.0,
+    c_target_161=-1000.0,
+    stop_price=103.0,
+    zone_low=98.0,
+    zone_high=102.0,
+    timeframe="15m",
+    structure_low=-500.0,
+    max_rr_cap=4.5,
+  )
+  prices = [t["price"] for t in targets]
+  assert 100.0 > prices[0] >= prices[1] >= prices[2] > 0
+  assert targets[1]["rr"] <= 4.5
+  ok, errors = validate_trade_geometry(
+    "SHORT", 100.0, 103.0, targets,
+    timeframe="15m", min_rr=1.2, max_rr=5.0,
+  )
+  assert ok, errors
+
+
+def test_geometry_rejects_negative_targets_and_extreme_rr():
+  bad = [
+    {"price": 97.0},
+    {"price": 80.0},
+    {"price": -1.0},
+  ]
+  ok, errors = validate_trade_geometry(
+    "SHORT", 100.0, 103.0, bad,
+    timeframe="15m", min_rr=1.2, max_rr=5.0,
+  )
+  assert not ok
+  assert "invalid_tp_prices" in errors
+  assert any(e.startswith("rr_above_max") for e in errors)

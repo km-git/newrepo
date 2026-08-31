@@ -15,11 +15,12 @@ from core.risk import (
   build_dca_ladder,
   sensible_entry_anchor,
   compute_wae,
+  cap_stop_for_entry,
   dca_stop_metrics,
   dynamic_stop,
   dynamic_targets,
   risk_package,
-  stop_distance_pct,
+  validate_trade_geometry,
 )
 from engine.execution_advanced import (
   CONTINGENT_SYMBOLS,
@@ -128,7 +129,14 @@ def _structure_bounds(wave: dict, fallback_price: float, atr: float) -> Tuple[fl
         if key in w and w[key] is not None:
           pts.append(float(w[key]))
     if pts:
-      return min(pts), max(pts)
+      lo, hi = min(pts), max(pts)
+      if fallback_price > 0:
+        band = max(atr * 10, fallback_price * 0.30, 1e-9)
+        lo = max(lo, fallback_price - band)
+        hi = min(hi, fallback_price + band)
+        if lo >= hi:
+          lo, hi = fallback_price - band, fallback_price + band
+      return lo, hi
   return fallback_price - 2 * atr, fallback_price + 2 * atr
 
 
@@ -383,10 +391,25 @@ def build_limit_order_row(
     timeframe=tf,
     structure_low=s_low,
     structure_high=s_high,
+    max_rr_cap=min(5.0, cfg.get("min_rr", 1.2) + 3.5),
   )
+
+  stop_px = float(stop["price"])
+  stop_px = cap_stop_for_entry(direction, wae, stop_px, timeframe=tf)
+  stop["price"] = stop_px
 
   while len(targets) < 3:
     targets.append(targets[-1] if targets else {"price": wae, "exit_pct": 0, "rr": 0})
+
+  geom_ok, geom_errors = validate_trade_geometry(
+    direction, wae, stop_px, targets,
+    timeframe=tf, min_rr=float(cfg.get("min_rr", 1.2)), max_rr=5.0,
+  )
+  if not geom_ok:
+    gtc_tier = "watch"
+    honest_tier = honest_tier if honest_tier != "full" else "probe"
+    tier_note = f"{tier_note} | GEOMETRY_INVALID: {';'.join(geom_errors[:3])}"
+
   rr = targets[1].get("rr", 0) if len(targets) > 1 else 0
 
   risk_ctx: dict = {}
@@ -466,6 +489,8 @@ def build_limit_order_row(
     "stop_loss": stop["price"],
     "stop_rule": stop.get("rule"),
     "stop_architecture": stop.get("architecture", "smart_dynamic_sl"),
+    "geometry_valid": "Y" if geom_ok else "N",
+    "geometry_errors": "; ".join(geom_errors) if geom_errors else "",
     **sl_metrics,
     "tp1": targets[0]["price"],
     "tp1_exit_pct": targets[0]["exit_pct"],

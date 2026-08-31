@@ -347,18 +347,34 @@ def load_metrics() -> dict:
     return compute_metrics()
 
 
-def lookup_win_rate(metrics: dict, symbol: str, timeframe: str, direction: str) -> Tuple[Optional[float], int]:
+def lookup_win_rate_with_scope(
+  metrics: dict,
+  symbol: str,
+  timeframe: str,
+  direction: str,
+) -> Tuple[Optional[float], int, str]:
+  """Return win rate, decided count, and evidence scope.
+
+  Pair×TF evidence is predictive for a setup. Timeframe/overall fallbacks are
+  context only and must not be presented as pair-specific accuracy.
+  """
   key = setup_key(symbol, timeframe, direction)
   bucket = metrics.get("by_pair_tf", {}).get(key)
   if bucket and bucket.get("decided", 0) >= _MIN_SAMPLES:
-    return bucket.get("win_rate"), bucket["decided"]
+    return bucket.get("win_rate"), bucket["decided"], "pair_tf"
   tf_bucket = metrics.get("by_timeframe", {}).get(timeframe)
   if tf_bucket and tf_bucket.get("decided", 0) >= _MIN_SAMPLES:
-    return tf_bucket.get("win_rate"), tf_bucket["decided"]
+    return tf_bucket.get("win_rate"), tf_bucket["decided"], "timeframe"
   overall = metrics.get("overall", {})
   if overall.get("decided", 0) >= _MIN_SAMPLES:
-    return overall.get("win_rate"), overall["decided"]
-  return None, bucket.get("decided", 0) if bucket else 0
+    return overall.get("win_rate"), overall["decided"], "overall"
+  return None, bucket.get("decided", 0) if bucket else 0, "none"
+
+
+def lookup_win_rate(metrics: dict, symbol: str, timeframe: str, direction: str) -> Tuple[Optional[float], int]:
+  """Backward-compatible rate lookup; use lookup_win_rate_with_scope for ranking."""
+  win_rate, n, _scope = lookup_win_rate_with_scope(metrics, symbol, timeframe, direction)
+  return win_rate, n
 
 
 def feedback_for_row(row: dict, metrics: dict) -> dict:
@@ -366,11 +382,12 @@ def feedback_for_row(row: dict, metrics: dict) -> dict:
   sym = row.get("symbol", "")
   tf = row.get("timeframe", "")
   direction = row.get("direction", "")
-  win_rate, n = lookup_win_rate(metrics, sym, tf, direction)
+  win_rate, n, scope = lookup_win_rate_with_scope(metrics, sym, tf, direction)
 
   out: Dict[str, Any] = {
     "hist_win_rate": win_rate,
     "hist_n": n,
+    "hist_scope": scope,
     "hist_action": "none",
     "tier_override": None,
     "size_cap_mult": 1.0,
@@ -422,6 +439,7 @@ def apply_feedback_to_row(row: dict, metrics: dict) -> dict:
   row = dict(row)
   row["hist_win_rate"] = fb.get("hist_win_rate")
   row["hist_n"] = fb.get("hist_n")
+  row["hist_scope"] = fb.get("hist_scope")
   row["hist_action"] = fb.get("hist_action")
   row["hist_note"] = fb.get("hist_note")
 

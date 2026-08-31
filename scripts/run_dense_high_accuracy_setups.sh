@@ -52,6 +52,13 @@ python3 scripts/export_dense_setups_table.py \
   --csv-out reports/high_accuracy_setups_dense.csv \
   --html-out reports/high_accuracy_setups_dense.html \
   --high-accuracy-only \
-  --title "High Accuracy Trade Setups — SQS EXECUTE/STANDBY"
+  --title "Historically Validated Trade Setups"
+
+python3 scripts/export_dense_setups_table.py \
+  --input output/latest_limit_orders_all_tf.csv \
+  --csv-out reports/trade_setup_candidates_dense.csv \
+  --html-out reports/trade_setup_candidates_dense.html \
+  --candidate-only \
+  --title "Technically Valid Trade Setup Candidates"
 
 echo "[dense] Done."
