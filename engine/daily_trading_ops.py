@@ -66,11 +66,13 @@ def _composite_readiness(
   goat: Optional[dict],
   tactical: Optional[dict],
   health: Optional[dict],
+  profit_lab: Optional[dict] = None,
 ) -> Dict[str, Any]:
   proof_v = (proof or {}).get("verdict", "PROOF_PENDING")
   goat_v = (goat or {}).get("composite_verdict", "UNKNOWN")
   posture = (tactical or {}).get("posture", "NEUTRAL")
   healthy = (health or {}).get("healthy", False)
+  profit_v = (profit_lab or {}).get("readiness", {}).get("verdict", "UNKNOWN")
   halted = False
   try:
     from engine.risk_ops import is_halted
@@ -86,6 +88,8 @@ def _composite_readiness(
     blockers.append(f"paper_proof_{proof_v}")
   if goat_v == "NO_GO":
     blockers.append("goat_no_go")
+  if profit_v == "PROFIT_NO_GO":
+    blockers.append("profit_lab_no_go")
   if posture == "DEFENSIVE":
     blockers.append("tactical_defensive")
   if not healthy:
@@ -93,7 +97,7 @@ def _composite_readiness(
 
   if not blockers and proof_v == "PROOF_GO" and goat_v == "GO":
     verdict = "DEPLOY_GO"
-  elif blockers and ("risk_halted" in blockers or "goat_no_go" in blockers):
+  elif blockers and ("risk_halted" in blockers or "goat_no_go" in blockers or "profit_lab_no_go" in blockers):
     verdict = "DEPLOY_HOLD"
   else:
     verdict = "DEPLOY_CONDITIONAL"
@@ -103,6 +107,7 @@ def _composite_readiness(
     "blockers": blockers,
     "proof_verdict": proof_v,
     "goat_verdict": goat_v,
+    "profit_lab_verdict": profit_v,
     "tactical_posture": posture,
     "healthy": healthy,
     "halted": halted,
@@ -126,6 +131,7 @@ def write_daily_ops_report(tick: dict, path: Optional[Path] = None) -> str:
     "|------|-------|",
     f"| Paper proof | {readiness.get('proof_verdict', 'n/a')} |",
     f"| GOAT audit | {readiness.get('goat_verdict', 'n/a')} |",
+    f"| Profit lab | {readiness.get('profit_lab_verdict', 'n/a')} |",
     f"| Tactical posture | {readiness.get('tactical_posture', 'n/a')} |",
     f"| Health | {'OK' if readiness.get('healthy') else 'INCOMPLETE'} |",
     f"| Risk halted | {readiness.get('halted')} |",
@@ -155,7 +161,10 @@ def run_daily_trading_tick(
   2. Paper forward proof
   3. Tactical posture
   4. GOAT effectiveness audit (walk-forward)
+  5. Profit laboratory (fee expectancy + CPCV + cost analytics)
+  6. Health + composite readiness
   5. Health + composite readiness
+
 
   Resolve modes (EW_RESOLVE_MODE or resolve_mode arg):
   - skip: no OHLC resolve (cron default, ~1s)
@@ -203,6 +212,24 @@ def run_daily_trading_tick(
     except Exception as exc:
       tick["phases"]["goat_audit"] = {"error": str(exc)}
 
+  profit_lab = None
+  if os.environ.get("EW_PROFIT_LAB", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.profit_lab.runner import run_profit_lab
+
+      profit_lab = run_profit_lab(
+        run_sweep=os.environ.get("EW_PROFIT_LAB_SWEEP", "0") == "1",
+        write_reports=True,
+        apply_expectancy_gates=True,
+      )
+      tick["phases"]["profit_lab"] = {
+        "readiness": profit_lab.get("readiness"),
+        "overall_expectancy_r": (profit_lab.get("expectancy") or {}).get("overall", {}).get("expectancy_r"),
+        "cpcv_verdict": (profit_lab.get("cpcv") or {}).get("deployment_gate", {}).get("verdict"),
+      }
+    except Exception as exc:
+      tick["phases"]["profit_lab"] = {"error": str(exc)}
+
   health = None
   try:
     from engine.system_health import run_health_checks, save_health
@@ -224,6 +251,7 @@ def run_daily_trading_tick(
     goat=goat,
     tactical=tactical,
     health=health,
+    profit_lab=profit_lab,
   )
   write_daily_ops_report(tick)
 
@@ -233,6 +261,7 @@ def run_daily_trading_tick(
     "readiness_verdict": tick["readiness"]["verdict"],
     "proof_verdict": tick["readiness"].get("proof_verdict"),
     "goat_verdict": tick["readiness"].get("goat_verdict"),
+    "profit_lab_verdict": tick["readiness"].get("profit_lab_verdict"),
     "tactical_posture": tick["readiness"].get("tactical_posture"),
   }
   _save_state(state)

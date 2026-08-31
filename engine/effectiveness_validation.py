@@ -359,6 +359,7 @@ def evaluate_gates(
   tracked_backtest: Optional[dict] = None,
   wf_fee: Optional[dict] = None,
   health: Optional[dict] = None,
+  profit_lab: Optional[dict] = None,
 ) -> List[GateResult]:
   gates: List[GateResult] = []
 
@@ -460,6 +461,25 @@ def evaluate_gates(
     },
     threshold=f">= {min_wf_exp_r} R after fees, n>={min_wf_trades}, 1h+policy",
     detail=f"walk-forward OOS on policy-filtered 1h setups",
+  ))
+
+  # Profit laboratory — north star fee-adjusted expectancy (purgedcv + slice gates)
+  pl = profit_lab or {}
+  pl_overall = (pl.get("expectancy") or {}).get("overall") or {}
+  pl_exp = pl_overall.get("expectancy_r")
+  pl_n = int(pl_overall.get("n") or 0)
+  pl_verdict = (pl.get("readiness") or {}).get("verdict")
+  gates.append(GateResult(
+    "profit_lab_expectancy",
+    pl_overall.get("passes_gate") is True and pl_verdict != "PROFIT_NO_GO",
+    value={
+      "expectancy_r": pl_exp,
+      "n": pl_n,
+      "verdict": pl_verdict,
+      "cpcv": (pl.get("cpcv") or {}).get("deployment_gate", {}).get("verdict"),
+    },
+    threshold=f">= {min_expectancy_r} R fee-adjusted, profit_lab not NO_GO",
+    detail="engine/profit_lab — purgedcv + quantstats cost analytics",
   ))
 
   if tb_decided >= min_tracked_trades and tb_exp_r is not None:
@@ -624,6 +644,18 @@ def run_effectiveness_validation(
   reconciliation = reconcile_models(metrics, paper if isinstance(paper, dict) else {})
   report.sections["reconciliation"] = reconciliation
 
+  profit_lab: Dict[str, Any] = {"skipped": True}
+  try:
+    from engine.profit_lab.runner import run_profit_lab
+
+    profit_lab = run_profit_lab(
+      run_sweep=os.environ.get("EW_PROFIT_LAB_SWEEP", "0") == "1",
+      write_reports=write_reports,
+    )
+    report.sections["profit_lab"] = profit_lab
+  except Exception as exc:
+    report.sections["profit_lab"] = {"ok": False, "error": str(exc)}
+
   health: Optional[Dict[str, Any]] = None
   try:
     from engine.system_health import run_health_checks
@@ -643,6 +675,7 @@ def run_effectiveness_validation(
     tracked_backtest=tracked_backtest,
     wf_fee=wf_fee if isinstance(wf_fee, dict) else {},
     health=health,
+    profit_lab=profit_lab if isinstance(profit_lab, dict) else {},
   )
   core_gates = [g for g in report.gates if g.name not in ADVISORY_GATES]
   report.ok = all(g.passed for g in core_gates)

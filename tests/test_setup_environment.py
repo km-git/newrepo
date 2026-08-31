@@ -25,6 +25,7 @@ def test_setup_environment_structure(monkeypatch):
   monkeypatch.setattr(se, "ensure_venv", lambda: {"created": False, "path": ".venv"})
   monkeypatch.setattr(se, "clone_github_libs", lambda: [])
   monkeypatch.setattr(se, "install_requirements", lambda: {"ok": True})
+  monkeypatch.setattr(se, "install_outcome_requirements", lambda: {"ok": True})
   monkeypatch.setattr(se, "install_editable_libs", lambda: {"ok": True})
   monkeypatch.setattr(se, "install_runtime_extras", lambda: {"ok": True})
   monkeypatch.setattr(se, "install_token_savers", lambda: {"install": {}})
