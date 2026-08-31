@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -63,10 +64,10 @@ _DCA_RATIONALE_SHORT = [
 
 def _r(x: float, decimals: int = 6) -> float:
   ax = abs(float(x))
-  if ax > 0 and ax < 0.01:
-    decimals = 10
-  elif ax > 0 and ax < 1:
-    decimals = 8
+  if ax > 0 and ax < 1:
+    # Preserve at least eight significant decimals for micro-priced tokens.
+    # A fixed 10-decimal round turned valid 1e-8 geometry into zeros/negative R:R.
+    decimals = max(decimals, min(18, int(-math.floor(math.log10(ax))) + 8))
   return round(float(x), decimals)
 
 

@@ -42,6 +42,26 @@ def test_wae_calculation():
   assert wae == pytest.approx(expected, rel=1e-4)
 
 
+def test_micro_price_rounding_preserves_trade_geometry():
+  legs = build_dca_ladder("SHORT", 1.2e-8, 4e-10, 1.15e-8, 1.25e-8)
+  wae = compute_wae(legs)
+  assert wae > 0
+  assert len({leg["price"] for leg in legs}) == 4
+  stop = dynamic_stop(
+    "SHORT", wae, 4e-10, 1.1e-8, 1.3e-8,
+    zone_low=1.15e-8, zone_high=1.25e-8, timeframe="15m", ladder_legs=legs,
+  )
+  targets = dynamic_targets(
+    "SHORT", wae, 4e-10, stop_price=stop["price"], timeframe="15m",
+    zone_low=1.15e-8, zone_high=1.25e-8,
+  )
+  ok, errors = validate_trade_geometry(
+    "SHORT", wae, stop["price"], targets,
+    timeframe="15m", min_rr=1.2, max_rr=5.0,
+  )
+  assert ok, errors
+
+
 def test_dca_no_duplicate_legs_mid_zone_anchor():
   """Anchor mid-zone must not collapse L1 and L2 to the same price."""
   legs = build_dca_ladder("SHORT", 73468.0, 500.0, 72842.0, 74094.0)

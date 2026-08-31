@@ -137,6 +137,17 @@ def main() -> int:
     help="Keep technically valid executable/monitor candidates; makes no accuracy claim",
   )
   ap.add_argument("--min-sqs", type=float, default=None, help="Minimum sqs_score")
+  ap.add_argument(
+    "--include-rejected",
+    action="store_true",
+    help="Include geometry-invalid rows in the main table (off by default)",
+  )
+  ap.add_argument(
+    "--rejected-out",
+    type=Path,
+    default=ROOT / "reports" / "rejected_setups_geometry.csv",
+    help="Diagnostic CSV for rejected geometry",
+  )
   ap.add_argument("--title", default="All Pair × TF Setups — Dense View")
   args = ap.parse_args()
 
@@ -145,6 +156,9 @@ def main() -> int:
     return 1
 
   cols, rows = load_rows(args.input)
+  rejected = [r for r in rows if str(r.get("geometry_valid") or "Y") != "Y"]
+  if not args.include_rejected:
+    rows = [r for r in rows if str(r.get("geometry_valid") or "Y") == "Y"]
   if args.high_accuracy_only:
     rows = [
       r for r in rows
@@ -174,10 +188,17 @@ def main() -> int:
     w.writeheader()
     w.writerows(rows)
 
+  args.rejected_out.parent.mkdir(parents=True, exist_ok=True)
+  with args.rejected_out.open("w", newline="", encoding="utf-8") as f:
+    w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+    w.writeheader()
+    w.writerows(rejected)
+
   write_dense_html(cols, rows, args.html_out, title=args.title)
   print(f"Wrote {len(rows)} rows × {len(cols)} cols")
   print(f"  CSV:  {args.csv_out}")
   print(f"  HTML: {args.html_out}")
+  print(f"  Rejected geometry: {len(rejected)} → {args.rejected_out}")
   return 0
 
 
