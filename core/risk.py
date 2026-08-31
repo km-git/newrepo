@@ -406,6 +406,105 @@ def stop_distance_pct(entry: float, stop: float) -> float:
   return _r(abs(entry - stop) / entry * 100.0, 2)
 
 
+# Heuristic DCA staging SL tuning (user idea: wide L1 → ~2.3% WAE with 10/20/30/40).
+_DCA_SL_WIDE_BASE = 3.0
+_DCA_SL_TARGET_BASE = 2.3
+_DCA_SL_MIN_REDUCTION_PP = 0.5
+
+
+def dca_sl_wide_threshold(timeframe: Optional[str] = None) -> float:
+  """L1-only stop % above which pyramid staging is worth considering."""
+  min_pct, _ = _stop_pct_bounds(timeframe)
+  return _r(max(_DCA_SL_WIDE_BASE, min_pct * 2.2), 2)
+
+
+def dca_sl_target_pct(timeframe: Optional[str] = None) -> float:
+  """Target effective stop % after smart DCA fills (TF-scaled from ~2.3% base)."""
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  scaled = max(_DCA_SL_TARGET_BASE, min_pct * 1.65)
+  return _r(min(scaled, max_pct * 0.72), 2)
+
+
+def _partial_wae(legs: List[dict], n_legs: int) -> float:
+  sub = legs[:n_legs]
+  if not sub:
+    return 0.0
+  total = sum(float(leg["size_pct"]) for leg in sub)
+  if total <= 0:
+    return 0.0
+  norm = [{"price": leg["price"], "size_pct": float(leg["size_pct"]) / total * 100.0} for leg in sub]
+  return compute_wae(norm)
+
+
+def dca_stop_metrics(
+  legs: List[dict],
+  stop_price: float,
+  *,
+  timeframe: Optional[str] = None,
+) -> Dict[str, Any]:
+  """
+  Compare L1-only vs pyramid WAE stop distance.
+
+  Returns TF-aware wide/target thresholds, reduction, min legs to hit target,
+  and whether staging resolves a wide L1 into the practical risk band.
+  """
+  if not legs or stop_price <= 0:
+    return {
+      "l1_stop_distance_pct": 0.0,
+      "stop_distance_pct": 0.0,
+      "dca_stop_reduction_pct": 0.0,
+      "dca_sl_wide_threshold_pct": dca_sl_wide_threshold(timeframe),
+      "dca_sl_target_pct": dca_sl_target_pct(timeframe),
+      "dca_staging_legs": 0,
+      "dca_sl_resolvable": "N",
+      "dca_staging_note": "no_ladder",
+    }
+
+  stop_px = float(stop_price)
+  l1_px = float(legs[0]["price"])
+  wae = compute_wae(legs)
+  l1_pct = stop_distance_pct(l1_px, stop_px)
+  wae_pct = stop_distance_pct(wae, stop_px)
+  reduction = round(max(0.0, l1_pct - wae_pct), 2)
+  wide_thr = dca_sl_wide_threshold(timeframe)
+  target = dca_sl_target_pct(timeframe)
+
+  staging_legs = len(legs)
+  for n in range(1, len(legs) + 1):
+    partial = _partial_wae(legs, n)
+    if partial > 0 and stop_distance_pct(partial, stop_px) <= target:
+      staging_legs = n
+      break
+
+  if l1_pct <= target:
+    note = "l1_within_target"
+  elif l1_pct > wide_thr and wae_pct <= target and reduction >= _DCA_SL_MIN_REDUCTION_PP:
+    note = f"pyramid_L{staging_legs}_to_{target:.1f}pct"
+  elif l1_pct > wide_thr and reduction >= _DCA_SL_MIN_REDUCTION_PP:
+    note = f"pyramid_L{staging_legs}_partial_{wae_pct:.1f}pct"
+  elif l1_pct > wide_thr:
+    note = "wide_l1_no_pyramid_relief"
+  else:
+    note = "moderate_l1"
+
+  resolvable = (
+    l1_pct > wide_thr
+    and wae_pct <= target
+    and reduction >= _DCA_SL_MIN_REDUCTION_PP
+  )
+
+  return {
+    "l1_stop_distance_pct": l1_pct,
+    "stop_distance_pct": wae_pct,
+    "dca_stop_reduction_pct": reduction,
+    "dca_sl_wide_threshold_pct": wide_thr,
+    "dca_sl_target_pct": target,
+    "dca_staging_legs": staging_legs,
+    "dca_sl_resolvable": "Y" if resolvable else "N",
+    "dca_staging_note": note,
+  }
+
+
 def _target_r_multiples(timeframe: Optional[str]) -> Tuple[float, float, float]:
   if timeframe and timeframe in TF_TARGET_R:
     return TF_TARGET_R[timeframe]
