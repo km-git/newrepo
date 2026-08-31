@@ -98,6 +98,13 @@ def install_requirements() -> Dict[str, Any]:
   return pip_install(f"-r{req}")
 
 
+def install_outcome_requirements() -> Dict[str, Any]:
+  req = ROOT / "requirements-outcome.txt"
+  if not req.exists():
+    return {"ok": True, "skipped": True, "reason": "requirements-outcome.txt missing"}
+  return pip_install(f"-r{req}")
+
+
 def install_editable_libs() -> Dict[str, Any]:
   specs = [str(LIBS_DIR / name) for name in PIP_EDITABLE if (LIBS_DIR / name).exists()]
   if not specs:
@@ -215,6 +222,7 @@ def setup_environment(
   if install_deps:
     result["steps"]["github_libs"] = clone_github_libs()
     result["steps"]["requirements"] = install_requirements()
+    result["steps"]["outcome_requirements"] = install_outcome_requirements()
     result["steps"]["editable_libs"] = install_editable_libs()
     result["steps"]["runtime_extras"] = install_runtime_extras()
 
