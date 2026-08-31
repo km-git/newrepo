@@ -521,6 +521,12 @@ def run_paper_simulation(
   except Exception:
     portfolio_state = None
 
+  if fetch_ohlc and ranked:
+    from engine.ohlc_fetch import prefetch_ohlc
+
+    pairs = sorted({(r["symbol"], r["timeframe"]) for r in ranked})
+    fetch_cache.update(prefetch_ohlc(pairs, is_crypto=True))
+
   for row in ranked:
     if open_count >= cap:
       break

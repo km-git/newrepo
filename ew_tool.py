@@ -257,6 +257,12 @@ def main() -> None:
     help="With --daily-trading-tick: include OHLC network fetch for paper sim",
   )
   parser.add_argument(
+    "--daily-trading-tick-resolve",
+    choices=("skip", "incremental", "full"),
+    default=None,
+    help="Outcome resolve mode for --daily-trading-tick (default: skip via cron script, incremental otherwise)",
+  )
+  parser.add_argument(
     "--goal-mode-quick",
     action="store_true",
     help="Goal mode without batch/monitor fetch; optional --execute for paper",
@@ -563,8 +569,18 @@ def main() -> None:
   if args.daily_trading_tick:
     from engine.daily_trading_ops import run_daily_trading_tick
 
+    resolve_mode = args.daily_trading_tick_resolve
+    if resolve_mode == "skip":
+      os.environ["EW_PAPER_FORWARD_SKIP_RESOLVE"] = "1"
+    elif resolve_mode:
+      os.environ["EW_PAPER_FORWARD_SKIP_RESOLVE"] = "0"
+      os.environ["EW_RESOLVE_MODE"] = resolve_mode
+
     print(json.dumps(
-      run_daily_trading_tick(fetch_ohlc=args.daily_trading_tick_fetch),
+      run_daily_trading_tick(
+        fetch_ohlc=args.daily_trading_tick_fetch,
+        resolve_mode=resolve_mode,
+      ),
       indent=2,
       default=str,
     ))
