@@ -289,6 +289,18 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--monetize",
+    "--monetization-strategy",
+    dest="monetize",
+    action="store_true",
+    help="Build monetization strategy services report for EW outputs",
+  )
+  parser.add_argument(
+    "--monetization-best-trades",
+    default="output/v6_scanner/best_trades_latest.json",
+    help="Best-trades JSON input for --monetize",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -462,6 +474,15 @@ def main() -> None:
     path = save_gap_audit(result)
     print(json.dumps(result, indent=2, default=str))
     print(f"[gap-audit] saved {path}", file=sys.stderr)
+    return
+
+  if args.monetize:
+    from engine.monetization_strategy import build_monetization_strategy, save_monetization_strategy
+
+    result = build_monetization_strategy(best_trades_path=args.monetization_best_trades)
+    path = save_monetization_strategy(result)
+    print(json.dumps(result, indent=2, default=str))
+    print(f"[monetize] saved {path}", file=sys.stderr)
     return
 
   if args.health:
