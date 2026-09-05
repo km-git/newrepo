@@ -289,6 +289,16 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--monetize-report",
+    action="store_true",
+    help="Generate and save royalty/usage report (output/system/royalty_report.json)",
+  )
+  parser.add_argument(
+    "--monetize-status",
+    action="store_true",
+    help="Print current license tier and feature access matrix",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -453,6 +463,21 @@ def main() -> None:
       os.environ["EW_EXECUTION_MODE"] = "live"
     result = execute_from_csv(dry_run=not args.execute_live)
     print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.monetize_status:
+    from engine.monetize import monetize_status as _monetize_status
+    result = _monetize_status()
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.monetize_report:
+    from engine.monetize import RoyaltyReporter
+    rr = RoyaltyReporter()
+    path = rr.save(merge=True)
+    report = rr.report()
+    print(json.dumps(report, indent=2, default=str))
+    print(f"[monetize] royalty report saved to {path}", file=sys.stderr)
     return
 
   if args.gap_audit:
