@@ -289,6 +289,16 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--monetize-status",
+    action="store_true",
+    help="Print current monetization tier, available features, and locked features",
+  )
+  parser.add_argument(
+    "--monetize-report",
+    action="store_true",
+    help="Print usage report + revenue estimate (enterprise-tier view)",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -620,6 +630,18 @@ def main() -> None:
     print(json.dumps(result, indent=2, default=str))
     return
 
+  if args.monetize_status:
+    from engine.monetize import monetize_status
+    print(json.dumps(monetize_status(), indent=2, default=str))
+    return
+
+  if args.monetize_report:
+    from engine.monetize import revenue_estimate, usage_report
+    report = usage_report()
+    revenue = revenue_estimate()
+    print(json.dumps({"usage_report": report, "revenue_estimate": revenue}, indent=2, default=str))
+    return
+
   if args.repomix:
     from gateway.repomix_export import pack_repository
 
@@ -674,8 +696,13 @@ def main() -> None:
     if not args.symbol:
       parser.error("--symbol is required unless --batch is used")
     from engine.adaptive import adaptive_pipeline
+    from engine.monetize import log_usage as _log_usage
 
     result = adaptive_pipeline(args.symbol, tfs, args.crypto, llm_advisory=args.llm_advisory)
+    try:
+      _log_usage(args.symbol, ",".join(tfs), "analyze_single", tokens_used=0)
+    except Exception:
+      pass
     validated = ElliottWaveOutput(**result)
     payload = validated.model_dump()
     elapsed = time.time() - t0
