@@ -451,6 +451,10 @@ def classify_bet(idea: Dict[str, Any]) -> str:
   return VERDICT_HOLD
 
 
+def _score_key(row: Dict[str, Any]) -> Tuple[float, int]:
+  return (float(row.get("score") or 0.0), -int(row.get("rank") or 999))
+
+
 def recommend_bets(ideas: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
   """Score portfolio ideas and apply 50–55 bet / 7-day cut rules."""
   scored: List[Dict[str, Any]] = []
@@ -467,6 +471,22 @@ def recommend_bets(ideas: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
       extra["verdict"] = VERDICT_HOLD
       extra["license_id"] = tag_idea_license(extra)
       extra["cap_reason"] = f"over_{MAX_ACTIVE_BETS}_build_cap"
+  active = [r for r in scored if r["verdict"] in {VERDICT_BUILD, VERDICT_HOLD}]
+  overflow = len(active) - MAX_ACTIVE_BETS
+  if overflow > 0:
+    # 7-day cut: drop the weakest active bets first (HOLD before BUILD).
+    holds = sorted(
+      [r for r in active if r["verdict"] == VERDICT_HOLD],
+      key=_score_key,
+    )
+    extras = sorted(
+      [r for r in active if r["verdict"] == VERDICT_BUILD],
+      key=_score_key,
+    )
+    for extra in (holds + extras)[:overflow]:
+      extra["verdict"] = VERDICT_CUT
+      extra["license_id"] = tag_idea_license(extra)
+      extra["cap_reason"] = extra.get("cap_reason") or "7-day_cut_over_55_bets"
   return scored
 
 

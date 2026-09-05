@@ -245,9 +245,14 @@ def test_build_cap_demotes_overflow():
   ranked = recommend_bets(ideas)
   builds = [r for r in ranked if r["verdict"] == VERDICT_BUILD]
   holds = [r for r in ranked if r["verdict"] == VERDICT_HOLD]
+  cuts = [r for r in ranked if r["verdict"] == VERDICT_CUT]
   assert len(builds) == 55
-  assert len(holds) == 5
-  assert all(h.get("cap_reason") for h in holds)
+  assert len(holds) == 0
+  assert len(cuts) == 5
+  assert all(c.get("cap_reason") for c in cuts)
+  review = friday_review(ideas)
+  assert review["active_bets"] == 55
+  assert review["within_bet_band"] is True
 
 
 def test_run_monetize_report_persists(tmp_path, monkeypatch):
@@ -295,3 +300,7 @@ def test_parse_real_discovery_file():
   names = {i["name"] for i in ideas}
   assert "ReviewReply Desk" in names
   assert all("rank" in i and "name" in i for i in ideas)
+  review = friday_review(ideas)
+  assert review["idea_count"] == len(ideas)
+  assert review["active_bets"] <= 55
+  assert review["within_bet_band"] is True
