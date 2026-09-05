@@ -15,11 +15,12 @@ from core.risk import (
   build_dca_ladder,
   sensible_entry_anchor,
   compute_wae,
+  cap_stop_for_entry,
   dca_stop_metrics,
   dynamic_stop,
   dynamic_targets,
   risk_package,
-  stop_distance_pct,
+  validate_trade_geometry,
 )
 from engine.execution_advanced import (
   CONTINGENT_SYMBOLS,
@@ -128,7 +129,14 @@ def _structure_bounds(wave: dict, fallback_price: float, atr: float) -> Tuple[fl
         if key in w and w[key] is not None:
           pts.append(float(w[key]))
     if pts:
-      return min(pts), max(pts)
+      lo, hi = min(pts), max(pts)
+      if fallback_price > 0:
+        band = max(atr * 10, fallback_price * 0.30, 1e-9)
+        lo = max(lo, fallback_price - band)
+        hi = min(hi, fallback_price + band)
+        if lo >= hi:
+          lo, hi = fallback_price - band, fallback_price + band
+      return lo, hi
   return fallback_price - 2 * atr, fallback_price + 2 * atr
 
 
@@ -322,9 +330,25 @@ def build_limit_order_row(
   pivots = (result.get("step2_adaptive_pivots") or {}).get(tf) or {}
   atr = float(pivots.get("atr_14") or 0)
   current = float(wave.get("current_price") or result.get("step1_htf_bias", {}).get("wave_C_current") or 0)
-  if atr <= 0 and current > 0:
+  if current <= 0:
+    return {
+      "symbol": result.get("symbol"),
+      "timeframe": tf,
+      "row_type": "primary",
+      "gtc_tier": "watch",
+      "direction": direction,
+      "geometry_valid": "N",
+      "geometry_errors": "non_positive_market_price",
+      "wae": current,
+      "stop_loss": 0,
+      "tp1": 0,
+      "tp2": 0,
+      "tp3": 0,
+      "rr_tp2": 0,
+    }
+  if atr <= 0:
     atr = current * 0.01
-  if current > 0 and atr > abs(current) * 0.15:
+  if atr > abs(current) * 0.15:
     atr = abs(current) * 0.01
 
   setups = (result.get("step8_outcomes") or {}).get("setups") or {}
@@ -383,10 +407,25 @@ def build_limit_order_row(
     timeframe=tf,
     structure_low=s_low,
     structure_high=s_high,
+    max_rr_cap=min(5.0, cfg.get("min_rr", 1.2) + 3.5),
   )
+
+  stop_px = float(stop["price"])
+  stop_px = cap_stop_for_entry(direction, wae, stop_px, timeframe=tf)
+  stop["price"] = stop_px
 
   while len(targets) < 3:
     targets.append(targets[-1] if targets else {"price": wae, "exit_pct": 0, "rr": 0})
+
+  geom_ok, geom_errors = validate_trade_geometry(
+    direction, wae, stop_px, targets,
+    timeframe=tf, min_rr=float(cfg.get("min_rr", 1.2)), max_rr=5.0,
+  )
+  if not geom_ok:
+    gtc_tier = "watch"
+    honest_tier = honest_tier if honest_tier != "full" else "probe"
+    tier_note = f"{tier_note} | GEOMETRY_INVALID: {';'.join(geom_errors[:3])}"
+
   rr = targets[1].get("rr", 0) if len(targets) > 1 else 0
 
   risk_ctx: dict = {}
@@ -466,6 +505,8 @@ def build_limit_order_row(
     "stop_loss": stop["price"],
     "stop_rule": stop.get("rule"),
     "stop_architecture": stop.get("architecture", "smart_dynamic_sl"),
+    "geometry_valid": "Y" if geom_ok else "N",
+    "geometry_errors": "; ".join(geom_errors) if geom_errors else "",
     **sl_metrics,
     "tp1": targets[0]["price"],
     "tp1_exit_pct": targets[0]["exit_pct"],
@@ -759,13 +800,15 @@ def export_limit_orders(
   usdt_d_pct: Optional[float] = None,
   board: Optional[dict] = None,
   filter_executive: Optional[bool] = None,
+  resolve_history: bool = True,
+  track_setups: bool = True,
 ) -> dict:
   """Write pair×TF GTC limit order CSV + JSON summary."""
   output_dir = Path(output_dir)
   results = _normalize_results(batch_or_results)
   from engine.outcome_tracker import resolve_open_setups, compute_metrics, save_metrics, record_setups, save_performance_report
 
-  resolved = resolve_open_setups(is_crypto=True)
+  resolved = resolve_open_setups(is_crypto=True) if resolve_history else 0
   metrics = compute_metrics()
   metrics["last_resolved"] = resolved
   save_metrics(metrics)
@@ -796,7 +839,7 @@ def export_limit_orders(
   sqs_csv = save_sqs_ranked_csv(rows, output_dir / "latest_sqs_ranked_setups.csv")
   sqs_meta = sqs_summary(rows)
 
-  recorded = record_setups(rows)
+  recorded = record_setups(rows) if track_setups else 0
   metrics["newly_recorded"] = recorded
   save_metrics(metrics)
 

@@ -129,7 +129,23 @@ def test_build_limit_order_row_has_dca_stop_metrics():
     max(0.0, row["l1_stop_distance_pct"] - row["stop_distance_pct"]), abs=0.01
   )
   assert 1 <= int(row["dca_staging_legs"]) <= 4
+  assert row["geometry_valid"] == "Y"
+  assert row["geometry_errors"] == ""
+  assert row["stop_loss"] > 0
+  assert row["tp1"] > 0
+  assert row["tp2"] > 0
+  assert row["tp3"] > 0
+  assert row["stop_distance_pct"] <= 3.5 * 1.05
+  assert row["rr_tp2"] <= 5.0
 
+
+def test_non_positive_price_is_geometry_invalid():
+  result = _sample_result()
+  result["step2_wave_structure"]["15m"]["current_price"] = -0.02
+  result["step1_htf_bias"]["wave_C_current"] = -0.02
+  row = build_limit_order_row(result, "15m")
+  assert row["geometry_valid"] == "N"
+  assert "non_positive_market_price" in row["geometry_errors"]
 
 
 def test_build_limit_order_row_has_dca_legs():

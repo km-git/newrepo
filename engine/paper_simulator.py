@@ -13,7 +13,7 @@ from __future__ import annotations
 import csv
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -40,6 +40,11 @@ def max_positions() -> int:
 
 def require_kill_zone() -> bool:
   return os.environ.get("EW_PAPER_REQUIRE_KILL_ZONE", "1").lower() not in ("0", "false", "no")
+
+
+def paper_relaxed_gates() -> bool:
+  """Paper-only: gather OHLC fills for learning without live execution blocks."""
+  return os.environ.get("EW_PAPER_RELAX_GATES", "0").lower() in ("1", "true", "yes")
 
 
 def disabled_timeframes() -> set:
@@ -134,12 +139,36 @@ def gate_paper_row(
   portfolio_state=None,
 ) -> Tuple[bool, List[str]]:
   """Honest export gates + paper portfolio rules."""
-  allowed, reasons = gate_row(row, intel={}, portfolio_state=portfolio_state)
-  if not allowed:
-    return False, reasons
+  reasons: List[str] = []
 
-  if require_kill_zone() and row.get("in_kill_zone") != "Y":
-    return False, ["not_in_kill_zone"]
+  if paper_relaxed_gates():
+    try:
+      from engine.paper_policy import is_symbol_blocked, major_symbols
+
+      if is_symbol_blocked(row.get("symbol", "")):
+        return False, [f"symbol_blocked={row.get('symbol')}"]
+      sym = row.get("symbol", "")
+      if require_kill_zone() and row.get("in_kill_zone") != "Y":
+        if sym not in major_symbols():
+          return False, ["not_in_kill_zone"]
+    except Exception:
+      if require_kill_zone() and row.get("in_kill_zone") != "Y":
+        return False, ["not_in_kill_zone"]
+  else:
+    allowed, reasons = gate_row(row, intel={}, portfolio_state=portfolio_state)
+    if not allowed:
+      return False, reasons
+
+    if require_kill_zone() and row.get("in_kill_zone") != "Y":
+      return False, ["not_in_kill_zone"]
+
+    try:
+      from engine.paper_policy import is_symbol_blocked
+
+      if is_symbol_blocked(row.get("symbol", "")):
+        return False, [f"symbol_blocked={row.get('symbol')}"]
+    except Exception:
+      pass
 
   tf = row.get("timeframe", "")
   if tf in disabled_timeframes():
@@ -171,15 +200,23 @@ def gate_paper_row(
 
 
 def rank_rows(rows: List[dict]) -> List[dict]:
-  """FULL before PROBE; in-zone first; shorter TF slightly preferred."""
+  """FULL before PROBE; majors first; in-zone first; shorter TF slightly preferred."""
+  try:
+    from engine.paper_policy import major_symbols
+
+    majors = major_symbols()
+  except Exception:
+    majors = frozenset()
 
   def key(r: dict) -> tuple:
+    sym = r.get("symbol", "")
+    major_rank = 0 if sym in majors else 1
     tier = 0 if r.get("honest_execution_tier") == "full" else 1
     zone = 0 if r.get("in_kill_zone") == "Y" else 1
     tf = r.get("timeframe", "1w")
     tf_rank = {"15m": 0, "1h": 1, "4h": 2, "1d": 3, "1w": 4}.get(tf, 5)
     hist = 0 if r.get("hist_action") == "downgrade" else 1
-    return (tier, zone, hist, tf_rank)
+    return (major_rank, tier, zone, hist, tf_rank)
 
   return sorted(rows, key=key)
 
@@ -377,11 +414,71 @@ def simulate_trade_on_bars(
   }
 
 
-def _tail_bars(df, max_bars: int) -> Tuple[List[float], List[float]]:
+def _parse_as_of(as_of: Optional[str]) -> Optional[datetime]:
+  """UTC end-of-day cutoff for historical paper replay."""
+  if not as_of:
+    return None
+  if isinstance(as_of, datetime):
+    dt = as_of
+  else:
+    text = str(as_of).strip()
+    if len(text) == 10:
+      dt = datetime.strptime(text, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+      dt = dt + timedelta(days=1) - timedelta(microseconds=1)
+    else:
+      dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+  if dt.tzinfo is None:
+    dt = dt.replace(tzinfo=timezone.utc)
+  return dt.astimezone(timezone.utc)
+
+
+def min_ohlc_bars() -> int:
+  return int(os.environ.get("EW_PAPER_MIN_OHLC_BARS", "5"))
+
+
+def _tail_bars(
+  df,
+  max_bars: int,
+  *,
+  as_of: Optional[datetime] = None,
+) -> Tuple[List[float], List[float]]:
   if df is None or len(df) == 0:
     return [], []
-  tail = df.tail(max_bars)
+  work = df
+  if as_of is not None:
+    try:
+      work = work[work.index <= as_of]
+    except TypeError:
+      work = work[work.index.astype("datetime64[ns, UTC]") <= as_of]
+    if len(work) == 0:
+      return [], []
+  tail = work.tail(max_bars)
+  if len(tail) < min_ohlc_bars():
+    return [], []
   return tail["High"].astype(float).tolist(), tail["Low"].astype(float).tolist()
+
+
+def _fetch_ohlc_frame(
+  sym: str,
+  tf: str,
+  fetch_cache: Dict[str, Any],
+  *,
+  fetch_ohlc: bool,
+) -> Any:
+  if not fetch_ohlc:
+    return None
+  cache_key = f"{sym}|{tf}"
+  if cache_key in fetch_cache:
+    return fetch_cache[cache_key]
+  from fetchers import fetch
+
+  try:
+    frame = fetch(sym, [tf], is_crypto=True).get(tf)
+  except Exception as exc:
+    fetch_cache[cache_key] = exc
+    return exc
+  fetch_cache[cache_key] = frame
+  return frame
 
 
 def run_paper_simulation(
@@ -390,19 +487,31 @@ def run_paper_simulation(
   csv_path: str = "",
   equity_usd: Optional[float] = None,
   fetch_ohlc: bool = True,
+  as_of: Optional[str] = None,
+  write_report: bool = True,
 ) -> Dict[str, Any]:
   """
   Simulate executable export rows on recent OHLC with portfolio cap.
   Returns summary + per-trade results; persists state and markdown report.
+
+  Skips symbols without OHLC and continues down the ranked queue until
+  max_positions valid simulations are filled (or candidates are exhausted).
+
+  ``as_of`` (YYYY-MM-DD or ISO) truncates OHLC to end of that UTC day for
+  historical paper-forward backfill.
   """
   rows = rows if rows is not None else load_export_csv(csv_path)
   equity = float(equity_usd or os.environ.get("ACCOUNT_EQUITY", "50000"))
+  as_of_dt = _parse_as_of(as_of)
+  cap = max_positions()
 
   candidates = filter_executable_rows(rows)
   ranked = rank_rows(candidates)
 
-  selected: List[dict] = []
   blocked: List[dict] = []
+  skipped: List[dict] = []
+  results: List[dict] = []
+  fetch_cache: Dict[str, Any] = {}
   open_count = 0
   portfolio_state = None
   try:
@@ -412,74 +521,60 @@ def run_paper_simulation(
   except Exception:
     portfolio_state = None
 
+  if fetch_ohlc and ranked:
+    from engine.ohlc_fetch import prefetch_ohlc
+
+    pairs = sorted({(r["symbol"], r["timeframe"]) for r in ranked})
+    fetch_cache.update(prefetch_ohlc(pairs, is_crypto=True))
+
   for row in ranked:
+    if open_count >= cap:
+      break
+
     ok, reasons = gate_paper_row(row, open_positions=open_count, portfolio_state=portfolio_state)
-    if ok:
-      if portfolio_state is not None:
-        try:
-          from engine.portfolio_risk import apply_portfolio_risk_to_row
-          row = apply_portfolio_risk_to_row(row, portfolio_state, update_state=True)
-        except Exception:
-          pass
-      selected.append(row)
-      open_count += 1
-    else:
+    if not ok:
       blocked.append({
         "symbol": row.get("symbol"),
         "timeframe": row.get("timeframe"),
         "reasons": reasons,
       })
+      continue
 
-  results: List[dict] = []
-  fetch_cache: Dict[str, Any] = {}
+    work_row = dict(row)
+    if portfolio_state is not None:
+      try:
+        from engine.portfolio_risk import apply_portfolio_risk_to_row
+        work_row = apply_portfolio_risk_to_row(work_row, portfolio_state, update_state=True)
+      except Exception:
+        pass
 
-  if fetch_ohlc and selected:
-    from engine.ohlc_fetch import prefetch_ohlc
-
-    pairs = [(row["symbol"], row["timeframe"]) for row in selected]
-    fetch_cache = prefetch_ohlc(pairs, is_crypto=True)
-
-  for row in selected:
-    sym = row["symbol"]
-    tf = row["timeframe"]
+    sym = work_row["symbol"]
+    tf = work_row["timeframe"]
     max_bars = _MAX_FORWARD_BARS.get(tf, 48)
-    highs, lows = [], []
+    frame = _fetch_ohlc_frame(sym, tf, fetch_cache, fetch_ohlc=fetch_ohlc)
 
-    if fetch_ohlc:
-      cache_key = f"{sym}|{tf}"
-      df = fetch_cache.get(cache_key)
-      if df is None and cache_key not in fetch_cache:
-        try:
-          from fetchers import fetch
-
-          df = fetch(sym, [tf], is_crypto=True).get(tf)
-          fetch_cache[cache_key] = df
-        except Exception as exc:
-          fetch_cache[cache_key] = None
-          results.append({
-            "setup_id": f"{sym}|{tf}|{row.get('direction')}",
-            "symbol": sym,
-            "timeframe": tf,
-            "status": "error",
-            "error": str(exc),
-          })
-          continue
-      highs, lows = _tail_bars(df, max_bars)
-
-    if not highs:
-      results.append({
-        "setup_id": f"{sym}|{tf}|{row.get('direction')}",
+    if isinstance(frame, Exception):
+      skipped.append({
         "symbol": sym,
         "timeframe": tf,
-        "status": "error",
-        "error": "no_ohlc",
+        "reasons": [str(frame)],
       })
       continue
 
-    trade = simulate_trade_on_bars(row, highs, lows)
-    trade["wae"] = row.get("wae")
-    trade["risk_budget_usd"] = row.get("risk_budget_usd")
+    highs, lows = _tail_bars(frame, max_bars, as_of=as_of_dt) if fetch_ohlc else ([], [])
+    if fetch_ohlc and not highs:
+      skipped.append({
+        "symbol": sym,
+        "timeframe": tf,
+        "reasons": ["no_ohlc"],
+      })
+      continue
+
+    trade = simulate_trade_on_bars(work_row, highs, lows)
+    trade["wae"] = work_row.get("wae")
+    trade["risk_budget_usd"] = work_row.get("risk_budget_usd")
     results.append(trade)
+    open_count += 1
 
   total_pnl = round(sum(r.get("realized_pnl_usd", 0) for r in results), 2)
   total_fees = round(sum(r.get("fees_usd", 0) for r in results), 2)
@@ -511,6 +606,7 @@ def run_paper_simulation(
   summary = {
     "ok": True,
     "run_at": _utcnow(),
+    "as_of": as_of,
     "starting_equity_usd": equity,
     "ending_equity_usd": round(equity + total_pnl, 2),
     "realized_pnl_usd": total_pnl,
@@ -521,19 +617,28 @@ def run_paper_simulation(
     "max_drawdown_pct": max_dd,
     "fees_usd": total_fees,
     "fee_rate": fee_rate(),
-    "max_positions": max_positions(),
+    "max_positions": cap,
     "candidates": len(candidates),
     "simulated": len(results),
     "blocked_count": len(blocked),
+    "skipped_count": len(skipped),
     "wins": wins,
     "losses": losses,
     "no_fill": no_fill,
     "trades": results,
     "blocked": blocked,
+    "skipped": skipped,
   }
 
-  _save_state(summary)
-  write_paper_pnl_report(summary)
+  if write_report:
+    _save_state(summary)
+    write_paper_pnl_report(summary)
+  try:
+    from engine.paper_policy import record_paper_trades
+
+    record_paper_trades(summary)
+  except Exception:
+    pass
   return summary
 
 
@@ -599,6 +704,18 @@ def write_paper_pnl_report(summary: dict, path: Optional[Path] = None) -> str:
       )
     if len(blocked) > 30:
       lines.append(f"| … | … | +{len(blocked) - 30} more |")
+
+  skipped = summary.get("skipped") or []
+  if skipped:
+    lines.extend(["", "## Skipped (no OHLC — next candidate used)", ""])
+    lines.append("| Symbol | TF | Reasons |")
+    lines.append("|--------|-----|---------|")
+    for s in skipped[:30]:
+      lines.append(
+        f"| {s.get('symbol')} | {s.get('timeframe')} | {', '.join(s.get('reasons', []))} |"
+      )
+    if len(skipped) > 30:
+      lines.append(f"| … | … | +{len(skipped) - 30} more |")
 
   lines.append("")
   lines.append("> OHLC limit fills · fees on entry+exit · SL before TP on same bar")

@@ -20,6 +20,7 @@ from engine.setup_quality_score import (
 def _sample_row(**overrides) -> dict:
   base = {
     "row_type": "primary",
+    "geometry_valid": "Y",
     "symbol": "BTC/USDT",
     "timeframe": "1h",
     "direction": "SHORT",
@@ -35,8 +36,14 @@ def _sample_row(**overrides) -> dict:
     "rr_tp2": 2.5,
     "min_rr": 1.3,
     "tp1_r_multiple": 1.5,
+    "wae": 100.0,
+    "stop_loss": 102.0,
+    "tp1": 97.0,
+    "tp2": 95.0,
+    "tp3": 92.0,
     "hist_win_rate": 0.62,
     "hist_n": 8,
+    "hist_scope": "pair_tf",
     "hist_action": "boost",
     "dca_sl_resolvable": "Y",
     "dca_stop_reduction_pct": 0.9,
@@ -60,7 +67,7 @@ def test_sqs_action_respects_executive():
   row = _sample_row(executive_action="SCALE_IN")
   assert sqs_action(78, row) == "SCALE_IN"
   row = _sample_row(executive_action="WATCH_ONLY")
-  assert sqs_action(50, row) == "WATCH_ONLY"
+  assert sqs_action(50, row) == "WATCH_ALERT"
 
 
 def test_compute_setup_quality_score_high_confluence():
@@ -124,3 +131,38 @@ def test_non_primary_row_skipped():
   m = compute_setup_quality_score(_sample_row(row_type="contingent_scenario"))
   assert m["sqs_tier"] == "SKIP"
   assert m["sqs_score"] == 0
+
+
+def test_invalid_geometry_is_hard_skip():
+  m = compute_setup_quality_score(_sample_row(
+    geometry_valid="N",
+    geometry_errors="short_tp_not_descending",
+  ))
+  assert m["sqs_score"] == 0
+  assert m["sqs_tier"] == "SKIP"
+  assert m["sqs_action"] == "SKIP"
+
+
+def test_negative_target_is_hard_skip_even_without_geometry_flag():
+  m = compute_setup_quality_score(_sample_row(tp3=-1.0))
+  assert m["sqs_score"] == 0
+  assert m["sqs_tier"] == "SKIP"
+
+
+def test_overall_history_cannot_produce_execute_tier():
+  m = compute_setup_quality_score(_sample_row(
+    hist_scope="overall",
+    hist_win_rate=0.90,
+    hist_n=1000,
+  ))
+  assert m["sqs_tier"] != "EXECUTE"
+
+
+def test_watch_routing_caps_sqs_at_watch():
+  m = compute_setup_quality_score(_sample_row(
+    gtc_tier="watch",
+    executive_action="WATCH_ONLY",
+    readiness_score=100,
+  ))
+  assert m["sqs_tier"] == "WATCH"
+  assert m["sqs_score"] < 60

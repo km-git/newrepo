@@ -79,11 +79,18 @@ def refresh_universe_pairs(
   force: bool = False,
 ) -> List[str]:
   """Fetch top-N pairs; cache for 6h unless forced."""
+  min_volume_usd = float(os.environ.get("EW_SCANNER_MIN_VOLUME_USD", "500000"))
+  max_spread_bps = float(os.environ.get("EW_SCANNER_MAX_SPREAD_BPS", "35"))
   PAIRS_CACHE.parent.mkdir(parents=True, exist_ok=True)
   if PAIRS_CACHE.exists() and not force:
     try:
       doc = json.loads(PAIRS_CACHE.read_text())
-      if doc.get("count") == n and doc.get("quote") == quote:
+      if (
+        doc.get("count") == n
+        and doc.get("quote") == quote
+        and float(doc.get("min_volume_usd") or 0) == min_volume_usd
+        and float(doc.get("max_spread_bps") or 0) == max_spread_bps
+      ):
         age_h = (
           datetime.now(timezone.utc) - datetime.fromisoformat(doc["fetched_utc"])
         ).total_seconds() / 3600
@@ -97,11 +104,15 @@ def refresh_universe_pairs(
     n=n,
     quote=quote,
     include_swap=os.environ.get("EW_SCANNER_INCLUDE_SWAP", "1").lower() not in ("0", "false", "no"),
+    min_volume_usd=min_volume_usd,
+    max_spread_bps=max_spread_bps,
   )
   PAIRS_CACHE.write_text(json.dumps({
     "fetched_utc": _utcnow(),
     "count": n,
     "quote": quote,
+    "min_volume_usd": min_volume_usd,
+    "max_spread_bps": max_spread_bps,
     "pairs": pairs,
   }, indent=2))
   return pairs
@@ -363,8 +374,9 @@ def run_universe_tick(
   """
   tfs = tfs or UNIVERSE_TFS
   state = load_state()
+  prior_size = int(state.get("universe_size") or 0)
   pairs = state.get("pairs") or refresh_universe_pairs(universe_size, quote, force=refresh_pairs)
-  if refresh_pairs or len(pairs) != universe_size:
+  if refresh_pairs or (prior_size and prior_size != universe_size):
     pairs = refresh_universe_pairs(universe_size, quote, force=True)
 
   chunk_index = int(state.get("chunk_index", 0))
