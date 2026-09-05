@@ -537,13 +537,14 @@ def main() -> None:
       _require_license("live_execution")
     else:
       _require_license("paper_execution")
-    from engine.execution_agent import execute_from_csv
+    from engine.execution_agent import execute_from_csv, load_export_csv
     if args.execute_live:
       os.environ["EW_EXECUTION_MODE"] = "live"
+    export_rows = load_export_csv()
     result = execute_from_csv(dry_run=not args.execute_live)
     submitted = result.get("submitted") or []
     signals = []
-    tickers = []
+    tickers = [row.get("symbol") or "" for row in export_rows]
     for item in submitted:
       order = item.get("order") or {}
       symbol = order.get("symbol") or ""

@@ -178,6 +178,26 @@ def test_execute_allowed_on_pro_and_records_royalty(monkeypatch, tmp_path, capsy
     assert "BTC/USDT" in loaded["detail"]["tickers"]
 
 
+def test_execute_records_export_tickers_without_fills(monkeypatch, tmp_path, capsys):
+    export = tmp_path / "export.csv"
+    export.write_text("symbol,row_type,gtc_tier\nBTC/USDT,primary,watch\nETH/USDT,primary,watch\n")
+    report_path = tmp_path / "royalty.json"
+    _run_main(
+        monkeypatch,
+        ["--execute"],
+        env={
+            "EW_LICENSE_TIER": "pro",
+            "EW_ROYALTY_REPORT_PATH": str(report_path),
+            "EW_LIMIT_ORDERS_CSV": str(export),
+        },
+    )
+    captured = capsys.readouterr()
+    assert '"ok": true' in captured.out or '"ok": True' in captured.out
+    loaded = json.loads(report_path.read_text())
+    assert loaded["usage"]["tickers_scanned"] == 2
+    assert loaded["detail"]["tickers"] == ["BTC/USDT", "ETH/USDT"]
+
+
 def test_top_over_50_blocked_on_pro(monkeypatch, capsys):
     with pytest.raises(SystemExit) as exc:
         _run_main(monkeypatch, ["--top", "51"], env={"EW_LICENSE_TIER": "pro"})
