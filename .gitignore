@@ -17,6 +17,7 @@ reports/*
 !reports/latest_executable_pair_tf.csv
 !reports/HISTORICAL_PERFORMANCE.md
 !reports/PAPER_PNL.md
+!reports/MONETIZATION_STRATEGY.md
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/
