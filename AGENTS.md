@@ -47,6 +47,10 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - **Resource gap audit (self-challenge):** `engine/resource_gap_audit.py` questions missing free data, TV OSS,
   GitHub tools, and Python libs each improvement cycle. CLI: `python3 ew_tool.py --gap-audit`.
   State: `output/system/resource_gap_audit.json`. Env: `EW_GAP_AUDIT=1`.
+- **Monetization Strategy Services:** optional broker for license tagging, access control, and royalty
+  reporting on analysis artifacts and the discovery portfolio. Deterministic; no money movement.
+  CLI: `python3 ew_tool.py --monetize`. State: `output/system/monetize_latest.json`,
+  `output/system/monetize_ledger.json`. Env: `EW_MONETIZE=1`, `EW_ROYALTY_COMMERCIAL` (default 0.15).
 - **PR auto-approve:** `python3 ew_tool.py --pr-approve <N>` or `--pr-approve-all`.
   **Conflict auto-resolve:** `python3 ew_tool.py --pr-resolve-conflicts [N]` or `scripts/pr_auto_resolve_conflicts.py`.
   Agent: `python3 scripts/pr_executive_consensus.py`. 5/7 model consensus rule.

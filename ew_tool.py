@@ -289,6 +289,11 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--monetize",
+    action="store_true",
+    help="Monetization Strategy Services: license tags, access matrix, royalty report",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -462,6 +467,15 @@ def main() -> None:
     path = save_gap_audit(result)
     print(json.dumps(result, indent=2, default=str))
     print(f"[gap-audit] saved {path}", file=sys.stderr)
+    return
+
+  if args.monetize:
+    from engine.monetize import run_monetize_report, save_monetize_report
+
+    result = run_monetize_report(persist=True)
+    path = save_monetize_report(result)
+    print(json.dumps(result, indent=2, default=str))
+    print(f"[monetize] saved {path}", file=sys.stderr)
     return
 
   if args.health:
