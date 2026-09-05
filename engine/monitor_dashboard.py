@@ -310,6 +310,7 @@ MONITOR_HTML = """<!DOCTYPE html>
       <div class="meta" id="meta">Loading…</div>
     </div>
     <div class="controls">
+      <a href="/monetize" style="color:var(--blue);text-decoration:none;font-size:0.85rem">Monetize</a>
       <span id="status-dot"></span>
       <select id="refresh-interval">
         <option value="0">Manual</option>

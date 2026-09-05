@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
+from engine.monetize_ui import publish_monetize, serve_monetize_http
 
 
 class MonitorHandler(SimpleHTTPRequestHandler):
@@ -38,7 +39,30 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     if parsed.path == "/api/dashboard":
       self._serve_dashboard()
       return
+    if serve_monetize_http(
+      self,
+      "GET",
+      parsed.path,
+      parse_qs(parsed.query),
+      content_type=self.headers.get("Content-Type", ""),
+    ):
+      return
     super().do_GET()
+
+  def do_POST(self) -> None:
+    parsed = urlparse(self.path)
+    length = int(self.headers.get("Content-Length") or 0)
+    body = self.rfile.read(length) if length else b""
+    if serve_monetize_http(
+      self,
+      "POST",
+      parsed.path,
+      parse_qs(parsed.query),
+      body,
+      content_type=self.headers.get("Content-Type", ""),
+    ):
+      return
+    self.send_error(404, "Not found")
 
   def _serve_dashboard(self) -> None:
     try:
@@ -60,13 +84,16 @@ class MonitorHandler(SimpleHTTPRequestHandler):
 def run(host: str = "127.0.0.1", port: int = 8765, output_dir: str = "output", publish: bool = True) -> None:
   if publish:
     paths = publish_monitor(output_dir)
+    mpaths = publish_monetize(output_dir)
     print(f"[monitor] wrote {paths['monitor_html']}")
+    print(f"[monitor] wrote {mpaths['monetize_html']}")
 
   MonitorHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonitorHandler)
   url = f"http://{host}:{port}/"
   print(f"[monitor] Open {url}")
   print(f"[monitor] Dashboard API: http://{host}:{port}/api/dashboard")
+  print(f"[monitor] Monetize Explorer: http://{host}:{port}/monetize")
   try:
     server.serve_forever()
   except KeyboardInterrupt:

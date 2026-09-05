@@ -3,7 +3,8 @@
 ## Cursor Cloud specific instructions
 
 This repo is a single Python CLI product: `ew_tool.py`, an Elliott Wave + harmonic
-trading-analysis tool. There is no web/GUI service — everything is terminal-driven.
+trading-analysis tool. Local stdlib dashboards (no Flask/FastAPI): `--monitor`
+(`http://127.0.0.1:8765`) and `--monetize-ui` (Monetize Explorer at `/monetize`).
 
 ### Environment
 
@@ -25,6 +26,7 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root). No linter is configured.
 - Single symbol (live data fetch): `.venv/bin/python ew_tool.py --symbol BTC/USDT --crypto`
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
+- Monetize Explorer: `.venv/bin/python ew_tool.py --monetize-ui` → `http://127.0.0.1:8765/monetize`
 - The CLI and `pytest` work from the repo root without `PYTHONPATH`, but the helper
   scripts under `scripts/` (e.g. `scripts/run_top50_batch.py`, `scripts/show_latest_analysis.py`)
   require `PYTHONPATH=/workspace`.

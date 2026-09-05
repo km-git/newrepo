@@ -371,14 +371,24 @@ def main() -> None:
     action="store_true",
     help="Serve browser monitor dashboard (http://127.0.0.1:8765)",
   )
-  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor")
+  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
+  parser.add_argument(
+    "--monetize-ui",
+    action="store_true",
+    help="Serve Monetize Explorer UI (http://127.0.0.1:8765/monetize)",
+  )
   args = parser.parse_args()
   _warn_invalid_license_tier()
 
-  if args.monitor:
-    from scripts.serve_monitor import run as run_monitor
+  if args.monitor or args.monetize_ui:
+    if args.monitor:
+      from scripts.serve_monitor import run as run_monitor
 
-    run(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+      run_monitor(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+    else:
+      from scripts.serve_monetize import run as run_monetize
+
+      run_monetize(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
     return
 
   if args.llm_cost:
