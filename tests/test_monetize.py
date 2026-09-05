@@ -12,12 +12,18 @@ import pytest
 
 from engine.monetize import (
     FEATURE_DESCRIPTIONS,
+    PRO_BATCH_LIMIT,
     TIERS,
     AccessController,
     LicenseTagger,
     RoyaltyReporter,
+    enforce_batch_size,
+    env_tier_warning,
     features_for_tier,
+    known_features,
+    max_batch_size,
     monetize_status,
+    record_usage,
 )
 
 # ---------------------------------------------------------------------------
@@ -106,6 +112,26 @@ class TestLicenseTagger:
         LicenseTagger.tag(payload, tier="enterprise")
         features = payload["_license"]["features"]
         assert features == sorted(features)
+
+    def test_tag_rejects_non_dict(self):
+        with pytest.raises(TypeError, match="dict"):
+            LicenseTagger.tag(["not", "a", "dict"])  # type: ignore[arg-type]
+
+    def test_tag_rejects_none(self):
+        with pytest.raises(TypeError, match="dict"):
+            LicenseTagger.tag(None)  # type: ignore[arg-type]
+
+    def test_strip_non_dict_returns_payload(self):
+        assert LicenseTagger.strip("nope") == "nope"  # type: ignore[arg-type]
+
+    def test_read_non_dict_returns_none(self):
+        assert LicenseTagger.read(42) is None  # type: ignore[arg-type]
+
+    def test_tag_extra_cannot_overwrite_reserved(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro", extra={"tier": "enterprise", "customer_id": "x"})
+        assert payload["_license"]["tier"] == "pro"
+        assert payload["_license"]["customer_id"] == "x"
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +252,16 @@ class TestAccessController:
     def test_access_matrix_serialisable(self):
         ac = AccessController(tier="free")
         json.dumps(ac.access_matrix())  # must not raise
+
+    def test_require_unknown_feature_mentions_unrecognized(self):
+        ac = AccessController(tier="enterprise")
+        with pytest.raises(AccessController.AccessDeniedError, match="not a recognized"):
+            ac.require("teleportation")
+
+    def test_whitespace_tier_normalised(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "  PRO  ")
+        ac = AccessController()
+        assert ac.tier == "pro"
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +394,56 @@ class TestRoyaltyReporter:
         rr = RoyaltyReporter()
         assert rr.report()["tier"] == "enterprise"
 
+    def test_empty_report_save_is_valid_json(self, tmp_path):
+        p = tmp_path / "empty.json"
+        rr = RoyaltyReporter(report_path=p)
+        rr.save(merge=False)
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 0
+        assert data["detail"]["setups"] == []
+
+    def test_save_corrupt_existing_does_not_crash(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        p.write_text("{not json")
+        rr = RoyaltyReporter(report_path=p)
+        rr.record_setup("BTC/USDT")
+        rr.save(merge=True)
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_load_non_dict_json_returns_empty(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        p.write_text("[1, 2, 3]")
+        assert RoyaltyReporter.load(report_path=p) == {}
+
+    def test_uses_env_path_lazily(self, monkeypatch, tmp_path):
+        p = tmp_path / "from_env.json"
+        monkeypatch.setenv("EW_ROYALTY_REPORT_PATH", str(p))
+        rr = RoyaltyReporter()
+        rr.record_setup("SOL/USDT")
+        rr.save(merge=False)
+        assert p.exists()
+        assert RoyaltyReporter.load()["usage"]["setups_generated"] == 1
+
+    def test_concurrent_save_merge(self, tmp_path):
+        import threading
+
+        p = tmp_path / "royalty.json"
+
+        def worker(symbol: str) -> None:
+            rr = RoyaltyReporter(report_path=p)
+            rr.record_setup(symbol)
+            rr.save(merge=True)
+
+        threads = [threading.Thread(target=worker, args=(f"S{i}",)) for i in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 8
+        assert len(data["detail"]["setups"]) == 8
+
 
 # ---------------------------------------------------------------------------
 # features_for_tier helper
@@ -405,6 +491,20 @@ class TestMonetizeStatus:
         status = monetize_status(tier="enterprise")
         json.dumps(status)  # must not raise
 
+    def test_status_invalid_env_includes_warning(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "garbage")
+        status = monetize_status()
+        assert status["license"]["tier"] == "free"
+        assert status["env_tier_valid"] is False
+        assert "warning" in status
+        assert "garbage" in status["warning"]
+
+    def test_status_valid_env_has_no_warning(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "pro")
+        status = monetize_status()
+        assert status["env_tier_valid"] is True
+        assert "warning" not in status
+
 
 # ---------------------------------------------------------------------------
 # FEATURE_DESCRIPTIONS completeness
@@ -415,3 +515,52 @@ def test_feature_descriptions_cover_all_enterprise():
     all_feats = features_for_tier("enterprise")
     for feat in all_feats:
         assert feat in FEATURE_DESCRIPTIONS, f"Missing description for feature: {feat}"
+
+
+class TestBatchLimits:
+    def test_free_max_is_one(self):
+        assert max_batch_size("free") == 1
+
+    def test_pro_max_is_50(self):
+        assert max_batch_size("pro") == PRO_BATCH_LIMIT
+
+    def test_enterprise_unlimited(self):
+        assert max_batch_size("enterprise") is None
+
+    def test_enforce_batch_blocks_free(self):
+        with pytest.raises(AccessController.AccessDeniedError, match="batch"):
+            enforce_batch_size(2, tier="free")
+
+    def test_enforce_batch_allows_pro_at_limit(self):
+        enforce_batch_size(50, tier="pro")
+
+    def test_enforce_batch_blocks_pro_over_limit(self):
+        with pytest.raises(AccessController.AccessDeniedError, match="unlimited_batch"):
+            enforce_batch_size(51, tier="pro")
+
+
+class TestRecordUsage:
+    def test_record_usage_persists(self, tmp_path):
+        path = record_usage(setups=["BTC/USDT"], report_path=tmp_path / "r.json")
+        assert path is not None
+        loaded = RoyaltyReporter.load(path)
+        assert loaded["usage"]["setups_generated"] == 1
+
+    def test_record_usage_empty_is_noop(self, tmp_path):
+        assert record_usage(report_path=tmp_path / "r.json") is None
+        assert not (tmp_path / "r.json").exists()
+
+    def test_record_usage_signal_tuple(self, tmp_path):
+        path = record_usage(signals=[("ETH/USDT", "SHORT")], report_path=tmp_path / "r.json")
+        loaded = RoyaltyReporter.load(path)
+        assert loaded["usage"]["signals_fired"] == 1
+        assert loaded["detail"]["signals"][0]["direction"] == "SHORT"
+
+
+def test_env_tier_warning_none_when_unset(monkeypatch):
+    monkeypatch.delenv("EW_LICENSE_TIER", raising=False)
+    assert env_tier_warning() is None
+
+
+def test_known_features_match_enterprise():
+    assert known_features() == features_for_tier("enterprise")
