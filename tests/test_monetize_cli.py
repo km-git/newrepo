@@ -136,7 +136,7 @@ def test_brain_status_allowed_on_pro(monkeypatch, capsys):
     assert out["brain"]["ok"] is True
 
 
-def test_v6_scan_allowed_on_enterprise(monkeypatch, capsys):
+def test_v6_scan_allowed_on_enterprise(monkeypatch, tmp_path, capsys):
     import engine.v6_scanner as v6_scanner
 
     monkeypatch.setattr(
@@ -144,13 +144,19 @@ def test_v6_scan_allowed_on_enterprise(monkeypatch, capsys):
         "run_v6_chunk_scan",
         lambda: {"ok": True, "chunk_pairs": ["BTC/USDT", "ETH/USDT"]},
     )
+    report_path = tmp_path / "royalty.json"
     _run_main(
         monkeypatch,
         ["--v6-scan"],
-        env={"EW_LICENSE_TIER": "enterprise"},
+        env={
+            "EW_LICENSE_TIER": "enterprise",
+            "EW_ROYALTY_REPORT_PATH": str(report_path),
+        },
     )
     out = json.loads(capsys.readouterr().out)
     assert out["ok"] is True
+    loaded = json.loads(report_path.read_text())
+    assert loaded["usage"]["tickers_scanned"] == 2
 
 
 def test_execute_allowed_on_pro_and_records_royalty(monkeypatch, tmp_path, capsys):
