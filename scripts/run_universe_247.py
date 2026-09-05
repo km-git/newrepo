@@ -34,6 +34,18 @@ def main() -> None:
   p.add_argument("--llm-max", type=int, default=int(os.environ.get("EW_UNIVERSE_LLM_MAX", "3")))
   args = p.parse_args()
 
+  from engine.monetize import AccessController
+
+  try:
+    AccessController().require("universe_scanner")
+  except AccessController.AccessDeniedError as exc:
+    print(f"[monetize] {exc}", file=sys.stderr)
+    print(
+      "[monetize] Upgrade via EW_LICENSE_TIER=enterprise. See --monetize-status.",
+      file=sys.stderr,
+    )
+    sys.exit(2)
+
   tfs = [t.strip() for t in args.tfs.split(",") if t.strip()]
 
   while True:

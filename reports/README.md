@@ -9,6 +9,7 @@ The **trade setups table** is generated when you run a batch or the autodream da
 | **[TRADE_SETUPS.md](./TRADE_SETUPS.md)** | Style setups (scalp / day / swing / long) |
 | **[COMPLETE_TRADING_ANALYSIS.md](./COMPLETE_TRADING_ANALYSIS.md)** | Full pair×TF book with dollar legs @ equity |
 | **[trade_setups_matrix.html](./trade_setups_matrix.html)** | Shaded 50×5 grid — open in browser |
+| **[monetize_explorer.html](./monetize_explorer.html)** | Monetize Explorer — Free / Pro / Enterprise matrix (no server) |
 | **[HISTORICAL_PERFORMANCE.md](./HISTORICAL_PERFORMANCE.md)** | Tracked TP/SL outcomes and win rates (feeds next run) |
 | **[PAPER_PNL.md](./PAPER_PNL.md)** | OHLC paper execution P&L (limit fills, fees, max 3 positions) |
 | **[latest_executable_pair_tf.csv](./latest_executable_pair_tf.csv)** | 61 executable rows only (Excel/Sheets) |

@@ -15,6 +15,71 @@ bootstrap_llm_env()
 
 from schemas.models import ElliottWaveOutput
 
+_LICENSE_UPGRADE_HINT = (
+  "Upgrade via EW_LICENSE_TIER=pro or EW_LICENSE_TIER=enterprise. "
+  "See --monetize-status."
+)
+
+
+def _require_license(feature: str) -> None:
+  from engine.monetize import AccessController
+
+  try:
+    AccessController().require(feature)
+  except AccessController.AccessDeniedError as exc:
+    print(f"[monetize] {exc}", file=sys.stderr)
+    print(f"[monetize] {_LICENSE_UPGRADE_HINT}", file=sys.stderr)
+    sys.exit(2)
+
+
+def _require_batch_size(n: int) -> None:
+  from engine.monetize import AccessController, enforce_batch_size
+
+  try:
+    enforce_batch_size(n)
+  except AccessController.AccessDeniedError as exc:
+    print(f"[monetize] {exc}", file=sys.stderr)
+    print(f"[monetize] {_LICENSE_UPGRADE_HINT}", file=sys.stderr)
+    sys.exit(2)
+
+
+def _warn_invalid_license_tier() -> None:
+  from engine.monetize import env_tier_warning
+
+  msg = env_tier_warning()
+  if msg:
+    print(f"[monetize] {msg}", file=sys.stderr)
+
+
+def _record_usage(**kwargs) -> None:
+  from engine.monetize import record_usage
+
+  record_usage(**kwargs)
+
+
+def _tag_payload(payload: dict) -> dict:
+  from engine.monetize import LicenseTagger
+
+  if isinstance(payload, dict):
+    return LicenseTagger.tag(payload)
+  return payload
+
+
+def _count_csv_symbols(csv_path: str) -> int:
+  import csv
+  from pathlib import Path
+
+  path = Path(csv_path)
+  if not path.exists():
+    return 0
+  count = 0
+  with path.open() as handle:
+    reader = csv.DictReader(handle)
+    for row in reader:
+      if row.get("symbol") or row.get("Symbol") or row.get("SYMBOL"):
+        count += 1
+  return count
+
 
 def main() -> None:
   parser = argparse.ArgumentParser(description="Elliott Wave + Harmonic confluence tool")
@@ -289,20 +354,56 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--monetize-report",
+    action="store_true",
+    help="Generate and save royalty/usage report (output/system/royalty_report.json)",
+  )
+  parser.add_argument(
+    "--monetize-status",
+    action="store_true",
+    help="Print current license tier and feature access matrix",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765, binds 0.0.0.0)",
   )
-  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor")
+  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
+  parser.add_argument(
+    "--monitor-host",
+    default="0.0.0.0",
+    help="Bind address for --monitor / --monetize-ui (default 0.0.0.0)",
+  )
+  parser.add_argument(
+    "--monetize-ui",
+    action="store_true",
+    help="Serve Monetize Explorer UI, or with --static write a file:// HTML copy",
+  )
+  parser.add_argument(
+    "--static",
+    action="store_true",
+    help="With --monetize-ui: write self-contained HTML and print a file:// path (no server)",
+  )
   args = parser.parse_args()
+  _warn_invalid_license_tier()
 
-  if args.monitor:
-    from scripts.serve_monitor import run as run_monitor
+  if args.monitor or args.monetize_ui:
+    if args.monetize_ui and args.static:
+      from scripts.serve_monetize import write_static as write_monetize_static
 
-    run(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+      write_monetize_static(args.output_dir)
+      return
+    if args.monitor:
+      from scripts.serve_monitor import run as run_monitor
+
+      run_monitor(host=args.monitor_host, port=args.monitor_port, output_dir=args.output_dir)
+    else:
+      from scripts.serve_monetize import run as run_monetize
+
+      run_monetize(host=args.monitor_host, port=args.monitor_port, output_dir=args.output_dir)
     return
 
   if args.llm_cost:
@@ -342,6 +443,7 @@ def main() -> None:
     return
 
   if args.pr_resolve_conflicts is not None:
+    _require_license("pr_agent")
     from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
 
     if args.pr_resolve_conflicts == 0:
@@ -352,6 +454,7 @@ def main() -> None:
     return
 
   if args.pr_approve is not None or args.pr_approve_all:
+    _require_license("pr_agent")
     from engine.pr_agent import run_pr_agent
 
     result = run_pr_agent(
@@ -363,6 +466,7 @@ def main() -> None:
     return
 
   if args.resolve_conflicts is not None or args.resolve_conflicts_all:
+    _require_license("pr_agent")
     from engine.pr_merge_conflict import resolve_open_pr_conflicts, resolve_pr_conflicts
 
     if args.resolve_conflicts_all:
@@ -373,6 +477,7 @@ def main() -> None:
     return
 
   if args.brain_ask:
+    _require_license("brain_okf")
     from engine.brain_consensus import ask_brain
 
     result = ask_brain(args.brain_ask, use_llm=False)
@@ -380,6 +485,7 @@ def main() -> None:
     return
 
   if args.brain_search:
+    _require_license("brain_okf")
     from engine.okf_brain import search_concepts
 
     hits = search_concepts(args.brain_search, limit=20)
@@ -387,6 +493,7 @@ def main() -> None:
     return
 
   if args.brain_status:
+    _require_license("brain_okf")
     from engine.brain_consensus import brain_status
     from engine.brain_self_improve import improvement_summary
 
@@ -407,6 +514,7 @@ def main() -> None:
     return
 
   if args.effectiveness:
+    _require_license("effectiveness_validation")
     from engine.effectiveness_validation import run_effectiveness_validation
     report = run_effectiveness_validation()
     print(json.dumps(report.to_dict(), indent=2, default=str))
@@ -428,6 +536,7 @@ def main() -> None:
     return
 
   if args.tv_oss:
+    _require_license("tv_oss")
     from engine.tv_oss_consensus import run_tv_oss_consensus
 
     result = run_tv_oss_consensus(use_llm=args.tv_oss_llm)
@@ -435,6 +544,7 @@ def main() -> None:
     return
 
   if args.tv_oss_explore:
+    _require_license("tv_oss")
     from engine.tv_oss_discovery import run_tv_oss_discovery
 
     result = run_tv_oss_discovery(use_llm=args.tv_oss_llm)
@@ -448,14 +558,45 @@ def main() -> None:
     return
 
   if args.execute or args.execute_live:
-    from engine.execution_agent import execute_from_csv
+    if args.execute_live:
+      _require_license("live_execution")
+    else:
+      _require_license("paper_execution")
+    from engine.execution_agent import execute_from_csv, load_export_csv
     if args.execute_live:
       os.environ["EW_EXECUTION_MODE"] = "live"
+    export_rows = load_export_csv()
     result = execute_from_csv(dry_run=not args.execute_live)
+    submitted = result.get("submitted") or []
+    signals = []
+    tickers = [row.get("symbol") or "" for row in export_rows]
+    for item in submitted:
+      order = item.get("order") or {}
+      symbol = order.get("symbol") or ""
+      if symbol:
+        tickers.append(symbol)
+        signals.append((symbol, order.get("side") or ""))
+    _record_usage(signals=signals, tickers=tickers)
     print(json.dumps(result, indent=2, default=str))
     return
 
+  if args.monetize_status:
+    from engine.monetize import monetize_status as _monetize_status
+    result = _monetize_status()
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.monetize_report:
+    from engine.monetize import RoyaltyReporter
+    rr = RoyaltyReporter()
+    path = rr.save(merge=True)
+    report = RoyaltyReporter.load(path)
+    print(json.dumps(report or rr.report(), indent=2, default=str))
+    print(f"[monetize] royalty report saved to {path}", file=sys.stderr)
+    return
+
   if args.gap_audit:
+    _require_license("gap_audit")
     from engine.resource_gap_audit import run_resource_gap_audit, save_gap_audit
 
     result = run_resource_gap_audit(persist=True, persist_okf=False)
@@ -477,6 +618,7 @@ def main() -> None:
     return
 
   if args.autonomous_daily:
+    _require_license("autonomous_daily")
     import subprocess
 
     env = os.environ.copy()
@@ -487,6 +629,7 @@ def main() -> None:
     sys.exit(proc.returncode)
 
   if args.v6_scan or args.v6_scan_full:
+    _require_license("v6_scanner")
     from engine.v6_scanner import run_v6_chunk_scan, run_v6_full_batch
 
     os.environ.setdefault("EW_V6_SETUP", "1")
@@ -494,6 +637,9 @@ def main() -> None:
       result = run_v6_full_batch()
     else:
       result = run_v6_chunk_scan()
+    pairs = result.get("chunk_pairs") or []
+    if isinstance(pairs, list):
+      _record_usage(tickers=[str(p) for p in pairs if p])
     print(json.dumps(result, indent=2, default=str))
     return
 
@@ -504,12 +650,14 @@ def main() -> None:
     return
 
   if args.autoresearch:
+    _require_license("autoresearch")
     from engine.autoresearch import run_autoresearch_batch
 
     print(json.dumps(run_autoresearch_batch(), indent=2, default=str))
     return
 
   if args.autoresearch_eval:
+    _require_license("autoresearch")
     from engine.autoresearch import run_autoresearch_eval_loop
 
     print(json.dumps(
@@ -520,6 +668,7 @@ def main() -> None:
     return
 
   if args.effectiveness_audit:
+    _require_license("effectiveness_validation")
     from engine.effectiveness_audit import run_full_effectiveness_audit
 
     print(json.dumps(
@@ -533,6 +682,7 @@ def main() -> None:
     return
 
   if args.paper_forward:
+    _require_license("paper_execution")
     from engine.autonomous_ops import run_paper_proof_tick
 
     print(json.dumps(
@@ -543,6 +693,7 @@ def main() -> None:
     return
 
   if args.paper_forward_backfill:
+    _require_license("paper_execution")
     from engine.autonomous_ops import run_paper_backfill_tick
 
     print(json.dumps(
@@ -557,6 +708,7 @@ def main() -> None:
     return
 
   if getattr(args, "continuous_proof", False):
+    _require_license("paper_execution")
     from engine.autonomous_ops import run_continuous_proof_tick
 
     print(json.dumps(
@@ -567,6 +719,7 @@ def main() -> None:
     return
 
   if args.daily_trading_tick:
+    _require_license("paper_execution")
     from engine.daily_trading_ops import run_daily_trading_tick
 
     resolve_mode = args.daily_trading_tick_resolve
@@ -587,6 +740,11 @@ def main() -> None:
     return
 
   if args.goal_mode or args.goal_mode_quick:
+    _require_license("goal_mode")
+    if args.execute_live:
+      _require_license("live_execution")
+    elif args.execute:
+      _require_license("paper_execution")
     from engine.goal_mode import run_goal_mode_cycle
 
     os.environ.setdefault("EW_GOAL_MODE", "1")
@@ -610,6 +768,11 @@ def main() -> None:
     return
 
   if args.e2e_cycle:
+    _require_license("e2e_cycle")
+    if args.execute_live:
+      _require_license("live_execution")
+    elif args.execute:
+      _require_license("paper_execution")
     from engine.e2e_pipeline import run_e2e_cycle
     result = run_e2e_cycle(
       batch_n=args.e2e_batch,
@@ -645,6 +808,7 @@ def main() -> None:
 
   if args.batch or args.top:
     if args.top:
+      _require_batch_size(args.top)
       from engine.top50_batch import run_top_crypto_batch
 
       meta = run_top_crypto_batch(
@@ -654,6 +818,8 @@ def main() -> None:
         quote=args.quote,
         llm_advisory=args.llm_advisory,
       )
+      pairs = meta.get("pairs") or []
+      _record_usage(setups=[str(p) for p in pairs], tickers=[str(p) for p in pairs])
       if args.save:
         import shutil
         shutil.copy(meta["json"], args.save)
@@ -663,9 +829,17 @@ def main() -> None:
         from cache.disk_cache import get_cache
         print(f"[cache] {get_cache().stats()}", file=sys.stderr)
     else:
+      _require_batch_size(max(_count_csv_symbols(args.batch), 1))
       from engine.batch import run_batch, save_batch_json
 
       results = run_batch(args.batch, tfs, args.crypto, llm_advisory=args.llm_advisory)
+      symbols = []
+      for item in results:
+        if isinstance(item, dict):
+          _tag_payload(item)
+          if item.get("symbol"):
+            symbols.append(str(item["symbol"]))
+      _record_usage(setups=symbols, tickers=symbols)
       if args.save:
         save_batch_json(results, args.save)
       else:
@@ -673,11 +847,17 @@ def main() -> None:
   else:
     if not args.symbol:
       parser.error("--symbol is required unless --batch is used")
+    _require_license("single_symbol")
     from engine.adaptive import adaptive_pipeline
 
     result = adaptive_pipeline(args.symbol, tfs, args.crypto, llm_advisory=args.llm_advisory)
     validated = ElliottWaveOutput(**result)
     payload = validated.model_dump()
+    _tag_payload(payload)
+    trade = payload.get("trade_setup") or {}
+    executive = payload.get("executive_decision") or {}
+    direction = trade.get("action") or executive.get("direction") or ""
+    _record_usage(setups=[args.symbol], signals=[(args.symbol, str(direction))])
     elapsed = time.time() - t0
     print(f"\n[done] {args.symbol} status={validated.status} elapsed={elapsed:.1f}s", file=sys.stderr)
     if args.cache_stats and validated.cache_stats:
