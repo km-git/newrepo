@@ -5,6 +5,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -26,6 +27,7 @@ from tape_to_cloud.monetize import (
 from tape_to_cloud.monetize._audit import read_audit_log
 from tape_to_cloud.monetize.cli import main as cli_main
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 SHA = "a" * 64
 FUTURE = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
 PAST = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
@@ -361,7 +363,7 @@ class TestCli:
         result = subprocess.run(
             [sys.executable, "-m", "tape_to_cloud.monetize",
              "--store", str(tmp_path), "list"],
-            capture_output=True, text=True, cwd="/workspace",
+            capture_output=True, text=True, cwd=REPO_ROOT,
         )
         assert result.returncode == 0
         assert json.loads(result.stdout) == []
