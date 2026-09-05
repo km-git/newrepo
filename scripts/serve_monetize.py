@@ -13,7 +13,15 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
-from engine.monetize_ui import publish_monetize, serve_monetize_http
+from engine.monetize_ui import (
+  DEFAULT_BIND_HOST,
+  DEFAULT_BIND_PORT,
+  print_explorer_launch,
+  print_static_launch,
+  publish_monetize,
+  publish_static_monetize,
+  serve_monetize_http,
+)
 
 
 class MonetizeHandler(SimpleHTTPRequestHandler):
@@ -73,8 +81,8 @@ class MonetizeHandler(SimpleHTTPRequestHandler):
 
 
 def run(
-  host: str = "127.0.0.1",
-  port: int = 8765,
+  host: str = DEFAULT_BIND_HOST,
+  port: int = DEFAULT_BIND_PORT,
   output_dir: str = "output",
   publish: bool = True,
 ) -> None:
@@ -84,10 +92,7 @@ def run(
 
   MonetizeHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonetizeHandler)
-  url = f"http://{host}:{port}/"
-  print(f"[monetize-ui] Open {url}")
-  print(f"[monetize-ui] Explorer: http://{host}:{port}/monetize")
-  print(f"[monetize-ui] Status API: http://{host}:{port}/api/monetize/status")
+  print_explorer_launch(host, port)
   try:
     server.serve_forever()
   except KeyboardInterrupt:
@@ -95,13 +100,27 @@ def run(
     server.shutdown()
 
 
+def write_static(output_dir: str = "output") -> dict:
+  paths = publish_static_monetize(output_dir)
+  print_static_launch(paths)
+  return paths
+
+
 def main() -> None:
   p = argparse.ArgumentParser(description="Serve Monetize Explorer")
-  p.add_argument("--port", type=int, default=8765)
-  p.add_argument("--host", default="127.0.0.1")
+  p.add_argument("--port", type=int, default=DEFAULT_BIND_PORT)
+  p.add_argument("--host", default=DEFAULT_BIND_HOST)
   p.add_argument("--output-dir", default="output")
   p.add_argument("--no-publish", action="store_true", help="Skip writing monetize.html on start")
+  p.add_argument(
+    "--static",
+    action="store_true",
+    help="Write self-contained HTML (file://) and exit — no server",
+  )
   args = p.parse_args()
+  if args.static:
+    write_static(args.output_dir)
+    return
   run(args.host, args.port, args.output_dir, publish=not args.no_publish)
 
 

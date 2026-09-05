@@ -7,21 +7,29 @@ import sys
 import threading
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 
 from engine.monetize import FEATURE_DESCRIPTIONS, features_for_tier, known_features
 from engine.monetize_ui import (
+    DEFAULT_BIND_HOST,
     DEMO_FEATURES,
     LICENSE_UPGRADE_HINT,
     MONETIZE_HTML,
     build_explorer_state,
     dispatch_monetize,
+    explorer_launch_urls,
+    file_url,
     publish_monetize,
+    publish_static_monetize,
+    render_monetize_html,
     set_demo_tier,
     try_require,
     write_monetize_html,
+    write_static_monetize_html,
 )
+from scripts.serve_monetize import DEFAULT_BIND_HOST as SERVE_DEFAULT_HOST
 from scripts.serve_monetize import MonetizeHandler
 
 
@@ -53,11 +61,46 @@ class TestHtmlGeneration:
         text = path.read_text()
         assert "Monetize Explorer" in text
         assert "Interactive tier switcher" in text
+        assert 'id="embedded-state"' in text
+        assert "free" in text and "pro" in text and "enterprise" in text
 
     def test_publish_monetize(self, tmp_path):
         paths = publish_monetize(str(tmp_path))
         assert (tmp_path / "monetize.html").exists()
         assert "monetize_html" in paths
+
+    def test_static_html_embeds_three_tiers(self, tmp_path):
+        path = write_static_monetize_html(str(tmp_path / "explorer.html"))
+        text = path.read_text()
+        assert "Monetize Explorer" in text
+        assert "Access matrix" in text
+        assert "Interactive tier switcher" in text
+        assert 'id="embedded-state"' in text
+        assert "embeddedState" in text
+        assert "stateForTier" in text
+        for tier in ("free", "pro", "enterprise"):
+            assert f'"{tier}"' in text
+        payload = text.split('id="embedded-state">', 1)[1].split("</script>", 1)[0]
+        data = json.loads(payload)
+        assert set(data["tiers"]) == {"free", "pro", "enterprise"}
+        assert "single_symbol" in data["tiers"]["free"]["allowed"]
+        assert "batch" in data["tiers"]["pro"]["allowed"]
+        assert "v6_scanner" in data["tiers"]["enterprise"]["allowed"]
+
+    def test_render_monetize_html_is_offline_safe(self):
+        html = render_monetize_html(build_explorer_state("free"))
+        assert "Monetize Explorer" in html
+        assert "cdn." not in html.lower()
+        assert "unpkg" not in html.lower()
+        assert 'id="embedded-state"' in html
+
+    def test_publish_static_writes_both_paths(self, tmp_path):
+        fallback = tmp_path / "reports" / "monetize_explorer.html"
+        paths = publish_static_monetize(str(tmp_path / "output"), fallback_path=str(fallback))
+        assert Path(paths["monetize_html"]).exists()
+        assert Path(paths["static_html"]).exists()
+        assert "Monetize Explorer" in fallback.read_text()
+        assert file_url(fallback).startswith("file://")
 
 
 class TestExplorerState:
@@ -139,6 +182,8 @@ class TestDispatch:
         text = body.decode()
         assert "Monetize Explorer" in text
         assert "--monetize-status" in text
+        assert 'id="embedded-state"' in text
+        assert "free" in text and "pro" in text and "enterprise" in text
 
     def test_root_html_when_explorer_is_home(self):
         status, headers, body = dispatch_monetize("GET", "/", root_is_monetize=True)
@@ -259,6 +304,23 @@ class TestHttpServer:
         assert "batch" in data["license"]["allowed"]
 
 
+def test_default_bind_is_all_interfaces():
+    assert DEFAULT_BIND_HOST == "0.0.0.0"
+    assert SERVE_DEFAULT_HOST == "0.0.0.0"
+
+
+def test_explorer_launch_urls_include_localhost_and_preview(monkeypatch):
+    monkeypatch.delenv("EW_PREVIEW_URL", raising=False)
+    monkeypatch.delenv("CURSOR_PREVIEW_URL", raising=False)
+    monkeypatch.delenv("VSCODE_PROXY_URI", raising=False)
+    monkeypatch.delenv("EW_PREVIEW_HOST", raising=False)
+    urls = explorer_launch_urls("0.0.0.0", 8765)
+    assert urls[0] == "http://127.0.0.1:8765/monetize"
+    monkeypatch.setenv("EW_PREVIEW_URL", "https://preview.example:8765")
+    previewed = explorer_launch_urls("127.0.0.1", 8765)
+    assert "https://preview.example:8765/monetize" in previewed
+
+
 def test_monetize_ui_flag_in_help(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["ew_tool.py", "--help"])
     from ew_tool import main
@@ -268,6 +330,7 @@ def test_monetize_ui_flag_in_help(monkeypatch, capsys):
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "--monetize-ui" in out
+    assert "--static" in out
     assert "Monetize Explorer" in out
 
 
@@ -284,4 +347,27 @@ def test_monetize_ui_dispatches_to_server(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["ew_tool.py", "--monetize-ui", "--monitor-port", "8777"])
     main()
     assert called["port"] == 8777
-    assert called["host"] == "127.0.0.1"
+    assert called["host"] == "0.0.0.0"
+
+
+def test_monetize_ui_static_writes_file(monkeypatch, tmp_path, capsys):
+    import scripts.serve_monetize as serve_monetize
+    from ew_tool import main
+
+    def fake_write_static(output_dir):
+        path = Path(output_dir) / "monetize.html"
+        path.write_text("<html>Monetize Explorer</html>", encoding="utf-8")
+        print(file_url(path))
+        print()
+        return {"monetize_html": str(path), "static_html": str(path)}
+
+    monkeypatch.setattr(serve_monetize, "write_static", fake_write_static)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["ew_tool.py", "--monetize-ui", "--static", "--output-dir", str(tmp_path)],
+    )
+    main()
+    out = capsys.readouterr().out
+    assert "file://" in out
+    assert str(tmp_path) in out

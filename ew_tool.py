@@ -369,26 +369,41 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765, binds 0.0.0.0)",
   )
   parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
   parser.add_argument(
+    "--monitor-host",
+    default="0.0.0.0",
+    help="Bind address for --monitor / --monetize-ui (default 0.0.0.0)",
+  )
+  parser.add_argument(
     "--monetize-ui",
     action="store_true",
-    help="Serve Monetize Explorer UI (http://127.0.0.1:8765/monetize)",
+    help="Serve Monetize Explorer UI, or with --static write a file:// HTML copy",
+  )
+  parser.add_argument(
+    "--static",
+    action="store_true",
+    help="With --monetize-ui: write self-contained HTML and print a file:// path (no server)",
   )
   args = parser.parse_args()
   _warn_invalid_license_tier()
 
   if args.monitor or args.monetize_ui:
+    if args.monetize_ui and args.static:
+      from scripts.serve_monetize import write_static as write_monetize_static
+
+      write_monetize_static(args.output_dir)
+      return
     if args.monitor:
       from scripts.serve_monitor import run as run_monitor
 
-      run_monitor(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+      run_monitor(host=args.monitor_host, port=args.monitor_port, output_dir=args.output_dir)
     else:
       from scripts.serve_monetize import run as run_monetize
 
-      run_monetize(host="127.0.0.1", port=args.monitor_port, output_dir=args.output_dir)
+      run_monetize(host=args.monitor_host, port=args.monitor_port, output_dir=args.output_dir)
     return
 
   if args.llm_cost:

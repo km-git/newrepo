@@ -15,7 +15,13 @@ if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
-from engine.monetize_ui import publish_monetize, serve_monetize_http
+from engine.monetize_ui import (
+  DEFAULT_BIND_HOST,
+  DEFAULT_BIND_PORT,
+  explorer_launch_urls,
+  publish_monetize,
+  serve_monetize_http,
+)
 
 
 class MonitorHandler(SimpleHTTPRequestHandler):
@@ -81,7 +87,7 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       self.wfile.write(err)
 
 
-def run(host: str = "127.0.0.1", port: int = 8765, output_dir: str = "output", publish: bool = True) -> None:
+def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir: str = "output", publish: bool = True) -> None:
   if publish:
     paths = publish_monitor(output_dir)
     mpaths = publish_monetize(output_dir)
@@ -90,10 +96,18 @@ def run(host: str = "127.0.0.1", port: int = 8765, output_dir: str = "output", p
 
   MonitorHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonitorHandler)
-  url = f"http://{host}:{port}/"
-  print(f"[monitor] Open {url}")
-  print(f"[monitor] Dashboard API: http://{host}:{port}/api/dashboard")
-  print(f"[monitor] Monetize Explorer: http://{host}:{port}/monetize")
+  print("[monitor] Open the dashboard:")
+  print()
+  for url in explorer_launch_urls(host, port, "/"):
+    print(url)
+    print()
+  print("[monitor] Monetize Explorer:")
+  print()
+  for url in explorer_launch_urls(host, port, "/monetize"):
+    print(url)
+    print()
+  print(f"[monitor] Dashboard API: http://127.0.0.1:{port}/api/dashboard")
+  print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()
   except KeyboardInterrupt:
@@ -103,8 +117,8 @@ def run(host: str = "127.0.0.1", port: int = 8765, output_dir: str = "output", p
 
 def main() -> None:
   p = argparse.ArgumentParser(description="Serve EW browser monitor")
-  p.add_argument("--port", type=int, default=8765)
-  p.add_argument("--host", default="127.0.0.1")
+  p.add_argument("--port", type=int, default=DEFAULT_BIND_PORT)
+  p.add_argument("--host", default=DEFAULT_BIND_HOST)
   p.add_argument("--output-dir", default="output")
   p.add_argument("--no-publish", action="store_true", help="Skip writing monitor.html on start")
   args = p.parse_args()
