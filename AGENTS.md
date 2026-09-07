@@ -26,7 +26,8 @@ use `python3 ew_tool.py --monetize-ui --static` and open
 
 ### Running / testing
 
-- Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root). No linter is configured.
+- Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root).
+- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks in `.github/workflows/lint-security.yml`; PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. Zero-key alternative: CodeRabbit Marketplace (~4 PRs/hr).
 - Single symbol (live data fetch): `.venv/bin/python ew_tool.py --symbol BTC/USDT --crypto`
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
@@ -42,6 +43,9 @@ use `python3 ew_tool.py --monetize-ui --static` and open
   HTTP 451; the fallback handles it.
 - Output/cache dirs (`output/`, `.cache/ew_tool`) are gitignored. Override cache location
   with `EW_CACHE_DIR`.
+- **PR-Agent** needs repo secret `OPENAI_KEY` (gpt-4o-mini). Without it the workflow skips
+  green; on public PRs comment `@CodiumAI-Agent /review` instead. Never pin PR-Agent to
+  `@main` — the workflow is SHA-pinned to The-PR-Agent/pr-agent v0.45.0.
 - **Token budget is critical.** Each model capped at 10,000 tokens/day (`EW_LLM_MAX_TOKENS_PER_MODEL`).
   Install saver libraries: `python3 ew_tool.py --install-token-savers` or `python3 scripts/install_token_savers.py`.
   Inspect: `python3 ew_tool.py --llm-savers`.
