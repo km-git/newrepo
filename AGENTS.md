@@ -35,6 +35,11 @@ use `python3 ew_tool.py --monetize-ui --static` and open
 - Monetize Explorer (server): `.venv/bin/python ew_tool.py --monetize-ui` binds `0.0.0.0:8765` and prints `http://127.0.0.1:8765/monetize` on its own line
 - LicenseSpend Explorer (offline): `uv run python -m licensespend ui --static` → open `reports/licensespend_explorer.html`
 - LicenseSpend Explorer (server): `uv run python -m licensespend ui` binds `0.0.0.0:8765` (`/licensespend`). On Cloud, use the static file — `127.0.0.1` is the VM.
+- Tape-to-Cloud live ingest (real file bytes, not sample reports):
+  `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
+  `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.
+  Hub live jobs: `http://127.0.0.1:8765/tape-to-cloud/jobs` while `--monitor` is running.
+  This does not drive LTO hardware.
 - The CLI and `pytest` work from the repo root without `PYTHONPATH`, but the helper
   scripts under `scripts/` (e.g. `scripts/run_top50_batch.py`, `scripts/show_latest_analysis.py`)
   require `PYTHONPATH=/workspace`.

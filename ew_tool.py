@@ -65,6 +65,39 @@ def _tag_payload(payload: dict) -> dict:
   return payload
 
 
+def _run_tape_to_cloud(args) -> None:
+  from pathlib import Path
+
+  from tape_to_cloud.ingest import default_store, ingest, restore_job, verify_job
+  from tape_to_cloud.jobs import list_jobs
+
+  store = Path(args.tape_store).resolve() if args.tape_store else default_store()
+  if args.tape_ingest:
+    report = ingest(
+      Path(args.tape_ingest),
+      store=store,
+      matter_id=args.tape_matter,
+      keyword=args.tape_keyword,
+      worm_until=args.tape_worm_until,
+    )
+    print(json.dumps(report, indent=2, default=str))
+    if not report.get("object_count"):
+      sys.exit(2)
+    return
+  if args.tape_verify:
+    result = verify_job(args.tape_verify, store=store)
+    print(json.dumps(result, indent=2, default=str))
+    if not result["objects_ok"] or not result["report_hash_ok"]:
+      sys.exit(2)
+    return
+  if args.tape_restore:
+    job_id, dest = args.tape_restore
+    print(json.dumps(restore_job(job_id, Path(dest), store=store), indent=2, default=str))
+    return
+  if args.tape_status:
+    print(json.dumps({"store": str(store), "jobs": list_jobs(store)}, indent=2, default=str))
+
+
 def _count_csv_symbols(csv_path: str) -> int:
   import csv
   from pathlib import Path
@@ -442,6 +475,31 @@ def main() -> None:
     action="store_true",
     help="With --monetize-ui: write self-contained HTML and print a file:// path (no server)",
   )
+  parser.add_argument(
+    "--tape-ingest",
+    default=None,
+    help="Ingest a file or directory into the local tape-to-cloud store (real SHA-256 copy)",
+  )
+  parser.add_argument("--tape-matter", default="UNTITLED", help="Matter id for --tape-ingest")
+  parser.add_argument(
+    "--tape-store",
+    default=None,
+    help="Tape-to-cloud store root (default EW_TAPE_STORE or output/tape_to_cloud/store)",
+  )
+  parser.add_argument("--tape-status", action="store_true", help="List live tape-to-cloud ingest jobs and exit")
+  parser.add_argument("--tape-keyword", default=None, help="Keyword for .eml/.mbox extract during --tape-ingest")
+  parser.add_argument(
+    "--tape-worm-until",
+    default=None,
+    help="ISO-8601 WORM retention expiry for --tape-ingest (e.g. 2033-12-31T00:00:00+00:00)",
+  )
+  parser.add_argument("--tape-verify", default=None, metavar="JOB_ID", help="Re-hash stored objects for a live ingest job")
+  parser.add_argument(
+    "--tape-restore",
+    nargs=2,
+    metavar=("JOB_ID", "DEST"),
+    help="Restore a live ingest job to DEST",
+  )
   args = parser.parse_args()
   _warn_invalid_license_tier()
 
@@ -459,6 +517,10 @@ def main() -> None:
       from scripts.serve_monetize import run as run_monetize
 
       run_monetize(host=args.monitor_host, port=args.monitor_port, output_dir=args.output_dir)
+    return
+
+  if args.tape_ingest or args.tape_status or args.tape_verify or args.tape_restore:
+    _run_tape_to_cloud(args)
     return
 
   if args.llm_cost:

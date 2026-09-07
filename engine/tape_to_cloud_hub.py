@@ -125,6 +125,7 @@ def build_hub_state() -> dict[str, Any]:
             for name in CURSOR_RULES
         ],
         "packages": {
+            "tape_to_cloud_ingest": (root / "tape_to_cloud" / "ingest.py").is_file(),
             "tape_to_cloud_monetize": (root / "tape_to_cloud" / "monetize").is_dir(),
             "forum_watcher": fw.is_dir(),
         },
@@ -135,26 +136,47 @@ def build_hub_state() -> dict[str, Any]:
             "workflow": ".github/workflows/forum-watcher.yml",
         },
         "cli": {
+            "ingest": "python -m tape_to_cloud ingest PATH --matter MATTER",
+            "restore": "python -m tape_to_cloud restore JOB_ID DEST",
+            "verify": "python -m tape_to_cloud verify JOB_ID",
+            "status": "python -m tape_to_cloud status",
+            "ew_tool_ingest": "python3 ew_tool.py --tape-ingest PATH --tape-matter MATTER",
             "monetize_strategy": "python3 ew_tool.py --monetize",
             "tape_monetize_cli": "python -m tape_to_cloud.monetize",
             "forum_watcher": "cd forum-watcher && python scripts/watch.py",
         },
         "web_routes": {
             "hub": "/tape-to-cloud",
+            "jobs": "/tape-to-cloud/jobs",
             "reports": "/tape-to-cloud/reports",
             "validation": "/tape-to-cloud/validation",
             "monitor": "/monitor",
             "monetize": "/monetize",
             "licensespend": "/licensespend",
             "api": "/api/tape-to-cloud/status",
+            "api_jobs": "/api/tape-to-cloud/jobs",
             "api_reports": "/api/tape-to-cloud/reports",
             "api_validation": "/api/tape-to-cloud/validation",
         },
+        "honesty": {
+            "working": "disk ingest of real file bytes with pre/post SHA-256, CoC, restore, verify, optional WORM, stdlib .eml/.mbox",
+            "not_working": "LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network",
+        },
+        "live_jobs": _live_jobs_snapshot(),
     }
+
+
+def _live_jobs_snapshot() -> dict[str, Any]:
+    from tape_to_cloud.ingest import default_store
+    from tape_to_cloud.jobs import list_jobs
+
+    jobs = list_jobs()
+    return {"count": len(jobs), "store": str(default_store()), "jobs": jobs[:50]}
 
 
 def render_hub_html() -> str:
     from engine.tape_to_cloud_reports import list_report_summaries, validate_intactness
+    from tape_to_cloud.jobs import list_jobs
 
     state = build_hub_state()
     payload = json.dumps(state, indent=2)
@@ -179,6 +201,16 @@ def render_hub_html() -> str:
         f"<td>{r['status']}</td>"
         f"<td>{'verified' if r['hash_verified'] else 'MISMATCH'}</td></tr>"
         for r in list_report_summaries()
+    )
+    live = list_jobs()
+    live_rows = (
+        "\n".join(
+            f"<tr><td><a href='{j['href']}'><code>{j['id']}</code></a></td>"
+            f"<td>{j['object_count']}</td><td>{j['bytes']}</td>"
+            f"<td>{j['status']}</td><td><code>{(j.get('canonical_sha256') or '')[:16]}…</code></td></tr>"
+            for j in live
+        )
+        or "<tr><td colspan='5'>No live jobs yet. Run <code>python -m tape_to_cloud ingest PATH</code></td></tr>"
     )
 
     return f"""<!DOCTYPE html>
@@ -210,12 +242,13 @@ def render_hub_html() -> str:
 </head>
 <body>
   <header>
-    <div><h1>Tape-to-Cloud Hub</h1><div class="muted">Discovery · inventory · sample reports · 16 modules + 6 layers</div></div>
+    <div><h1>Tape-to-Cloud Hub</h1><div class="muted">Live disk ingest · SHA-256 of real bytes · sample fixtures labeled separately</div></div>
     <nav class="nav">
       <a href="/monitor">Monitor</a>
       <a href="/monetize">Monetize</a>
       <a href="/tape-to-cloud">Hub</a>
-      <a href="/tape-to-cloud/reports">Reports</a>
+      <a href="/tape-to-cloud/jobs">Live jobs</a>
+      <a href="/tape-to-cloud/reports">Sample reports</a>
       <a href="/tape-to-cloud/validation">Validation</a>
       <a href="/licensespend">LicenseSpend</a>
     </nav>
@@ -226,12 +259,21 @@ def render_hub_html() -> str:
       <p class="muted">Live JSON: <code>/api/tape-to-cloud/status</code> · Validation: <a href="/tape-to-cloud/validation">/tape-to-cloud/validation</a></p>
       <p>Forum watcher seen URLs: <strong>{state["forum_watcher"]["seen_url_count"]}</strong></p>
       {latest_line}
-      <p class="ok">Packages: tape_to_cloud.monetize={"yes" if state["packages"]["tape_to_cloud_monetize"] else "no"},
+      <p class="ok">Packages: ingest={"yes" if state["packages"].get("tape_to_cloud_ingest") else "no"},
+        tape_to_cloud.monetize={"yes" if state["packages"]["tape_to_cloud_monetize"] else "no"},
         forum-watcher={"yes" if state["packages"]["forum_watcher"] else "no"}</p>
+      <p class="muted">{state["honesty"]["working"]}. Not in this MVP: {state["honesty"]["not_working"]}.</p>
       <p>Intactness: <strong class="{intact_class}">{intact_label}</strong> ({intact["checks"]["sixteen_modules"] and intact["checks"]["six_layers"] and "16 modules + 6 layers on disk"})</p>
     </section>
     <section>
-      <h2>Sample detailed reports</h2>
+      <h2>Live ingest jobs (real bytes)</h2>
+      <p class="muted">SHA-256 of actual file contents. CLI: <code>python -m tape_to_cloud ingest PATH --matter MATTER</code>
+         · JSON: <code>/api/tape-to-cloud/jobs</code></p>
+      <table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th><th>Manifest</th></tr></thead>
+      <tbody>{live_rows}</tbody></table>
+    </section>
+    <section>
+      <h2>Sample detailed reports (fixtures, not live tapes)</h2>
       <p class="muted">SHA-256 of canonical JSON (MD5/SHA-1 refused). Full pages at <a href="/tape-to-cloud/reports">/tape-to-cloud/reports</a></p>
       <table><thead><tr><th>ID</th><th>Kind</th><th>Title</th><th>Status</th><th>Hash</th></tr></thead>
       <tbody>{report_rows}</tbody></table>
@@ -251,10 +293,12 @@ def render_hub_html() -> str:
     </section>
     <section>
       <h2>CLI quick start</h2>
-      <pre>python3 ew_tool.py --monitor          # this Web UI (port 8765)
-python3 ew_tool.py --monetize         # strategy report
-python -m tape_to_cloud.monetize      # license / royalty CLI
-cd forum-watcher && python scripts/watch.py</pre>
+      <pre>python -m tape_to_cloud ingest ./my-export --matter ACME-014 --worm-until 2033-12-31T00:00:00+00:00
+python -m tape_to_cloud verify JOB_ID
+python -m tape_to_cloud restore JOB_ID ./restored
+python3 ew_tool.py --monitor          # this Web UI (port 8765)
+python3 ew_tool.py --tape-ingest PATH # same ingest via ew_tool
+python -m tape_to_cloud.monetize      # license / royalty CLI</pre>
     </section>
     <section>
       <h2>API payload</h2>
@@ -279,12 +323,67 @@ def dispatch_tape_to_cloud(
     report_hit = dispatch_report_routes(method, path, query)
     if report_hit is not None:
         return report_hit
+    job_hit = _dispatch_live_jobs(path)
+    if job_hit is not None:
+        return job_hit
     if path in ("/tape-to-cloud", "/tape-to-cloud/"):
         body = render_hub_html().encode("utf-8")
         return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, body
     if path == "/api/tape-to-cloud/status":
         body = json.dumps(build_hub_state(), indent=2, default=str).encode("utf-8")
         return 200, {"Content-Type": "application/json", "Cache-Control": "no-store"}, body
+    return None
+
+
+def _dispatch_live_jobs(path: str) -> tuple[int, dict[str, str], bytes] | None:
+    from tape_to_cloud.jobs import list_jobs, load_job
+
+    html_hdr = {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
+    json_hdr = {"Content-Type": "application/json", "Cache-Control": "no-store"}
+    if path == "/tape-to-cloud/jobs":
+        rows = list_jobs()
+        body_rows = (
+            "\n".join(
+                f"<tr><td><a href='{j['href']}'><code>{j['id']}</code></a></td>"
+                f"<td>{j['object_count']}</td><td>{j['bytes']}</td><td>{j['status']}</td></tr>"
+                for j in rows
+            )
+            or "<tr><td colspan='4'>No live jobs. Run python -m tape_to_cloud ingest PATH</td></tr>"
+        )
+        html = (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Live jobs</title></head>"
+            "<body style='font-family:sans-serif;background:#0d1117;color:#e6edf3'>"
+            "<p><a href='/tape-to-cloud'>Hub</a></p><h1>Live ingest jobs</h1>"
+            "<table border='1' cellpadding='6'><tr><th>Job</th><th>Objects</th>"
+            f"<th>Bytes</th><th>Status</th></tr>{body_rows}</table></body></html>"
+        )
+        return 200, html_hdr, html.encode("utf-8")
+    if path.startswith("/tape-to-cloud/jobs/"):
+        job_id = path.rsplit("/", 1)[-1]
+        job = load_job(job_id)
+        if job is None:
+            return 404, html_hdr, b"<html><body>unknown job</body></html>"
+        payload = json.dumps(job, indent=2, default=str)
+        html = (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>"
+            f"{job_id}</title></head>"
+            "<body style='font-family:sans-serif;background:#0d1117;color:#e6edf3'>"
+            "<p><a href='/tape-to-cloud/jobs'>All live jobs</a></p>"
+            f"<h1>Live job {job_id}</h1>"
+            f"<p>sample={job.get('sample')} (must be false) · objects={job.get('object_count')} · "
+            f"SHA-256 {job.get('canonical_sha256')}</p>"
+            f"<pre>{payload}</pre></body></html>"
+        )
+        return 200, html_hdr, html.encode("utf-8")
+    if path == "/api/tape-to-cloud/jobs":
+        rows = list_jobs()
+        return 200, json_hdr, json.dumps({"jobs": rows, "count": len(rows)}, indent=2).encode("utf-8")
+    if path.startswith("/api/tape-to-cloud/jobs/"):
+        job_id = path.rsplit("/", 1)[-1]
+        job = load_job(job_id)
+        if job is None:
+            return 404, json_hdr, json.dumps({"error": "unknown_job", "id": job_id}).encode("utf-8")
+        return 200, json_hdr, json.dumps(job, indent=2).encode("utf-8")
     return None
 
 
