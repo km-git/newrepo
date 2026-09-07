@@ -34,6 +34,7 @@ jobs:
         run: bash scripts/setup_environment.sh --skip-auth
 
       - name: Auto-resolve merge conflicts
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

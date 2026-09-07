@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
+from dmarc.webui import serve_dmarc_http
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -63,6 +64,14 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       content_type=self.headers.get("Content-Type", ""),
     ):
       return
+    if serve_dmarc_http(
+      self,
+      "GET",
+      parsed.path,
+      parse_qs(parsed.query),
+      content_type=self.headers.get("Content-Type", ""),
+    ):
+      return
     super().do_GET()
 
   def do_POST(self) -> None:
@@ -74,6 +83,15 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     if serve_sspm_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
       return
     if serve_monetize_http(
+      self,
+      "POST",
+      parsed.path,
+      parse_qs(parsed.query),
+      body,
+      content_type=self.headers.get("Content-Type", ""),
+    ):
+      return
+    if serve_dmarc_http(
       self,
       "POST",
       parsed.path,
@@ -113,6 +131,13 @@ def run(
     print(f"[monitor] wrote {paths['monitor_html']}")
     print(f"[monitor] wrote {mpaths['monetize_html']}")
     try:
+      from dmarc.webui import publish_static as publish_dmarc_static
+
+      dpaths = publish_dmarc_static()
+      print(f"[monitor] wrote {dpaths['static']}")
+    except Exception as exc:
+      print(f"[monitor] DMARC static skipped: {exc}")
+    try:
       spaths = write_sspm_static("reports")
       print(f"[monitor] wrote {spaths['html']}")
     except Exception as exc:
@@ -142,6 +167,11 @@ def run(
   print("[monitor] SSPM Explorer:")
   print()
   for url in explorer_launch_urls(host, port, "/sspm"):
+    print(url)
+    print()
+  print("[monitor] DMARC explorer:")
+  print()
+  for url in explorer_launch_urls(host, port, "/dmarc"):
     print(url)
     print()
   print(f"[monitor] SSPM API: http://127.0.0.1:{port}/api/sspm")

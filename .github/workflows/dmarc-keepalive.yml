@@ -1,0 +1,28 @@
+name: dmarc-keepalive
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      # First-party only. The previous third-party keepalive action is TOS-blocked
+      # on GitHub, and CodeQL flags unpinned third-party tags.
+      - name: Re-enable workflows disabled for inactivity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows" \
+            --jq '.workflows[] | select(.state=="disabled_inactivity") | [.id,.path] | @tsv' \
+            | while IFS=$'\t' read -r id path; do
+                echo "enabling ${path} (${id})"
+                gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${id}/enable"
+              done
+          echo "dmarc-keepalive $(date -u +%FT%TZ)"
