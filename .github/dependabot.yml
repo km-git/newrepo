@@ -1,0 +1,18 @@
+# Free GitHub-native dependency updates (Dependabot).
+# Complements pip-audit + OSV-Scanner. Weekly, no paid tools.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies

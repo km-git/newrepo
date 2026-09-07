@@ -1,0 +1,15 @@
+# Demo Tape-to-Cloud reports are SAMPLE JSON, not live credentials.
+# PR scans include historical commits (bb00f40 still has key_uuid); allowlist
+# that file + commit so generic-api-key does not fail CI on demo KMIP ids.
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SAMPLE Tape-to-Cloud report payloads (demo KMIP ids, computed SHA-256)"
+paths = ['''(^|/)engine/tape_to_cloud_reports\.py$''']
+
+[[allowlists]]
+description = "Commit that first added SAMPLE key_uuid in demo reports"
+commits = ["bb00f4049343f5e9b7636fb1f841a88af26daa1f"]

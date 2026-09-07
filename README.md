@@ -7,7 +7,7 @@ CLI tool for Elliott Wave impulse validation (strict R1/R2/R3), ABC correction d
 - **Multi-timeframe pipeline** (1w → 15m): HTF bias, adaptive MonoWaves, kill zone clustering, harmonic overlay, execution validation
 - **Strict rule enforcement**: R1/R2/R3 are hard gates; no rule relaxation for standard impulses
 - **Token-saving infrastructure** for Cursor agents:
-  - **Compressed disk cache** (`zstd` + `msgpack` + `diskcache`) for OHLCV, monowaves, harmonics, Monte Carlo
+  - **Compressed disk cache** (`zstd` + `msgpack` + sqlite index) for OHLCV, monowaves, harmonics, Monte Carlo
   - **Semantic gateway cache** (Cloudflare AI Gateway pattern) for repetitive OKX OHLCV queries
   - **RepoMix export** (`--repomix`) minifies code structures for LLM agent context
   - **Deduplication** of harmonic patterns, monowaves, and tool-call logs
@@ -68,7 +68,7 @@ EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefe
 EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
 ```
 
-**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `diskcache` · `zstandard` · `cachetic` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `msgpack` · `zstandard` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
 
 ## Cursor Pro backend (default)
 
@@ -336,6 +336,37 @@ http://127.0.0.1:8765/monetize
 ```
 
 A localhost URL on a remote Cloud Agent VM is not reachable from your laptop — use the static file there. The page shows the current `EW_LICENSE_TIER`, an interactive Free / Pro / Enterprise matrix, the royalty report (`output/system/royalty_report.json`), and gated-action probes that call `AccessController.require()` only (no live trading). APIs: `/api/monetize/status`, `/api/monetize/tier`, `/api/monetize/require`.
+
+## Tape-to-Cloud (working disk ingest + hub)
+
+This is **not** an LTO library controller. The live path copies **real file bytes** from disk, writes pre/post SHA-256, an append-only chain-of-custody log, optional WORM lock, stdlib `.eml`/`.mbox` extract, then restore/verify. Sample ACME reports on the hub are fixtures only (`sample: true`). Live jobs are `sample: false`.
+
+```bash
+python -m tape_to_cloud ingest ./my-export --matter HOLD-4412 --worm-until 2033-12-31T00:00:00+00:00 --keyword HOLD-4412
+python -m tape_to_cloud verify JOB_ID
+python -m tape_to_cloud restore JOB_ID ./restored
+python -m tape_to_cloud status
+# same ingest via ew_tool (no --symbol required):
+python3 ew_tool.py --tape-ingest ./my-export --tape-matter HOLD-4412
+python3 ew_tool.py --tape-status
+```
+
+Store root: `EW_TAPE_STORE` or `output/tape_to_cloud/store` (`objects/{aa}/{sha256}`, `jobs/{job_id}/report.json`). `.enc` files without `--unwrap-key` are refused (`STOP_AND_ASK`); with a key they are still stored as opaque ciphertext. Not in this MVP: LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network.
+
+Hub (monitor server) lists live jobs plus labeled sample reports:
+
+```bash
+python3 ew_tool.py --monitor
+```
+
+```
+http://127.0.0.1:8765/tape-to-cloud
+http://127.0.0.1:8765/tape-to-cloud/jobs
+http://127.0.0.1:8765/tape-to-cloud/reports
+http://127.0.0.1:8765/tape-to-cloud/validation
+```
+
+JSON: `/api/tape-to-cloud/status`, `/api/tape-to-cloud/jobs`, `/api/tape-to-cloud/reports`, `/api/tape-to-cloud/validation`. Same server also serves `/monitor` and `/monetize`.
 
 ## Architecture
 
