@@ -161,6 +161,18 @@ def main() -> None:
     help="Alias for --pr-resolve-conflicts (all open PRs)",
   )
   parser.add_argument(
+    "--pr-close-superseded",
+    type=int,
+    nargs="*",
+    metavar="N",
+    help="Close PRs superseded by main (omit N to auto-detect monetize dupes)",
+  )
+  parser.add_argument(
+    "--pr-close-dry-run",
+    action="store_true",
+    help="With --pr-close-superseded: detect only, do not close",
+  )
+  parser.add_argument(
     "--brain-ask",
     metavar="QUESTION",
     help="Query OKF secondary brain with multi-model consensus",
@@ -483,6 +495,15 @@ def main() -> None:
       result = resolve_open_pr_conflicts(dry_run=args.pr_dry_run)
     else:
       result = resolve_pr_conflicts(args.pr_resolve_conflicts, dry_run=args.pr_dry_run)
+    print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.pr_close_superseded is not None:
+    _require_license("pr_agent")
+    from engine.pr_superseded import close_superseded_prs
+
+    nums = args.pr_close_superseded if args.pr_close_superseded else None
+    result = close_superseded_prs(dry_run=args.pr_close_dry_run, explicit_numbers=nums)
     print(json.dumps(result, indent=2, default=str))
     return
 
