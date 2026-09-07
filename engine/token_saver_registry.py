@@ -21,7 +21,13 @@ class TokenSaverLib:
 # Curated from PyPI / GitHub web search (2026) — token counting, compression, cache
 TOKEN_SAVER_LIBRARIES: Tuple[TokenSaverLib, ...] = (
   TokenSaverLib("tiktoken", "tiktoken>=0.7.0", "tiktoken", "accurate BPE token counts", "openai/tiktoken"),
-  TokenSaverLib("diskcache", "diskcache>=5.6.0", "diskcache", "persistent SQLite disk cache", "grantjenks/python-diskcache"),
+  TokenSaverLib(
+    "msgpack",
+    "msgpack>=1.0.0",
+    "msgpack",
+    "safe binary cache blobs (no pickle)",
+    "msgpack/msgpack-python",
+  ),
   TokenSaverLib("zstandard", "zstandard>=0.22.0", "zstandard", "zstd compression for cache blobs", "facebook/zstd"),
   TokenSaverLib("llm-token-optimizer", "llm-token-optimizer[tiktoken]>=1.0.0", "llm_token_optimizer", "prompt compress + cost estimate", "pypi/llm-token-optimizer"),
   TokenSaverLib("tokenpruner", "tokenpruner[tiktoken]>=1.0.0", "tokenpruner", "composite prompt pruning 70-80%", "pypi/tokenpruner"),

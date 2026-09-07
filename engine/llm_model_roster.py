@@ -309,7 +309,7 @@ def roster_summary() -> Dict[str, Any]:
       "EW_LLM_MAX_TOKENS_PER_MODEL=10000 — each model capped independently",
       "EW_LLM_EW_BYPASS=1 — GitHub EW consensus = 0 LLM tokens",
       "tiktoken + llm-token-optimizer + tokenpruner — prompt compression",
-      "diskcache + zstandard + cachetic — compressed persistent cache",
+      "sqlite + msgpack + zstandard + cachetic — compressed persistent cache",
       "joblib memoize — deduplicate repeated LLM calls",
       "TokenStore — pipeline logs store hashes not full payloads",
       "per-task output caps: workhorse 120, screen 150",

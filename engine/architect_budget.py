@@ -236,7 +236,7 @@ def token_saver_checklist() -> List[str]:
   base = [
     "compact JSON (no indent)",
     "short system prompt",
-    "diskcache architect decisions (24h TTL)",
+    "sqlite cache architect decisions (24h TTL)",
     "llm_token_saver tiktoken counting",
     f"{ARCHITECT_TOKEN_CEILING} token ceiling per model (llm_gpt_policy)",
     "trim context before send",
