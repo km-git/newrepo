@@ -11,6 +11,11 @@
     .muted { color: #555; font-size: 0.9rem; }
     .banner { background: #fff6d9; border: 1px solid #e0c36a; padding: 0.6rem 0.8rem; }
     code { font-size: 0.85rem; }
+    @media print {
+      body { margin: 0.6in; color: #000; }
+      .banner { border: 1px solid #999; background: #fff; }
+      a { color: inherit; text-decoration: none; }
+    }
   </style>
 </head>
 <body>
@@ -58,6 +63,39 @@
     {% endfor %}
     </tbody>
   </table>
+  <h2>SKU economics</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th><th>Unit AUD</th><th>Idle AUD / mo</th></tr></thead>
+    <tbody>
+    {% for row in sku_economics %}
+      <tr>
+        <td>{{ row.sku }}</td><td>{{ row.bought }}</td><td>{{ row.used }}</td><td>{{ row.idle }}</td>
+        <td>{{ "%.2f"|format(row.unit_aud) }}</td><td>{{ "%.2f"|format(row.idle_monthly_aud) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Idle sensitivity (30 / 60 / 90)</h2>
+  <table>
+    <thead><tr><th>Policy</th><th>Unused</th><th>AUD / month</th><th>AUD / year</th></tr></thead>
+    <tbody>
+    {% for row in idle_sensitivity %}
+      <tr>
+        <td>{{ row.idle_days }} days</td><td>{{ row.unused_count }}</td>
+        <td>{{ "%.2f"|format(row.reclaim_monthly_aud) }}</td>
+        <td>{{ "%.2f"|format(row.reclaim_annual_aud) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Draft action plan</h2>
+  <ul>
+    {% for item in draft_actions %}
+      <li><strong>{{ item.priority }}:</strong> {{ item.title }} — {{ item.detail }}</li>
+    {% else %}
+      <li>None.</li>
+    {% endfor %}
+  </ul>
   <h2>Unused seats (hashed ids)</h2>
   <table>
     <thead><tr><th>User id</th><th>SKU</th><th>Idle days</th><th>Monthly AUD</th></tr></thead>

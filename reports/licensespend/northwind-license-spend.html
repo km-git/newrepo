@@ -11,6 +11,11 @@
     .muted { color: #555; font-size: 0.9rem; }
     .banner { background: #fff6d9; border: 1px solid #e0c36a; padding: 0.6rem 0.8rem; }
     code { font-size: 0.85rem; }
+    @media print {
+      body { margin: 0.6in; color: #000; }
+      .banner { border: 1px solid #999; background: #fff; }
+      a { color: inherit; text-decoration: none; }
+    }
   </style>
 </head>
 <body>
@@ -84,6 +89,83 @@
     
     </tbody>
   </table>
+  <h2>SKU economics</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th><th>Unit AUD</th><th>Idle AUD / mo</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td>github-outside</td><td>1</td><td>1</td><td>0</td>
+        <td>0.00</td><td>0.00</td>
+      </tr>
+    
+      <tr>
+        <td>github-team</td><td>10</td><td>8</td><td>2</td>
+        <td>4.00</td><td>8.00</td>
+      </tr>
+    
+      <tr>
+        <td>m365-e5</td><td>20</td><td>16</td><td>4</td>
+        <td>57.00</td><td>228.00</td>
+      </tr>
+    
+      <tr>
+        <td>slack-business-plus</td><td>12</td><td>9</td><td>3</td>
+        <td>15.00</td><td>45.00</td>
+      </tr>
+    
+      <tr>
+        <td>slack-guest</td><td>3</td><td>3</td><td>0</td>
+        <td>0.00</td><td>0.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Idle sensitivity (30 / 60 / 90)</h2>
+  <table>
+    <thead><tr><th>Policy</th><th>Unused</th><th>AUD / month</th><th>AUD / year</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td>30 days</td><td>13</td>
+        <td>509.00</td>
+        <td>6108.00</td>
+      </tr>
+    
+      <tr>
+        <td>60 days</td><td>11</td>
+        <td>395.00</td>
+        <td>4740.00</td>
+      </tr>
+    
+      <tr>
+        <td>90 days</td><td>9</td>
+        <td>281.00</td>
+        <td>3372.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Draft action plan</h2>
+  <ul>
+    
+      <li><strong>renewal:</strong> Right-size github before 2026-09-27 — 20 days to renew · contract A$480.00. Idle at this policy: A$8.00/mo. Annual terms: savings typically land at renewal.</li>
+    
+      <li><strong>renewal:</strong> Right-size microsoft365 before 2026-10-22 — 45 days to renew · contract A$13680.00. Idle at this policy: A$228.00/mo. Annual terms: savings typically land at renewal.</li>
+    
+      <li><strong>unused:</strong> Review m365-e5 seat nw-m01 — Idle 280d · A$57.00/mo · finance · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e5 seat nw-m02 — Idle 235d · A$57.00/mo · finance · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e5 seat nw-m03 — Idle 218d · A$57.00/mo · hr · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e5 seat nw-m04 — Idle 176d · A$57.00/mo · sales · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review slack-business-plus seat NWS01 — Idle 230d · A$15.00/mo · ops · draft only, do not auto-revoke</li>
+    
+      <li><strong>shadow:</strong> Investigate possible shadow SaaS — Figma, Loom, Figma, Loom, Miro, spf.protection.outlook.com, _spf.google.com, amazonses.com (not in pricebook; heuristic only).</li>
+    
+  </ul>
   <h2>Unused seats (hashed ids)</h2>
   <table>
     <thead><tr><th>User id</th><th>SKU</th><th>Idle days</th><th>Monthly AUD</th></tr></thead>
@@ -227,7 +309,11 @@
     
       <li>Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs.</li>
     
+      <li>Annual seat contracts usually cannot drop quantity mid-term; right-size at the next renewal.</li>
+    
+      <li>Idle 30/60/90 is an operator policy, not a vendor definition of unused.</li>
+    
   </ul>
-  <p class="muted">Watermark SHA-256: <code>242f7a35dd1589ea4d6d577bad0afd9469e46f354839c16442cfd21341018cc5</code></p>
+  <p class="muted">Watermark SHA-256: <code>5476f1cdbcadc2ca006bfaf119fcdf68b0f6a73567072e20363fabba4572ee80</code></p>
 </body>
 </html>

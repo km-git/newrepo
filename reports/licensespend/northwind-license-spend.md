@@ -47,6 +47,38 @@ Draft reclaim pack for human review. As of 2026-09-07. Currency AUD. Do not auto
 | unknown | 0 |
 
 
+## SKU economics
+
+| SKU | Bought | Used | Idle | Unit AUD | Idle AUD / mo |
+|---|---:|---:|---:|---:|---:|
+| github-outside | 1 | 1 | 0 | 0.00 | 0.00 |
+| github-team | 10 | 8 | 2 | 4.00 | 8.00 |
+| m365-e5 | 20 | 16 | 4 | 57.00 | 228.00 |
+| slack-business-plus | 12 | 9 | 3 | 15.00 | 45.00 |
+| slack-guest | 3 | 3 | 0 | 0.00 | 0.00 |
+
+
+## Idle sensitivity (30 / 60 / 90)
+
+| Policy | Unused | AUD / month | AUD / year |
+|---|---:|---:|---:|
+| 30 days | 13 | 509.00 | 6108.00 |
+| 60 days | 11 | 395.00 | 4740.00 |
+| 90 days | 9 | 281.00 | 3372.00 |
+
+
+## Draft action plan
+
+- **renewal:** Right-size github before 2026-09-27 — 20 days to renew · contract A$480.00. Idle at this policy: A$8.00/mo. Annual terms: savings typically land at renewal.
+- **renewal:** Right-size microsoft365 before 2026-10-22 — 45 days to renew · contract A$13680.00. Idle at this policy: A$228.00/mo. Annual terms: savings typically land at renewal.
+- **unused:** Review m365-e5 seat nw-m01 — Idle 280d · A$57.00/mo · finance · draft only, do not auto-revoke
+- **unused:** Review m365-e5 seat nw-m02 — Idle 235d · A$57.00/mo · finance · draft only, do not auto-revoke
+- **unused:** Review m365-e5 seat nw-m03 — Idle 218d · A$57.00/mo · hr · draft only, do not auto-revoke
+- **unused:** Review m365-e5 seat nw-m04 — Idle 176d · A$57.00/mo · sales · draft only, do not auto-revoke
+- **unused:** Review slack-business-plus seat NWS01 — Idle 230d · A$15.00/mo · ops · draft only, do not auto-revoke
+- **shadow:** Investigate possible shadow SaaS — Figma, Loom, Figma, Loom, Miro, spf.protection.outlook.com, _spf.google.com, amazonses.com (not in pricebook; heuristic only).
+
+
 ## Unused seats (hashed ids)
 
 | User id | SKU | Idle days | Monthly AUD |
@@ -105,6 +137,8 @@ Draft reclaim pack for human review. As of 2026-09-07. Currency AUD. Do not auto
 - Pricebook is operator-edited AUD list prices, not a crawler.
 - Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.
 - Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs.
+- Annual seat contracts usually cannot drop quantity mid-term; right-size at the next renewal.
+- Idle 30/60/90 is an operator policy, not a vendor definition of unused.
 
 
-Watermark SHA-256: `242f7a35dd1589ea4d6d577bad0afd9469e46f354839c16442cfd21341018cc5`
+Watermark SHA-256: `5476f1cdbcadc2ca006bfaf119fcdf68b0f6a73567072e20363fabba4572ee80`

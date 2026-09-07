@@ -16,6 +16,7 @@ STATE_DIR = PKG / "state"
 KEEPALIVE = STATE_DIR / "keepalive.txt"
 
 SAMPLE_AS_OF = date(2026, 9, 7)
+IDLE_THRESHOLDS = (30, 60, 90)
 SAMPLE_CLIENTS = (
     {
         "id": "acme",
@@ -35,6 +36,8 @@ HONEST_GAPS = (
     "Pricebook is operator-edited AUD list prices, not a crawler.",
     "Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.",
     "Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs.",
+    "Annual seat contracts usually cannot drop quantity mid-term; right-size at the next renewal.",
+    "Idle 30/60/90 is an operator policy, not a vendor definition of unused.",
 )
 
 ENV_INCLUDE_EMAIL = "LICENSESPEND_INCLUDE_EMAIL"

@@ -36,6 +36,30 @@ Draft reclaim pack for human review. As of {{ as_of }}. Currency AUD. Do not aut
 | {{ bucket }} | {{ count }} |
 {% endfor %}
 
+## SKU economics
+
+| SKU | Bought | Used | Idle | Unit AUD | Idle AUD / mo |
+|---|---:|---:|---:|---:|---:|
+{% for row in sku_economics -%}
+| {{ row.sku }} | {{ row.bought }} | {{ row.used }} | {{ row.idle }} | {{ "%.2f"|format(row.unit_aud) }} | {{ "%.2f"|format(row.idle_monthly_aud) }} |
+{% endfor %}
+
+## Idle sensitivity (30 / 60 / 90)
+
+| Policy | Unused | AUD / month | AUD / year |
+|---|---:|---:|---:|
+{% for row in idle_sensitivity -%}
+| {{ row.idle_days }} days | {{ row.unused_count }} | {{ "%.2f"|format(row.reclaim_monthly_aud) }} | {{ "%.2f"|format(row.reclaim_annual_aud) }} |
+{% endfor %}
+
+## Draft action plan
+
+{% for item in draft_actions -%}
+- **{{ item.priority }}:** {{ item.title }} — {{ item.detail }}
+{% else -%}
+- None.
+{% endfor %}
+
 ## Unused seats (hashed ids)
 
 | User id | SKU | Idle days | Monthly AUD |

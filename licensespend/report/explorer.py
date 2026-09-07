@@ -14,13 +14,14 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from licensespend.constants import (
     HONEST_GAPS,
+    IDLE_THRESHOLDS,
     ROOT,
     SAMPLE_AS_OF,
     SAMPLE_CLIENTS,
     include_email,
 )
 from licensespend.privacy import contains_raw_email
-from licensespend.report.service import build, build_payload
+from licensespend.report.service import build, build_payload, render_pack_html
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 STATIC_EXPLORER = ROOT / "reports" / "licensespend_explorer.html"
@@ -32,62 +33,80 @@ def _embed_json(payload: dict) -> str:
     return json.dumps(payload, default=str).replace("<", "\\u003c")
 
 
+def _dump_client(payload, meta: dict[str, str]) -> dict[str, Any]:
+    dumped = payload.model_dump(mode="json")
+    dumped["label"] = meta["label"]
+    dumped["blurb"] = meta["blurb"]
+    if not include_email():
+        for row in dumped.get("unused") or []:
+            row["email"] = None
+    return dumped
+
+
+def _index_row(payload, meta: dict[str, str]) -> dict[str, Any]:
+    return {
+        "id": meta["id"],
+        "label": meta["label"],
+        "blurb": meta["blurb"],
+        "reclaim_monthly_aud": payload.reclaim_monthly_aud,
+        "reclaim_annual_aud": payload.reclaim_annual_aud,
+        "unused_count": payload.unused_count,
+        "seats_total": payload.seats_total,
+        "watermark": payload.watermark,
+    }
+
+
+def _portfolio(index: list[dict[str, Any]]) -> dict[str, Any]:
+    monthly = round(sum(float(row["reclaim_monthly_aud"]) for row in index), 2)
+    return {
+        "clients": len(index),
+        "seats_total": sum(int(row["seats_total"]) for row in index),
+        "unused_seats": sum(int(row["unused_count"]) for row in index),
+        "reclaim_monthly_aud": monthly,
+        "reclaim_annual_aud": round(monthly * 12, 2),
+    }
+
+
 def build_explorer_state(
     *,
     as_of: date | None = None,
     idle_days: int = 90,
 ) -> dict[str, Any]:
     as_of = as_of or SAMPLE_AS_OF
-    index: list[dict[str, Any]] = []
-    by_id: dict[str, Any] = {}
-    monthly = 0.0
-    unused_n = 0
-    seats_n = 0
-    for meta in SAMPLE_CLIENTS:
-        payload = build_payload(client=meta["id"], as_of=as_of, idle_days=idle_days)
-        dumped = payload.model_dump(mode="json")
-        dumped["label"] = meta["label"]
-        dumped["blurb"] = meta["blurb"]
-        if not include_email():
-            for row in dumped.get("unused") or []:
-                row["email"] = None
-        index.append(
-            {
-                "id": meta["id"],
-                "label": meta["label"],
-                "blurb": meta["blurb"],
-                "reclaim_monthly_aud": payload.reclaim_monthly_aud,
-                "reclaim_annual_aud": payload.reclaim_annual_aud,
-                "unused_count": payload.unused_count,
-                "seats_total": payload.seats_total,
-                "watermark": payload.watermark,
-            }
-        )
-        by_id[meta["id"]] = dumped
-        monthly += payload.reclaim_monthly_aud
-        unused_n += payload.unused_count
-        seats_n += payload.seats_total
-    monthly = round(monthly, 2)
+    views: dict[str, Any] = {}
+    for thresh in IDLE_THRESHOLDS:
+        index: list[dict[str, Any]] = []
+        by_id: dict[str, Any] = {}
+        for meta in SAMPLE_CLIENTS:
+            payload = build_payload(client=meta["id"], as_of=as_of, idle_days=thresh)
+            dumped = _dump_client(payload, meta)
+            index.append(_index_row(payload, meta))
+            by_id[meta["id"]] = dumped
+        views[str(thresh)] = {
+            "idle_days_threshold": thresh,
+            "portfolio": _portfolio(index),
+            "client_index": index,
+            "clients": by_id,
+        }
+    default = views[str(idle_days)] if str(idle_days) in views else views["90"]
     return {
         "product": "licensespend",
         "as_of": as_of.isoformat(),
         "idle_days_threshold": idle_days,
+        "idle_thresholds": list(IDLE_THRESHOLDS),
         "currency": "AUD",
         "disclaimer": "Draft reclaim pack for human review. Not regulated advice. Do not auto-revoke.",
         "honest_gaps": list(HONEST_GAPS),
-        "portfolio": {
-            "clients": len(SAMPLE_CLIENTS),
-            "seats_total": seats_n,
-            "unused_seats": unused_n,
-            "reclaim_monthly_aud": monthly,
-            "reclaim_annual_aud": round(monthly * 12, 2),
-        },
-        "client_index": index,
-        "clients": by_id,
+        "portfolio": default["portfolio"],
+        "client_index": default["client_index"],
+        "clients": default["clients"],
+        "views": views,
         "routes": {
             "ui": "/licensespend",
             "api": "/api/licensespend/status",
+            "pack": "/licensespend/pack/{client}",
             "static": "reports/licensespend_explorer.html",
+            "static_pack": "licensespend/{client}-license-spend.html",
         },
     }
 
@@ -154,6 +173,21 @@ def dispatch_licensespend(
         return None
     if path in ("/licensespend", "/licensespend/"):
         body = render_explorer_html().encode("utf-8")
+        return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, body
+    if path.startswith("/licensespend/pack/"):
+        client_id = path.rsplit("/", 1)[-1].strip()
+        allowed = {meta["id"] for meta in SAMPLE_CLIENTS}
+        if client_id not in allowed:
+            err = json.dumps({"error": "unknown client", "id": client_id}).encode("utf-8")
+            return 404, {"Content-Type": "application/json"}, err
+        query = query or {}
+        try:
+            idle = int((query.get("idle") or ["90"])[0])
+        except (TypeError, ValueError):
+            idle = 90
+        if idle not in IDLE_THRESHOLDS:
+            idle = 90
+        body = render_pack_html(client=client_id, idle_days=idle).encode("utf-8")
         return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, body
     if path == "/api/licensespend/status":
         body = json.dumps(build_explorer_state(), indent=2, default=str).encode("utf-8")

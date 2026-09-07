@@ -11,6 +11,11 @@
     .muted { color: #555; font-size: 0.9rem; }
     .banner { background: #fff6d9; border: 1px solid #e0c36a; padding: 0.6rem 0.8rem; }
     code { font-size: 0.85rem; }
+    @media print {
+      body { margin: 0.6in; color: #000; }
+      .banner { border: 1px solid #999; background: #fff; }
+      a { color: inherit; text-decoration: none; }
+    }
   </style>
 </head>
 <body>
@@ -68,11 +73,11 @@
     <thead><tr><th>Bucket</th><th>Seats</th></tr></thead>
     <tbody>
     
-      <tr><td>0-29</td><td>20</td></tr>
+      <tr><td>0-29</td><td>17</td></tr>
     
-      <tr><td>30-59</td><td>1</td></tr>
+      <tr><td>30-59</td><td>2</td></tr>
     
-      <tr><td>60-89</td><td>0</td></tr>
+      <tr><td>60-89</td><td>2</td></tr>
     
       <tr><td>90+</td><td>5</td></tr>
     
@@ -80,6 +85,81 @@
     
     </tbody>
   </table>
+  <h2>SKU economics</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th><th>Unit AUD</th><th>Idle AUD / mo</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td>github-outside</td><td>1</td><td>1</td><td>0</td>
+        <td>0.00</td><td>0.00</td>
+      </tr>
+    
+      <tr>
+        <td>github-team</td><td>5</td><td>4</td><td>1</td>
+        <td>4.00</td><td>4.00</td>
+      </tr>
+    
+      <tr>
+        <td>m365-e3</td><td>12</td><td>9</td><td>3</td>
+        <td>36.00</td><td>108.00</td>
+      </tr>
+    
+      <tr>
+        <td>slack-business-plus</td><td>6</td><td>5</td><td>1</td>
+        <td>15.00</td><td>15.00</td>
+      </tr>
+    
+      <tr>
+        <td>slack-guest</td><td>2</td><td>2</td><td>0</td>
+        <td>0.00</td><td>0.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Idle sensitivity (30 / 60 / 90)</h2>
+  <table>
+    <thead><tr><th>Policy</th><th>Unused</th><th>AUD / month</th><th>AUD / year</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td>30 days</td><td>9</td>
+        <td>214.00</td>
+        <td>2568.00</td>
+      </tr>
+    
+      <tr>
+        <td>60 days</td><td>7</td>
+        <td>178.00</td>
+        <td>2136.00</td>
+      </tr>
+    
+      <tr>
+        <td>90 days</td><td>5</td>
+        <td>127.00</td>
+        <td>1524.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Draft action plan</h2>
+  <ul>
+    
+      <li><strong>renewal:</strong> Right-size microsoft365 before 2026-10-01 — 24 days to renew · contract A$5184.00. Idle at this policy: A$108.00/mo. Annual terms: savings typically land at renewal.</li>
+    
+      <li><strong>unused:</strong> Review m365-e3 seat u-001 — Idle 249d · A$36.00/mo · finance · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e3 seat u-002 — Idle 204d · A$36.00/mo · finance · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e3 seat u-003 — Idle 190d · A$36.00/mo · hr · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review slack-business-plus seat S001 — Idle 240d · A$15.00/mo · ops · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review github-team seat gh-001 — Idle 245d · A$4.00/mo · eng · draft only, do not auto-revoke</li>
+    
+      <li><strong>shadow:</strong> Investigate possible shadow SaaS — Notion, Canva, Notion, Grammarly, _spf.google.com, spf.protection.outlook.com, mail.zendesk.com (not in pricebook; heuristic only).</li>
+    
+  </ul>
   <h2>Unused seats (hashed ids)</h2>
   <table>
     <thead><tr><th>User id</th><th>SKU</th><th>Idle days</th><th>Monthly AUD</th></tr></thead>
@@ -185,7 +265,11 @@
     
       <li>Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs.</li>
     
+      <li>Annual seat contracts usually cannot drop quantity mid-term; right-size at the next renewal.</li>
+    
+      <li>Idle 30/60/90 is an operator policy, not a vendor definition of unused.</li>
+    
   </ul>
-  <p class="muted">Watermark SHA-256: <code>5026ae46e86f3077c843e6d7ba1a9ad6029f2995fd8ce202b13e5873762fbbdb</code></p>
+  <p class="muted">Watermark SHA-256: <code>91a1771f8dda1391277de4d00286a25bae813c9959141622199869c068350353</code></p>
 </body>
 </html>

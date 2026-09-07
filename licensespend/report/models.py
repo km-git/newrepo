@@ -34,6 +34,9 @@ class ReportPayload(BaseModel):
     renewals: list[dict] = Field(default_factory=list)
     shadow_apps: list[dict] = Field(default_factory=list)
     reclaim_appendix: list[dict] = Field(default_factory=list)
+    sku_economics: list[dict] = Field(default_factory=list)
+    idle_sensitivity: list[dict] = Field(default_factory=list)
+    draft_actions: list[dict] = Field(default_factory=list)
     qbr_talk_track: list[str] = Field(default_factory=list)
     honest_gaps: list[str] = Field(default_factory=list)
     watermark: str = ""

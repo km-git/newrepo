@@ -38,11 +38,42 @@ Draft reclaim pack for human review. As of 2026-09-07. Currency AUD. Do not auto
 
 | Bucket | Seats |
 |---|---:|
-| 0-29 | 20 |
-| 30-59 | 1 |
-| 60-89 | 0 |
+| 0-29 | 17 |
+| 30-59 | 2 |
+| 60-89 | 2 |
 | 90+ | 5 |
 | unknown | 0 |
+
+
+## SKU economics
+
+| SKU | Bought | Used | Idle | Unit AUD | Idle AUD / mo |
+|---|---:|---:|---:|---:|---:|
+| github-outside | 1 | 1 | 0 | 0.00 | 0.00 |
+| github-team | 5 | 4 | 1 | 4.00 | 4.00 |
+| m365-e3 | 12 | 9 | 3 | 36.00 | 108.00 |
+| slack-business-plus | 6 | 5 | 1 | 15.00 | 15.00 |
+| slack-guest | 2 | 2 | 0 | 0.00 | 0.00 |
+
+
+## Idle sensitivity (30 / 60 / 90)
+
+| Policy | Unused | AUD / month | AUD / year |
+|---|---:|---:|---:|
+| 30 days | 9 | 214.00 | 2568.00 |
+| 60 days | 7 | 178.00 | 2136.00 |
+| 90 days | 5 | 127.00 | 1524.00 |
+
+
+## Draft action plan
+
+- **renewal:** Right-size microsoft365 before 2026-10-01 — 24 days to renew · contract A$5184.00. Idle at this policy: A$108.00/mo. Annual terms: savings typically land at renewal.
+- **unused:** Review m365-e3 seat u-001 — Idle 249d · A$36.00/mo · finance · draft only, do not auto-revoke
+- **unused:** Review m365-e3 seat u-002 — Idle 204d · A$36.00/mo · finance · draft only, do not auto-revoke
+- **unused:** Review m365-e3 seat u-003 — Idle 190d · A$36.00/mo · hr · draft only, do not auto-revoke
+- **unused:** Review slack-business-plus seat S001 — Idle 240d · A$15.00/mo · ops · draft only, do not auto-revoke
+- **unused:** Review github-team seat gh-001 — Idle 245d · A$4.00/mo · eng · draft only, do not auto-revoke
+- **shadow:** Investigate possible shadow SaaS — Notion, Canva, Notion, Grammarly, _spf.google.com, spf.protection.outlook.com, mail.zendesk.com (not in pricebook; heuristic only).
 
 
 ## Unused seats (hashed ids)
@@ -94,6 +125,8 @@ Draft reclaim pack for human review. As of 2026-09-07. Currency AUD. Do not auto
 - Pricebook is operator-edited AUD list prices, not a crawler.
 - Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.
 - Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs.
+- Annual seat contracts usually cannot drop quantity mid-term; right-size at the next renewal.
+- Idle 30/60/90 is an operator policy, not a vendor definition of unused.
 
 
-Watermark SHA-256: `5026ae46e86f3077c843e6d7ba1a9ad6029f2995fd8ce202b13e5873762fbbdb`
+Watermark SHA-256: `91a1771f8dda1391277de4d00286a25bae813c9959141622199869c068350353`
