@@ -1,3 +1,5 @@
+include Makefile.cost
+
 .PHONY: dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve dspm-gap-audit dspm-watch dspm-monthly
 
 PYTHON ?= python3

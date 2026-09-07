@@ -21,8 +21,8 @@ jobs:
       - name: Install dependencies
         run: bash scripts/setup_environment.sh --skip-auth
 
-      - name: Install cost package (pyproject.toml)
-        run: .venv/bin/pip install -e ".[dev]"
+      - name: Install sibling packages (dspm + cost)
+        run: .venv/bin/pip install -e ".[dev,analytics,cloud,remediation]"
 
       - name: Run pytest
         run: .venv/bin/python -m pytest tests/ -q --tb=short
