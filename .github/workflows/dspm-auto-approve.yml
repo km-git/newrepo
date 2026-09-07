@@ -15,17 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: >
-      github.event.pull_request.user.login == 'dependabot[bot]' &&
-      github.repository == github.event.pull_request.head.repo.full_name
+      github.repository == github.event.pull_request.head.repo.full_name &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+       github.event.pull_request.user.login == 'github-actions[bot]')
     steps:
-      - name: Block auto-approve of operator-owned paths
+      - name: Block auto-merge of remediation policies
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           files=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
-          if echo "$files" | grep -Eq 'dspm/.env|dspm/secrets'; then
-            echo "DSPM secrets require manual review"
+          if echo "$files" | grep -q 'dspm/remediation/policies/'; then
+            echo "Remediation policies require manual review"
             exit 1
           fi
 
@@ -35,6 +36,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge (squash)
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
