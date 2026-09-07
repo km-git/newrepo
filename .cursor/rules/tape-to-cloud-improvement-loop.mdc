@@ -46,6 +46,8 @@ uv run ruff check --fix . && uv run ruff format . && uv run prek run --all-files
 5. Track Awesome List RSS — eval queue candidates
 6. Latest release / CHANGELOG accuracy
 7. `discovery/tape-to-cloud/free-tool-inventory.md` — new loop-internal or module-library candidates
+8. `forum-watcher/` weekly PR — triage Discoveries checkboxes (Monday after forum-watcher cron)
 
 Full prompt: `discovery/tape-to-cloud/continuous-improvement-loop-prompt.md`
 Inventory catalog: `discovery/tape-to-cloud/free-tool-inventory.md`
+Forum watcher: `discovery/tape-to-cloud/forum-monitoring.md`
