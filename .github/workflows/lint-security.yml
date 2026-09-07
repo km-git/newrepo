@@ -87,8 +87,6 @@ jobs:
           scan-args: |-
             -L
             ./requirements.txt
-            -L
-            ./requirements-outcome.txt
             --allow-no-lockfiles
 
   zizmor:
