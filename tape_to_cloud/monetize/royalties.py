@@ -151,12 +151,8 @@ def compute_royalty_report(
         if currency is None:
             currency = card.currency
         elif currency != card.currency:
-            raise RoyaltyError(
-                f"mixed currencies in one report: {currency} vs {card.currency}"
-            )
-        licensor = licensors.setdefault(
-            tag.licensor_id, {"licenses": {}, "total_amount": Decimal(0)}
-        )
+            raise RoyaltyError(f"mixed currencies in one report: {currency} vs {card.currency}")
+        licensor = licensors.setdefault(tag.licensor_id, {"licenses": {}, "total_amount": Decimal(0)})
         bucket = licensor["licenses"].setdefault(
             tag.license_id,
             {

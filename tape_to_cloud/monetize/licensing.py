@@ -68,25 +68,17 @@ class LicenseTag:
         if not self.license_id or not str(self.license_id).strip():
             raise LicenseValidationError("license_id must be a non-empty string")
         if self.license_class not in LICENSE_CLASSES:
-            raise LicenseValidationError(
-                f"license_class must be one of {LICENSE_CLASSES}, got {self.license_class!r}"
-            )
-        if not isinstance(self.rights, tuple) or any(
-            not isinstance(r, str) or not r.strip() for r in self.rights
-        ):
+            raise LicenseValidationError(f"license_class must be one of {LICENSE_CLASSES}, got {self.license_class!r}")
+        if not isinstance(self.rights, tuple) or any(not isinstance(r, str) or not r.strip() for r in self.rights):
             raise LicenseValidationError("rights must be a tuple of non-empty strings")
         if self.license_class == "commercially-licensable" and not self.rights:
-            raise LicenseValidationError(
-                "commercially-licensable tags must grant at least one right"
-            )
+            raise LicenseValidationError("commercially-licensable tags must grant at least one right")
         if not self.territory or not str(self.territory).strip():
             raise LicenseValidationError("territory must be a non-empty string")
         if self.expires_at is not None:
             _parse_utc(self.expires_at, "expires_at")
         if not _SHA256_RE.match(self.source_manifest_sha256 or ""):
-            raise LicenseValidationError(
-                "source_manifest_sha256 must be 64 lowercase hex characters"
-            )
+            raise LicenseValidationError("source_manifest_sha256 must be 64 lowercase hex characters")
         _parse_utc(self.tagged_at, "tagged_at")
         return self
 
@@ -130,8 +122,7 @@ class LicenseStore:
         append_audit(
             self.store_dir,
             action="license.tag",
-            detail={"asset_id": tag.asset_id, "license_id": tag.license_id,
-                    "license_class": tag.license_class},
+            detail={"asset_id": tag.asset_id, "license_id": tag.license_id, "license_class": tag.license_class},
             actor=actor,
         )
         return tag
@@ -152,9 +143,7 @@ class LicenseStore:
     def query_by_class(self, license_class: str) -> list[LicenseTag]:
         """Return all tags of a given license class (e.g. "restricted")."""
         if license_class not in LICENSE_CLASSES:
-            raise LicenseValidationError(
-                f"license_class must be one of {LICENSE_CLASSES}, got {license_class!r}"
-            )
+            raise LicenseValidationError(f"license_class must be one of {LICENSE_CLASSES}, got {license_class!r}")
         return [t for t in self.load_tags() if t.license_class == license_class]
 
 
