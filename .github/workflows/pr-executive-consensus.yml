@@ -49,6 +49,6 @@ jobs:
           EW_PR_PANEL_SIZE: "7"
           EW_LLM_BACKEND: cursor
           EW_LLM_INTELLIGENCE: ensemble
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
-          .venv/bin/python scripts/pr_executive_consensus.py "$PR_NUM" --repo "${{ github.repository }}"
+          .venv/bin/python scripts/pr_executive_consensus.py "$PR_NUM" --repo "$GITHUB_REPOSITORY"

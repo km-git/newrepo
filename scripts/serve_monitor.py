@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
+from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -44,6 +45,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       return
     if parsed.path == "/api/dashboard":
       self._serve_dashboard()
+      return
+    if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
     if serve_monetize_http(
       self,
@@ -106,7 +109,15 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
   for url in explorer_launch_urls(host, port, "/monetize"):
     print(url)
     print()
+  print("[monitor] Tape-to-Cloud Hub:")
+  print()
+  for url in explorer_launch_urls(host, port, "/tape-to-cloud"):
+    print(url)
+    print()
   print(f"[monitor] Dashboard API: http://127.0.0.1:{port}/api/dashboard")
+  print(f"[monitor] Tape-to-Cloud API: http://127.0.0.1:{port}/api/tape-to-cloud/status")
+  print(f"[monitor] Tape-to-Cloud reports: http://127.0.0.1:{port}/tape-to-cloud/reports")
+  print(f"[monitor] Tape-to-Cloud validation: http://127.0.0.1:{port}/tape-to-cloud/validation")
   print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()
