@@ -102,3 +102,14 @@ def test_ruff_passes_on_replacement_paths() -> None:
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
+
+
+def test_licensespend_auto_approve_avoids_zizmor_high_findings() -> None:
+    text = (ROOT / ".github" / "workflows" / "licensespend-auto-approve.yml").read_text(encoding="utf-8")
+    assert "pull_request_target" not in text
+    assert "github.actor ==" not in text
+    assert "github.event.pull_request.user.login" in text
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "zizmor --config zizmor.yml" in lint
+    assert "actionlint" in lint
+    assert "google/osv-scanner-action" in lint

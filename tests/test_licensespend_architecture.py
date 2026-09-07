@@ -66,6 +66,9 @@ def test_workflows_exist_and_sha_pin_actions() -> None:
         if name == "licensespend-ci.yml":
             assert "LICENSESPEND_INCLUDE_EMAIL" in text
             assert "LICENSESPEND_APPLY" in text
+            assert "licensespend examples pyproject.toml" not in text
+            assert "semgrep" in text
+            assert "trivy fs" in text
         if name == "licensespend-watch.yml":
             assert "Australia/Sydney" in text
         if name == "licensespend-keepalive.yml":
@@ -74,6 +77,9 @@ def test_workflows_exist_and_sha_pin_actions() -> None:
         if name == "licensespend-auto-approve.yml":
             assert "dependabot[bot]" in text
             assert "hmarr/auto-approve-action@" in text
+            assert "pull_request_target" not in text
+            assert "github.event.pull_request.user.login" in text
+            assert "github.event.pull_request.head.repo.full_name" in text
         for line in text.splitlines():
             stripped = line.strip()
             if not stripped.startswith("uses:"):

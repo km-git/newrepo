@@ -1,7 +1,9 @@
 name: licensespend-auto-approve
 
+# Dependabot PRs are same-repo, so pull_request is enough (zizmor dangerous-triggers).
+# Check the PR author, not github.actor (zizmor bot-conditions).
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -13,15 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: >
-      github.actor == 'dependabot[bot]' ||
-      github.actor == 'github-actions[bot]'
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.repository == github.event.pull_request.head.repo.full_name
     steps:
       - name: Block auto-approve of operator-owned paths
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          files=$(gh api "repos/${{ github.repository }}/pulls/${PR}/files" --jq '.[].filename')
+          files=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
           if echo "$files" | grep -Eq 'licensespend/usage/pricebook.yaml|licensespend/m365/README.md'; then
             echo "Graph permissions / pricebook AUD require manual review"
             exit 1
@@ -33,7 +35,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge (squash)
-        if: github.event.pull_request.user.login == 'dependabot[bot]'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
