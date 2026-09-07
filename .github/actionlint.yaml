@@ -1,0 +1,4 @@
+# Custom labels used by tape/MHVTL jobs. Never run those jobs on GitHub-hosted runners.
+self-hosted-runner:
+  labels:
+    - mhvtl
