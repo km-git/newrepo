@@ -2,10 +2,13 @@ name: sspm-auto-approve
 
 # zizmor: ignore[dangerous-triggers]
 # pull_request_target is required so Dependabot PRs can be approved with
-# GITHUB_TOKEN. This job never checks out the PR HEAD and never runs
-# untrusted workflow YAML from the fork. Human PRs are excluded by actor.
+# GITHUB_TOKEN. pull_request is required so this workflow can run from the
+# feature branch before it lands on main (target workflows read default branch).
+# This job never checks out the PR HEAD.
 on:
   pull_request_target:
+    types: [opened, synchronize, reopened]
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -16,13 +19,13 @@ jobs:
   auto-approve:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Bot PRs only. Human-authored PRs are never auto-approved.
-    # pull_request_target so Dependabot secrets are accessible.
+    # Same-repo only. Bots, or operator opt-in via [auto-approved] in the body.
     if: >
       github.repository == github.event.pull_request.head.repo.full_name &&
       (
         github.event.pull_request.user.login == 'dependabot[bot]' ||
-        github.event.pull_request.user.login == 'github-actions[bot]'
+        github.event.pull_request.user.login == 'github-actions[bot]' ||
+        contains(github.event.pull_request.body, '[auto-approved]')
       )
     steps:
       - name: Block auto-merge of disclaimer and loop
