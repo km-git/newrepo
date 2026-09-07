@@ -13,13 +13,15 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from engine.tape_to_cloud_hub import (
+from tape_to_cloud.catalog import (
     CROSS_CUTTING,
     CURSOR_RULES,
     DISCOVERY_DOCS,
     MODULES,
     ROOT,
-    _discovery_dir,
+)
+from tape_to_cloud.catalog import (
+    discovery_dir as _discovery_dir,
 )
 
 SAMPLE_GENERATED_UTC = "2026-09-07T00:00:00+00:00"
