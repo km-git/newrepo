@@ -20,18 +20,7 @@ def test_monetize_pr_paths_detected():
   assert is_monetize_superseded(ctx)
 
 
-def test_tape_to_cloud_monetize_detected():
-  ctx = {
-    "files": [
-      {"path": "tape_to_cloud/monetize/cli.py"},
-      {"path": "tape_to_cloud/monetize/licensing.py"},
-      {"path": "tests/test_monetize.py"},
-    ],
-  }
-  assert is_monetize_superseded(ctx)
-
-
-def test_tape_to_cloud_monetize_detected():
+def test_tape_to_cloud_package_monetize_detected():
   ctx = {
     "files": [
       {"path": "tape_to_cloud/__init__.py"},
