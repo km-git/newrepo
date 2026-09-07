@@ -7,7 +7,7 @@ from pathlib import Path
 from sspm.loop.classify import SSPM_CONTEXT, classify_item
 from sspm.loop.issue_fix import is_mechanical_issue
 from sspm.loop.monthly import generate_monthly
-from sspm.loop.watch import url_hash, watch
+from sspm.loop.watch import load_seen, url_hash, watch
 
 
 def test_url_hash_sha256() -> None:
@@ -35,7 +35,24 @@ def test_watch_offline_writes_queue(tmp_path: Path, monkeypatch) -> None:
     payload = watch(mode="offline", fetch=False)
     assert payload["discover"] >= 1
     assert Path("state/discover_queue.json").is_file()
-    assert Path("state/seen.json").is_file()
+    seen_path = Path("state/seen.json")
+    assert seen_path.is_file()
+    state = load_seen(seen_path)
+    assert isinstance(state.get("items"), dict)
+    assert state["items"]
+
+
+def test_watch_preserves_dspm_seen_items(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("state").mkdir()
+    Path("state/seen.json").write_text(
+        '{"items": {"aabbcc": {"source": "dspm", "url": "https://example.com/dspm"}}}\n',
+        encoding="utf-8",
+    )
+    watch(mode="offline", fetch=False)
+    state = load_seen(Path("state/seen.json"))
+    assert state["items"]["aabbcc"]["source"] == "dspm"
+    assert any(meta.get("source") == "sspm" for meta in state["items"].values())
 
 
 def test_monthly_rollup(tmp_path: Path, monkeypatch) -> None:

@@ -36,6 +36,7 @@ and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`
 - SSPM Explorer (offline): `.venv/bin/python ew_tool.py --sspm-ui --static` → open `reports/sspm_explorer.html`
 - SSPM Explorer (server): `.venv/bin/python ew_tool.py --sspm-ui` or `--monitor` then `http://127.0.0.1:8765/sspm`
 - SSPM CLI: `.venv/bin/python -m sspm demo` or `make sspm-all`
+- DSPM CLI: `.venv/bin/python -m dspm audit inventory` or `make dspm-all`
 - Tape-to-Cloud live ingest (real file bytes, not sample reports):
   `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
   `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.

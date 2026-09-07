@@ -1,0 +1,19 @@
+types:
+  - name: au_tfn
+    description: Australian Tax File Number
+    pattern: '\b\d{3}[ -]?\d{3}[ -]?\d{2,3}\b'
+    context_words: [tfn, "tax file", ato]
+    score_threshold: 0.6
+    finding_type: custom
+  - name: au_abn
+    description: Australian Business Number
+    pattern: '\b\d{2}[ ]?\d{3}[ ]?\d{3}[ ]?\d{3}\b'
+    context_words: [abn, acn, "business number"]
+    score_threshold: 0.6
+    finding_type: custom
+  - name: nhs_number
+    description: UK NHS number
+    pattern: '\b\d{3}[ -]?\d{3}[ -]?\d{4}\b'
+    context_words: [nhs, patient, "health number"]
+    score_threshold: 0.6
+    finding_type: PHI

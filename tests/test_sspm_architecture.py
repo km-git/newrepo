@@ -74,3 +74,6 @@ def test_workflows_exist() -> None:
     assert "actions/checkout" not in rebase
     assert "gh pr checkout" not in rebase
     assert "update-branch" in rebase
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "sspm-all:" in makefile
+    assert "dspm-all:" in makefile

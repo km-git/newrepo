@@ -1,0 +1,29 @@
+frameworks:
+  gdpr:
+    - control_id: GDPR-32
+      title: Security of processing
+      maps_to_types: [PII, custom, secret]
+    - control_id: GDPR-33
+      title: Notification of personal data breach
+      maps_to_types: [PII, PHI]
+    - control_id: GDPR-17
+      title: Right to erasure
+      maps_to_types: [PII, PHI]
+  hipaa:
+    - control_id: HIPAA-164.312
+      title: Technical safeguards
+      maps_to_types: [PHI, secret]
+  pci:
+    - control_id: PCI-DSS-3.4
+      title: Render PAN unreadable
+      maps_to_types: [PCI]
+    - control_id: PCI-DSS-1.3
+      title: Prohibit public access to cardholder data
+      maps_to_types: [PCI]
+  soc2:
+    - control_id: CC6.1
+      title: Logical access security
+      maps_to_types: [secret, PII]
+    - control_id: CC6.7
+      title: Restrict the movement of data
+      maps_to_types: [PII, PCI, PHI]

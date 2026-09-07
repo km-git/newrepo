@@ -1,0 +1,8 @@
+# Skip test fixtures that contain synthetic PANs / NHS / TFN samples.
+misconfiguration:
+  skip-files:
+    - "examples/**"
+    - "dspm/remediation/policies/**"
+secret:
+  disable-rules:
+    - credit-card

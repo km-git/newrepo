@@ -27,10 +27,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR}/update-branch" --input - <<'EOF'
-          {}
-          EOF
-          then
+          if echo '{}' | gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR}/update-branch" --input -; then
             echo "PR branch updated from base (GitHub update-branch)."
           else
             gh pr comment "$PR" --body "@operator could not update this branch onto main — please rebase manually"

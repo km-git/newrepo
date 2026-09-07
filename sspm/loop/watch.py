@@ -29,6 +29,30 @@ def load_sources() -> list[dict[str, Any]]:
     return list(yaml.safe_load(SOURCES.read_text(encoding="utf-8")) or [])
 
 
+def load_seen(path: Path | None = None) -> dict[str, Any]:
+    """Shared DSPM/SSPM seen file: `{"items": {sha: metadata}}`. Legacy list of hashes still loads."""
+    target = path or SEEN
+    if not target.exists():
+        return {"items": {}}
+    raw = json.loads(target.read_text(encoding="utf-8"))
+    if isinstance(raw, list):
+        return {"items": {h: {"source": "sspm"} for h in raw if isinstance(h, str)}}
+    if isinstance(raw, dict):
+        items = dict(raw.get("items") or {})
+        state = {k: v for k, v in raw.items() if k != "items"}
+        state["items"] = items
+        return state
+    return {"items": {}}
+
+
+def save_seen(state: dict[str, Any], path: Path | None = None) -> None:
+    target = path or SEEN
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(state)
+    payload.setdefault("items", {})
+    target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def _import_forum_watcher():
     if not FORUM_WATCH.exists():
         return None
@@ -42,10 +66,8 @@ def watch(*, mode: str = "offline", fetch: bool = False) -> dict[str, Any]:
     """Run Discover. Live HTTP fetch is opt-in (`fetch=True`) so CI stays $0/offline."""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     sources = load_sources()
-    seen: set[str] = set()
-    if SEEN.exists():
-        raw = json.loads(SEEN.read_text(encoding="utf-8"))
-        seen = set(raw) if isinstance(raw, list) else set()
+    state = load_seen(SEEN)
+    seen: set[str] = set((state.get("items") or {}).keys())
     forum = _import_forum_watcher() if fetch else None
     items = _live_fetch(forum, sources, seen) if forum and fetch else _offline_seed(sources, seen)
     classified = []
@@ -55,7 +77,13 @@ def watch(*, mode: str = "offline", fetch: bool = False) -> dict[str, Any]:
         item["url_sha256"] = digest
         item["classification"] = classify_item(item)
         classified.append(item)
-    SEEN.write_text(json.dumps(sorted(seen), indent=2) + "\n", encoding="utf-8")
+        state.setdefault("items", {})[digest] = {
+            "source": "sspm",
+            "title": item.get("title"),
+            "url": item.get("url"),
+            "verdict": item["classification"].get("verdict"),
+        }
+    save_seen(state, SEEN)
     QUEUE.write_text(json.dumps(classified, indent=2, default=str) + "\n", encoding="utf-8")
     discoveries = [i for i in classified if i["classification"]["verdict"] == "discover"]
     return {

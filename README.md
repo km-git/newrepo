@@ -339,34 +339,33 @@ A localhost URL on a remote Cloud Agent VM is not reachable from your laptop —
 
 ## Tape-to-Cloud (working disk ingest + hub)
 
-This is **not** an LTO library controller. The live path copies **real file bytes** from disk, writes pre/post SHA-256, an append-only chain-of-custody log, optional WORM lock, stdlib `.eml`/`.mbox` extract, then restore/verify. Sample ACME reports on the hub are fixtures only (`sample: true`). Live jobs are `sample: false`.
+`--monitor` serves the tape-to-cloud product at `/` (16 modules, six layers, sample reports). EW monitor remains at `/monitor`; Monetize Explorer remains at `/monetize`. This is **not** an LTO library controller.
+
+The live path copies **real file bytes** from disk, writes pre/post SHA-256, an append-only chain-of-custody log, optional WORM lock, stdlib `.eml`/`.mbox` extract, then restore/verify. Sample ACME module reports and SHA-256 intactness fixtures are labeled `sample: true`. Live jobs are `sample: false`.
 
 ```bash
 python -m tape_to_cloud ingest ./my-export --matter HOLD-4412 --worm-until 2033-12-31T00:00:00+00:00 --keyword HOLD-4412
 python -m tape_to_cloud verify JOB_ID
 python -m tape_to_cloud restore JOB_ID ./restored
 python -m tape_to_cloud status
-# same ingest via ew_tool (no --symbol required):
+python -m tape_to_cloud report audit
 python3 ew_tool.py --tape-ingest ./my-export --tape-matter HOLD-4412
 python3 ew_tool.py --tape-status
-```
-
-Store root: `EW_TAPE_STORE` or `output/tape_to_cloud/store` (`objects/{aa}/{sha256}`, `jobs/{job_id}/report.json`). `.enc` files without `--unwrap-key` are refused (`STOP_AND_ASK`); with a key they are still stored as opaque ciphertext. Not in this MVP: LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network.
-
-Hub (monitor server) lists live jobs plus labeled sample reports:
-
-```bash
 python3 ew_tool.py --monitor
 ```
 
 ```
+http://127.0.0.1:8765/
 http://127.0.0.1:8765/tape-to-cloud
 http://127.0.0.1:8765/tape-to-cloud/jobs
 http://127.0.0.1:8765/tape-to-cloud/reports
+http://127.0.0.1:8765/tape-to-cloud/reports/job-pack
 http://127.0.0.1:8765/tape-to-cloud/validation
 ```
 
-JSON: `/api/tape-to-cloud/status`, `/api/tape-to-cloud/jobs`, `/api/tape-to-cloud/reports`, `/api/tape-to-cloud/validation`. Same server also serves `/monitor` and `/monetize`.
+Each module has an HTML sample report plus JSON at `/api/tape-to-cloud/reports/<module>`. Six vendor-shaped intactness packages (`rpt-audit-cma-2026-q1`, …) share the same prefix. Discovery docs are at `/tape-to-cloud/docs/<file>`. Status API: `/api/tape-to-cloud/status`. Live jobs: `/api/tape-to-cloud/jobs`. Intactness: `/api/tape-to-cloud/validation`.
+
+Store root: `EW_TAPE_STORE` or `output/tape_to_cloud/store`. `.enc` files without `--unwrap-key` are refused (`STOP_AND_ASK`). Not in this MVP: LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network.
 
 ## Architecture
 
@@ -418,4 +417,13 @@ Sibling product under `sspm/`: read-only SaaS posture reports (M365, Google Work
 python3 -m sspm demo
 python3 ew_tool.py --sspm-ui --static   # reports/sspm_explorer.html
 make sspm-all
+```
+
+## DSPM (data posture)
+
+Sibling product under `dspm/`. Open-source Cyera-like inventory/classify/risk path. See `dspm/README.md`.
+
+```bash
+python3 -m dspm audit inventory
+make dspm-all
 ```

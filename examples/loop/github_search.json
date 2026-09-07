@@ -1,0 +1,37 @@
+{
+  "query": "topic:dspm OR pii-detection",
+  "items": [
+    {
+      "full_name": "tokern/piicatcher",
+      "html_url": "https://github.com/tokern/piicatcher",
+      "description": "A data catalog for PII and PHI. Scan databases and files for sensitive columns.",
+      "stargazers_count": 420,
+      "license": {"spdx_id": "Apache-2.0"},
+      "topics": ["pii", "dspm", "data-catalog"]
+    },
+    {
+      "full_name": "lyft/cartography",
+      "html_url": "https://github.com/lyft/cartography",
+      "description": "Cartography is a Python tool that consolidates infrastructure assets and the relationships between them in a Neo4j graph.",
+      "stargazers_count": 3400,
+      "license": {"spdx_id": "Apache-2.0"},
+      "topics": ["aws", "iam", "security-graph"]
+    },
+    {
+      "full_name": "capitalone/DataProfiler",
+      "html_url": "https://github.com/capitalone/DataProfiler",
+      "description": "What's in your data? Detect schema, statistics, and PII entities in CSV/JSON/Parquet.",
+      "stargazers_count": 1800,
+      "license": {"spdx_id": "Apache-2.0"},
+      "topics": ["pii", "profiling", "data-quality"]
+    },
+    {
+      "full_name": "salesforce/cloudsplaining",
+      "html_url": "https://github.com/salesforce/cloudsplaining",
+      "description": "AWS IAM Security Assessment tool that identifies violations of least privilege.",
+      "stargazers_count": 2100,
+      "license": {"spdx_id": "BSD-3-Clause"},
+      "topics": ["iam", "aws", "least-privilege"]
+    }
+  ]
+}
