@@ -77,6 +77,10 @@ def test_gitleaks_action_is_sha_pinned() -> None:
     assert "gitleaks/gitleaks-action@v3" not in text
     assert "gitleaks/gitleaks-action@main" not in text
     assert "--ignore-vuln PYSEC-2026-2447" in text
+    allow = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
+    assert "useDefault = true" in allow
+    ignore = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
+    assert "bb00f4049343f5e9b7636fb1f841a88af26daa1f:engine/tape_to_cloud_reports.py:generic-api-key:258" in ignore
 
 
 def test_ruff_passes_on_replacement_paths() -> None:
@@ -87,8 +91,12 @@ def test_ruff_passes_on_replacement_paths() -> None:
     paths = [
         "tape_to_cloud/",
         "engine/monetization_strategy.py",
+        "engine/tape_to_cloud_hub.py",
+        "engine/tape_to_cloud_reports.py",
         "tests/test_monetization_strategy.py",
         "tests/test_tape_to_cloud_monetize.py",
+        "tests/test_tape_to_cloud_hub.py",
+        "tests/test_tape_to_cloud_reports.py",
         "tests/test_bugbot_replacement.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
