@@ -21,6 +21,7 @@ def generate_monthly(
     accept_log: Path | None = None,
     db_path: Path | None = None,
     now: datetime | None = None,
+    gap_audit_path: Path | None = None,
 ) -> dict[str, str]:
     month = _month_stamp(now)
     dest = out_dir or Path("monthly")
@@ -48,6 +49,16 @@ def generate_monthly(
         avg_risk = sum(int(row.get("score") or 0) for row in risks) / len(risks)
     top_sources = sources.most_common(10)
     source_lines = [f"- {name}: {count}" for name, count in top_sources] or ["- (none)"]
+    gap_lines = ["- (run `dspm loop gap-audit` / `dspm loop improve`)"]
+    gap_path = gap_audit_path or Path("state/gap_audit.json")
+    if gap_path.exists():
+        try:
+            gap_report = json.loads(gap_path.read_text(encoding="utf-8"))
+            nxt = gap_report.get("next_integrations") or []
+            if nxt:
+                gap_lines = [f"- {row.get('name')} → `{row.get('module')}` [{row.get('impact')}]" for row in nxt[:8]]
+        except json.JSONDecodeError:
+            pass
     rollup.write_text(
         "\n".join(
             [
@@ -60,6 +71,9 @@ def generate_monthly(
                 "",
                 "## Top sources",
                 *source_lines,
+                "",
+                "## Next OSS integrations (gap audit)",
+                *gap_lines,
                 "",
                 "## Auto-fix / PR hygiene",
                 "- auto-fix success rate: tracked when `good first issue` PRs merge",

@@ -31,6 +31,9 @@ venv/
 .mypy_cache/
 *.log
 state/accept-reject.jsonl
+state/discover_queue.json
+state/gap_audit.json
+state/candidates.md
 monthly/*.md
 .ruff_cache/
 dspm/**/__pycache__/

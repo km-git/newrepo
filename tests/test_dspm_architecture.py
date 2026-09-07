@@ -55,6 +55,9 @@ def test_loop_reuses_watch_and_sources() -> None:
         "aquasecurity/trivy",
         "cloud-custodian/cloud-custodian",
         "cohesity/dataprotect-mock-cookies",
+        "lobste.rs/t/security",
+        "trackawesomelist.com",
+        "pypi.org/rss/project",
     ):
         assert needle in sources
 

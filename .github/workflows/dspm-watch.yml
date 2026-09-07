@@ -25,20 +25,27 @@ jobs:
       - name: Install DSPM
         run: pip install -e .
 
-      - name: Run forum watcher (Discover slot)
+      - name: Run Discover + gap-audit + GitHub/PyPI evaluate
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python -m dspm loop watch
+        run: python -m dspm loop improve
+
+      - name: Force-add Discover artifacts
+        run: |
+          git add -f state/discover_queue.json state/gap_audit.json state/candidates.md state/seen.json || true
 
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          commit-message: "discover: DSPM forum-watcher items"
-          title: "Discover — DSPM forum watcher"
+          commit-message: "discover: DSPM forum + GitHub + PyPI improve cycle"
+          title: "Discover — DSPM improve cycle"
           body: |
-            Auto-generated Discover items (5-stage loop). Review and merge.
-            [auto-approved] is NOT set — operator reviews community items.
+            Auto-generated Discover queue, gap audit, and next-integration candidates.
+            Operator reviews Monday 09:00 AEST. Not auto-merged.
           branch: discover/dspm-watch
           delete-branch: true
           add-paths: |
             state/seen.json
             state/accept-reject.jsonl
+            state/discover_queue.json
+            state/gap_audit.json
+            state/candidates.md

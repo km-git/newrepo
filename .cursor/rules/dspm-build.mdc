@@ -18,6 +18,7 @@ alwaysApply: false
 6. Do not auto-approve human PRs. Do not auto-merge `dspm/remediation/policies/`.
 7. Dedupe Discover items by SHA-256 of the canonical URL.
 8. Keepalive is an in-repo weekly timestamp (`state/keepalive.txt`). Do not use `gautamkrishnar/keepalive-workflow` (repo disabled).
+9. Continuous improvement: `dspm loop improve` must consult `catalog.yaml` (forums + GitHub tools + other tools + Python libs), GitHub search, and PyPI — not RSS alone. Next integrations are the gap-audit output. Commercial Purview/Wiz/Prisma are skip.
 
 ## CLI
 

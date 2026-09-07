@@ -1,11 +1,14 @@
 # dspm/loop
 
-5-stage Discover→Evaluate→Integrate→Validate→Compound watcher.
-
-JSON is the default CLI output. Pass `--human` for a table.
+5-stage Discover → Evaluate → Integrate → Validate → Compound.
 
 ```bash
-dspm loop watch
+dspm loop improve          # forums + GitHub search fixture + PyPI + gap-audit
+dspm loop gap-audit        # catalog self-challenge (github / pypi / other tools)
+dspm loop watch --fetch    # live RSS (optional)
 ```
 
-Primary OSS tools and honest gaps are listed in the package inventory (`dspm audit inventory`). This module does not add paid APIs, GPUs, or Ollama.
+Sources: `sources.yaml` (Reddit, HN, Lobsters, Track Awesome List, GitHub Releases, PyPI RSS).
+Catalog: `catalog.yaml` (forums, GitHub tools, other tools, Python libs) with honest missing/partial status.
+Rubric: 4-axis (module-fit, signal, license, actionability), threshold ≥ 7.
+No paid APIs, no GPU, no Ollama.

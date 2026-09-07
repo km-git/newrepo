@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from dspm.classification.checksums import abn_checksum_ok, nhs_checksum_ok, tfn_plausible
+from dspm.classification.column_heuristics import classify_columns
 from dspm.classification.models import ClassifyResult, Finding
 from dspm.classification.recognizers import CARD_RE, Match, builtin_recognizers, luhn_ok, try_presidio
 from dspm.custom_types.service import recognizers_from_registry
@@ -107,7 +108,7 @@ def _read_tabular(path: Path, limit: int = 100) -> tuple[list[dict[str, str]], i
 
 def classify_path(path: str | Path, *, limit: int = 100, store: FindingsStore | None = None) -> ClassifyResult:
     target = Path(path)
-    engine = "stdlib-recognizers"
+    engine = "stdlib-recognizers+column-heuristics"
     presidio = try_presidio()
     if presidio.get("available"):
         engine = "presidio+" + engine
@@ -129,6 +130,8 @@ def classify_path(path: str | Path, *, limit: int = 100, store: FindingsStore | 
     elif target.suffix.lower() in {".csv", ".json"}:
         rows, total = _read_tabular(target, limit=limit)
         rows_scanned = min(limit, total)
+        if rows:
+            findings.extend(classify_columns(list(rows[0].keys()), source=str(target)))
         for idx, row in enumerate(rows):
             for col, value in row.items():
                 for finding in analyze_text(value, column=col, source=str(target)):

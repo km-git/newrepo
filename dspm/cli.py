@@ -161,6 +161,34 @@ def _cmd_loop_monthly(ns: argparse.Namespace) -> int:
     return _print(generate_monthly(), ns)
 
 
+def _cmd_loop_gap_audit(ns: argparse.Namespace) -> int:
+    from dspm.loop.gap_audit import audit, save_audit
+
+    report = audit()
+    save_audit(report)
+    return _print(
+        {
+            "summary": report.get("summary"),
+            "next_integrations": report.get("next_integrations"),
+            "challenge_questions": report.get("challenge_questions"),
+        },
+        ns,
+    )
+
+
+def _cmd_loop_improve(ns: argparse.Namespace) -> int:
+    from dspm.loop.improve import improve
+
+    return _print(
+        improve(
+            fetch=ns.fetch,
+            github_fixture=ns.github_fixture,
+            pypi_fixture=ns.pypi_fixture,
+        ),
+        ns,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dspm", description="OSS DSPM (Cyera-like) CLI")
     parser.add_argument("--human", action="store_true", help="pretty table instead of JSON")
@@ -270,6 +298,13 @@ def build_parser() -> argparse.ArgumentParser:
     watch.set_defaults(func=_cmd_loop_watch)
     monthly = loop_sub.add_parser("monthly")
     monthly.set_defaults(func=_cmd_loop_monthly)
+    gap = loop_sub.add_parser("gap-audit")
+    gap.set_defaults(func=_cmd_loop_gap_audit)
+    improve_p = loop_sub.add_parser("improve")
+    improve_p.add_argument("--fetch", action="store_true")
+    improve_p.add_argument("--github-fixture", default=None)
+    improve_p.add_argument("--pypi-fixture", default=None)
+    improve_p.set_defaults(func=_cmd_loop_improve)
     return parser
 
 
