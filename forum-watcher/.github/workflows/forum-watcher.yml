@@ -5,6 +5,13 @@ on:
     - cron: "0 9 * * 1"
       timezone: "Australia/Sydney"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Source group"
+        required: true
+        type: choice
+        default: all
+        options: [community, vendor, all]
 
 permissions:
   contents: write
@@ -30,7 +37,8 @@ jobs:
       - name: Fetch, dedupe, classify
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/watch.py
+          WATCH_MODE: ${{ github.event.inputs.mode || 'all' }}
+        run: python scripts/watch.py --mode "${WATCH_MODE}"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
