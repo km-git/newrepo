@@ -226,6 +226,28 @@ def main() -> None:
     help="With --paper-forward: skip OHLC network fetch (structural test only)",
   )
   parser.add_argument(
+    "--paper-forward-backfill",
+    action="store_true",
+    help="Backfill missing days in the 30-day paper-forward proof window (point-in-time OHLC)",
+  )
+  parser.add_argument(
+    "--paper-forward-backfill-force",
+    action="store_true",
+    help="With --paper-forward-backfill: rerun all window days (replaces existing snapshots)",
+  )
+  parser.add_argument(
+    "--paper-forward-days",
+    type=int,
+    default=0,
+    help="Proof window length in days (default EW_PAPER_PROOF_DAYS or 30)",
+  )
+  parser.add_argument(
+    "--continuous-proof",
+    action="store_true",
+    help="LLM-free learn→policy→paper-forward cycle (continuous improvement)",
+  )
+  parser.add_argument(
+
     "--daily-trading-tick",
     action="store_true",
     help="LLM-free composite tick: proof + GOAT audit + tactical posture + health readiness",
@@ -267,6 +289,23 @@ def main() -> None:
     "--gap-audit",
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
+  )
+  parser.add_argument(
+    "--monetize-report",
+    action="store_true",
+    help="Signal licensing + royalty desk report (writes output/monetize/latest_report.json + reports/MONETIZATION_STRATEGY.md)",
+  )
+  parser.add_argument(
+    "--tier",
+    choices=("free", "pro", "enterprise"),
+    default=None,
+    help="With --monetize-report: restrict to one tier (default: all three)",
+  )
+  parser.add_argument(
+    "--monetize-months",
+    type=int,
+    default=1,
+    help="With --monetize-report: billing period length in months (default 1)",
   )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
@@ -390,6 +429,13 @@ def main() -> None:
     report = run_effectiveness_validation()
     print(json.dumps(report.to_dict(), indent=2, default=str))
     sys.exit(0 if report.ok else 1)
+
+  if args.monetize_report:
+    from engine.monetize import run_monetize_report
+
+    result = run_monetize_report(tier=args.tier, months=args.monetize_months)
+    print(json.dumps(result, indent=2, default=str))
+    return
 
   if args.data_intel:
     from gateway.data_hub import live_market_state
@@ -520,6 +566,31 @@ def main() -> None:
       default=str,
     ))
     return
+
+  if args.paper_forward_backfill:
+    from engine.autonomous_ops import run_paper_backfill_tick
+
+    print(json.dumps(
+      run_paper_backfill_tick(
+        fetch_ohlc=not args.paper_forward_no_fetch,
+        force=args.paper_forward_backfill_force,
+        days=args.paper_forward_days or None,
+      ),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if getattr(args, "continuous_proof", False):
+    from engine.autonomous_ops import run_continuous_proof_tick
+
+    print(json.dumps(
+      run_continuous_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
+      indent=2,
+      default=str,
+    ))
+    return
+
 
   if args.daily_trading_tick:
     from engine.daily_trading_ops import run_daily_trading_tick
