@@ -5,19 +5,30 @@ on:
     - cron: "0 9 * * 1"
       timezone: "Australia/Sydney"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Source group"
+        required: true
+        type: choice
+        default: all
+        options: [community, vendor, all]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   watch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     defaults:
       run:
         working-directory: forum-watcher
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -30,10 +41,11 @@ jobs:
       - name: Fetch, dedupe, classify
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/watch.py
+          WATCH_MODE: ${{ github.event.inputs.mode || 'all' }}
+        run: python scripts/watch.py --mode "${WATCH_MODE}"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           commit-message: "discoveries: weekly forum scan"
           title: Discoveries weekly forum scan
@@ -45,3 +57,20 @@ jobs:
           add-paths: |
             forum-watcher/discoveries/*.md
             forum-watcher/state/seen.json
+
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Touch keepalive stamp
+        run: |
+          mkdir -p forum-watcher/state
+          date -u +%Y-%m-%dT%H:%M:%SZ > forum-watcher/state/keepalive.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add forum-watcher/state/keepalive.txt
+          git diff --cached --quiet || git commit -m "chore: forum-watcher keepalive"
+          git push

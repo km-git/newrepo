@@ -78,6 +78,82 @@ def test_blocklist_and_heuristic_verdict():
     assert hinted_only["verdict"] != "discover"
 
 
+def test_mode_filters_vendor_vs_community():
+    watch = _load_watch()
+    sources = [
+        {"name": "r/sysadmin", "group": "community"},
+        {"name": "r/netbackup", "group": "vendor"},
+    ]
+    assert [s["name"] for s in watch.filter_sources(sources, "community")] == ["r/sysadmin"]
+    assert [s["name"] for s in watch.filter_sources(sources, "vendor")] == ["r/netbackup"]
+    assert len(watch.filter_sources(sources, "all")) == 2
+
+
+def test_vendor_prompt_includes_jargon_block():
+    watch = _load_watch()
+    prompt = watch.classify_prompt(
+        {
+            "title": "VBR 12.3 VONE dashboard",
+            "summary": "Helios vs CommCell notes",
+            "source": "r/veeam",
+            "url": "https://example.com/vbr",
+            "group": "vendor",
+            "vendor": "veeam",
+            "module_hint": "vtl-cloud, restore",
+        }
+    )
+    assert "BEX = BackupExec" in prompt
+    assert "VBR = Veeam Backup & Replication" in prompt
+    community = watch.classify_prompt(
+        {
+            "title": "LTFS mount how-to",
+            "summary": "tape",
+            "source": "r/sysadmin",
+            "url": "https://example.com/ltfs",
+            "group": "community",
+            "module_hint": "tape-ops",
+        }
+    )
+    assert "BEX = BackupExec" not in community
+
+
+def test_canonical_url_drops_shorteners():
+    watch = _load_watch()
+    assert watch.canonical_url("https://t.co/abc") is None
+    assert watch.canonical_url("https://github.com/borgbackup/borg") == (
+        "https://github.com/borgbackup/borg"
+    )
+
+
+def test_vendor_heuristic_does_not_zero_fit_on_jargon():
+    watch = _load_watch()
+    result = watch.heuristic_classify(
+        {
+            "title": "CommCell MTree backup to DD Boost",
+            "summary": "Helios policy and VBR comparison",
+            "source": "r/commvault",
+            "group": "vendor",
+            "vendor": "commvault",
+            "module_hint": "tape-ops, tape-vault",
+            "url": "https://example.com/cc",
+        }
+    )
+    assert result["module"] in {"tape-ops", "tape-vault"}
+    assert result["score"] >= 5
+
+
+def test_eighteen_tools_inventory():
+    watch = _load_watch()
+    tools = watch.load_test_tools()
+    names = {t["name"] for t in tools}
+    assert len(tools) == 18
+    assert "mhvtl" in names
+    assert "SeaweedFS" in names
+    assert "VeeamZIP" in names
+    veeam = next(t for t in tools if t["name"] == "VeeamZIP")
+    assert veeam.get("windows_only") is True
+
+
 def test_render_markdown_checkboxes():
     watch = _load_watch()
     classified = [
@@ -103,3 +179,4 @@ def test_forum_monitoring_doc_exists():
     text = doc.read_text(encoding="utf-8")
     assert "Australia/Sydney" in text
     assert "forum-watcher" in text
+    assert "Vendor-forum + mhvtl layer" in text

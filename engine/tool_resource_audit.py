@@ -48,7 +48,7 @@ GITHUB_TOOLS = [
 ]
 
 PYTHON_LIBS = [
-  "ccxt", "pandas", "numpy", "yfinance", "websockets", "diskcache", "zstandard",
+  "ccxt", "pandas", "numpy", "yfinance", "websockets", "msgpack", "zstandard",
   "tiktoken", "numba", "pyharmonics",
 ]
 

@@ -88,6 +88,19 @@ That's the whole thing. No GPU, no Ollama, no 8-layer cake, no self-hosting. Ruf
 
 ---
 
+## 5. Zero-key GitHub-native scanners (use these when Bugbot is capped)
+
+Cursor Bugbot is usage-metered. When it skips, do **not** retry it. This public repo can run GitHub's own tools for free:
+
+1. **CodeQL** (`.github/workflows/bugbot-free.yml`) — GitHub code scanning, Python + Actions, `security-and-quality`. Free on public repos. SHA-pinned to `github/codeql-action` v4.37.9.
+2. **Semgrep Community Edition** — `p/python` + `p/security-audit`, no Semgrep App token. SARIF uploaded to the Security tab.
+3. **reviewdog** — posts Semgrep findings as inline PR review comments with `GITHUB_TOKEN` (no LLM key). SHA-pinned `reviewdog/action-setup` v1.5.0, reviewdog CLI v0.21.0.
+4. **Ruff `--output-format=github`** — native PR annotations from the existing lint-security workflow.
+
+Do not install random BYOK review bots that need OpenAI/Anthropic keys. Do not pin `aquasecurity/trivy-action` by mutable tag (TeamPCP supply-chain lesson). First-party `actions/*` stay ref-pinned like the rest of this repo; third-party actions are SHA-pinned.
+
+---
+
 ## References
 
 [1] Cursor docs — Bugbot (capabilities and `/review` command in Cursor 3.7+). https://cursor.com/docs/bugbot and https://cursor.com/blog/bugbot-updates-june-2026

@@ -1,92 +1,325 @@
 # Add or remove freely; the watcher reloads on every run.
 # kind: rss (default) | algolia | se-api
+# group: community | vendor  (filter with --mode)
+# Every source must have been curl-verified 200 + XML/JSON. See
+# vendor_forum_watcher_prompt.md for the DROP table (Telligent/HTML/403).
+
+# --- community (existing weekly scan) ---
 - name: r/sysadmin
   url: https://www.reddit.com/r/sysadmin/.rss
   kind: rss
+  group: community
   module_hint: tape-ops, restore
   max_items: 25
 - name: r/DataHoarder
   url: https://www.reddit.com/r/DataHoarder/.rss
   kind: rss
+  group: community
   module_hint: media-ingest, tape-vault
   max_items: 25
 - name: r/homelab
   url: https://www.reddit.com/r/homelab/.rss
   kind: rss
+  group: community
   module_hint: disk-ingest
   max_items: 25
 - name: r/selfhosted
   url: https://www.reddit.com/r/selfhosted/.rss
   kind: rss
+  group: community
   module_hint: disk-ingest, tape-vault
   max_items: 25
 - name: r/BorgBackup
   url: https://www.reddit.com/r/BorgBackup/.rss
   kind: rss
+  group: community
   module_hint: disk-ingest
   max_items: 25
 - name: r/Veeam
   url: https://www.reddit.com/r/Veeam/.rss
   kind: rss
+  group: community
+  vendor: veeam
   module_hint: vtl-cloud, restore
   max_items: 25
 - name: HN Algolia tape ops
   url: "https://hn.algolia.com/api/v1/search_by_date?query=tape%20OR%20ltfs%20OR%20lto&tags=story&hitsPerPage=20"
   kind: algolia
+  group: community
   module_hint: tape-ops
   max_items: 20
 - name: HN Algolia vtl
   url: "https://hn.algolia.com/api/v1/search_by_date?query=vtl%20OR%20veeam%20OR%20commvault&tags=story&hitsPerPage=15"
   kind: algolia
+  group: community
   module_hint: vtl-cloud
   max_items: 15
 - name: SO tag backup
   url: https://stackoverflow.com/feeds/tag/backup
   kind: rss
+  group: community
   module_hint: disk-ingest, restore
   max_items: 25
 - name: SO API backup
   url: https://api.stackexchange.com/2.3/questions?order=desc&sort=activity&tagged=backup&site=stackoverflow&pagesize=15
   kind: se-api
+  group: community
   module_hint: disk-ingest, restore
   max_items: 15
 - name: lobsters hardware
   url: https://lobste.rs/t/hardware.rss
   kind: rss
+  group: community
   module_hint: disk-ingest, tape-ops
   max_items: 15
 - name: lobsters linux
   url: https://lobste.rs/t/linux.rss
   kind: rss
+  group: community
   module_hint: tape-ops, disk-ingest
   max_items: 15
 - name: borg releases
   url: https://github.com/borgbackup/borg/releases.atom
   kind: rss
+  group: community
   module_hint: disk-ingest
   max_items: 5
 - name: kopia releases
   url: https://github.com/kopia/kopia/releases.atom
   kind: rss
+  group: community
   module_hint: disk-ingest
   max_items: 5
 - name: restic releases
   url: https://github.com/restic/restic/releases.atom
   kind: rss
+  group: community
   module_hint: disk-ingest
   max_items: 5
 - name: velero releases
   url: https://github.com/velero-io/velero/releases.atom
   kind: rss
+  group: community
   module_hint: disk-ingest
   max_items: 5
 - name: AWS storage blog
   url: https://aws.amazon.com/blogs/storage/feed/
   kind: rss
+  group: community
   module_hint: tape-vault, vtl-cloud
   max_items: 10
 - name: Tape Ark blog
   url: https://www.tapeark.com/feed/
   kind: rss
+  group: community
   module_hint: monetize
   max_items: 5
+
+# --- vendor (8 enterprise backup vendors + cross-vendor; curl-verified 2026-09-07) ---
+# Reddit fallbacks: Telligent RSS for Veritas/Cohesity/Rubrik/Veeam/Commvault is 403/HTML.
+- name: r/netbackup
+  url: https://www.reddit.com/r/netbackup/.rss
+  kind: rss
+  group: vendor
+  vendor: veritas
+  module_hint: tape-ops, tape-vault, vtl-cloud, restore, audit, tape-saas
+  max_items: 25
+- name: r/cohesity
+  url: https://www.reddit.com/r/cohesity/.rss
+  kind: rss
+  group: vendor
+  vendor: cohesity
+  module_hint: tape-ops, tape-vault, tape-duplicate, analytics, llm-corpus, ml-enrich
+  max_items: 25
+- name: r/rubrik
+  url: https://www.reddit.com/r/rubrik/.rss
+  kind: rss
+  group: vendor
+  vendor: rubrik
+  module_hint: tape-ops, tape-vault, audit, analytics, ml-enrich, tape-saas
+  max_items: 25
+- name: r/commvault
+  url: https://www.reddit.com/r/commvault/.rss
+  kind: rss
+  group: vendor
+  vendor: commvault
+  module_hint: tape-ops, tape-vault, vtl-cloud, audit, analytics, tape-saas
+  max_items: 25
+- name: r/acronis
+  url: https://www.reddit.com/r/acronis/.rss
+  kind: rss
+  group: vendor
+  vendor: acronis
+  module_hint: tape-ops, vtl-cloud, disk-ingest, monetize
+  max_items: 25
+- name: r/backupexec
+  url: https://www.reddit.com/r/backupexec/.rss
+  kind: rss
+  group: vendor
+  vendor: backupexec
+  module_hint: tape-ops, restore, tape-vault
+  max_items: 25
+- name: r/dell
+  url: https://www.reddit.com/r/dell/.rss
+  kind: rss
+  group: vendor
+  vendor: dell
+  module_hint: tape-ops, tape-vault, vtl-cloud, media-ingest, analytics
+  max_items: 25
+- name: Veeam blog
+  url: https://www.veeam.com/blog/feed
+  kind: rss
+  group: vendor
+  vendor: veeam
+  module_hint: vtl-cloud, restore, tape-ops, disk-ingest, tape-saas
+  max_items: 10
+- name: Cohesity blog
+  url: https://www.cohesity.com/feed/
+  kind: rss
+  group: vendor
+  vendor: cohesity
+  module_hint: tape-ops, tape-vault, tape-duplicate, analytics, llm-corpus, ml-enrich
+  max_items: 10
+- name: cvpysdk releases
+  url: https://github.com/Commvault/cvpysdk/releases.atom
+  kind: rss
+  group: vendor
+  vendor: commvault
+  module_hint: tape-ops, tape-vault, vtl-cloud, audit
+  max_items: 5
+- name: commvault terraform provider
+  url: https://github.com/Commvault/terraform-provider-commvault/releases.atom
+  kind: rss
+  group: vendor
+  vendor: commvault
+  module_hint: tape-saas, audit
+  max_items: 5
+- name: cohesity powershell module
+  url: https://github.com/cohesity/cohesity-powershell-module/releases.atom
+  kind: rss
+  group: vendor
+  vendor: cohesity
+  module_hint: tape-ops, analytics
+  max_items: 5
+- name: rubrik sdk python
+  url: https://github.com/rubrikinc/rubrik-sdk-for-python/releases.atom
+  kind: rss
+  group: vendor
+  vendor: rubrik
+  module_hint: tape-ops, audit, tape-saas
+  max_items: 5
+- name: rubrik sdk powershell
+  url: https://github.com/rubrikinc/rubrik-sdk-for-powershell/releases.atom
+  kind: rss
+  group: vendor
+  vendor: rubrik
+  module_hint: tape-ops, audit, tape-saas
+  max_items: 5
+- name: dell csi-powerstore
+  url: https://github.com/dell/csi-powerstore/releases.atom
+  kind: rss
+  group: vendor
+  vendor: dell
+  module_hint: tape-vault, vtl-cloud, media-ingest
+  max_items: 5
+- name: dell csm
+  url: https://github.com/dell/csm/releases.atom
+  kind: rss
+  group: vendor
+  vendor: dell
+  module_hint: tape-vault, analytics
+  max_items: 5
+- name: acronis cyber platform examples
+  url: https://github.com/acronis/acronis-cyber-platform-python-examples/releases.atom
+  kind: rss
+  group: vendor
+  vendor: acronis
+  module_hint: disk-ingest, monetize
+  max_items: 5
+- name: SF tag veeam
+  url: https://serverfault.com/feeds/tag?tagnames=veeam
+  kind: rss
+  group: vendor
+  vendor: veeam
+  module_hint: vtl-cloud, restore, tape-ops
+  max_items: 15
+- name: SF tag commvault
+  url: https://serverfault.com/feeds/tag?tagnames=commvault
+  kind: rss
+  group: vendor
+  vendor: commvault
+  module_hint: tape-ops, tape-vault, vtl-cloud
+  max_items: 15
+- name: SF tag netbackup
+  url: https://serverfault.com/feeds/tag?tagnames=netbackup
+  kind: rss
+  group: vendor
+  vendor: veritas
+  module_hint: tape-ops, tape-vault, restore
+  max_items: 15
+- name: SF tag acronis
+  url: https://serverfault.com/feeds/tag?tagnames=acronis
+  kind: rss
+  group: vendor
+  vendor: acronis
+  module_hint: disk-ingest, vtl-cloud
+  max_items: 15
+- name: SF tag backupexec
+  url: https://serverfault.com/feeds/tag?tagnames=backupexec
+  kind: rss
+  group: vendor
+  vendor: backupexec
+  module_hint: tape-ops, restore
+  max_items: 15
+- name: SO tag veeam
+  url: https://stackoverflow.com/feeds/tag/veeam
+  kind: rss
+  group: vendor
+  vendor: veeam
+  module_hint: vtl-cloud, restore
+  max_items: 15
+- name: SO tag backupexec
+  url: https://stackoverflow.com/feeds/tag/backupexec
+  kind: rss
+  group: vendor
+  vendor: backupexec
+  module_hint: tape-ops, restore
+  max_items: 15
+- name: SO tag emc
+  url: https://stackoverflow.com/feeds/tag/emc
+  kind: rss
+  group: vendor
+  vendor: dell
+  module_hint: tape-ops, tape-vault, media-ingest
+  max_items: 15
+- name: HN Algolia vendor cluster
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=netbackup%20OR%20cohesity%20OR%20rubrik&tags=story&hitsPerPage=10"
+  kind: algolia
+  group: vendor
+  module_hint: tape-ops, vtl-cloud, tape-saas
+  max_items: 10
+- name: HN Algolia powerprotect
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=datadomain%20OR%20powerprotect&tags=story&hitsPerPage=10"
+  kind: algolia
+  group: vendor
+  vendor: dell
+  module_hint: tape-ops, tape-vault, vtl-cloud
+  max_items: 10
+- name: borg discussions
+  url: https://github.com/borgbackup/borg/discussions.atom
+  kind: rss
+  group: vendor
+  module_hint: disk-ingest, restore
+  max_items: 10
+- name: velero discussions
+  url: https://github.com/velero-io/velero/discussions.atom
+  kind: rss
+  group: vendor
+  module_hint: disk-ingest, restore
+  max_items: 10
+- name: seaweedfs discussions
+  url: https://github.com/seaweedfs/seaweedfs/discussions.atom
+  kind: rss
+  group: vendor
+  module_hint: tape-vault, vtl-cloud
+  max_items: 10

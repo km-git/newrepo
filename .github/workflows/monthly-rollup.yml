@@ -1,0 +1,73 @@
+# First Monday 09:00 Australia/Sydney. GitHub POSIX has no 1#1 — use 1-7 & Monday.
+name: monthly-rollup
+
+on:
+  schedule:
+    - cron: "0 9 1-7 * 1"
+      timezone: "Australia/Sydney"
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "YYYY-MM (default: current UTC month)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: forum-watcher
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Build monthly rollup
+        env:
+          MONTH: ${{ github.event.inputs.month }}
+        run: |
+          if [ -z "$MONTH" ]; then
+            python scripts/monthly.py
+          else
+            python scripts/monthly.py --month "$MONTH"
+          fi
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "monthly: source-quality rollup"
+          title: Monthly forum-watcher rollup
+          body: >
+            Auto-generated first-Monday rollup. Top sources, accept/reject
+            ratios, community-shift flips, vendor major versions, new tools.
+          branch: monthly/rollup
+          delete-branch: true
+          add-paths: |
+            forum-watcher/monthly/*.md
+
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Touch keepalive stamp
+        run: |
+          mkdir -p forum-watcher/state
+          date -u +%Y-%m-%dT%H:%M:%SZ > forum-watcher/state/keepalive.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add forum-watcher/state/keepalive.txt
+          git diff --cached --quiet || git commit -m "chore: monthly-rollup keepalive"
+          git push

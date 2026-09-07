@@ -1,0 +1,117 @@
+# Free validation tools the mhvtl layer can call. expected_path lets
+# validate.py skip a missing binary instead of failing the suite.
+# Install pins are "latest free/OSS"; bump only when a CVE or CLI break lands.
+tools:
+  - name: mhvtl
+    install_command: "git clone https://github.com/markh794/mhvtl.git && make && sudo make install"
+    version_pin: "markh794/mhvtl@master"
+    expected_path: /usr/bin/vtltape
+    module_map: [tape-ops, vtl-cloud, tape-duplicate]
+    test_runtime_seconds_estimate: 90
+    notes: "Kernel module. NEVER GitHub-hosted. No Docker Hub image adrianj/mhvtl (404 2026-09-07)."
+  - name: mtx
+    install_command: "sudo apt-get install -y mtx"
+    version_pin: distro
+    expected_path: /usr/bin/mtx
+    module_map: [tape-ops, vtl-cloud]
+    test_runtime_seconds_estimate: 5
+  - name: mt-st
+    install_command: "sudo apt-get install -y mt-st"
+    version_pin: distro
+    expected_path: /bin/mt
+    module_map: [tape-ops]
+    test_runtime_seconds_estimate: 5
+  - name: ltfs
+    install_command: "sudo apt-get install -y ltfs"
+    version_pin: distro
+    expected_path: /usr/bin/mkltfs
+    module_map: [tape-ops, media-ingest]
+    test_runtime_seconds_estimate: 30
+  - name: BorgBackup
+    install_command: "sudo apt-get install -y borgbackup"
+    version_pin: ">=1.2"
+    expected_path: /usr/bin/borg
+    module_map: [disk-ingest, restore]
+    test_runtime_seconds_estimate: 20
+  - name: Restic
+    install_command: "sudo apt-get install -y restic"
+    version_pin: ">=0.17"
+    expected_path: /usr/bin/restic
+    module_map: [disk-ingest, restore]
+    test_runtime_seconds_estimate: 20
+  - name: Kopia
+    install_command: "curl -sSL https://kopia.io/install.sh | sh"
+    version_pin: latest
+    expected_path: /usr/bin/kopia
+    module_map: [disk-ingest, restore]
+    test_runtime_seconds_estimate: 20
+  - name: Duplicati
+    install_command: "see https://duplicati.com — skip on headless runners without UI"
+    version_pin: latest
+    expected_path: /usr/bin/duplicati-cli
+    module_map: [disk-ingest]
+    test_runtime_seconds_estimate: 40
+  - name: Duplicacy
+    install_command: "go install github.com/gilbertchen/duplicacy@latest"
+    version_pin: latest
+    expected_path: duplicacy
+    module_map: [disk-ingest]
+    test_runtime_seconds_estimate: 25
+  - name: SeaweedFS
+    install_command: "go install github.com/seaweedfs/seaweedfs/weed@latest"
+    version_pin: latest
+    expected_path: /usr/local/bin/weed
+    module_map: [tape-vault, vtl-cloud]
+    test_runtime_seconds_estimate: 30
+    notes: "Smoke with `weed mini -dir=./data`, not `weed server -s3`."
+  - name: Rclone
+    install_command: "sudo apt-get install -y rclone"
+    version_pin: distro
+    expected_path: /usr/bin/rclone
+    module_map: [tape-vault, disk-ingest]
+    test_runtime_seconds_estimate: 15
+  - name: Velero
+    install_command: "go install github.com/vmware-tanzu/velero/cmd/velero@latest"
+    version_pin: latest
+    expected_path: velero
+    module_map: [disk-ingest, restore]
+    test_runtime_seconds_estimate: 45
+  - name: proxmox-backup-client
+    install_command: "see Proxmox PBS docs; Debian repo pbs-client"
+    version_pin: distro
+    expected_path: /usr/bin/proxmox-backup-client
+    module_map: [disk-ingest, tape-vault]
+    test_runtime_seconds_estimate: 40
+  - name: Wal-G
+    install_command: "go install github.com/wal-g/wal-g@latest"
+    version_pin: latest
+    expected_path: wal-g
+    module_map: [disk-ingest]
+    test_runtime_seconds_estimate: 30
+  - name: pgBackRest
+    install_command: "sudo apt-get install -y pgbackrest"
+    version_pin: distro
+    expected_path: /usr/bin/pgbackrest
+    module_map: [disk-ingest]
+    test_runtime_seconds_estimate: 30
+  - name: etcdctl
+    install_command: "sudo apt-get install -y etcd-client"
+    version_pin: distro
+    expected_path: /usr/bin/etcdctl
+    module_map: [disk-ingest, restore]
+    test_runtime_seconds_estimate: 15
+    notes: "etcdctl snapshot save/restore."
+  - name: VeeamZIP
+    install_command: "Windows only — Veeam Backup Free / VeeamZIP PowerShell"
+    version_pin: vendor
+    expected_path: Veeam.Backup.PowerShell
+    module_map: [vtl-cloud, restore]
+    test_runtime_seconds_estimate: 60
+    windows_only: true
+  - name: Cohesity-SDK-python
+    install_command: "pip install cohesity-management-sdk"
+    version_pin: latest
+    expected_path: cohesity_management_sdk
+    module_map: [tape-ops, analytics, ml-enrich]
+    test_runtime_seconds_estimate: 20
+    notes: "Mock/API tests only; no paid Cohesity CloudLab."
