@@ -320,7 +320,7 @@ def budget_policy_summary() -> Dict[str, Any]:
       "Routine/tiebreaker/planning/PR/improvement → Cursor Pro only (Grok High / Composer)",
       "EW_ALLOW_OTHER_MODELS=1 + EW_CURSOR_PRO_ONLY=0 — dev override only",
       "EW_LLM_EW_BYPASS=1 — zero tokens when EW engines strongly agree",
-      "tiktoken + tokenpruner + diskcache + zstd — prompt compression + cache",
+      "tiktoken + tokenpruner + sqlite/msgpack + zstd — prompt compression + cache",
       "EW_LLM_MAX_TOKENS_PER_MODEL=10000 — per-model daily cap",
     ],
   }

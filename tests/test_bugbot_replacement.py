@@ -18,7 +18,7 @@ GUIDE = ROOT / "mavis-deep-research" / "20260907_bugbot_replacement" / "final_tu
 
 RUFF_SELECT = ("E", "F", "W", "I", "UP", "B", "SIM", "RUF", "S")
 PR_AGENT_SHA = "f3b385ea2927247ddcff2fe252472380b9c8f5fc"
-GITLEAKS_SHA = "ff98106e4c7b2bc287b24eaf42907196329070c7"
+GITLEAKS_SHA = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 USES_RE = re.compile(r"^\s*uses:\s+(\S+)", re.MULTILINE)
 
@@ -74,6 +74,7 @@ def test_gitleaks_action_is_sha_pinned() -> None:
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
     assert "gitleaks/gitleaks-action@v2" not in text
+    assert "gitleaks/gitleaks-action@v3" not in text
     assert "gitleaks/gitleaks-action@main" not in text
     assert "--ignore-vuln PYSEC-2026-2447" in text
 

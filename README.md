@@ -7,7 +7,7 @@ CLI tool for Elliott Wave impulse validation (strict R1/R2/R3), ABC correction d
 - **Multi-timeframe pipeline** (1w → 15m): HTF bias, adaptive MonoWaves, kill zone clustering, harmonic overlay, execution validation
 - **Strict rule enforcement**: R1/R2/R3 are hard gates; no rule relaxation for standard impulses
 - **Token-saving infrastructure** for Cursor agents:
-  - **Compressed disk cache** (`zstd` + `msgpack` + `diskcache`) for OHLCV, monowaves, harmonics, Monte Carlo
+  - **Compressed disk cache** (`zstd` + `msgpack` + sqlite index) for OHLCV, monowaves, harmonics, Monte Carlo
   - **Semantic gateway cache** (Cloudflare AI Gateway pattern) for repetitive OKX OHLCV queries
   - **RepoMix export** (`--repomix`) minifies code structures for LLM agent context
   - **Deduplication** of harmonic patterns, monowaves, and tool-call logs
@@ -68,7 +68,7 @@ EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefe
 EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
 ```
 
-**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `diskcache` · `zstandard` · `cachetic` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `msgpack` · `zstandard` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
 
 ## Cursor Pro backend (default)
 
