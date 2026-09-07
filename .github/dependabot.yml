@@ -6,13 +6,18 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    ignore:
+      - dependency-name: "torch"
+      - dependency-name: "trivy"
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
     labels:
       - dependencies

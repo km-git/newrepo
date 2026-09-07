@@ -77,7 +77,39 @@ def test_pr_agent_workflow_is_sha_pinned_and_skips_without_key() -> None:
         assert SHA_RE.fullmatch(ref), uses
 
 
-def test_gitleaks_action_is_sha_pinned() -> None:
+def test_no_compromised_reviewdog_action_setup_tag() -> None:
+    """CVE-2025-30154 hit the mutable @v1 tag. SHA-pinned action-setup is allowed."""
+    workflows = ROOT / ".github" / "workflows"
+    for path in workflows.glob("*.yml"):
+        text = path.read_text(encoding="utf-8")
+        assert "uses: reviewdog/action-setup@v1" not in text, path.name
+        assert "uses: reviewdog/action-setup@main" not in text, path.name
+        for uses in USES_RE.findall(text):
+            if not uses.startswith("reviewdog/action-setup@"):
+                continue
+            ref = uses.split("@", 1)[1].split("#", 1)[0]
+            assert SHA_RE.fullmatch(ref), uses
+            assert ref == REVIEWDOG_SHA, uses
+
+
+def test_codeql_and_trufflehog_are_sha_pinned() -> None:
+    assert not (ROOT / ".github" / "workflows" / "codeql.yml").exists()
+    bugbot = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in bugbot
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in bugbot
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c" in lint
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in lint
+    for uses in USES_RE.findall(bugbot + "\n" + lint):
+        if uses.startswith("actions/"):
+            continue
+        if uses.startswith("google/osv-scanner-action/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        if "/" not in uses:
+            continue
+        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/")):
+            assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
     assert "gitleaks/gitleaks-action@v2" not in text
@@ -97,15 +129,22 @@ def test_ruff_passes_on_replacement_paths() -> None:
         pytest.skip("ruff is not installed")
     paths = [
         "tape_to_cloud/",
+        "dspm/",
         "engine/monetization_strategy.py",
         "engine/tape_to_cloud_hub.py",
+        "engine/tape_to_cloud_report_html.py",
         "engine/tape_to_cloud_reports.py",
         "tests/test_monetization_strategy.py",
         "tests/test_tape_to_cloud_monetize.py",
         "tests/test_tape_to_cloud_hub.py",
+        "tests/test_tape_to_cloud_layers.py",
         "tests/test_tape_to_cloud_reports.py",
         "tests/test_tape_to_cloud_pipeline.py",
         "tests/test_bugbot_replacement.py",
+        "tests/test_dspm_architecture.py",
+        "tests/test_dspm_core.py",
+        "tests/test_dspm_loop.py",
+        "tests/test_dspm_improve.py",
         "dmarc",
         "tests/dmarc",
         "scripts/serve_dmarc.py",
@@ -126,6 +165,7 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     assert "p/security-audit" in text
     assert "pull_request_target" not in text
     assert "dmarc/" in text
+    assert "dspm/" in text
     assert "merge_group:" in text
     for uses in USES_RE.findall(text):
         if uses.startswith("actions/"):
@@ -158,8 +198,11 @@ def test_static_review_workflow_is_zero_key_bugbot_replacement() -> None:
 def test_lint_security_has_detect_secrets_and_github_annotations() -> None:
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert "detect-secrets" in text
+    assert "trufflehog" in text
+    assert "ruff-sarif" in text
     assert "--output-format=github" in text
     assert "dmarc/requirements.txt" in text
+    assert "dspm/" in text
     assert "merge_group:" in text
     assert "persist-credentials: false" in text
     assert "permissions:" in text.split("jobs:")[0]

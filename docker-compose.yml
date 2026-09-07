@@ -44,7 +44,44 @@ services:
     depends_on:
       - elasticsearch
 
+  postgres-dspm:
+    image: postgres:17-alpine
+    profiles: ["dspm", "catalog"]
+    environment:
+      POSTGRES_USER: dspm
+      POSTGRES_PASSWORD: dspm
+      POSTGRES_DB: dspm
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-dspm-data:/var/lib/postgresql/data
+      - ./dspm/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  datahub:
+    image: acryldata/datahub-actions:v1.2.0.1
+    command: ["python", "-m", "datahub_actions.entrypoint"]
+    depends_on:
+      - postgres-dspm
+    environment:
+      DATAHUB_GMS_HOST: http://datahub-gms:8080
+    profiles: ["catalog"]
+
+  minio:
+    image: minio/minio:latest
+    profiles: ["dspm"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: dspm
+      MINIO_ROOT_PASSWORD: dspm-dspm-dspm
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
 volumes:
   postgres-data:
   parsedmarc-data:
   es-data:
+  postgres-dspm-data:
+  minio-data:
