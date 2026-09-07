@@ -82,6 +82,10 @@ def test_workflows_exist_and_sha_pin_actions() -> None:
             assert "pull_request_target" not in text
             assert "github.event.pull_request.user.login" in text
             assert "github.event.pull_request.head.repo.full_name" in text
+        if name == "licensespend-rebase.yml":
+            assert "persist-credentials: false" in text
+            assert "HEAD_REF:" in text
+            assert "ref: ${{ github.event.pull_request.head.ref }}" not in text
         for line in text.splitlines():
             stripped = line.strip()
             if not stripped.startswith("uses:"):
