@@ -1,0 +1,81 @@
+# Zero-key Bugbot replacement. No LLM, no OPENAI_KEY, no Bugbot retry.
+# Ruff GitHub annotations + heuristic TLS/workflow scan posted as a PR comment.
+# Public-repo AI review: comment @CodiumAI-Agent /review or install CodeRabbit.
+name: Static review (Bugbot replacement)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  static-review:
+    name: static-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install "ruff>=0.9.0"
+
+      - name: Ruff GitHub annotations
+        id: ruff
+        continue-on-error: true
+        run: ruff check --config ruff.toml --output-format=github dmarc tests/dmarc scripts/serve_dmarc.py tests/test_bugbot_replacement.py tests/test_pr_github_ci.py
+
+      - name: Generate static review
+        id: review
+        continue-on-error: true
+        run: python -m dmarc.loop.static_review --root . --output /tmp/static-review.md
+
+      - name: Merge-queue status
+        if: github.event_name == 'merge_group'
+        run: echo "static-review merge_group check reported"
+
+      - name: Post or update PR comment
+        if: github.event_name != 'merge_group'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/static-review.md', 'utf8');
+            const marker = '<!-- static-review-bugbot-replacement -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail on findings
+        if: steps.ruff.outcome == 'failure' || steps.review.outcome == 'failure'
+        run: |
+          echo "static-review found issues (see Ruff annotations and the PR comment)"
+          exit 1

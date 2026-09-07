@@ -14,6 +14,7 @@ RUFF_TOML = ROOT / "ruff.toml"
 PRECOMMIT = ROOT / ".pre-commit-config.yaml"
 PR_AGENT = ROOT / ".github" / "workflows" / "pr-agent.yml"
 LINT_SECURITY = ROOT / ".github" / "workflows" / "lint-security.yml"
+STATIC_REVIEW = ROOT / ".github" / "workflows" / "static-review.yml"
 GUIDE = ROOT / "mavis-deep-research" / "20260907_bugbot_replacement" / "final_turn_001.md"
 
 RUFF_SELECT = ("E", "F", "W", "I", "UP", "B", "SIM", "RUF", "S")
@@ -103,6 +104,9 @@ def test_ruff_passes_on_replacement_paths() -> None:
         "tests/test_tape_to_cloud_reports.py",
         "tests/test_tape_to_cloud_pipeline.py",
         "tests/test_bugbot_replacement.py",
+        "dmarc",
+        "tests/dmarc",
+        "scripts/serve_dmarc.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
@@ -119,8 +123,40 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     assert "semgrep" in text
     assert "p/security-audit" in text
     assert "pull_request_target" not in text
+    assert "dmarc/" in text
+    assert "merge_group:" in text
     for uses in USES_RE.findall(text):
         if uses.startswith("actions/"):
             continue
         ref = uses.split("@", 1)[1].split("#", 1)[0]
         assert SHA_RE.fullmatch(ref), uses
+
+
+def _assert_uses_pinned(text: str) -> None:
+    for uses in USES_RE.findall(text):
+        assert not uses.endswith("@main"), uses
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref) or ref.startswith("v"), uses
+
+
+def test_static_review_workflow_is_zero_key_bugbot_replacement() -> None:
+    text = STATIC_REVIEW.read_text(encoding="utf-8")
+    assert "pull_request_target" not in text
+    assert "merge_group:" in text
+    assert "persist-credentials: false" in text
+    assert "--output-format=github" in text
+    assert "dmarc.loop.static_review" in text
+    assert "Bugbot" in text
+    _assert_uses_pinned(text)
+    for uses in USES_RE.findall(text):
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref), uses
+
+
+def test_lint_security_has_detect_secrets_and_github_annotations() -> None:
+    text = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "detect-secrets" in text
+    assert "--output-format=github" in text
+    assert "dmarc/requirements.txt" in text
+    assert "merge_group:" in text
+    assert "persist-credentials: false" in text

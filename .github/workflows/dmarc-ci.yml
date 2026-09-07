@@ -42,7 +42,7 @@ jobs:
           pip install -r dmarc/requirements.txt
 
       - name: Ruff
-        run: ruff check --config ruff.toml dmarc tests/dmarc scripts/serve_dmarc.py
+        run: ruff check --config ruff.toml --output-format=github dmarc tests/dmarc scripts/serve_dmarc.py
 
       - name: Pytest dmarc
         run: python -m pytest tests/dmarc dmarc -q --tb=short
