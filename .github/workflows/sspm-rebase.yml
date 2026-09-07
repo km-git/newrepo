@@ -12,6 +12,9 @@ jobs:
   rebase:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Same-repo bot PRs (or operator-tagged [auto-rebase]). Default checkout is
+    # github.sha — never pass pull_request.head.sha/ref into actions/checkout
+    # (CodeQL actions/untrusted-checkout/medium).
     if: >
       github.event.pull_request.head.repo.full_name == github.repository &&
       (
@@ -24,21 +27,19 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Rebase on main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
-          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           git config user.name "sspm-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh pr checkout "$PR"
           git fetch origin main
-          git checkout -B "$BRANCH"
           if ! git rebase origin/main; then
             git rebase --abort || true
             gh pr comment "$PR" --body "@operator merge conflict on this PR — please resolve manually"
             exit 1
           fi
-          git push --force-with-lease origin "HEAD:$BRANCH"
+          git push --force-with-lease
