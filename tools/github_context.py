@@ -34,7 +34,7 @@ def fetch_github_summary(
 ) -> Dict[str, Any]:
   """
   Fetch compact PR + issue summary for architect context.
-  Uses PyGithub. Cached via diskcache.
+  Uses PyGithub. Cached via CompressedCache.
   """
   owner, name = _parse_repo(repo)
   cache = get_cache()

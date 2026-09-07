@@ -20,6 +20,7 @@ from engine.pr_github import (
   fetch_pr_context,
   merge_pr,
   request_changes_pr,
+  wait_for_required_ci,
 )
 from engine.pr_llm_advisor import get_pr_llm_advisory
 
@@ -40,6 +41,7 @@ def run_pr_executive_consensus(
   4. Auto-approve / merge / request-changes per final verdict
   """
   ensure_gh_auth()
+  wait_for_required_ci(pr_number, repo)
   pr = fetch_pr_context(pr_number, repo)
   head_sha = pr.get("head_sha", "")
 

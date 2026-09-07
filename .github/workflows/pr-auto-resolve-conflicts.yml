@@ -44,10 +44,10 @@ jobs:
           EW_LLM_BACKEND: cursor
           EW_GIT_USER_NAME: ew-conflict-bot
           EW_GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number || inputs.pr_number }}"
           if [[ -n "$PR_NUM" ]]; then
-            .venv/bin/python scripts/pr_auto_resolve_conflicts.py "$PR_NUM" --repo "${{ github.repository }}"
+            .venv/bin/python scripts/pr_auto_resolve_conflicts.py "$PR_NUM" --repo "$GITHUB_REPOSITORY"
           else
-            .venv/bin/python scripts/pr_auto_resolve_conflicts.py --all --repo "${{ github.repository }}"
+            .venv/bin/python scripts/pr_auto_resolve_conflicts.py --all --repo "$GITHUB_REPOSITORY"
           fi
