@@ -1,0 +1,7 @@
+# Partner MSP registry (operator-owned)
+partners:
+  - name: Example MSP Pty Ltd
+    region: AU-NSW
+    focus: Microsoft 365 + Okta
+    contact: partner@example.invalid
+    notes: Replace this entry with your own licensed partners.

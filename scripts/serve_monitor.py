@@ -16,6 +16,8 @@ if str(ROOT) not in sys.path:
 
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
 from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
+from sspm.web.app import serve_sspm_http
+from sspm.web.app import write_static as write_sspm_static
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -47,6 +49,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       self._serve_dashboard()
       return
     if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
+      return
+    if serve_sspm_http(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
     if serve_monetize_http(
       self,
@@ -96,6 +100,11 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
     mpaths = publish_monetize(output_dir)
     print(f"[monitor] wrote {paths['monitor_html']}")
     print(f"[monitor] wrote {mpaths['monetize_html']}")
+    try:
+      spaths = write_sspm_static("reports")
+      print(f"[monitor] wrote {spaths['html']}")
+    except Exception as exc:
+      print(f"[monitor] SSPM static skipped: {exc}")
 
   MonitorHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonitorHandler)
@@ -118,6 +127,12 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
   print(f"[monitor] Tape-to-Cloud API: http://127.0.0.1:{port}/api/tape-to-cloud/status")
   print(f"[monitor] Tape-to-Cloud reports: http://127.0.0.1:{port}/tape-to-cloud/reports")
   print(f"[monitor] Tape-to-Cloud validation: http://127.0.0.1:{port}/tape-to-cloud/validation")
+  print("[monitor] SSPM Explorer:")
+  print()
+  for url in explorer_launch_urls(host, port, "/sspm"):
+    print(url)
+    print()
+  print(f"[monitor] SSPM API: http://127.0.0.1:{port}/api/sspm")
   print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()
