@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,16 @@ def sha256_file(path: Path) -> str:
 
 def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+SHA256_HEX_RE = re.compile(r"^([0-9a-f]{64})$")
+
+
+def sha256_hex(digest: str) -> str:
+    match = SHA256_HEX_RE.fullmatch((digest or "").strip().lower())
+    if match is None:
+        raise ValueError(f"invalid sha256 digest: {digest!r}")
+    return match.group(1)
 
 
 def canonical_sha256(payload: Mapping[str, Any]) -> str:
