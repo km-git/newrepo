@@ -1019,6 +1019,23 @@
 - **First-customer route:** Clients already sending newsletters through platforms the firm set up
 - **Risk:** Email platforms shipping native AI personalisation; small budget line
 
+### Signal Licensing & Royalty Desk *(unranked — appended pending sort)*
+- **Category:** Analytics (crypto trading tools / quant infra)
+- **Target:** Solo systematic-crypto traders and small prop pods running EW/harmonic setups who already produce best-trade CSVs and want to resell filtered copies to a private Discord / newsletter / API tier
+- **Problem:** Signal desks leak the exact entry/SL/TP the moment they publish; there is no audit trail for who received what, no watermarking to trace redistribution, and no clean way to price a free tier vs. a paying tier vs. an enterprise plus-royalty tier
+- **Solution:** `engine/monetize.py` — deterministic Python module that filters/redacts the tool's existing best-trades output per tier (Free = 1d+1w with entry/SL/TP hidden and 24h delay; Pro = all TFs realtime; Enterprise = plus paper-fill trace + custom risk profile + royalty share of realised R), attaches a tamper-evident SHA-256 license block per signal, and emits an audit-ready per-tier revenue + royalty-owed report from resolved outcomes
+- **Architect model role:** Design-time only: tier ladder, redaction policy, watermark scheme, royalty formula. No runtime LLM.
+- **Workhorse model role:** None at runtime — pure deterministic Python so behaviour is unit-testable and reproducible for royalty audits (LLM output would make royalty numbers non-reproducible)
+- **Cursor workflow:** Agent scaffolds dataclass tier matrix + hash-based watermark + royalty aggregator; extends `ew_tool.py` with `--monetize-report`; unit tests cover redaction, hash determinism, per-tier revenue arithmetic
+- **Stack:** Python 3.12, stdlib (`hashlib`, `dataclasses`, `json`); reuses existing setup CSVs and `output/autodream/tracked_setups.json`; Stripe (out of scope for MVP — bring your own billing)
+- **Build days:** 3 (module + CLI + tests done in one build cycle; days 2–3 for Discord/API distribution glue)
+- **Setup AUD:** $0 (uses existing tool + repo; Stripe added later)
+- **Pricing AUD:** Free / A$49 Pro / A$249 Enterprise + 10% royalty of realised positive R (bet-mode defaults; verify vs. market before pricing publicly)
+- **Conservative Y1 midpoint revenue AUD:** $6,000 (10 Pro + 1 Enterprise midyear; royalty upside if performance holds)
+- **Validation probability:** ~30% (estimate — crowded space, edge must be provable)
+- **First-customer route:** Existing Discord/newsletter followers of the EW tool's public runs; small prop pods interested in the walk-forward gate results
+- **Risk:** Regulatory (signal-service licensing varies by jurisdiction — draft-for-review only, no financial advice claim); redistribution enforcement is watermark-only, not technical DRM; performance gates must stay honest or royalty numbers become misleading
+
 ---
 
 ## Top 10 Picks — One-Line Build Plans

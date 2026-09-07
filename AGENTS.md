@@ -3,7 +3,11 @@
 ## Cursor Cloud specific instructions
 
 This repo is a single Python CLI product: `ew_tool.py`, an Elliott Wave + harmonic
-trading-analysis tool. There is no web/GUI service — everything is terminal-driven.
+trading-analysis tool. Local stdlib dashboards (no Flask/FastAPI): `--monitor`
+(binds `0.0.0.0:8765`) and `--monetize-ui` (Monetize Explorer at `/monetize`).
+On Cursor Cloud, `http://127.0.0.1:8765` is the VM, not the user's laptop —
+use `python3 ew_tool.py --monetize-ui --static` and open
+`reports/monetize_explorer.html`.
 
 ### Environment
 
@@ -25,6 +29,8 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
 - Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root). No linter is configured.
 - Single symbol (live data fetch): `.venv/bin/python ew_tool.py --symbol BTC/USDT --crypto`
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
+- Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
+- Monetize Explorer (server): `.venv/bin/python ew_tool.py --monetize-ui` binds `0.0.0.0:8765` and prints `http://127.0.0.1:8765/monetize` on its own line
 - The CLI and `pytest` work from the repo root without `PYTHONPATH`, but the helper
   scripts under `scripts/` (e.g. `scripts/run_top50_batch.py`, `scripts/show_latest_analysis.py`)
   require `PYTHONPATH=/workspace`.
@@ -74,7 +80,8 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Workflow: `.github/workflows/autoresearch-nightly.yml` (03:00 UTC + manual dispatch); artifacts: `output/nightly/`, `experiments.jsonl`.
 - **Autonomous daily ops:** Full self-improve loop: pytest → improvement/OKF → autoresearch → goal-mode → web/social intel → ready drafts + `--pr-approve-all` → summary JSON.
   CLI: `python3 ew_tool.py --autonomous-daily` or `bash scripts/run_autonomous_daily.sh`.
-  **Daily trading ops (LLM-free):** `python3 ew_tool.py --daily-trading-tick` or `bash scripts/run_daily_trading_tick.sh` — paper proof + GOAT audit + tactical posture + health readiness.
+  **Daily trading ops (LLM-free):** `python3 ew_tool.py --daily-trading-tick` or `bash scripts/run_daily_trading_tick.sh` — paper proof + GOAT audit + profit lab + tactical posture + health readiness.
+- **Profit laboratory (outcome-driven):** Fee-adjusted expectancy is the north star. `pip install -r requirements-outcome.txt` then `python3 ew_tool.py --profit-lab` or `bash scripts/run_profit_lab.sh` (`--sweep` for vectorbt filter grid). Reports: `reports/PROFIT_LAB.md`, `reports/PROFIT_LAB_TEARSHEET.html`, `output/profit_lab/latest.json`. Env: `EW_EXPECTANCY_GATES=1`, `EW_MIN_STOP_PCT`, `EW_PROFIT_LAB_SWEEP=1`. Freqtrade export: `python3 ew_tool.py --freqtrade-export` → `output/freqtrade/ew_signals.json`.
   24h daemon: `bash scripts/run_autonomous_daemon.sh` (`EW_AUTONOMOUS_INTERVAL`, default 86400s).
   Workflow: `.github/workflows/autonomous-daily.yml` (04:00 UTC). Summary: `output/autonomous/daily/latest_summary.json`.
   Env: `EW_PR_AUTO_APPROVE=1`, `EW_PR_AUTO_MERGE=1`, `EW_PR_MERGE_WITHOUT_PANEL=1` (merge on rules-only APPROVE_MERGE when GitHub review API blocked).
@@ -86,6 +93,14 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Scripts: `python3 scripts/run_v6_scanner.py`, `bash scripts/run_v6_scanner_daemon.sh` (24/7).
   Best trades: `output/v6_scanner/best_trades_latest.json`. Env: `EW_V6_SETUP=1`, `EW_SCANNER_PAIRS=1000`, `EW_SCANNER_CHUNK=50`.
 - **Universe scanner (main, PR #13):** Overlapping 24/7 chunked scanner via `engine/universe_scanner.py`.
-  CLI: `python3 scripts/run_universe_247.py`, `bash scripts/run_universe_daemon.sh`.
-  Timeframes: `engine/timeframes.py` (`UNIVERSE_TFS`). Best trades: `output/latest_universe_best_trades.csv`.
-  Note: v6_scanner and universe_scanner coexist post-merge — consolidate in a follow-up (see PR #12).
+ CLI: `python3 scripts/run_universe_247.py`, `bash scripts/run_universe_daemon.sh`.
+ Timeframes: `engine/timeframes.py` (`UNIVERSE_TFS`). Best trades: `output/latest_universe_best_trades.csv`.
+ Note: v6_scanner and universe_scanner coexist post-merge — consolidate in a follow-up (see PR #12).
+- **Monetize (signal licensing + royalty desk, bet):** `engine/monetize.py` — deterministic, LLM-free.
+ Filters/redacts best-trade signals per tier (Free = 1d+1w with entry/SL/TP hidden + 24h delay;
+ Pro = all TFs realtime; Enterprise = plus paper-fill + custom risk + royalty on realised R),
+ attaches SHA-256 tamper-evident watermark + license block, and produces per-tier revenue +
+ R-based royalty reports from `output/autodream/tracked_setups.json` closed outcomes.
+ CLI: `python3 ew_tool.py --monetize-report [--tier free|pro|enterprise] [--monetize-months N]`.
+ Outputs: `output/monetize/latest_report.json` + `reports/MONETIZATION_STRATEGY.md`.
+ Env: `EW_MONETIZE_JSON`, `EW_MONETIZE_MD` (path overrides for tests).

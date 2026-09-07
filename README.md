@@ -310,7 +310,32 @@ The page auto-refreshes every 30s and polls `/api/dashboard` for:
 - Executable monitor queue
 - Embedded trade setups matrix iframe
 
-Artifacts: `output/monitor.html`, `output/autodream/dashboard_state.json` (regenerated on batch + server start).
+Artifacts: `output/monitor.html`, `output/autodream/dashboard_state.json` (regenerated on batch + server start). Header link opens the Monetize Explorer at `/monetize`.
+
+## Monetize Explorer
+
+Offline-safe license explorer. Open the committed HTML on your machine — no server required:
+
+```bash
+# Regenerate the self-contained page (prints a file:// path)
+python3 ew_tool.py --monetize-ui --static
+```
+
+Then open **[reports/monetize_explorer.html](reports/monetize_explorer.html)** (or the printed `file://` path) in a browser. Free / Pro / Enterprise switching is client-side from the embedded access matrix.
+
+Optional local server (binds `0.0.0.0`, prints clickable URLs on their own lines):
+
+```bash
+python3 ew_tool.py --monetize-ui
+# or
+python3 scripts/serve_monetize.py
+```
+
+```
+http://127.0.0.1:8765/monetize
+```
+
+A localhost URL on a remote Cloud Agent VM is not reachable from your laptop — use the static file there. The page shows the current `EW_LICENSE_TIER`, an interactive Free / Pro / Enterprise matrix, the royalty report (`output/system/royalty_report.json`), and gated-action probes that call `AccessController.require()` only (no live trading). APIs: `/api/monetize/status`, `/api/monetize/tier`, `/api/monetize/require`.
 
 ## Architecture
 
