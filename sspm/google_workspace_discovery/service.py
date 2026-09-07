@@ -30,7 +30,7 @@ def discover(
                 check=False,
             )
         except (subprocess.SubprocessError, FileNotFoundError):
-            pass
+            pass  # cnspec optional; fixture JSON is the source of truth
     data = json.loads(path.read_text(encoding="utf-8"))
     result = {
         "tenant_type": "gws",

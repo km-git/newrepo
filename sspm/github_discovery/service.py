@@ -40,6 +40,7 @@ def discover(
             }
             data = live
         except Exception:
+            # Live GitHub API failed: fall back to the checked-in fixture.
             data = json.loads(path.read_text(encoding="utf-8"))
     else:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -52,7 +53,7 @@ def discover(
                 check=False,
             )
         except (subprocess.SubprocessError, FileNotFoundError):
-            pass
+            pass  # cnspec optional; fixture JSON is the source of truth
     result = {
         "tenant_type": "github",
         "tenant_id": org or data.get("org", "unknown"),

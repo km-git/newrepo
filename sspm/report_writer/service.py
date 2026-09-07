@@ -62,6 +62,20 @@ def _scrub(text: str) -> str:
     return text
 
 
+_SECRET_KEYS = frozenset({"password", "secret", "token", "api_key", "client_secret", "client_id"})
+
+
+def _redact_secrets(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {
+            key: "[redacted]" if str(key).lower() in _SECRET_KEYS else _redact_secrets(value)
+            for key, value in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_redact_secrets(item) for item in obj]
+    return obj
+
+
 def generate(
     tenant: str,
     output: str | Path,
@@ -74,7 +88,7 @@ def generate(
     generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
     disclaimer = load_disclaimer("disclaimer_au")
     inventory_summary = json.dumps(inventory or {"tenant": tenant, "status": "demo"}, indent=2)
-    md = Template(TEMPLATE).render(
+    md = Template(TEMPLATE, autoescape=True).render(
         tenant=tenant,
         generated_at=generated_at,
         inventory_summary=inventory_summary,
@@ -98,5 +112,5 @@ def generate(
         "control_references": control_references or [],
         "disclaimer_included": True,
     }
-    json_out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    json_out.write_text(json.dumps(_redact_secrets(payload), indent=2), encoding="utf-8")
     return {"markdown": str(out), "json": str(json_out), "pages_estimate": 5}

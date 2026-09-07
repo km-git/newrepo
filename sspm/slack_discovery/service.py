@@ -36,7 +36,7 @@ def discover(
                 "installed_apps_count": data.get("installed_apps_count", 0),
             }
         except Exception:
-            pass
+            pass  # Slack API optional; keep fixture workspace fields
     result = {
         "tenant_type": "slack",
         "tenant_id": workspace or data.get("workspace", "unknown"),

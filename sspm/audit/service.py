@@ -36,7 +36,7 @@ def inventory(*, init_db: bool = True) -> dict[str, Any]:
             )
             pip_audit_ok = True
         except (subprocess.SubprocessError, FileNotFoundError):
-            pass
+            pass  # pip-audit missing: inventory still writes
     out_path = ROOT / "output" / "sspm" / "sspm-inventory.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
