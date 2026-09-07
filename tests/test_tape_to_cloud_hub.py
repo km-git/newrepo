@@ -65,6 +65,8 @@ def test_every_module_has_sample_report_with_six_layers():
 def test_job_pack_and_layers_routes():
     pack = dispatch_tape_to_cloud("GET", "/tape-to-cloud/reports/job-pack")
     assert pack is not None and pack[0] == 200
+    assert b'class="kpis"' in pack[2] or b"class='kpis'" in pack[2] or b'class="kpis"' in pack[2]
+    assert b"Comprehensive Media Audit" in pack[2]
     api = dispatch_tape_to_cloud("GET", "/api/tape-to-cloud/reports/job-pack")
     payload = json.loads(api[2])
     assert payload["module_count"] == 16
@@ -76,3 +78,46 @@ def test_job_pack_and_layers_routes():
     assert docs is not None and docs[0] == 200
     assert b"Cross-cutting layers" in docs[2]
     assert len(list_reports()) == 17
+
+
+def test_detailed_reports_are_vendor_complete_html():
+    from tape_to_cloud.sample_reports import AUDIT_TAPE_KEYS
+
+    for module_id in MODULES:
+        report = get_report(module_id)
+        assert report["layers"]["integrity"]["primary_algo"] == "SHA-256"
+        assert report["layers"]["integrity"]["md5_not_primary"] is True
+        assert len(report["layers"]["integrity"]["pre_hash"]) == 64
+        assert set(report["layers_called"]) == set(LAYERS)
+        assert report["layers"]["format-readers"]["invented_parser"] is False
+        assert report["layers"]["kms-kmip"]["refuse_if_missing"] is True
+        assert report["executive_summary"]
+        assert report["kpis"]
+        assert report["chain_of_custody"]
+    audit = get_report("audit")
+    kpis = {row["label"]: row["value"] for row in audit["kpis"]}
+    assert kpis["unique media types"] == 16
+    assert kpis["media count"] == 2144
+    assert audit["result"]["collection"]["rfid_volume_accuracy"] == "±5%"
+    assert any(t["generation"] == "LTO-10" for t in audit["result"]["tapes"])
+    for tape in audit["result"]["tapes"]:
+        assert not (set(AUDIT_TAPE_KEYS) - set(tape))
+        assert 1 <= tape["degradation"] <= 10
+    pool = get_report("vtl-cloud")["result"]["tape_pool"]
+    assert pool["retention_lock_type"] == "COMPLIANCE"
+    assert pool["worm_at_create"] is True
+    assert "800-88" in get_report("destroy")["result"]["certificate"]["nist"]
+    audit_html = dispatch_tape_to_cloud("GET", "/tape-to-cloud/reports/audit")
+    assert audit_html is not None and audit_html[0] == 200
+    body = audit_html[2]
+    assert b'class="kpis"' in body
+    assert b"LTO-10" in body
+    assert b"SHA-256" in body
+    assert b"RFID" in body or b"rfid" in body
+    assert b"Chain of custody" in body
+    assert b"Recommendations" in body
+    vtl = dispatch_tape_to_cloud("GET", "/tape-to-cloud/reports/vtl-cloud")[2]
+    assert b"COMPLIANCE" in vtl
+    destroy = dispatch_tape_to_cloud("GET", "/tape-to-cloud/reports/destroy")[2]
+    assert b"800-88" in destroy
+    assert b"ITAD-CERT" in destroy

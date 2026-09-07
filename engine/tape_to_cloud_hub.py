@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from engine.tape_to_cloud_report_html import render_detailed_report
 from tape_to_cloud.catalog import (
     LAYER_CATALOG,
     LAYERS,
@@ -16,7 +17,7 @@ from tape_to_cloud.catalog import (
     MODULES,
     catalog_snapshot,
 )
-from tape_to_cloud.sample_reports import get_report, list_reports, report_id_for
+from tape_to_cloud.sample_reports import CITATIONS, get_report, list_reports
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -169,6 +170,19 @@ def _css() -> str:
     .card code { color:var(--accent); font-size:0.78rem; }
     .pill { display:inline-block; font-size:0.72rem; color:var(--amber); border:1px solid var(--amber);
             border-radius:999px; padding:0.05rem 0.45rem; margin-bottom:0.35rem; }
+    .kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:0.6rem; margin:0.8rem 0; }
+    .kpi { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.65rem; }
+    .kpi-label { color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.03em; }
+    .kpi-value { font-size:1.05rem; font-weight:600; margin-top:0.2rem; word-break:break-word; }
+    .layer-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:0.65rem; }
+    .layer-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.75rem; }
+    .layer-card ul { margin:0.4rem 0 0; padding-left:1.1rem; font-size:0.82rem; }
+    tr.risk-high { background:rgba(248,81,73,0.12); }
+    tr.risk-mid { background:rgba(210,153,34,0.10); }
+    table.kv th { width:32%; color:var(--muted); }
+    ol.coc { font-size:0.88rem; }
+    details { margin-top:0.5rem; }
+    caption { text-align:left; color:var(--muted); padding:0.3rem 0; }
     pre { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0.75rem;
           overflow:auto; font-size:0.75rem; max-height:32rem; }
     a { color:var(--accent); }
@@ -243,6 +257,10 @@ def render_hub_html() -> str:
         if latest
         else '<p class="muted">No forum-watcher discoveries yet.</p>'
     )
+    citations = "".join(
+        f'<li><a href="{html.escape(c["url"])}">{html.escape(c["title"])}</a> — {html.escape(c["fields"])}</li>'
+        for c in CITATIONS
+    )
     body = f"""
     <section>
       <h2>Public demo</h2>
@@ -250,7 +268,7 @@ def render_hub_html() -> str:
          backup-app formats (TSM / NetBackup / Backup Exec / …), any S3-compatible target
          (SeaweedFS on-prem default). Every module calls the six cross-cutting layers.</p>
       <p class="ok">Sample job <code>{html.escape(state["catalog"]["sample_job_id"])}</code>
-         for {html.escape(state["catalog"]["sample_customer"])} — 16 module reports + combined job pack.</p>
+         for {html.escape(state["catalog"]["sample_customer"])} — 16 detailed module reports + combined job pack.</p>
       {latest_line}
       <p class="muted">Targets: {targets}</p>
     </section>
@@ -271,6 +289,10 @@ def render_hub_html() -> str:
       <h2>Discovery docs</h2>
       <table><thead><tr><th>Doc</th><th>Public path</th><th>On disk</th></tr></thead>
       <tbody>{docs_rows}</tbody></table>
+    </section>
+    <section>
+      <h2>Research basis (not an affiliation)</h2>
+      <ul class="citations">{citations}</ul>
     </section>
     """
     return _shell("Tape-to-Cloud Hub", body)
@@ -298,8 +320,7 @@ def render_modules_index_html() -> str:
 def render_module_html(module_id: str) -> str:
     spec = MODULE_CATALOG[module_id]
     report = get_report(module_id)
-    payload = html.escape(json.dumps(report, indent=2))
-    layers = "".join(f"<li><code>{html.escape(lid)}</code></li>" for lid in LAYERS)
+    detail = render_detailed_report(report, f"/api/tape-to-cloud/reports/{module_id}")
     body = f"""
     <section>
       <p class="pill">module</p>
@@ -307,16 +328,8 @@ def render_module_html(module_id: str) -> str:
       <p><code>{html.escape(module_id)}</code></p>
       <p>{html.escape(spec["deliverable"])}</p>
       <p class="muted">Sources: {html.escape(spec["sources"])}</p>
-      <p>Sample report:
-         <a href="/tape-to-cloud/reports/{html.escape(module_id)}">{html.escape(report_id_for(module_id))}</a>
-         · <a href="/api/tape-to-cloud/reports/{html.escape(module_id)}">JSON</a></p>
-      <h3>Layers called</h3>
-      <ul>{layers}</ul>
     </section>
-    <section>
-      <h2>Sample report</h2>
-      <pre>{payload}</pre>
-    </section>
+    {detail}
     """
     return _shell(f"{spec['menu']} · tape-to-cloud", body)
 
@@ -359,21 +372,8 @@ def render_reports_index_html() -> str:
 def render_report_html(report_key: str) -> str:
     report = get_report(report_key)
     title = f"{report['report_id']} · sample report"
-    payload = html.escape(json.dumps(report, indent=2))
-    menu = html.escape(str(report.get("menu") or report.get("kind") or report_key))
-    body = f"""
-    <section>
-      <p class="pill">sample report</p>
-      <h2>{menu}</h2>
-      <p><code>{html.escape(str(report["report_id"]))}</code></p>
-      <p class="muted">{html.escape(str(report.get("disclaimer", "")))}</p>
-      <p><a href="/api/tape-to-cloud/reports/{html.escape(report_key)}">Raw JSON</a></p>
-    </section>
-    <section>
-      <pre>{payload}</pre>
-    </section>
-    """
-    return _shell(title, body)
+    detail = render_detailed_report(report, f"/api/tape-to-cloud/reports/{report_key}")
+    return _shell(title, detail)
 
 
 def render_doc_text(name: str) -> tuple[int, dict[str, str], bytes] | None:
