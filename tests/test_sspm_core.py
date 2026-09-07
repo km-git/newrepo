@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from sspm.audit.service import inventory
 from sspm.compliance_map.service import map_tenant
 from sspm.config_drift.service import diff_tenant
 from sspm.constants import PRESIDIO_SOURCE
 from sspm.db.store import FindingsStore
+from sspm.discovery import load_fixture
 from sspm.github_discovery.service import discover_github
 from sspm.google_workspace_discovery.service import discover_gws
 from sspm.m365_discovery.service import discover_m365
@@ -78,3 +81,10 @@ def test_tenant_registry(tmp_path: Path, monkeypatch) -> None:
     assert rows[0].name == "acme"
     assert rows[0].cron_expr == "0 9 * * 1"
     assert (tmp_path / "output/sspm/tenants.yaml").is_file()
+
+
+def test_load_fixture_rejects_unknown_tenant() -> None:
+    with pytest.raises(ValueError, match="unknown tenant"):
+        load_fixture("../etc/passwd")
+    with pytest.raises(ValueError, match="unknown tenant"):
+        load_fixture("m365.json")

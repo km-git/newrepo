@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import pytest
+
 from sspm.disclaimers.service import show
 from sspm.report_writer.service import generate, strip_forbidden
 
@@ -20,8 +22,9 @@ def test_strip_forbidden_words() -> None:
     assert "secure" not in lower
 
 
-def test_generate_report_has_disclaimer_and_hash(tmp_path: Path) -> None:
-    dest = tmp_path / "report.md"
+def test_generate_report_has_disclaimer_and_hash(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    dest = Path("report.md")
     result = generate(tenant="m365", tenant_name="demo-customer", output=dest)
     text = dest.read_text(encoding="utf-8")
     assert text.startswith("# Configuration & Inventory Report")
@@ -36,3 +39,17 @@ def test_generate_report_has_disclaimer_and_hash(tmp_path: Path) -> None:
     assert "security assessment" in text.lower()  # the negation sentence is allowed
     json_text = Path(result.json_path).read_text(encoding="utf-8")
     assert "demo-customer" in json_text or "Contoso" in json_text
+
+
+def test_generate_rejects_path_escape(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="working directory"):
+        generate(tenant="m365", output=Path("/etc/sspm-report.md"))
+
+
+def test_email_redact_is_bounded() -> None:
+    from sspm.redact import EMAIL_RE, scrub_text
+
+    assert EMAIL_RE.search("ops@example.com")
+    assert EMAIL_RE.search("%" * 4000) is None
+    assert "[REDACTED-EMAIL]" in scrub_text("write to ops@example.com please")

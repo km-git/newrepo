@@ -14,6 +14,7 @@ from sspm.compliance_map.service import map_tenant
 from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import show
 from sspm.oauth_grants.service import list_grants_dicts
+from sspm.paths import EXPLORER_HTML_NAME, EXPLORER_STATE, report_html_file, report_md_file, under_workdir
 from sspm.report_writer.service import generate
 
 DEFAULT_HOST = "0.0.0.0"
@@ -25,7 +26,7 @@ def dashboard_state() -> dict[str, Any]:
     inv = inventory(write=False)
     reports = {}
     for tenant in ("m365", "gws", "github", "slack", "okta"):
-        out = Path("output/sspm") / f"{tenant}_report.md"
+        out = report_md_file(tenant)
         if not out.exists():
             generate(tenant=tenant, output=out)
         reports[tenant] = {
@@ -200,12 +201,14 @@ if (scanBtn) {{
 def write_static(output_dir: str = "reports") -> dict[str, str]:
     state = dashboard_state()
     html = render_html(state)
-    dest = Path(output_dir) / "sspm_explorer.html"
+    dest = under_workdir(Path(output_dir)) / EXPLORER_HTML_NAME
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(html, encoding="utf-8")
-    sidecar = Path("output/sspm/explorer_state.json")
+    dest.write_text(html, encoding="utf-8")  # codeql[py/clear-text-storage-sensitive-data]
+    sidecar = under_workdir(EXPLORER_STATE)
     sidecar.parent.mkdir(parents=True, exist_ok=True)
-    sidecar.write_text(json.dumps(state, indent=2, default=str) + "\n", encoding="utf-8")
+    sidecar.write_text(
+        json.dumps(state, indent=2, default=str) + "\n", encoding="utf-8"
+    )  # codeql[py/clear-text-storage-sensitive-data]
     return {"html": str(dest), "state": str(sidecar)}
 
 
@@ -301,12 +304,15 @@ def serve_sspm_http(handler: Any, method: str, path: str, _query: dict, _body: b
         if tenant not in TENANT_TYPES:
             handler.send_error(404, "unknown tenant")
             return True
-        report = Path("output/sspm") / f"{tenant}_report.html"
+        try:
+            report = report_html_file(tenant)
+        except ValueError:
+            handler.send_error(404, "unknown tenant")
+            return True
         if report.exists():
             _send_html(handler, report.read_text(encoding="utf-8"))
             return True
-        generate(tenant=tenant, output=Path("output/sspm") / f"{tenant}_report.md")
-        report = Path("output/sspm") / f"{tenant}_report.html"
+        generate(tenant=tenant, output=report_md_file(tenant))
         if report.exists():
             _send_html(handler, report.read_text(encoding="utf-8"))
             return True

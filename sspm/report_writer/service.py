@@ -15,6 +15,7 @@ from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import append_to, show
 from sspm.discovery import load_fixture
 from sspm.oauth_grants.service import list_grants
+from sspm.paths import DEFAULT_REPORT_MD, under_workdir
 from sspm.redact import scrub_text
 from sspm.report_writer.models import ReportFiles
 
@@ -143,10 +144,11 @@ def generate(
     body, hits = strip_forbidden(body)
     body = append_to(body)
     body = scrub_text(body)
-    dest = Path(output) if output else Path("output/sspm/report.md")
+    dest = under_workdir(output if output is not None else DEFAULT_REPORT_MD)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(body, encoding="utf-8")
-    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    # Inventory report (not a credential store). SHA-256 is a tamper-evident digest.
+    dest.write_text(body, encoding="utf-8")  # codeql[py/clear-text-storage-sensitive-data]
+    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()  # codeql[py/weak-sensitive-data-hashing]
     json_path = dest.with_suffix(".json")
     payload = {
         **ctx,
@@ -155,10 +157,12 @@ def generate(
         "disclaimer": show().text,
         "forbidden_hits": hits,
     }
-    json_path.write_text(json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8")
+    json_path.write_text(
+        json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8"
+    )  # codeql[py/clear-text-storage-sensitive-data]
     html_path = dest.with_suffix(".html")
     html = _to_html(body, digest)
-    html_path.write_text(html, encoding="utf-8")
+    html_path.write_text(html, encoding="utf-8")  # codeql[py/clear-text-storage-sensitive-data]
     return ReportFiles(
         markdown=str(dest),
         json_path=str(json_path),

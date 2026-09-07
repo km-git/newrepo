@@ -7,7 +7,10 @@ from typing import Any
 
 from sspm.constants import PRESIDIO_SOURCE
 
-EMAIL_RE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.I)
+EMAIL_RE = re.compile(
+    r"[A-Za-z0-9._+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}",
+    re.I,
+)
 TENANT_ID_RE = re.compile(
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
     re.I,

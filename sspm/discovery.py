@@ -8,12 +8,11 @@ from typing import Any
 
 from sspm.cnspec import scan as cnspec_scan
 from sspm.db.store import FindingsStore, utcnow
-
-FIXTURES = Path(__file__).resolve().parent / "fixtures"
+from sspm.paths import fixture_file, under_workdir
 
 
 def load_fixture(tenant_type: str) -> dict[str, Any]:
-    path = FIXTURES / f"{tenant_type}.json"
+    path = fixture_file(tenant_type)
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -71,7 +70,7 @@ def discover(
         payload = dict(live)
         payload.setdefault("scanner", "api")
     elif fixture:
-        payload = json.loads(Path(fixture).read_text(encoding="utf-8"))
+        payload = json.loads(under_workdir(Path(fixture)).read_text(encoding="utf-8"))
         payload.setdefault("scanner", "fixture")
     else:
         payload = load_fixture(tenant_type)
