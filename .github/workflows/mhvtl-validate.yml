@@ -19,17 +19,17 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 jobs:
   refuse-hosted-tape:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'mhvtl-runner')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Disk-only smoke (tape tests must SKIP on this runner)
@@ -49,7 +49,9 @@ jobs:
       run:
         working-directory: forum-watcher
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - name: Tape + disk smoke on mhvtl runner
         env:
           VALIDATE_MODULES: ${{ github.event.inputs.modules || 'tape-ops,vtl-cloud,tape-duplicate' }}
@@ -62,7 +64,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: gautamkrishnar/keepalive-workflow@v2
-        with:
-          time_elapsed: 45
+      - uses: actions/checkout@v5
+      - name: Touch keepalive stamp
+        run: |
+          mkdir -p forum-watcher/state
+          date -u +%Y-%m-%dT%H:%M:%SZ > forum-watcher/state/keepalive.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add forum-watcher/state/keepalive.txt
+          git diff --cached --quiet || git commit -m "chore: mhvtl keepalive"
+          git push
