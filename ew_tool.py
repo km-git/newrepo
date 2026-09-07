@@ -524,8 +524,17 @@ def main() -> None:
     if args.dmarc_ui:
       import subprocess
 
+      host = args.monitor_host or "127.0.0.1"
+      if host not in {"127.0.0.1", "localhost", "::1", "0.0.0.0"}:
+        raise SystemExit("dmarc UI host must be a local bind address")
+      try:
+        port = int(args.dmarc_ui_port)
+      except (TypeError, ValueError) as exc:
+        raise SystemExit("dmarc UI port must be an integer") from exc
+      if not 1 <= port <= 65535:
+        raise SystemExit("dmarc UI port out of range")
       subprocess.run(
-        [sys.executable, "-m", "dmarc", "web", "serve", "--host", args.monitor_host, "--port", str(args.dmarc_ui_port)],
+        [sys.executable, "-m", "dmarc", "web", "serve", "--host", host, "--port", str(port)],
         cwd=str(Path(__file__).resolve().parent / "dmarc"),
         check=False,
       )

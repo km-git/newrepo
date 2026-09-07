@@ -89,16 +89,27 @@ Do **not** move to `p=reject` until aggregate reports show ≥99% pass rate for 
 ## Liability disclaimer
 
 {{ disclaimer }}
-"""
+""",
+    autoescape=True,
 )
+
+
+def _confined_report_paths(domain: str, output: Path | None) -> tuple[Path, Path]:
+    reports = REPORTS_DIR.resolve()
+    reports.mkdir(parents=True, exist_ok=True)
+    stem = re.sub(r"[^A-Za-z0-9._-]", "_", domain or "domain")[:180] or "domain"
+    default = reports / f"report_{stem.replace('.', '_')}.md"
+    md_path = Path(output).expanduser() if output is not None else default
+    md_path = md_path.resolve()
+    if md_path != reports and reports not in md_path.parents:
+        raise ValueError("report output must stay under the reports directory")
+    return md_path, md_path.with_suffix(".json")
 
 
 def generate_report(domain: str, since: str = "30d", output: Path | None = None) -> tuple[Path, Path]:
     init_db()
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc)
-    md_path = output or REPORTS_DIR / f"report_{domain.replace('.', '_')}.md"
-    json_path = md_path.with_suffix(".json")
+    md_path, json_path = _confined_report_paths(domain, output)
 
     dns = fetch_all("findings_dns")
     spf_rows = fetch_all("findings_spf")

@@ -95,7 +95,7 @@ def fetch_all(table: str, limit: int = 500) -> list[dict[str, Any]]:
                 try:
                     item[key] = json.loads(item[key])
                 except json.JSONDecodeError:
-                    pass
+                    pass  # keep the original string when JSON-encoded columns are plain text
         rows.append(item)
     return rows
 

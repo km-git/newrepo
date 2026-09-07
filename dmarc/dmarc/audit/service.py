@@ -59,7 +59,7 @@ def _pip_audit_summary() -> list[dict]:
         if proc.returncode == 0 and proc.stdout.strip():
             return json.loads(proc.stdout)
     except (FileNotFoundError, json.JSONDecodeError, subprocess.TimeoutExpired):
-        pass
+        pass  # optional local pip-audit; demo inventory still returns tools
     return []
 
 

@@ -15,15 +15,24 @@ DEFAULT_SEEDS = [
 ]
 
 
+def _host_matches(domain: str, *hosts: str) -> bool:
+    domain = (domain or "").lower().strip(".")
+    for host in hosts:
+        host = host.lower()
+        if domain == host or domain.endswith("." + host):
+            return True
+    return False
+
+
 def _provider_from_email(email: str) -> str:
-    domain = email.split("@")[-1].lower()
-    if "gmail" in domain:
+    domain = email.rsplit("@", 1)[-1].lower()
+    if _host_matches(domain, "gmail.com", "googlemail.com"):
         return "Gmail"
-    if "outlook" in domain or "hotmail" in domain:
+    if _host_matches(domain, "outlook.com", "hotmail.com", "live.com"):
         return "Outlook"
-    if "yahoo" in domain:
+    if _host_matches(domain, "yahoo.com"):
         return "Yahoo"
-    if "icloud" in domain or "me.com" in domain:
+    if _host_matches(domain, "icloud.com", "me.com", "mac.com"):
         return "iCloud"
     return domain
 
