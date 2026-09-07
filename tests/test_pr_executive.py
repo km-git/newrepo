@@ -95,9 +95,21 @@ def test_executive_consensus_enabled_default():
   assert pr_executive_consensus_enabled() is True
 
 
+def test_wait_for_required_ci_skipped_outside_actions(monkeypatch):
+  monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+  monkeypatch.delenv("EW_PR_WAIT_CI", raising=False)
+  from engine.pr_github import wait_for_required_ci
+
+  out = wait_for_required_ci(57, "km-git/newrepo")
+  assert out.get("skipped") is True
+
+
 def test_pip_audit_is_optional_required_check():
   from engine.pr_github import _is_required_ci_check
 
   assert _is_required_ci_check({"name": "pip-audit (requirements.txt)"}) is False
+  assert _is_required_ci_check({"name": "Cursor Bugbot"}) is False
   assert _is_required_ci_check({"name": "test"}) is True
   assert _is_required_ci_check({"name": "ruff (tape-to-cloud + monetization)"}) is True
+  assert _is_required_ci_check({"name": "osv-scanner (requirements)"}) is True
+  assert _is_required_ci_check({"name": "zizmor (workflows)"}) is True
