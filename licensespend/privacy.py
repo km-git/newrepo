@@ -14,7 +14,7 @@ def hash_email(email: str, *, salt: str | None = None) -> str:
     value = (email or "").strip().lower()
     if not value:
         return ""
-    material = f"{salt or tenant_salt()}:{value}".encode("utf-8")
+    material = f"{salt or tenant_salt()}:{value}".encode()
     return hashlib.sha256(material).hexdigest()
 
 

@@ -10,7 +10,7 @@ not in the free test token — fixture covers it.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from licensespend.privacy import hash_email
@@ -21,7 +21,7 @@ def _from_epoch(value: object) -> date | None:
     if value is None or value == "":
         return None
     if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(int(value), tz=timezone.utc).date()
+        return datetime.fromtimestamp(int(value), tz=UTC).date()
     text = str(value)
     try:
         return date.fromisoformat(text[:10])

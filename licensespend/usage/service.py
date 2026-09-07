@@ -104,7 +104,7 @@ def unused_seats(
         raise ValueError("as_of must be a calendar date")
     threshold = int(idle_days)
     # CREATE VIEW cannot take prepared parameters in DuckDB; as_of is ISO date, threshold is int.
-    con.execute(  # noqa: S608
+    con.execute(
         f"""
         CREATE VIEW v_unused_seats AS
         SELECT

@@ -11,11 +11,11 @@ pytest.importorskip("duckdb")
 pytest.importorskip("typer")
 pytest.importorskip("jinja2")
 
-from licensespend.constants import EXAMPLES  # noqa: E402
-from licensespend.privacy import contains_raw_email, hash_email  # noqa: E402
-from licensespend.reclaim import ReclaimDenied, reclaim_seats  # noqa: E402
-from licensespend.report.service import build, verify_watermark  # noqa: E402
-from licensespend.usage.service import unused_seats  # noqa: E402
+from licensespend.constants import EXAMPLES
+from licensespend.privacy import contains_raw_email, hash_email
+from licensespend.reclaim import ReclaimDenied, reclaim_seats
+from licensespend.report.service import build, verify_watermark
+from licensespend.usage.service import unused_seats
 
 ROOT = Path(__file__).resolve().parents[1]
 

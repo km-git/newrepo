@@ -1,0 +1,7 @@
+# zizmor config — free GitHub Actions scanner (Bugbot replacement).
+# Ref-pin (vN tags) is enough for this repo; hash-pin is a later sweep.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "*": ref-pin

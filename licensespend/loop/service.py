@@ -11,7 +11,7 @@ import importlib.util
 import json
 import os
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from licensespend.constants import COMMERCIAL_SKIP, ROOT
@@ -114,7 +114,7 @@ def classify_finding(
             confidence=allowed,
             human_action=str(parsed.get("human_action") or result.human_action),
         )
-    except Exception as exc:  # noqa: BLE001 — classify must abstain, not crash
+    except Exception as exc:
         result.reason = f"classifier fallback: {exc}"
         result.confidence = "medium"
         return result
@@ -148,7 +148,7 @@ def monthly(*, as_of: date | None = None, fixture_root: Path | None = None) -> M
         "",
         "Compound metric: unused-seat dollar trend (fixture path).",
         "",
-        f"Generated {datetime.now(timezone.utc).replace(microsecond=0).isoformat()}.",
+        f"Generated {datetime.now(UTC).replace(microsecond=0).isoformat()}.",
         "",
     ]
     MONTHLY_PATH.write_text("\n".join(lines), encoding="utf-8")

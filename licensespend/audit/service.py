@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib import metadata
 from typing import Any
 
@@ -174,6 +174,6 @@ def inventory() -> Inventory:
             "pygithub_vendored": False,
             "keepalive": "licensespend/state/keepalive.txt",
             "primary_oss": list(OSS_PRIMARY_TOOLS),
-            "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         },
     )

@@ -4,7 +4,7 @@ A copy-paste-ready Cursor prompt for building the tape-to-cloud migration tool d
 
 Two artifacts below: a **Project Rule** (`.mdc`) you drop into the repo's `.cursor/rules/` directory, and a **Global User Rule** you paste into Cursor → Settings → Rules. Plus the one-time settings checklist and the 30-day audit loop from the generic prompt, reused because the 95/5 mechanism is the same.
 
-In this repository the Project Rule is already installed at `.cursor/rules/tape-to-cloud-build.mdc` (`alwaysApply: false`, Agent Requested). The Global User Rule paste lives at `discovery/tape-to-cloud/user-rule.txt`.
+In this repository the Project Rule is already installed at `.cursor/rules/tape-to-cloud-build.mdc` (`alwaysApply: false`, Agent Requested). The Global User Rule paste lives at `discovery/tape-to-cloud/user-rule.txt`. The vendor-checked feature matrix is `discovery/tape-to-cloud/feature-completeness.md`.
 
 The model names and prices match Cursor's September 2026 lineup: Grok Code Fast (free), Grok 4.5 ($2/$6), Composer 2.5 Standard ($0.5/$2.5), Claude Haiku 4.5 ($1/$5), GPT-5.6 Luna ($0.2/$1.2) on the cheap side; Claude Sonnet 5 ($2/$10), Claude Opus 5 ($5/$25), Claude Fable 5.1 ($10/$50) on the expensive side. Verify against the live picker when installing — pricing drifts.
 
@@ -12,7 +12,7 @@ The model names and prices match Cursor's September 2026 lineup: Grok Code Fast 
 
 ## 1. The Principle for This Project
 
-The tool in the blueprint is a controller + worker system with three design constraints: source-agnostic (LTO-1 through LTO-10, DLT/AIT/DDS, VTL, TSM/NetBackup/BackupExec/NetWorker/ARCserve/Data Protector/CommVault/Veeam), target-agnostic (any S3-compatible endpoint), and use-case-complete (every line of the Iron Mountain-style service menu maps to a first-class module). The engineering concentrates in three places: the format-specific readers, the integrity/audit layer, and the orchestration that survives weeks-to-months runs.
+The tool in the blueprint is a controller + worker system with three design constraints: source-agnostic (LTO-1 through LTO-10 with no LTO-10 backward compat, mainframe 3480/3592/T10000, DLT/AIT/DDS, VTL, TSM/NetBackup/BackupExec/NetWorker/ARCserve/Data Protector/CommVault/Veeam plus M&E StorNext), target-agnostic (any S3-compatible endpoint; SeaweedFS on-prem), and use-case-complete (every Tape Ark / Iron Mountain menu line maps to a first-class module, and every module calls the six cross-cutting layers in `discovery/tape-to-cloud/feature-completeness.md`). The engineering concentrates in the format-specific readers, the integrity/eDiscovery/KMIP/WORM layers, and the orchestration that survives weeks-to-months runs.
 
 The 95/5 split applies as follows. **Bucket A (cheap floor) and Bucket B (Composer 2.5 Standard as the workhorse) cover ~95% of coding work**: scaffolding the controller/worker skeleton, writing the S3-compatible SDK adapters, implementing `audit`, `analytics`, `disk-ingest`, `tape-duplicate`, `tape-ops`, `tape-vault`, `monetize`, the SHA-256 manifest writer, the Postgres audit schema, the S3 multipart uploader, the lifecycle policy sweep, `ffmpeg` proxies, `tesseract` OCR, PII scrubbing, tokenization sharding. **Bucket C/D (expensive models) cover the ~5% that genuinely need frontier reasoning**: the format-specific parsers for TSM/NetBackup/BackupExec headers, the AWS Snowball + Tape Gateway OpsHub state machine, the WORM-anchor policy logic, the Multi-tape-state Temporal workflow design, the GroupWise-Post-Office-to-O365 extractor, the chain-of-custody legal posture, the decision on whether to license MediaGenie Proteus vs re-implement, and the multi-tenant Nexus portal architecture.
 
@@ -44,32 +44,45 @@ alwaysApply: false
 
 You are helping build a vendor-agnostic tape-to-cloud migration tool. Three constraints govern every decision:
 
-1. **Source-agnostic.** Handle LTO-1 through LTO-10, DLT/AIT/DDS/VXA, VTL, and proprietary backup-app formats (TSM, NetBackup, Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF, Catalogic DPX). NetBackup cannot read TSM tapes directly; the tool needs its own format-aware read/catalog layer.
-2. **Target-agnostic.** Same code path writes to AWS S3/Glacier/Deep Archive, Azure Blob (Hot/Cool/Archive), Google Cloud Storage, Backblaze B2, Wasabi, Cloudian, SeaweedFS, Ceph. Use any S3-compatible SDK; do not hard-code to one cloud. MinIO Community Edition is archived (GitHub: April 25, 2026); do not recommend it as the self-hosted S3 layer.
-3. **Use-case-complete.** Every menu line below must be expressible as a first-class module on the same core.
+1. **Source-agnostic.** Handle LTO-1 through LTO-10 (LTO-10 has no backward read/write — mixed fleets are mandatory), DLT/SDLT, AIT/SAIT, DDS/DAT, VXA, QIC/SLR, Exabyte 8mm, 7/9/21-track reel, 3480/3490/3590, IBM 3592 TS11xx, StorageTek T9840/T9940/T10000, VTL, optical/UDO/ODA, RDX, USB/NAS, broadcast video (Betacam/VHS/DigiBeta), and proprietary backup-app formats (IBM Spectrum Protect/TSM, Cohesity NetBackup, Arctera Backup Exec, ARCserve, NetWorker, HPE Data Protector, CommVault, Veeam MTF, Catalogic DPX, plus M&E StorNext/SAM-FS/XenData/DIVArchive). NetBackup cannot read TSM tapes directly; the tool needs its own format-aware read/catalog layer.
+2. **Target-agnostic.** Same code path writes to AWS S3/Glacier Flexible/Deep Archive, Azure Blob (Hot/Cool/Archive), Google Cloud Storage, Backblaze B2, Wasabi, Cloudian, **SeaweedFS** (on-prem S3 default), Ceph. Use any S3-compatible SDK; do not hard-code to one cloud. MinIO Community Edition is archived (GitHub: April 25, 2026); do not recommend it as the self-hosted S3 layer.
+3. **Use-case-complete.** Every menu line below must be expressible as a first-class module on the same core. Every module must also call the six cross-cutting layers in `discovery/tape-to-cloud/feature-completeness.md`.
 
 ## Menu → module map (the 16 first-class modules)
 
-When asked to implement a feature, locate it here first and reuse the same core:
+When asked to implement a feature, locate it here first and reuse the same core. Capability depth is in the completeness matrix — do not ship a stub JSON where the vendor SKU includes RFID, eDiscovery, or ITAD.
 
 | Menu item | Module | Concrete deliverable |
 |---|---|---|
-| Comprehensive Media Audit | `audit` | Per-tape JSON: barcode, format, byte count, header hash, file list |
-| Archive Insight | `analytics` | SQL/indexed view over audit data: age distribution, duplicate detection, PII flagging |
-| Tape Migration: Virtualization | `vtl-cloud` | AWS Tape Gateway / StarWind deployment + lifecycle policy |
-| Tape Migration: Restore | `restore` | On-demand read from cloud → staging → courier/network return |
-| Disk-Based Data Ingest | `disk-ingest` | USB/NAS reader, S3 sync, manifest generation |
-| Email Restore From Tape | `email-extract` | GroupWise, Lotus, Notes, Exchange, PST extractors as plugins |
-| GroupWise to M365 | `email-migrate` | GroupWise Post Office parse + O365 import (Graph API or PST) |
-| Tape Copy and Duplication | `tape-duplicate` | 1-to-N hardware duplication, hash verification, signed manifests |
-| Video Digitization | `media-ingest` | LTO → staging → proxy/transcode → S3 + Media2Cloud enrichment |
-| Legacy Tape Management | `tape-ops` | Barcode tracking, drive/library health, scheduled audit |
-| Cloud-based Legacy Tape Mgmt (Nexus) | `tape-saas` | Tenant-isolated VTL, restore portal, immutable catalog |
-| Tape Storage | `tape-vault` | Integration with offsite-vault APIs for residual physical tape |
-| Media Destruction | `destroy` | NIST 800-88 + IRS Pub 1075 certificate generation |
-| Legacy Data for LLM | `llm-corpus` | Extract → dedup → PII-scrub → tokenize → training format |
-| AI and ML Services | `ml-enrich` | Rekognition / Transcribe / Comprehend / Textract pipeline |
-| Monetization Strategy | `monetize` | License tagging, access control, royalty reporting |
+| Comprehensive Media Audit | `audit` | Per-tape JSON: barcode/QR, RFID/MAM, 360 photos, format, byte estimate, degradation 1-10, header hash, file list, cloud-cost forecast |
+| Archive Insight | `analytics` | File/server-level SQL view: age, duplicates, PII, mixed retention, legal hold, orphan catalogs |
+| Tape Migration: Virtualization | `vtl-cloud` | Tape Gateway / StarWind / SeaweedFS VTL + iSCSI to original backup app + lifecycle + WORM/retention lock |
+| Tape Migration: Restore | `restore` | On-demand read; eDiscovery filters; PST/NSF/EDB or encrypted USB; mid-project restore; file extract or bit-image |
+| Disk-Based Data Ingest | `disk-ingest` | USB/NAS/SAN/RDX/optical/HDD + Snowball/Data Box; HDD-rescue path; manifest |
+| Email Restore From Tape | `email-extract` | GroupWise, Lotus, Notes, Exchange, PST, EDB, NSF; user/date/keyword; virus quarantine; eDiscovery |
+| GroupWise to M365 | `email-migrate` | GroupWise/Lotus/Exchange Post Office → M365 or Google Workspace or PST; dedup; Novell NCP retirement |
+| Tape Copy and Duplication | `tape-duplicate` | 1-to-N hardware duplication, seismic/SEG path, hash verification, signed manifests |
+| Video Digitization | `media-ingest` | LTO + Betacam/VHS/DigiBeta/DVC + DICOM → proxy/transcode → S3 + Media2Cloud |
+| Legacy Tape Management | `tape-ops` | Barcode/RFID, mtx robotics, drive/library health, scheduled audit, onsite mobilization |
+| Cloud-based Legacy Tape Mgmt (Nexus) | `tape-saas` | Tenant-isolated VTL, restore portal, file-level retain/delete, dept billing, MFA, immutable catalog |
+| Tape Storage | `tape-vault` | Offsite-vault APIs, courier chain-of-custody, 24/7 DR, library moves, residual physical tape |
+| Media Destruction | `destroy` | Wipe / degauss / shred / incinerate; NIST 800-88 + IRS Pub 1075 certificate; ITAD of drives/libraries |
+| Legacy Data for LLM | `llm-corpus` | Extract → dedup → PII-scrub → tokenize → RAG / private-GPT format |
+| AI and ML Services | `ml-enrich` | Rekognition / Transcribe / Comprehend / Textract + DICOM / seismic / OCR |
+| Monetization Strategy | `monetize` | License tagging, access control, royalty reporting, optional packaging adapter |
+
+## Cross-cutting layers (required on every module)
+
+Do not treat these as optional helpers. Point at `discovery/tape-to-cloud/feature-completeness.md` rather than pasting it.
+
+| Layer | Concrete deliverable |
+|---|---|
+| `integrity` | Pre/post SHA-256 (not MD5/SHA-1 as primary), signed sidecar manifest, optional full tape image |
+| `ediscovery` | Legal-hold graph, custodian/date/keyword production package, defensibility log |
+| `kms-kmip` | LTO AES-256 / AES-GCM-256, KMIP client, envelope encrypt; refuse read if the key is missing |
+| `worm` | S3 Object Lock / GCS Bucket Lock / Azure Immutable Blob / Tape Retention Lock; GoBD/SEC 17a-4 |
+| `format-readers` | Plugin table for TSM/NetBackup/Backup Exec/ARCserve/NetWorker/Data Protector/CommVault/Veeam/DPX/M&E; license MediaGenie Proteus or wrap; no half parsers on cheap models |
+| `media-rescue` | Stiction / oxide-loss / reverse-wound / broken-tape / HDD-rescue path; stop-and-ask before inventing a crypto bypass |
 
 ## Default model selection (95%)
 
@@ -81,7 +94,7 @@ For routine work on this repo, use a **Bucket A** model:
 4. **GPT-5.6 Luna** — only when a Claude-family model has been failing.
 5. **Claude Haiku 4.5** — last resort in Bucket A; still cheap.
 
-For long agent loops, the `audit`, `disk-ingest`, `tape-vault`, `monetize`, `analytics`, and `llm-corpus` modules are Bucket A/B by default.
+For long agent loops, the `audit`, `disk-ingest`, `tape-vault`, `monetize`, `analytics`, `llm-corpus`, RFID/QR/photo JSON, cost-estimate CSV, PST writer, virus-scan hook, and SeaweedFS adapter are Bucket A/B by default.
 
 ## Escalate to Bucket C / D (the 5%)
 
@@ -96,12 +109,14 @@ Escalate to an expensive model **only** when at least one of these is true:
 For every escalation, state in the response *why* you escalated and which trigger fired. Do not escalate silently.
 
 The 5% is concentrated in these specific areas of this tool:
-- **Format-specific readers for proprietary backup-app formats** (TSM, NetBackup, Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF) — the headers are undocumented and require careful reverse-engineering reasoning.
-- **AWS Snowball + Tape Gateway state machine** — the OpsHub-driven workflow, KMS key selection, manifest format, virtual-tape status transitions are subtle.
-- **WORM-anchor policy logic** — S3 Object Lock Compliance mode, GCS Bucket Lock, Azure Immutable Blob; the legal posture and key-deletion semantics.
+- **Format-specific readers** for proprietary backup-app formats (IBM Spectrum Protect/TSM, Cohesity NetBackup, Arctera Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF, Catalogic DPX, StorNext/SAM-FS) — undocumented headers; license-or-wrap, do not reverse-engineer on a cheap model.
+- **AWS Snowball + Tape Gateway state machine** — OpsHub workflow, KMS key selection, manifest format, virtual-tape status transitions, Tape Retention Lock.
+- **WORM-anchor policy logic** — S3 Object Lock Compliance, GCS Bucket Lock, Azure Immutable Blob, GRAU-style GoBD/SEC 17a-4; key-deletion vs retention.
+- **KMIP / LTO encryption** — key never on cartridge; LTO-10 quantum-safe AES-GCM-256; missing-key refuse path.
 - **Temporal workflow design** — activity timeouts, retry policies, signal handling, durable execution semantics.
-- **Multi-tenant Nexus portal data model** — tenant isolation, restore-permission graph, immutable catalog.
-- **Chain-of-custody legal posture** — what the certificate must say for IRS Pub 1075, FISMA, HIPAA, GDPR.
+- **Multi-tenant Nexus portal data model** — tenant isolation, restore-permission graph, file-level dispose, immutable catalog.
+- **Chain-of-custody and eDiscovery legal posture** — IRS Pub 1075, FISMA, HIPAA, GDPR, SEC 17a-4; hold vs right-to-erasure.
+- **Damaged-media rescue strategy** — stiction, oxide loss, reverse-wound, encrypted-without-keys (stop-and-ask).
 
 ## Hard "never escalate" list
 
@@ -110,7 +125,7 @@ Do **not** use Bucket C or D for any of these, even if asked:
 - Writing docstrings, comments, README, ADRs, or type annotations.
 - Renaming variables, reformatting, fixing lint warnings.
 - Generating unit tests for already-written code.
-- Scaffolding the controller/worker skeleton, the S3 SDK adapter, the SHA-256 manifest writer, the multipart uploader, the lifecycle policy sweep, the `ffmpeg` proxy pipeline, the `tesseract` OCR call, the PII scrubber, the tokenization sharder, the Postgres audit schema, the `disk-ingest` reader, the `tape-vault` API integration, the `monetize` license-tag writer.
+- Scaffolding the controller/worker skeleton, the S3 / SeaweedFS adapter, the SHA-256 manifest writer, the multipart uploader, the lifecycle policy sweep, the `ffmpeg` proxy pipeline, the `tesseract` OCR call, the PII scrubber, the tokenization sharder, the Postgres audit schema, the `disk-ingest` reader, the `tape-vault` API integration, the `monetize` license-tag writer, RFID/QR/photo JSON, cost-estimate CSV, PST/EDB sidecar writer.
 - Translating between obvious equivalents (e.g., boto3 vs azure-storage-blob — pick one, the other is a Bucket A port).
 - Searching the repo, explaining a file, summarizing the blueprint.
 
@@ -121,12 +136,12 @@ When the task is to scaffold, default to this stack unless the user says otherwi
 - **Language**: Python 3.12+ (best library coverage for tape I/O, ML, and cloud SDKs).
 - **Tape I/O**: `mt-st` for control, `mbuffer` for streaming buffer, `tar` or `ltfs` for read, `stenc` for hardware-decryption of AIT.
 - **Hashing**: `hashlib` SHA-256, with `xxhash` for fast non-cryptographic checksums on dedup.
-- **Cloud SDK**: `boto3` for AWS, `azure-storage-blob` for Azure, `google-cloud-storage` for GCP, all S3-compatible.
+- **Cloud SDK**: `boto3` for AWS and S3-compatible (Wasabi, B2, SeaweedFS, Cloudian, Ceph), `azure-storage-blob` for Azure, `google-cloud-storage` for GCP. On-prem object default is SeaweedFS, not MinIO CE.
 - **Catalog DB**: Postgres + SQLAlchemy 2.x + Alembic.
 - **Orchestrator**: Temporal (per-tape state machine) + Argo (parallel bursts) + Airflow (daily catalog refresh). Default to Temporal for new code.
-- **Backup-format readers**: license MediaGenie Proteus or implement custom; do not invent a half-working TSM/NetBackup parser on a cheap model.
+- **Backup-format readers**: license MediaGenie Proteus or wrap; do not invent a half-working TSM/NetBackup parser on a cheap model. Treat Cohesity DataProtect as a VTL *target* app; NetBackup readers still needed for legacy tapes. Backup Exec is Arctera.
 - **Video**: `mediainfo` for metadata, `ffmpeg` for proxies, AWS Media2Cloud reference pipeline.
-- **Email**: Transend Migrator (or equivalent) for GroupWise-to-O365.
+- **Email**: Transend Migrator (or equivalent) for GroupWise/Lotus/Exchange-to-M365 or Google Workspace; ClamAV/YARA hook before mailbox load.
 - **AI/LLM**: `tesseract`, `pdftotext`, `presidio` for PII, `datatrove` or `dolma` for tokenization.
 
 ## Context discipline (the silent cost killer)
@@ -167,6 +182,9 @@ Stop and ask the user before:
 - Committing to a specific cloud vendor for the default target.
 - Any change to the chain-of-custody manifest schema (legal exposure).
 - Any change to the WORM retention policy (regulatory exposure).
+- Resolving WORM / legal-hold vs GDPR right-to-erasure or KMIP key-destruction.
+- Setting bit-image vs file-extract as the default restore shape.
+- Attempting to read hardware-encrypted media without a customer-supplied KMIP/KMS key.
 ```
 
 ---
@@ -188,11 +206,11 @@ Escalate to an expensive model (Sonnet 5, Opus 5, Fable 5.1,
 Composer Fast, GPT-5.6 Sol/Terra) only when:
   - the change is a multi-file refactor with cross-cutting effects
     across the 16 modules of the tape-to-cloud tool,
-  - the bug is subtle concurrency / security / KMS / WORM / Temporal
-    replay / AWS credential scope,
+  - the bug is subtle concurrency / security / KMS / KMIP / WORM /
+    Temporal replay / AWS credential scope / eDiscovery hold,
   - I am making an architecture decision (license vs re-implement
     MediaGenie Proteus, orchestrator choice, multi-tenant data model,
-    chain-of-custody legal posture),
+    chain-of-custody legal posture, WORM vs GDPR erasure),
   - the task needs >50K tokens of code at once, or
   - a cheap model has already failed on the same task in this chat
     and you can name the specific failure.
@@ -210,11 +228,13 @@ license-tag writer.
 Default tech stack for this project:
 - Python 3.12+
 - mt-st, mbuffer, tar, ltfs, stenc for tape I/O
-- boto3 (S3-compatible) for cloud SDKs
+- boto3 (S3-compatible); SeaweedFS on-prem default (not MinIO CE)
 - Postgres + SQLAlchemy 2.x for the audit DB
 - Temporal (per-tape state machine), Argo (bursts), Airflow (daily refresh)
 - License MediaGenie Proteus for proprietary backup-app formats unless I say otherwise
 - mediainfo, ffmpeg, tesseract, presidio, datatrove for media/AI
+- Feature depth: discovery/tape-to-cloud/feature-completeness.md
+  (integrity, ediscovery, kms-kmip, worm, format-readers, media-rescue)
 
 Keep context small. Use @file / @folder, not @codebase. Point to the
 blueprint section by filename, not by full paste. Start fresh chats
@@ -229,7 +249,9 @@ At the end of multi-step tasks, write one line:
 
 Stop and ask me before: adding a per-token SaaS dependency, choosing
 license-vs-reimplement, picking a default cloud vendor, changing the
-manifest schema, or changing the WORM policy.
+manifest schema, changing the WORM policy, resolving WORM/hold vs
+GDPR erasure, defaulting bit-image vs file-extract, or reading
+hardware-encrypted media without a customer KMIP/KMS key.
 
 If I name a model in my request, use that one. Do not silently re-route.
 ```
@@ -282,7 +304,7 @@ Run this once a month.
 
 The blueprint's work splits cleanly into "scaffolding-heavy" (~95%) and "design-heavy" (~5%). Most of the tool is plumbing: an S3-compatible SDK adapter, a SHA-256 manifest writer, a Postgres audit schema, a multipart uploader, a lifecycle policy sweep, a `disk-ingest` reader, a `tape-vault` API integration, an `ffmpeg` proxy pipeline, a `tesseract` OCR call, a `presidio` PII scrubber, a `datatrove` tokenization sharder, a `monetize` license-tag writer, a `restore` orchestrator, a `tape-duplicate` metadata wrapper. None of that needs a frontier model. A cheap model with a clear blueprint reference and `@file` discipline ships it correctly.
 
-The 5% that does need a frontier model is concentrated and recognizable: format-specific readers for proprietary backup-app headers (TSM, NetBackup, Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF); the AWS Snowball + Tape Gateway OpsHub state machine; the WORM retention-lock policy; the Temporal workflow design with its retry/replay semantics; the Nexus multi-tenant data model; the chain-of-custody legal posture. The rule's escalation list names these explicitly so the agent doesn't have to guess.
+The 5% that does need a frontier model is concentrated and recognizable: format-specific readers; Snowball + Tape Gateway OpsHub; WORM/KMIP; Temporal replay; Nexus isolation; eDiscovery hold vs GDPR erasure; damaged-media rescue. The completeness matrix names the vendor SKUs those designs must match so a stub `audit` JSON is not mistaken for a Comprehensive Media Audit.
 
 The honest ceiling for this project is 90/10 on a disciplined day, 75/25 on a typical week, 50/50 in the first week when the format readers and Temporal design are being worked out. Once those land, the build shifts back to scaffolding and the 95/5 split becomes natural.
 
@@ -290,7 +312,19 @@ The honest ceiling for this project is 90/10 on a disciplined day, 75/25 on a ty
 
 ## 8. One-Sentence Takeaway
 
-Drop the `.mdc` in `.cursor/rules/`, paste the User Rule into Settings, default Composer 2.5 Standard (not Fast) and Grok Code Fast, turn Max Mode off, and audit the Cursor Models vs Other Models split at the end of every month — the cheap 95% scaffolds the 16 modules, the expensive 5% designs the format readers, the Snowball state machine, the WORM policy, the Temporal workflow, the Nexus data model, and the chain-of-custody posture, and the self-report line ties every model call to a specific module so the split is auditable.
+Drop the `.mdc` in `.cursor/rules/`, paste the User Rule into Settings, default Composer 2.5 Standard (not Fast) and Grok Code Fast, turn Max Mode off, and audit the Cursor Models vs Other Models split at the end of every month — the cheap 95% scaffolds the 16 modules plus RFID/QR/SHA-256/SeaweedFS plumbing, the expensive 5% designs the format readers, Snowball state machine, WORM/KMIP, Temporal, Nexus, eDiscovery, and damaged-media rescue, and the completeness matrix is the checklist that the brochure map is not a stub.
+
+---
+
+## 9. Feature Completeness Matrix
+
+The 16 menu modules still match Tape Ark and Iron Mountain. The original prompt under-specified what those SKUs actually deliver. The checklist lives at `discovery/tape-to-cloud/feature-completeness.md`. Do not add a 17th brochure module; add capability depth.
+
+Six cross-cutting layers every module must call: `integrity` (SHA-256, signed manifest, optional bit-image), `ediscovery` (hold, custodian/date/keyword), `kms-kmip` (LTO AES-256, key never on cartridge), `worm` (Object Lock / Tape Retention Lock / SEC 17a-4), `format-readers` (license-or-wrap Proteus; Cohesity owns NetBackup; Backup Exec is Arctera), `media-rescue` (stiction, oxide loss, HDD recovery).
+
+Source gaps now in the rule: 3480/3592/T10000, LTO-10 no-backward-compat mixed fleets, optical/RDX, Betacam/VHS, StorNext/SAM-FS, SEG seismic, DICOM. Target gap: SeaweedFS instead of archived MinIO CE. Restore depth: EDB/NSF/PST, Google Workspace, virus quarantine, encrypted USB, ITAD, RFID/360-photo audit.
+
+Out of MVP unless asked: paper/microfilm scanning, Iron Mountain InSight DXP as required UI, Versos AI as a paid hard dependency.
 
 ---
 
@@ -315,3 +349,23 @@ Drop the `.mdc` in `.cursor/rules/`, paste the User Rule into Settings, default 
 [9] Developer Toolkit — Max Mode toggle location, "Off by default, toggle per-task." https://developertoolkit.ai/en/cursor-ide/quick-start/essential-configuration/
 
 [10] Blueprint source — Tape-to-Cloud Migration Tool: Architecture, Use Cases, and Implementation Blueprint (the attached `.md`, originally produced in the prior turn).
+
+[11] Iron Mountain — Data restoration and migration services. https://www.ironmountain.com/services/data-restoration-and-migration
+
+[12] Tape Ark — Service catalog. https://www.tapeark.com/
+
+[13] Tape Ark — Comprehensive Media Audit. https://www.tapeark.com/comprehensive-media-audit/
+
+[14] Tape Ark — Nexus SaaS. https://www.tapeark.com/nexus/
+
+[15] AWS — Tape Gateway VTL concepts. https://docs.aws.amazon.com/storagegateway/latest/tgw/StorageGatewayConcepts.html
+
+[16] LTO Consortium — LTO-10 (no backward compatibility, WORM, AES-GCM-256). https://www.lto.org/lto-10/
+
+[17] Tape Ark — Supported data formats. https://www.tapeark.com/data-formats/
+
+[18] Tape Ark — Tape media types. https://www.tapeark.com/tape-media-types/
+
+[19] Cohesity — Completes combination with Veritas NetBackup (10 Dec 2024). https://www.cohesity.com/newsroom/press/cohesity-becomes-worlds-largest-data-protection-provider-after-completing-combination-with-veritas-enterprise-data-protection-business/
+
+[20] Feature completeness matrix (this repo) — `discovery/tape-to-cloud/feature-completeness.md` (citations [11]–[34] in that file).
