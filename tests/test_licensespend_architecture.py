@@ -69,6 +69,8 @@ def test_workflows_exist_and_sha_pin_actions() -> None:
             assert "licensespend examples pyproject.toml" not in text
             assert "semgrep" in text
             assert "trivy fs" in text
+            assert "gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e" in text
+            assert "fetch-depth: 0" in text
         if name == "licensespend-watch.yml":
             assert "Australia/Sydney" in text
         if name == "licensespend-keepalive.yml":
