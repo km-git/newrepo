@@ -5,11 +5,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any
-from xml.etree.ElementTree import Element, ParseError
 
 from dmarc.forensic_report.models import ForensicFinding
 from dmarc.paths import RUF_FIXTURES
 from dmarc.store import fetch_all, insert_rows, utcnow
+from dmarc.xml_safe import ParseError
 from dmarc.xml_safe import fromstring as xml_fromstring
 
 EMAIL_RE = re.compile(r"([A-Za-z0-9._%+\-]+)@([A-Za-z0-9.\-]+\.[A-Za-z]{2,})")
@@ -42,13 +42,13 @@ def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def _text(node: Element | None) -> str:
+def _text(node: Any | None) -> str:
     if node is None or node.text is None:
         return ""
     return node.text.strip()
 
 
-def _child(parent: Element, name: str) -> Element | None:
+def _child(parent: Any, name: str) -> Any | None:
     for child in list(parent):
         if _local(child.tag) == name:
             return child

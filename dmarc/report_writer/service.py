@@ -74,7 +74,7 @@ def _render(template: str, ctx: dict[str, Any]) -> str:
     try:
         from jinja2 import BaseLoader, Environment
 
-        env = Environment(loader=BaseLoader(), autoescape=False)  # noqa: S701 — operator markdown, not HTML
+        env = Environment(loader=BaseLoader(), autoescape=True)
         return env.from_string(template).render(**ctx)
     except ImportError:
         out = template

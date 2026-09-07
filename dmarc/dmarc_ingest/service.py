@@ -12,11 +12,11 @@ import zipfile
 from email import message_from_bytes
 from pathlib import Path
 from typing import Any
-from xml.etree.ElementTree import Element, ParseError
 
 from dmarc.dmarc_ingest.models import DmarcFinding
 from dmarc.paths import RUA_FIXTURES
 from dmarc.store import insert_rows, utcnow
+from dmarc.xml_safe import ParseError
 from dmarc.xml_safe import fromstring as xml_fromstring
 
 
@@ -24,21 +24,21 @@ def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def _text(node: Element | None) -> str:
+def _text(node: Any | None) -> str:
     if node is None or node.text is None:
         return ""
     return node.text.strip()
 
 
-def _child(parent: Element, name: str) -> Element | None:
+def _child(parent: Any, name: str) -> Any | None:
     for child in list(parent):
         if _local(child.tag) == name:
             return child
     return None
 
 
-def _find_text(parent: Element, *path: str) -> str:
-    node: Element | None = parent
+def _find_text(parent: Any, *path: str) -> str:
+    node: Any | None = parent
     for name in path:
         if node is None:
             return ""

@@ -23,7 +23,13 @@ def test_ingest_fixtures_and_aggregate(tmp_path: Path) -> None:
     assert summary["reject_ready"] is False or summary["pass_rate"] >= 0.99
 
 
-def test_parse_inline_xml() -> None:
+def test_xml_safe_uses_defusedxml() -> None:
+    import defusedxml.ElementTree as det
+
+    from dmarc import xml_safe
+
+    assert xml_safe.fromstring is det.fromstring
+    assert xml_safe.ParseError is det.ParseError
     xml = """<?xml version="1.0"?><feedback>
       <report_metadata><org_name>t</org_name>
         <date_range><begin>1</begin><end>2</end></date_range></report_metadata>
