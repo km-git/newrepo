@@ -255,7 +255,7 @@ def _worm_kmip_policy() -> dict[str, Any]:
             },
             "kmip": {
                 "cluster": "kmip.vault.internal:5696",
-                "key_uuid": "8f3c1e2a-9b44-4d11-a6e0-00c0ffee4412",
+                "kmip_object_id": "8f3c1e2a-9b44-4d11-a6e0-00c0ffee4412",
                 "algorithm": "AES-256-GCM",
                 "lto10_note": "LTO-10 quantum-safe AES-GCM-256; no LTO-10 backward read/write",
                 "refuse_read_if_key_missing": True,

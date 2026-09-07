@@ -78,6 +78,8 @@ def test_worm_kmip_seaweedfs_not_minio_ce():
     report = get_report("rpt-worm-kmip-policy-17a4")
     assert report["body"]["retention"]["on_prem_default"] == "SeaweedFS"
     assert report["body"]["kmip"]["refuse_read_if_key_missing"] is True
+    assert report["body"]["kmip"]["kmip_object_id"].endswith("00c0ffee4412")
+    assert "key_uuid" not in report["body"]["kmip"]
     assert report["body"]["conflicts"][0]["action"] == "STOP_AND_ASK"
     assert "MinIO Community Edition" in report["body"]["minio_ce"]["recommendation"]
 

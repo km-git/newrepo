@@ -1,0 +1,12 @@
+# Demo KMIP object UUID in sample reports is not a live secret.
+# gitleaks generic-api-key matches `key_uuid` + UUID; keep the sample value allowlisted
+# so historical PR commits stay green after the field rename.
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SAMPLE KMIP object UUID in Tape-to-Cloud demo reports (not a live key)"
+paths = ['''engine/tape_to_cloud_reports.py''']
+regexes = ['''8f3c1e2a-9b44-4d11-a6e0-00c0ffee4412''']
