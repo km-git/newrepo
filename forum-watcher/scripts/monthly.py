@@ -164,15 +164,22 @@ def major_version_crossings(items: list[dict]) -> list[dict]:
 
 def new_tools(items: list[dict], known: list[str]) -> list[str]:
     known_l = {n.lower() for n in known}
+    stop = {
+        "backup", "backups", "release", "releases", "the", "and", "for", "with",
+        "from", "how", "setup", "integration", "module", "python", "sdk",
+    }
     hits = []
     for item in items:
         if "releases" not in item.get("source", "").lower() and "discussions" not in item.get("source", "").lower():
             continue
         title = item.get("title", "")
-        for word in re.findall(r"[A-Za-z][A-Za-z0-9_.-]{2,}", title):
-            if word.lower() not in known_l and word.lower() not in {h.lower() for h in hits}:
-                if any(tok in word.lower() for tok in ("backup", "restic", "kopia", "weed", "velero", "wal-g", "ltfs")):
-                    hits.append(word)
+        for word in re.findall(r"[A-Z][A-Za-z0-9_.-]{2,}", title):
+            if word.lower() in known_l or word.lower() in stop:
+                continue
+            if word.lower() in {h.lower() for h in hits}:
+                continue
+            if any(tok in word.lower() for tok in ("backup", "restic", "kopia", "weed", "velero", "wal-g", "ltfs", "seaweed", "borg")):
+                hits.append(word)
     return hits
 
 
