@@ -20,6 +20,7 @@ from core.risk import (
   dynamic_stop,
   dynamic_targets,
   risk_package,
+  stop_distance_pct,
   validate_trade_geometry,
 )
 from engine.execution_advanced import (
@@ -470,6 +471,12 @@ def build_limit_order_row(
 
   dca_cols = _dca_to_columns(dca)
   sl_metrics = dca_stop_metrics(dca, float(stop["price"]), timeframe=tf)
+  stop_px = float(stop["price"])
+  l1_px = float(dca[0]["price"]) if dca else wae
+  wae_stop_pct = stop_distance_pct(wae, stop_px)
+  l1_stop_pct = stop_distance_pct(l1_px, stop_px)
+  dca_stop_reduction_pct = round(max(0.0, l1_stop_pct - wae_stop_pct), 2)
+  dca_sl_resolvable = "Y" if l1_stop_pct > 3.0 and wae_stop_pct <= 2.5 else "N"
 
   row = {
     "symbol": result["symbol"],
@@ -508,6 +515,10 @@ def build_limit_order_row(
     "geometry_valid": "Y" if geom_ok else "N",
     "geometry_errors": "; ".join(geom_errors) if geom_errors else "",
     **sl_metrics,
+    "stop_distance_pct": wae_stop_pct,
+    "l1_stop_distance_pct": l1_stop_pct,
+    "dca_stop_reduction_pct": dca_stop_reduction_pct,
+    "dca_sl_resolvable": dca_sl_resolvable,
     "tp1": targets[0]["price"],
     "tp1_exit_pct": targets[0]["exit_pct"],
     "tp1_r_multiple": targets[0].get("r_multiple"),
