@@ -1,0 +1,26 @@
+domain: Understand Usage & Cost
+controls:
+  - id: FF-DATA-INGEST
+    name: Data ingestion
+    maps_to: ["findings_costs"]
+  - id: FF-ALLOCATION
+    name: Allocation
+    maps_to: ["findings_untagged"]
+  - id: FF-REPORTING
+    name: Reporting and analytics
+    maps_to: ["findings_costs"]
+  - id: FF-ANOMALY
+    name: Anomaly management
+    maps_to: ["findings_rightsizing", "findings_drift"]
+domain_optimize: Optimize Usage & Cost
+optimize_controls:
+  - id: FF-USAGE-OPT
+    name: Usage optimization
+    maps_to: ["findings_rightsizing"]
+  - id: FF-RATE-OPT
+    name: Rate optimization
+    maps_to: ["findings_drift"]
+  - id: FF-ARCHITECT
+    name: Architecting for cost
+    maps_to: ["findings_resources"]
+attribution: "FinOps Framework (CC BY 4.0). This file is a mapping aid, not an attestation."

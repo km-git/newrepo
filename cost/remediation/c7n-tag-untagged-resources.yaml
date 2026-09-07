@@ -1,0 +1,14 @@
+policies:
+  - name: cost-tag-untagged-resources-dryrun
+    resource: aws.ec2
+    description: >
+      Observation-only. Flags EC2 instances missing Environment, CostCenter, or Owner.
+      dryrun is true. Do not auto-tag production.
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:CostCenter": absent
+          - "tag:Owner": absent
+    actions: []
+    metadata:
+      dryrun: true
