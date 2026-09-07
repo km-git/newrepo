@@ -32,7 +32,7 @@ TOKEN_SAVER_LIBRARIES: Tuple[TokenSaverLib, ...] = (
   TokenSaverLib("llm-token-optimizer", "llm-token-optimizer[tiktoken]>=1.0.0", "llm_token_optimizer", "prompt compress + cost estimate", "pypi/llm-token-optimizer"),
   TokenSaverLib("tokenpruner", "tokenpruner[tiktoken]>=1.0.0", "tokenpruner", "composite prompt pruning 70-80%", "pypi/tokenpruner"),
   TokenSaverLib("joblib", "joblib>=1.3.0", "joblib", "memoize expensive LLM calls to disk", "joblib/joblib"),
-  TokenSaverLib("cachetic", "cachetic>=0.6.0", "cachetic", "typed pydantic cache + zstd", "allen2c/cachetic"),
+  # cachetic skipped: it depends on diskcache>=5 (PYSEC-2026-2447, no upstream fix).
   TokenSaverLib("foldback-ai", "foldback-ai>=0.1.0", "foldback", "lossless agent context compression", "pypi/foldback-ai"),
 )
 

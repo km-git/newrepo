@@ -241,7 +241,7 @@ def token_saver_checklist() -> List[str]:
     f"{ARCHITECT_TOKEN_CEILING} token ceiling per model (llm_gpt_policy)",
     "trim context before send",
     "cachetools LRU for hot keys",
-    "token_saver_registry (llm-token-optimizer, tokenpruner, cachetic)",
+    "token_saver_registry (llm-token-optimizer, tokenpruner, msgpack)",
     "Cmd+K workhorse for implementation (not GPT)",
   ]
   return base

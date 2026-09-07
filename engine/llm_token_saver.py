@@ -379,7 +379,7 @@ def token_saver_summary() -> Dict[str, Any]:
       "EW_LLM_EW_BYPASS=1 — skip LLM when GitHub EW consensus ≥75% + 2 engines",
       "EW_LLM_CACHE_TTL — structure-keyed zstd disk cache (default 4h)",
       "tiktoken + llm-token-optimizer + tokenpruner — prompt compression",
-      "sqlite + msgpack + zstandard + cachetic — compressed persistent cache",
+      "sqlite + msgpack + zstandard — compressed persistent cache",
       "joblib memoize — deduplicate repeated LLM calls",
       "TokenStore + dedup — pipeline logs store hashes not payloads",
       "EW_MINIMIZE_GPT=0 (default) — GPT allowed, per-model budget-limited",
