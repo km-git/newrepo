@@ -51,8 +51,9 @@ def _from_expenses(path: Path) -> list[ShadowApp]:
 
 
 def _is_known(name: str) -> bool:
-    blob = name.lower()
-    return any(token in blob for token in _known_vendors())
+    blob = "".join(ch for ch in name.lower() if ch.isalnum())
+    tokens = {"".join(ch for ch in token.lower() if ch.isalnum()) for token in _known_vendors()}
+    return any(token and token in blob for token in tokens)
 
 
 def _from_sso(path: Path) -> list[ShadowApp]:
