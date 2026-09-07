@@ -91,13 +91,25 @@ def test_web_app_import():
     assert app.title == "SSPM Configuration Report"
 
 
-@pytest.mark.parametrize("module", [
-    "audit", "m365_discovery", "google_workspace_discovery",
-    "github_discovery", "slack_discovery", "okta_discovery",
-    "oauth_grants", "config_drift", "compliance_map",
-    "report_writer", "multi_tenant", "disclaimers",
-])
+@pytest.mark.parametrize(
+    "module",
+    [
+        "audit",
+        "m365_discovery",
+        "google_workspace_discovery",
+        "github_discovery",
+        "slack_discovery",
+        "okta_discovery",
+        "oauth_grants",
+        "config_drift",
+        "compliance_map",
+        "report_writer",
+        "multi_tenant",
+        "disclaimers",
+    ],
+)
 def test_module_imports(module: str):
     import importlib
+
     mod = importlib.import_module(f"sspm.{module}.service")
     assert mod is not None

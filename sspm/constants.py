@@ -6,9 +6,7 @@ from typing import Any
 
 PRESIDIO_SOURCE = "data-privacy-stack/presidio"
 
-FORBIDDEN_REPORT_WORDS = frozenset(
-    {"compliance", "attestation", "certified", "secure", "guaranteed", "guarantees"}
-)
+FORBIDDEN_REPORT_WORDS = frozenset({"compliance", "attestation", "certified", "secure", "guaranteed", "guarantees"})
 
 OSS_INVENTORY: list[dict[str, Any]] = [
     {

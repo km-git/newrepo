@@ -747,7 +747,7 @@ def render_reports_index_html(kind: str | None = None) -> str:
 def _kv_table(mapping: Mapping[str, Any]) -> str:
     rows = []
     for key, value in mapping.items():
-        if isinstance(value, (dict, list)):
+        if isinstance(value, dict | list):
             rendered = f"<pre>{html.escape(json.dumps(value, indent=2, default=str))}</pre>"
         else:
             rendered = html.escape(str(value))

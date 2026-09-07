@@ -21,21 +21,15 @@ def diff(
     baselines = json.loads(base_file.read_text(encoding="utf-8"))
     baseline_rows = baselines.get(tenant, [])
     if current_settings is None:
-        current_settings = [
-            dict(r) for r in baseline_rows
-        ]
+        current_settings = [dict(r) for r in baseline_rows]
         if baseline_rows:
             current_settings[0] = {
                 **current_settings[0],
                 "setting_value": "false" if baseline_rows[0].get("setting_value") == "true" else "true",
             }
     conn = duckdb.connect()
-    conn.execute(
-        "CREATE TABLE baseline_settings (setting_name VARCHAR, setting_value VARCHAR)"
-    )
-    conn.execute(
-        "CREATE TABLE findings_settings (setting_name VARCHAR, setting_value VARCHAR)"
-    )
+    conn.execute("CREATE TABLE baseline_settings (setting_name VARCHAR, setting_value VARCHAR)")
+    conn.execute("CREATE TABLE findings_settings (setting_name VARCHAR, setting_value VARCHAR)")
     for row in baseline_rows:
         conn.execute(
             "INSERT INTO baseline_settings VALUES (?, ?)",

@@ -20,14 +20,16 @@ def _utcnow() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-ALLOWED_TABLES = frozenset({
-    "findings_tenants",
-    "findings_settings",
-    "findings_oauth",
-    "findings_drift",
-    "findings_compliance",
-    "tenants",
-})
+ALLOWED_TABLES = frozenset(
+    {
+        "findings_tenants",
+        "findings_settings",
+        "findings_oauth",
+        "findings_drift",
+        "findings_compliance",
+        "tenants",
+    }
+)
 
 
 class FindingsStore:
