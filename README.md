@@ -68,7 +68,7 @@ EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefe
 EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
 ```
 
-**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `msgpack` · `zstandard` · `cachetic` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `msgpack` · `zstandard` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
 
 ## Cursor Pro backend (default)
 
