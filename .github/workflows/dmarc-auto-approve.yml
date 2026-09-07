@@ -1,6 +1,7 @@
 name: dmarc-auto-approve
+
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -10,19 +11,20 @@ permissions:
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
-    if: |
-      github.actor == 'dependabot[bot]' ||
-      github.actor == 'github-actions[bot]' ||
-      contains(github.event.pull_request.body, '[auto-approved]')
+    timeout-minutes: 10
+    if: >
+      github.repository == github.event.pull_request.head.repo.full_name &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+       github.event.pull_request.user.login == 'github-actions[bot]')
     steps:
       - name: Approve the PR
-        uses: hmarr/auto-approve-action@v4
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge (squash)
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL" || echo "auto-merge not enabled"

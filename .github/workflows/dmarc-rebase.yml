@@ -1,33 +1,21 @@
 name: dmarc-rebase
+
 on:
   pull_request:
     types: [synchronize]
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
   rebase:
     runs-on: ubuntu-latest
-    if: |
-      github.event.pull_request.user.login == 'dependabot[bot]' ||
-      contains(github.event.pull_request.body, '[auto-rebase]')
+    timeout-minutes: 10
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Rebase on main
-        run: |
-          git config user.name "dmarc-bot"
-          git config user.email "dmarc-bot@users.noreply.github.com"
-          git fetch origin main
-          git rebase origin/main || {
-            gh pr comment "$PR_URL" --body "@operator merge conflict on this PR — please resolve manually"
-            exit 1
-          }
-          git push --force-with-lease
+      - name: Ask Dependabot to rebase onto main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR" --body "@dependabot rebase"
