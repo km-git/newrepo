@@ -1,7 +1,5 @@
 name: dspm-auto-approve
 
-# Dependabot PRs are same-repo, so pull_request is enough (zizmor dangerous-triggers).
-# Check the PR author, not github.actor (zizmor bot-conditions).
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -14,6 +12,8 @@ jobs:
   auto-approve:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # PR author (not last-push actor) — last-push actor is spoofable on synchronize.
+    # Same-repo only; never auto-approve fork PRs.
     if: >
       github.repository == github.event.pull_request.head.repo.full_name &&
       (github.event.pull_request.user.login == 'dependabot[bot]' ||
@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          files=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
+          files=$(gh api "repos/${{ github.repository }}/pulls/${PR}/files" --jq '.[].filename')
           if echo "$files" | grep -q 'dspm/remediation/policies/'; then
             echo "Remediation policies require manual review"
             exit 1
@@ -41,4 +41,6 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # As of 2026-03-25 GitHub returns HTTP 422 unless required checks exist.
+          # dspm-ci.yml reports on pull_request + merge_group for that requirement.
           gh pr merge --auto --squash "$PR_URL" || echo "auto-merge not enabled (HTTP 422 if required checks missing)"

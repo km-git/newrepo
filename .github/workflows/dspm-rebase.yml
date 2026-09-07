@@ -1,5 +1,7 @@
 name: dspm-rebase
 
+# Read-only notice for Dependabot. Do not check out PR HEAD with a write
+# token (CodeQL: uncontrolled checkout of untrusted code).
 on:
   pull_request:
     types: [synchronize]
@@ -11,11 +13,9 @@ permissions:
 jobs:
   rebase:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      # Do not checkout PR head (CodeQL actions/untrusted-checkout). Dependabot
-      # can rebase itself when mentioned; no untrusted git + contents:write.
       - name: Ask Dependabot to rebase onto main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

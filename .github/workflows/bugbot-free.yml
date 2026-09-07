@@ -77,7 +77,7 @@ jobs:
             --metrics off \
             --sarif \
             --output semgrep.sarif \
-            tape_to_cloud/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
+            tape_to_cloud/ dspm/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
             ew_tool.py
         continue-on-error: true
 

@@ -1,0 +1,34 @@
+{
+  "projects": [
+    {
+      "info": {
+        "name": "DataProfiler",
+        "version": "0.13.4",
+        "summary": "DataProfiler — detect schema, stats, and PII in tabular data",
+        "license": "Apache-2.0",
+        "home_page": "https://pypi.org/project/DataProfiler/"
+      },
+      "module": "dspm/classification"
+    },
+    {
+      "info": {
+        "name": "policyuniverse",
+        "version": "1.5.1.20240125",
+        "summary": "Parse and Expand AWS Least Privilege Policies",
+        "license": "Apache-2.0",
+        "home_page": "https://pypi.org/project/policyuniverse/"
+      },
+      "module": "dspm/access"
+    },
+    {
+      "info": {
+        "name": "detect-secrets",
+        "version": "1.5.0",
+        "summary": "An enterprise friendly way of detecting and preventing secrets in code.",
+        "license": "Apache-2.0",
+        "home_page": "https://pypi.org/project/detect-secrets/"
+      },
+      "module": "dspm/encryption_check"
+    }
+  ]
+}
