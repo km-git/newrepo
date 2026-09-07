@@ -108,7 +108,9 @@ def test_codeql_and_trufflehog_are_sha_pinned() -> None:
         ref = uses.split("@", 1)[1].split("#", 1)[0]
         if "/" not in uses:
             continue
-        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/")):
+        if uses.startswith(
+            ("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/", "hmarr/")
+        ):
             assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
@@ -200,6 +202,9 @@ def test_lint_security_has_detect_secrets_and_github_annotations() -> None:
     assert "detect-secrets" in text
     assert "trufflehog" in text
     assert "ruff-sarif" in text
+    assert "zero-key-approve" in text
+    assert f"hmarr/auto-approve-action@{HMARR_SHA}" in text
+    assert "pull_request_target" not in text
     assert "--output-format=github" in text
     assert "dmarc/requirements.txt" in text
     assert "dspm/" in text
