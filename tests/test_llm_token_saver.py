@@ -76,10 +76,12 @@ def test_token_saver_summary_per_model():
 
 def test_registry_lists_libraries():
   reg = registry_summary()
-  assert reg["total_count"] >= 8
-  names = {l["name"] for l in reg["libraries"]}
+  assert reg["total_count"] >= 7
+  names = {row["name"] for row in reg["libraries"]}
   assert "tiktoken" in names
   assert "llm-token-optimizer" in names
+  assert "msgpack" in names
+  assert "cachetic" not in names
 
 
 def test_optimize_prompt_builtin_fallback():

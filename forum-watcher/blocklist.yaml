@@ -1,0 +1,6 @@
+# Recurring reject phrases. The watcher skips items whose title+summary
+# contain any of these strings (case-insensitive) before the LLM call.
+keywords:
+  - burnout recovery
+  - gpo printer
+  - helpdesk
