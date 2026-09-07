@@ -38,9 +38,17 @@ jobs:
           fi
 
       - name: Approve the PR
+        id: approve
+        continue-on-error: true
         uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Note org setting if approve was blocked
+        if: steps.approve.outcome == 'failure'
+        run: |
+          echo "::notice::GITHUB_TOKEN could not approve (HTTP 422 if Actions cannot approve PRs)."
+          echo "Enable Settings → Actions → General → Allow GitHub Actions to create and approve pull requests."
 
       - name: Enable auto-merge (squash)
         if: >

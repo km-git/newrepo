@@ -48,7 +48,55 @@ def test_pending_required_check_is_pending_not_fail() -> None:
     assert summary["pass"] is False
 
 
-def test_draft_executive_does_not_reject_advisory_ci_failures() -> None:
+def test_auto_approve_and_bare_codeql_are_optional() -> None:
+    summary = summarize_ci_checks(
+        [
+            _check("test"),
+            _check("sspm-ci"),
+            _check("auto-approve", conclusion="failure"),
+            _check("CodeQL", conclusion="failure"),
+            _check("CodeQL (python)"),
+            _check("executive-consensus", conclusion="failure"),
+        ]
+    )
+    assert summary["fail"] is False
+    assert summary["pass"] is True
+
+
+def test_codeql_python_workflow_job_is_required() -> None:
+    summary = summarize_ci_checks(
+        [
+            _check("test"),
+            _check("CodeQL (python)", conclusion="failure"),
+        ]
+    )
+    assert summary["fail"] is True
+
+
+def test_draft_executive_does_not_reject_auto_approve_failure() -> None:
+    ci = summarize_ci_checks(
+        [
+            _check("test"),
+            _check("auto-approve", conclusion="failure"),
+            _check("CodeQL", conclusion="failure"),
+        ]
+    )
+    ex = pr_draft_executive(
+        {
+            "number": 76,
+            "title": "SSPM",
+            "body": "[auto-approved]",
+            "draft": False,
+            "additions": 80,
+            "deletions": 10,
+            "changed_files": 4,
+            "ci": ci,
+            "files": [{"path": "tests/test_sspm_architecture.py"}],
+            "labels": [],
+        }
+    )
+    assert ex["verdict"] != "REJECT"
+    assert "CI checks failed" not in ex["structural_gaps"]
     ci = summarize_ci_checks(
         [
             _check("test"),

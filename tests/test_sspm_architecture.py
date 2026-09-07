@@ -72,6 +72,10 @@ def test_workflows_exist() -> None:
     assert "sspm/loop/" in approve
     assert "auto-merge blocked" in approve
     assert "exit 1" not in approve
+    # Org setting "Allow GitHub Actions to create and approve pull requests"
+    # is often off; keep the job green while still attempting approval.
+    assert "continue-on-error: true" in approve
+    assert "Allow GitHub Actions to create and approve pull requests" in approve
     watch = (wf / "sspm-watch.yml").read_text(encoding="utf-8")
     assert "Australia/Sydney" in watch
     rebase = (wf / "sspm-rebase.yml").read_text(encoding="utf-8")
