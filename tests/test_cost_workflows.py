@@ -21,7 +21,8 @@ def test_cost_ci_has_merge_group_and_trivy_pin():
 
 def test_auto_approve_filters_actors_and_remediation():
     text = (WF / "cost-auto-approve.yml").read_text(encoding="utf-8")
-    assert "pull_request_target" in text
+    assert "pull_request:" in text
+    assert "pull_request_target" not in text
     assert "dependabot[bot]" in text
     assert "[auto-approved]" in text
     assert "hmarr/auto-approve-action@v4" in text
