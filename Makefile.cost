@@ -1,0 +1,42 @@
+.PHONY: cost-audit-inventory cost-inventory-aws cost-cost-explorer cost-all cost-test cost-webui cost-webui-static cost-monthly cost-watch
+
+PYTHON ?= .venv/bin/python
+export COST_DB ?= output/cost/cost.sqlite
+
+cost-audit-inventory:
+	$(PYTHON) -m cost audit inventory
+
+cost-inventory-aws:
+	$(PYTHON) -m cost inventory aws --regions ap-southeast-2
+
+cost-cost-explorer:
+	$(PYTHON) -m cost cost-explorer rollup --provider aws --since 30d
+
+cost-watch:
+	$(PYTHON) -m cost loop watch
+
+cost-monthly:
+	$(PYTHON) -m cost loop monthly
+
+cost-webui:
+	$(PYTHON) -m cost webui --host 0.0.0.0 --port 8766
+
+cost-webui-static:
+	$(PYTHON) -m cost webui --static
+
+cost-all: cost-audit-inventory cost-inventory-aws
+	$(PYTHON) -m cost inventory azure
+	$(PYTHON) -m cost inventory gcp
+	$(PYTHON) -m cost cost-explorer rollup --provider aws --since 30d
+	$(PYTHON) -m cost rightsizing scan --provider aws
+	$(PYTHON) -m cost untagged scan
+	$(PYTHON) -m cost drift diff --provider aws
+	$(PYTHON) -m cost compliance map --framework finops-foundation
+	$(PYTHON) -m cost multi-account
+	$(PYTHON) -m cost report generate --provider aws --since 30d --output output/cost/report.md
+	$(PYTHON) -m cost loop watch
+	$(PYTHON) -m cost loop monthly
+	$(PYTHON) -m cost webui --static
+
+cost-test:
+	$(PYTHON) -m pytest tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py -q

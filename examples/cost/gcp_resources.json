@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "name": "gke-node-1",
+      "zone": "australia-southeast1-a",
+      "kind": "compute#instance",
+      "labels": {"env": "staging"},
+      "monthly_cost": 88.5
+    }
+  ]
+}

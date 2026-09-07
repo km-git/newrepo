@@ -1,0 +1,8 @@
+required_tags:
+  - Environment
+  - CostCenter
+  - Owner
+
+notes: >
+  Default tagging policy for untagged-resource scans.
+  Adjust per customer contract.

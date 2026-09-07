@@ -1,0 +1,11 @@
+This Cloud Cost & Configuration Review is provided for informational purposes only.
+
+It presents read-only cost observations and configuration references derived from
+customer-authorised cloud control plane APIs. It is not a security assessment,
+attestation, or guarantee of any kind.
+
+Rightsizing and configuration suggestions require review with your engineering team
+before any changes are applied. Cost data may lag 24-48 hours behind real-time usage.
+
+The operator accepts no liability for decisions made on the basis of this report
+beyond the scope of the engagement letter governing the review.

@@ -1,0 +1,18 @@
+[
+  {
+    "provider": "aws",
+    "resource_id": "i-0def456",
+    "current_type": "m5.xlarge",
+    "recommended_type": "m5.large",
+    "monthly_savings_estimate": 85.0,
+    "risk_level": "low"
+  },
+  {
+    "provider": "aws",
+    "resource_id": "i-0abc123",
+    "current_type": "m5.2xlarge",
+    "recommended_type": "m5.xlarge",
+    "monthly_savings_estimate": 120.0,
+    "risk_level": "high"
+  }
+]

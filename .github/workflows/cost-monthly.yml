@@ -1,0 +1,41 @@
+name: cost-monthly
+
+# First Monday 09:00 AEST ≈ first Sunday 23:00 UTC in days 1-7.
+on:
+  schedule:
+    - cron: "0 23 1-7 * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install COST
+        run: pip install -e .
+
+      - name: Generate the monthly rollup
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m cost loop monthly
+
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "monthly: rollup"
+          title: Monthly COST rollup
+          body: Auto-generated monthly rollup plus security-posture.md. Review and merge.
+          branch: monthly/rollup
+          delete-branch: true
+          add-paths: |
+            monthly/*.md
+            state/seen.json
