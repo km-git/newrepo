@@ -60,10 +60,18 @@ def main(argv: list[str] | None = None) -> int:
         _print(report)
         return 0 if report.get("object_count") else 2
     if args.cmd == "restore":
-        _print(restore_job(args.job_id, Path(args.dest), store=store))
+        try:
+            _print(restore_job(args.job_id, Path(args.dest), store=store))
+        except (ValueError, FileNotFoundError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         return 0
     if args.cmd == "verify":
-        result = verify_job(args.job_id, store=store)
+        try:
+            result = verify_job(args.job_id, store=store)
+        except (ValueError, FileNotFoundError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         _print(result)
         return 0 if result["objects_ok"] and result["report_hash_ok"] else 2
     if args.cmd == "status":
