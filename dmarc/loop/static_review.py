@@ -122,11 +122,11 @@ def render_markdown(report: dict[str, Any]) -> str:
     pin_status = "pass" if not any(f.get("rule") == "action-main-pin" for f in findings) else "FAIL"
     stack = (
         "Zero-key GitHub stack: **Ruff** (`E,F,W,I,UP,B,SIM,RUF,S` Bandit-equivalent) + **gitleaks** + "
-        "**zizmor** + **actionlint** + **OSV-Scanner** + **pip-audit** + **detect-secrets** + **CodeQL**."
+        + "**zizmor** + **actionlint** + **OSV-Scanner** + **pip-audit** + **detect-secrets** + **CodeQL**."
     )
     codium = (
         "Public-repo AI narrative: comment `@CodiumAI-Agent /review`, or install CodeRabbit from the "
-        "GitHub Marketplace (~4 PRs/hr, no workflow file)."
+        + "GitHub Marketplace (~4 PRs/hr, no workflow file)."
     )
     lines = [
         MARKER,
