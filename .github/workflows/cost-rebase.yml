@@ -5,7 +5,7 @@ on:
     types: [synchronize]
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
@@ -14,23 +14,8 @@ jobs:
     timeout-minutes: 10
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.event.pull_request.head.ref }}
-
-      - name: Rebase on main
+      - name: Ask Dependabot to rebase onto main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
-        run: |
-          git config user.name "cost-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          if ! git rebase origin/main; then
-            git rebase --abort || true
-            gh pr comment "$PR" --body "@operator merge conflict on this PR — please resolve manually"
-            exit 1
-          fi
-          git push --force-with-lease
+        run: gh pr comment "$PR" --body "@dependabot rebase"
