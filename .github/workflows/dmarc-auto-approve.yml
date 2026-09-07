@@ -28,7 +28,7 @@ jobs:
       - name: Skip template-sensitive paths
         if: github.event_name != 'merge_group'
         id: gate
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const files = await github.paginate(github.rest.pulls.listFiles, {
@@ -48,6 +48,6 @@ jobs:
 
       - name: Approve bot PR
         if: github.event_name != 'merge_group' && steps.gate.outputs.skip != 'true'
-        uses: hmarr/auto-approve-action@v4
+        uses: hmarr/auto-approve-action@05a696a09d381a5a0d142c755f7eacbb19eb6525 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

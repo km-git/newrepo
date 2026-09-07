@@ -22,6 +22,8 @@ PR_AGENT_SHA = "f3b385ea2927247ddcff2fe252472380b9c8f5fc"
 GITLEAKS_SHA = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
 CODEQL_SHA = "cdf488f595d80d6e07e03d4674febd5ab45fa938"
 REVIEWDOG_SHA = "d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f"
+CREATE_PR_SHA = "5f6978faf089d4d20b00c7766989d076bb2fc7f1"
+HMARR_SHA = "05a696a09d381a5a0d142c755f7eacbb19eb6525"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 USES_RE = re.compile(r"^\s*uses:\s+(\S+)", re.MULTILINE)
 BUGBOT_FREE = ROOT / ".github" / "workflows" / "bugbot-free.yml"
@@ -160,3 +162,20 @@ def test_lint_security_has_detect_secrets_and_github_annotations() -> None:
     assert "dmarc/requirements.txt" in text
     assert "merge_group:" in text
     assert "persist-credentials: false" in text
+    assert "permissions:" in text.split("jobs:")[0]
+
+
+def test_dmarc_third_party_actions_are_sha_pinned() -> None:
+    workflows = ROOT / ".github" / "workflows"
+    for name in ("dmarc-monthly.yml", "dmarc-watch.yml", "dmarc-issue-fix.yml", "forum-watcher.yml"):
+        text = (workflows / name).read_text(encoding="utf-8")
+        assert f"peter-evans/create-pull-request@{CREATE_PR_SHA}" in text, name
+        assert "create-pull-request@v8\n" not in text, name
+    auto = (workflows / "dmarc-auto-approve.yml").read_text(encoding="utf-8")
+    assert f"hmarr/auto-approve-action@{HMARR_SHA}" in auto
+    keep = (workflows / "dmarc-keepalive.yml").read_text(encoding="utf-8")
+    assert "uses:" not in keep or all(
+        not line.strip().startswith("uses:") or "actions/" in line for line in keep.splitlines()
+    )
+    assert "permissions:" in keep
+    assert "actions: write" in keep
