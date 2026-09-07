@@ -54,12 +54,11 @@ def run_cpcv_audit(
   psr_result: Dict[str, Any] = {}
   dsr_result: Dict[str, Any] = {}
   try:
-    psr_result = pcv.probabilistic_sharpe_ratio(returns, benchmark_sr=0.0)
-    dsr_result = pcv.deflated_sharpe_ratio(
-      observed_sr or 0.0,
-      n,
-      num_trials=num_trials,
-    )
+    arr = np.asarray(returns, dtype=float)
+    psr_val = float(pcv.probabilistic_sharpe_ratio(arr, benchmark_skill=0.0))
+    dsr_val = float(pcv.deflated_sharpe_ratio(arr, num_trials, observed_sr or 0.0))
+    psr_result = {"psr": psr_val}
+    dsr_result = {"dsr": dsr_val}
   except Exception as exc:
     psr_result = {"error": str(exc)}
     dsr_result = {"error": str(exc)}
