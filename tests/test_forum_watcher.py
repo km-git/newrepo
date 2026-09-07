@@ -142,6 +142,18 @@ def test_vendor_heuristic_does_not_zero_fit_on_jargon():
     assert result["score"] >= 5
 
 
+def test_eighteen_tools_inventory():
+    watch = _load_watch()
+    tools = watch.load_test_tools()
+    names = {t["name"] for t in tools}
+    assert len(tools) == 18
+    assert "mhvtl" in names
+    assert "SeaweedFS" in names
+    assert "VeeamZIP" in names
+    veeam = next(t for t in tools if t["name"] == "VeeamZIP")
+    assert veeam.get("windows_only") is True
+
+
 def test_render_markdown_checkboxes():
     watch = _load_watch()
     classified = [
