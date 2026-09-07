@@ -8,7 +8,7 @@ from pathlib import Path
 import typer
 
 from licensespend.cli_util import FIXTURE_ANY, OUT_DIR, want_human
-from licensespend.constants import EXAMPLES
+from licensespend.constants import resolve_fixture_root
 from licensespend.output import emit
 from licensespend.report.service import build
 
@@ -27,7 +27,7 @@ def build_cmd(
     files = build(
         client=client,
         out_dir=out,
-        fixture_root=fixture or EXAMPLES,
+        fixture_root=resolve_fixture_root(client, fixture),
         as_of=date.fromisoformat(as_of) if as_of else date(2026, 9, 7),
     )
     typer.echo(emit(files.model_dump(mode="json"), human=want_human(ctx, human)), nl=False)

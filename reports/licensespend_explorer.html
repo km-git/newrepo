@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>LicenseSpend Explorer — draft reclaim pack</title>
+  <style>
+    :root {
+      --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e;
+      --accent:#58a6ff; --green:#3fb950; --gold:#d29922; --red:#f85149; --purple:#bc8cff;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem 1.25rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    h1 { margin:0; font-size:1.2rem; }
+    .meta { color:var(--muted); font-size:0.82rem; margin-top:0.2rem; }
+    .nav a { color:var(--accent); margin-left:0.9rem; text-decoration:none; font-size:0.85rem; }
+    .nav a:hover { text-decoration:underline; }
+    main { padding:1.15rem 1.25rem 2.5rem; max-width:1200px; margin:0 auto; }
+    .banner { background:#3d2a00; border:1px solid var(--gold); color:#f0d78c; border-radius:8px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
+    .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:0.75rem; margin-bottom:1rem; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:0.85rem 0.95rem; }
+    .kpi .label { color:var(--muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em; }
+    .kpi .value { font-size:1.35rem; font-weight:650; margin-top:0.25rem; }
+    .kpi .hint { color:var(--muted); font-size:0.75rem; margin-top:0.15rem; }
+    h2 { margin:0 0 0.7rem; font-size:1rem; }
+    section.card { margin-bottom:1rem; }
+    .switch { display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .switch button { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.75rem; cursor:pointer; text-align:left; }
+    .switch button.active { border-color:var(--accent); color:var(--accent); }
+    .switch button .blurb { display:block; color:var(--muted); font-size:0.72rem; margin-top:0.15rem; }
+    table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+    th, td { text-align:left; padding:0.4rem 0.45rem; border-bottom:1px solid var(--border); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    code { font-size:0.78rem; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    @media (max-width: 840px) { .grid { grid-template-columns:1fr; } }
+    .bar { display:flex; align-items:center; gap:0.5rem; margin:0.35rem 0; }
+    .bar .name { width:7.5rem; font-size:0.8rem; flex-shrink:0; }
+    .track { flex:1; background:#21262d; height:10px; border-radius:99px; overflow:hidden; }
+    .fill { height:100%; background:var(--accent); }
+    .fill.gold { background:var(--gold); }
+    .fill.green { background:var(--green); }
+    .fill.purple { background:var(--purple); }
+    .bar .amt { width:5.5rem; text-align:right; font-size:0.8rem; color:var(--muted); }
+    ul.talk { margin:0; padding-left:1.15rem; color:var(--text); font-size:0.88rem; }
+    ul.talk li { margin:0.35rem 0; }
+    .gaps { color:var(--muted); font-size:0.82rem; }
+    .watermark { font-size:0.72rem; color:var(--muted); word-break:break-all; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>LicenseSpend Explorer</h1>
+      <div class="meta">SaaS seat-waste report · AUD list prices · as of 2026-09-07 · hashed ids only</div>
+    </div>
+    <nav class="nav">
+      <a href="/monitor">Monitor</a>
+      <a href="/monetize">Monetize</a>
+      <a href="/tape-to-cloud">Tape-to-Cloud</a>
+      <a href="/licensespend">LicenseSpend</a>
+    </nav>
+  </header>
+  <main>
+    <div class="banner">Draft reclaim pack for human review. Not regulated advice. Do not auto-revoke. Dual-gate reclaim records intent only — no Graph, Slack, or GitHub mutate APIs.</div>
+    <div class="kpis" id="portfolio-kpis">
+      <div class="card kpi"><div class="label">Portfolio reclaim / mo</div><div class="value num" id="p-month">A$408.00</div><div class="hint">Acme + Northwind sample tenants</div></div>
+      <div class="card kpi"><div class="label">Annualised</div><div class="value num" id="p-year">A$4896.00</div><div class="hint">12 × monthly list price</div></div>
+      <div class="card kpi"><div class="label">Unused seats</div><div class="value num" id="p-unused">14</div><div class="hint">idle ≥ 90 days as of 2026-09-07</div></div>
+      <div class="card kpi"><div class="label">Sample clients</div><div class="value num" id="p-clients">2</div><div class="hint">72 assigned seats</div></div>
+    </div>
+    <section class="card">
+      <h2>Client switcher</h2>
+      <div class="switch" id="client-switch">
+        
+        <button type="button" data-client="acme" class="active">
+          Acme · A$127/mo
+          <span class="blurb">12x Microsoft 365 E3 · Slack Business+ · GitHub Team</span>
+        </button>
+        
+        <button type="button" data-client="northwind">
+          Northwind · A$281/mo
+          <span class="blurb">20x Microsoft 365 E5 · denser unused seats for QBR sample</span>
+        </button>
+        
+      </div>
+    </section>
+    <div class="kpis" id="client-kpis"></div>
+    <div class="grid">
+      <section class="card">
+        <h2>Vendor reclaim</h2>
+        <div id="vendor-bars"></div>
+      </section>
+      <section class="card">
+        <h2>Idle buckets (all assigned seats)</h2>
+        <div id="idle-bars"></div>
+      </section>
+    </div>
+    <div class="grid">
+      <section class="card">
+        <h2>Bought vs used</h2>
+        <table><thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th></tr></thead><tbody id="sku-body"></tbody></table>
+      </section>
+      <section class="card">
+        <h2>Department reclaim</h2>
+        <table><thead><tr><th>Department</th><th>Unused</th><th>AUD / mo</th></tr></thead><tbody id="dept-body"></tbody></table>
+      </section>
+    </div>
+    <section class="card">
+      <h2>Unused seats (hashed ids)</h2>
+      <table>
+        <thead><tr><th>User id</th><th>SKU</th><th>Vendor</th><th>Dept</th><th>Idle days</th><th>AUD / mo</th></tr></thead>
+        <tbody id="unused-body"></tbody>
+      </table>
+    </section>
+    <div class="grid">
+      <section class="card">
+        <h2>Renewals (60-day window)</h2>
+        <table><thead><tr><th>Vendor</th><th>Renew on</th><th>Days</th><th>AUD</th></tr></thead><tbody id="renew-body"></tbody></table>
+      </section>
+      <section class="card">
+        <h2>Shadow SaaS heuristics</h2>
+        <table><thead><tr><th>Name</th><th>Source</th><th>Note</th></tr></thead><tbody id="shadow-body"></tbody></table>
+      </section>
+    </div>
+    <section class="card">
+      <h2>Draft QBR talk-track</h2>
+      <ul class="talk" id="qbr"></ul>
+    </section>
+    <section class="card">
+      <h2>Honest gaps</h2>
+      <ul class="gaps" id="gaps"></ul>
+      <p class="watermark">Watermark SHA-256: <code id="wm"></code></p>
+    </section>
+  </main>
+  <script id="explorer-state" type="application/json">{"product": "licensespend", "as_of": "2026-09-07", "idle_days_threshold": 90, "currency": "AUD", "disclaimer": "Draft reclaim pack for human review. Not regulated advice. Do not auto-revoke.", "honest_gaps": ["Graph last-signin lags; idle is unused, not never.", "Slack guests are unbilled; conversations.history is never called.", "GitHub last-active uses audit-log events when present; outside collaborators are unbilled.", "Pricebook is operator-edited AUD list prices, not a crawler.", "Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.", "Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs."], "portfolio": {"clients": 2, "seats_total": 72, "unused_seats": 14, "reclaim_monthly_aud": 408.0, "reclaim_annual_aud": 4896.0}, "client_index": [{"id": "acme", "label": "Acme", "blurb": "12x Microsoft 365 E3 \u00b7 Slack Business+ \u00b7 GitHub Team", "reclaim_monthly_aud": 127.0, "reclaim_annual_aud": 1524.0, "unused_count": 5, "seats_total": 26, "watermark": "5026ae46e86f3077c843e6d7ba1a9ad6029f2995fd8ce202b13e5873762fbbdb"}, {"id": "northwind", "label": "Northwind", "blurb": "20x Microsoft 365 E5 \u00b7 denser unused seats for QBR sample", "reclaim_monthly_aud": 281.0, "reclaim_annual_aud": 3372.0, "unused_count": 9, "seats_total": 46, "watermark": "242f7a35dd1589ea4d6d577bad0afd9469e46f354839c16442cfd21341018cc5"}], "clients": {"acme": {"product": "licensespend", "client": "acme", "as_of": "2026-09-07", "seats_bought": {"m365-e3": 12, "slack-business-plus": 6, "slack-guest": 2, "github-team": 5, "github-outside": 1}, "seats_used": {"m365-e3": 9, "slack-business-plus": 5, "slack-guest": 2, "github-team": 4, "github-outside": 1}, "unused": [{"user_id": "u-001", "sku": "m365-e3", "vendor": "microsoft365", "idle_days": 249, "monthly_cost": 36.0, "department": "finance", "role": "member", "email_hash": "c3a87d0ea41a47e611e8e54b9da3ff14f2e4796f7109c61b650f877b7a6b8a93", "email": null, "note": null, "last_active": "2026-01-01"}, {"user_id": "u-002", "sku": "m365-e3", "vendor": "microsoft365", "idle_days": 204, "monthly_cost": 36.0, "department": "finance", "role": "member", "email_hash": "3a7cb2bc79c5e2c234a795958c4e8626c75f72e74a49498bf177b6c54fc181cb", "email": null, "note": null, "last_active": "2026-02-15"}, {"user_id": "u-003", "sku": "m365-e3", "vendor": "microsoft365", "idle_days": 190, "monthly_cost": 36.0, "department": "hr", "role": "member", "email_hash": "8b935dfbdd4486f4d47171715329cd34a0b30116c10edb1b72f0102ce8fe9870", "email": null, "note": null, "last_active": "2026-03-01"}, {"user_id": "S001", "sku": "slack-business-plus", "vendor": "slack", "idle_days": 240, "monthly_cost": 15.0, "department": "ops", "role": "member", "email_hash": "58c97b0ce6241e6ce2587f3d4b76191eb7b35160c8fb0b70879a9feeda1b4afa", "email": null, "note": "enterprise-grid billing not in free token; fixture covers billed seats", "last_active": "2026-01-10"}, {"user_id": "gh-001", "sku": "github-team", "vendor": "github", "idle_days": 245, "monthly_cost": 4.0, "department": "eng", "role": "member", "email_hash": "d0708a89a23e9863286048db30833e0608b6ef42a961bfe093b0b3d8a418f505", "email": null, "note": "contribution stats incomplete without audit log; never clone private repos", "last_active": "2026-01-05"}], "unused_count": 5, "seats_total": 26, "idle_days_threshold": 90, "reclaim_monthly_aud": 127.0, "reclaim_annual_aud": 1524.0, "vendor_breakdown": [{"vendor": "microsoft365", "unused_seats": 3, "monthly_aud": 108.0, "skus": {"m365-e3": 3}}, {"vendor": "slack", "unused_seats": 1, "monthly_aud": 15.0, "skus": {"slack-business-plus": 1}}, {"vendor": "github", "unused_seats": 1, "monthly_aud": 4.0, "skus": {"github-team": 1}}], "department_breakdown": [{"department": "finance", "unused_seats": 2, "monthly_aud": 72.0}, {"department": "hr", "unused_seats": 1, "monthly_aud": 36.0}, {"department": "ops", "unused_seats": 1, "monthly_aud": 15.0}, {"department": "eng", "unused_seats": 1, "monthly_aud": 4.0}], "idle_buckets": {"0-29": 20, "30-59": 1, "60-89": 0, "90+": 5, "unknown": 0}, "renewals": [{"vendor": "microsoft365", "seats": 12, "renew_on": "2026-10-01", "notice_by": "2026-09-01", "amount_aud": 5184.0, "days_until": 24, "nudge": "Draft: remind microsoft365 owner that renewal on 2026-10-01 needs notice by 2026-09-01."}], "shadow_apps": [{"name": "Microsoft 365", "source": "expense-csv", "owner": "finance", "amount_aud": 5184.0, "in_pricebook": true, "note": null}, {"name": "Slack", "source": "expense-csv", "owner": "ops", "amount_aud": 1080.0, "in_pricebook": true, "note": null}, {"name": "Notion", "source": "expense-csv", "owner": "ops", "amount_aud": 240.0, "in_pricebook": false, "note": "not in pricebook; possible shadow SaaS"}, {"name": "Canva", "source": "expense-csv", "owner": "marketing", "amount_aud": 180.0, "in_pricebook": false, "note": "not in pricebook; possible shadow SaaS"}, {"name": "Microsoft 365", "source": "sso-catalog", "owner": "it", "amount_aud": null, "in_pricebook": true, "note": null}, {"name": "Slack", "source": "sso-catalog", "owner": "it", "amount_aud": null, "in_pricebook": true, "note": null}, {"name": "Notion", "source": "sso-catalog", "owner": "ops", "amount_aud": null, "in_pricebook": false, "note": "unapproved SSO app"}, {"name": "Grammarly", "source": "sso-catalog", "owner": "marketing", "amount_aud": null, "in_pricebook": false, "note": "unapproved SSO app"}, {"name": "_spf.google.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}, {"name": "spf.protection.outlook.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}, {"name": "mail.zendesk.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}], "reclaim_appendix": [{"user_id": "u-001", "sku": "m365-e3", "email_hash": "c3a87d0ea41a47e611e8e54b9da3ff14f2e4796f7109c61b650f877b7a6b8a93"}, {"user_id": "u-002", "sku": "m365-e3", "email_hash": "3a7cb2bc79c5e2c234a795958c4e8626c75f72e74a49498bf177b6c54fc181cb"}, {"user_id": "u-003", "sku": "m365-e3", "email_hash": "8b935dfbdd4486f4d47171715329cd34a0b30116c10edb1b72f0102ce8fe9870"}, {"user_id": "S001", "sku": "slack-business-plus", "email_hash": "58c97b0ce6241e6ce2587f3d4b76191eb7b35160c8fb0b70879a9feeda1b4afa"}, {"user_id": "gh-001", "sku": "github-team", "email_hash": "d0708a89a23e9863286048db30833e0608b6ef42a961bfe093b0b3d8a418f505"}], "qbr_talk_track": ["Draft QBR talk-track for acme as of 2026-09-07: 5 unused seats across github, microsoft365, slack = A$127.00/month (A$1524.00/year at operator list price).", "This is a spend report for human review. Do not auto-revoke seats.", "Highest-cost unused seat: m365-e3 (microsoft365) at A$36.00/month, idle 249 days (hashed id u-001).", "Renewals inside the 60-day window: microsoft365 2026-10-01.", "Possible shadow SaaS (not in pricebook): Notion, Canva, Notion, Grammarly, _spf.google.com, spf.protection.outlook.com, mail.zendesk.com.", "Action: walk the draft reclaim appendix with the tenant owner; dual-gate reclaim records intent only."], "honest_gaps": ["Graph last-signin lags; idle is unused, not never.", "Slack guests are unbilled; conversations.history is never called.", "GitHub last-active uses audit-log events when present; outside collaborators are unbilled.", "Pricebook is operator-edited AUD list prices, not a crawler.", "Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.", "Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs."], "watermark": "5026ae46e86f3077c843e6d7ba1a9ad6029f2995fd8ce202b13e5873762fbbdb", "draft": true, "disclaimer": "Draft reclaim pack for human review. Not regulated advice. Do not auto-revoke.", "label": "Acme", "blurb": "12x Microsoft 365 E3 \u00b7 Slack Business+ \u00b7 GitHub Team"}, "northwind": {"product": "licensespend", "client": "northwind", "as_of": "2026-09-07", "seats_bought": {"m365-e5": 20, "slack-business-plus": 12, "slack-guest": 3, "github-team": 10, "github-outside": 1}, "seats_used": {"m365-e5": 16, "slack-business-plus": 9, "slack-guest": 3, "github-team": 8, "github-outside": 1}, "unused": [{"user_id": "nw-m01", "sku": "m365-e5", "vendor": "microsoft365", "idle_days": 280, "monthly_cost": 57.0, "department": "finance", "role": "member", "email_hash": "09545ab51696d63fc7dc3ea98cadcb97e902eb8738cb60dac4951012accd48d6", "email": null, "note": null, "last_active": "2025-12-01"}, {"user_id": "nw-m02", "sku": "m365-e5", "vendor": "microsoft365", "idle_days": 235, "monthly_cost": 57.0, "department": "finance", "role": "member", "email_hash": "0fc7dfd1118ccdacdfbd5d63feb606d25ff6c981132c02482b21deae7d74086d", "email": null, "note": null, "last_active": "2026-01-15"}, {"user_id": "nw-m03", "sku": "m365-e5", "vendor": "microsoft365", "idle_days": 218, "monthly_cost": 57.0, "department": "hr", "role": "member", "email_hash": "7d79a163db878b301716c9583252a8a013501b82273c92c9eb9a1744681267d5", "email": null, "note": null, "last_active": "2026-02-01"}, {"user_id": "nw-m04", "sku": "m365-e5", "vendor": "microsoft365", "idle_days": 176, "monthly_cost": 57.0, "department": "sales", "role": "member", "email_hash": "19b12630151bedfb9d810def2c863413db388b1bf1afcd532d4e5b1e0426d9fe", "email": null, "note": null, "last_active": "2026-03-15"}, {"user_id": "NWS01", "sku": "slack-business-plus", "vendor": "slack", "idle_days": 230, "monthly_cost": 15.0, "department": "ops", "role": "member", "email_hash": "7c04abc0c87bb9b027cedca5378e2d620414a2695c26cecf0efb4eb6150037d5", "email": null, "note": "enterprise-grid billing not in free token; fixture covers billed seats", "last_active": "2026-01-20"}, {"user_id": "NWS02", "sku": "slack-business-plus", "vendor": "slack", "idle_days": 209, "monthly_cost": 15.0, "department": "sales", "role": "member", "email_hash": "df5a97f3368c18605dd9836b48a286cb39223d25f0cafd425798b8ecc2dbd49c", "email": null, "note": "enterprise-grid billing not in free token; fixture covers billed seats", "last_active": "2026-02-10"}, {"user_id": "NWS03", "sku": "slack-business-plus", "vendor": "slack", "idle_days": 190, "monthly_cost": 15.0, "department": "marketing", "role": "member", "email_hash": "9cdbd62fd8f39a3fc27708a94afbb45a6f922fd5f308933a75543fefe8e270be", "email": null, "note": "enterprise-grid billing not in free token; fixture covers billed seats", "last_active": "2026-03-01"}, {"user_id": "nw-gh01", "sku": "github-team", "vendor": "github", "idle_days": 242, "monthly_cost": 4.0, "department": "eng", "role": "member", "email_hash": "46f0a0adf3d7e0576f34e0b487a27caa9e4f4f7bcab3231757969cbbfe7bec09", "email": null, "note": "contribution stats incomplete without audit log; never clone private repos", "last_active": "2026-01-08"}, {"user_id": "nw-gh02", "sku": "github-team", "vendor": "github", "idle_days": 199, "monthly_cost": 4.0, "department": "ops", "role": "member", "email_hash": "54738b25ffbe0a90bee70435b710f5ba6a0c6f550078cbf15434f7685038f3b3", "email": null, "note": "contribution stats incomplete without audit log; never clone private repos", "last_active": "2026-02-20"}], "unused_count": 9, "seats_total": 46, "idle_days_threshold": 90, "reclaim_monthly_aud": 281.0, "reclaim_annual_aud": 3372.0, "vendor_breakdown": [{"vendor": "microsoft365", "unused_seats": 4, "monthly_aud": 228.0, "skus": {"m365-e5": 4}}, {"vendor": "slack", "unused_seats": 3, "monthly_aud": 45.0, "skus": {"slack-business-plus": 3}}, {"vendor": "github", "unused_seats": 2, "monthly_aud": 8.0, "skus": {"github-team": 2}}], "department_breakdown": [{"department": "finance", "unused_seats": 2, "monthly_aud": 114.0}, {"department": "sales", "unused_seats": 2, "monthly_aud": 72.0}, {"department": "hr", "unused_seats": 1, "monthly_aud": 57.0}, {"department": "ops", "unused_seats": 2, "monthly_aud": 19.0}, {"department": "marketing", "unused_seats": 1, "monthly_aud": 15.0}, {"department": "eng", "unused_seats": 1, "monthly_aud": 4.0}], "idle_buckets": {"0-29": 33, "30-59": 2, "60-89": 2, "90+": 9, "unknown": 0}, "renewals": [{"vendor": "github", "seats": 10, "renew_on": "2026-09-27", "notice_by": "2026-09-13", "amount_aud": 480.0, "days_until": 20, "nudge": "Draft: remind github owner that renewal on 2026-09-27 needs notice by 2026-09-13."}, {"vendor": "microsoft365", "seats": 20, "renew_on": "2026-10-22", "notice_by": "2026-09-22", "amount_aud": 13680.0, "days_until": 45, "nudge": "Draft: remind microsoft365 owner that renewal on 2026-10-22 needs notice by 2026-09-22."}], "shadow_apps": [{"name": "Microsoft 365", "source": "expense-csv", "owner": "finance", "amount_aud": 13680.0, "in_pricebook": true, "note": null}, {"name": "Slack", "source": "expense-csv", "owner": "ops", "amount_aud": 2160.0, "in_pricebook": true, "note": null}, {"name": "GitHub", "source": "expense-csv", "owner": "eng", "amount_aud": 480.0, "in_pricebook": true, "note": null}, {"name": "Figma", "source": "expense-csv", "owner": "design", "amount_aud": 1440.0, "in_pricebook": false, "note": "not in pricebook; possible shadow SaaS"}, {"name": "Loom", "source": "expense-csv", "owner": "sales", "amount_aud": 720.0, "in_pricebook": false, "note": "not in pricebook; possible shadow SaaS"}, {"name": "Microsoft 365", "source": "sso-catalog", "owner": "it", "amount_aud": null, "in_pricebook": true, "note": null}, {"name": "Slack", "source": "sso-catalog", "owner": "it", "amount_aud": null, "in_pricebook": true, "note": null}, {"name": "GitHub", "source": "sso-catalog", "owner": "eng", "amount_aud": null, "in_pricebook": true, "note": null}, {"name": "Figma", "source": "sso-catalog", "owner": "design", "amount_aud": null, "in_pricebook": false, "note": "unapproved SSO app"}, {"name": "Loom", "source": "sso-catalog", "owner": "sales", "amount_aud": null, "in_pricebook": false, "note": "unapproved SSO app"}, {"name": "Miro", "source": "sso-catalog", "owner": "ops", "amount_aud": null, "in_pricebook": false, "note": "unapproved SSO app"}, {"name": "spf.protection.outlook.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}, {"name": "_spf.google.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}, {"name": "amazonses.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}, {"name": "mail.figma.com", "source": "spf-include", "owner": null, "amount_aud": null, "in_pricebook": false, "note": "DNS heuristic only"}], "reclaim_appendix": [{"user_id": "nw-m01", "sku": "m365-e5", "email_hash": "09545ab51696d63fc7dc3ea98cadcb97e902eb8738cb60dac4951012accd48d6"}, {"user_id": "nw-m02", "sku": "m365-e5", "email_hash": "0fc7dfd1118ccdacdfbd5d63feb606d25ff6c981132c02482b21deae7d74086d"}, {"user_id": "nw-m03", "sku": "m365-e5", "email_hash": "7d79a163db878b301716c9583252a8a013501b82273c92c9eb9a1744681267d5"}, {"user_id": "nw-m04", "sku": "m365-e5", "email_hash": "19b12630151bedfb9d810def2c863413db388b1bf1afcd532d4e5b1e0426d9fe"}, {"user_id": "NWS01", "sku": "slack-business-plus", "email_hash": "7c04abc0c87bb9b027cedca5378e2d620414a2695c26cecf0efb4eb6150037d5"}, {"user_id": "NWS02", "sku": "slack-business-plus", "email_hash": "df5a97f3368c18605dd9836b48a286cb39223d25f0cafd425798b8ecc2dbd49c"}, {"user_id": "NWS03", "sku": "slack-business-plus", "email_hash": "9cdbd62fd8f39a3fc27708a94afbb45a6f922fd5f308933a75543fefe8e270be"}, {"user_id": "nw-gh01", "sku": "github-team", "email_hash": "46f0a0adf3d7e0576f34e0b487a27caa9e4f4f7bcab3231757969cbbfe7bec09"}, {"user_id": "nw-gh02", "sku": "github-team", "email_hash": "54738b25ffbe0a90bee70435b710f5ba6a0c6f550078cbf15434f7685038f3b3"}], "qbr_talk_track": ["Draft QBR talk-track for northwind as of 2026-09-07: 9 unused seats across github, microsoft365, slack = A$281.00/month (A$3372.00/year at operator list price).", "This is a spend report for human review. Do not auto-revoke seats.", "Highest-cost unused seat: m365-e5 (microsoft365) at A$57.00/month, idle 280 days (hashed id nw-m01).", "Renewals inside the 60-day window: github 2026-09-27, microsoft365 2026-10-22.", "Possible shadow SaaS (not in pricebook): Figma, Loom, Figma, Loom, Miro, spf.protection.outlook.com, _spf.google.com, amazonses.com.", "Action: walk the draft reclaim appendix with the tenant owner; dual-gate reclaim records intent only."], "honest_gaps": ["Graph last-signin lags; idle is unused, not never.", "Slack guests are unbilled; conversations.history is never called.", "GitHub last-active uses audit-log events when present; outside collaborators are unbilled.", "Pricebook is operator-edited AUD list prices, not a crawler.", "Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.", "Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs."], "watermark": "242f7a35dd1589ea4d6d577bad0afd9469e46f354839c16442cfd21341018cc5", "draft": true, "disclaimer": "Draft reclaim pack for human review. Not regulated advice. Do not auto-revoke.", "label": "Northwind", "blurb": "20x Microsoft 365 E5 \u00b7 denser unused seats for QBR sample"}}, "routes": {"ui": "/licensespend", "api": "/api/licensespend/status", "static": "reports/licensespend_explorer.html"}}</script>
+  <script>
+    const STATE = JSON.parse(document.getElementById("explorer-state").textContent);
+    const BUCKET_ORDER = ["0-29", "30-59", "60-89", "90+", "unknown"];
+    function aud(n) { return "A$" + Number(n || 0).toFixed(2); }
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
+    }
+    function bars(el, rows, max, colorClass) {
+      el.innerHTML = rows.map(([name, value, extra]) => {
+        const pct = max > 0 ? Math.max(2, Math.round((value / max) * 100)) : 0;
+        return `<div class="bar"><div class="name">${esc(name)}</div><div class="track"><div class="fill ${colorClass || ""}" style="width:${pct}%"></div></div><div class="amt">${esc(extra)}</div></div>`;
+      }).join("") || "<p class='meta'>None.</p>";
+    }
+    function render(clientId) {
+      const c = STATE.clients[clientId];
+      if (!c) return;
+      document.querySelectorAll("#client-switch button").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-client") === clientId);
+      });
+      document.getElementById("client-kpis").innerHTML = [
+        ["Client reclaim / mo", aud(c.reclaim_monthly_aud), c.label + " · idle ≥ " + c.idle_days_threshold + "d"],
+        ["Annualised", aud(c.reclaim_annual_aud), "operator list price, not invoice"],
+        ["Unused / assigned", c.unused_count + " / " + c.seats_total, "draft reclaim pack"],
+        ["Renewals in window", String((c.renewals || []).length), "60-day contract calendar"],
+      ].map(row => `<div class="card kpi"><div class="label">${row[0]}</div><div class="value num">${row[1]}</div><div class="hint">${esc(row[2])}</div></div>`).join("");
+      const vendors = c.vendor_breakdown || [];
+      const vmax = Math.max(0, ...vendors.map(v => v.monthly_aud));
+      bars(document.getElementById("vendor-bars"), vendors.map(v => [v.vendor, v.monthly_aud, aud(v.monthly_aud) + " · " + v.unused_seats]), vmax, "gold");
+      const buckets = c.idle_buckets || {};
+      const bmax = Math.max(0, ...BUCKET_ORDER.map(k => buckets[k] || 0));
+      const idleFill = { "0-29":"green", "30-59":"", "60-89":"gold", "90+":"purple", "unknown":"" };
+      document.getElementById("idle-bars").innerHTML = BUCKET_ORDER.map(k => {
+        const n = buckets[k] || 0;
+        const pct = bmax > 0 ? Math.max(n ? 4 : 0, Math.round((n / bmax) * 100)) : 0;
+        return `<div class="bar"><div class="name">${k} days</div><div class="track"><div class="fill ${idleFill[k] || ""}" style="width:${pct}%"></div></div><div class="amt">${n} seats</div></div>`;
+      }).join("");
+      const bought = c.seats_bought || {};
+      const used = c.seats_used || {};
+      const skus = Object.keys(bought);
+      document.getElementById("sku-body").innerHTML = skus.map(sku => {
+        const b = bought[sku] || 0, u = used[sku] || 0;
+        return `<tr><td><code>${esc(sku)}</code></td><td class="num">${b}</td><td class="num">${u}</td><td class="num">${b - u}</td></tr>`;
+      }).join("") || "<tr><td colspan='4'>None</td></tr>";
+      document.getElementById("dept-body").innerHTML = (c.department_breakdown || []).map(d =>
+        `<tr><td>${esc(d.department)}</td><td class="num">${d.unused_seats}</td><td class="num">${aud(d.monthly_aud)}</td></tr>`
+      ).join("") || "<tr><td colspan='3'>None</td></tr>";
+      document.getElementById("unused-body").innerHTML = (c.unused || []).map(r =>
+        `<tr><td><code>${esc(r.user_id)}</code></td><td>${esc(r.sku)}</td><td>${esc(r.vendor)}</td><td>${esc(r.department || "unassigned")}</td><td class="num">${r.idle_days ?? "unknown"}</td><td class="num">${aud(r.monthly_cost)}</td></tr>`
+      ).join("") || "<tr><td colspan='6'>None</td></tr>";
+      document.getElementById("renew-body").innerHTML = (c.renewals || []).map(r =>
+        `<tr><td>${esc(r.vendor)}</td><td>${esc(r.renew_on)}</td><td class="num">${r.days_until}</td><td class="num">${aud(r.amount_aud)}</td></tr>`
+      ).join("") || "<tr><td colspan='4'>None in window</td></tr>";
+      document.getElementById("shadow-body").innerHTML = (c.shadow_apps || []).map(a =>
+        `<tr><td>${esc(a.name)}</td><td>${esc(a.source)}</td><td>${esc(a.note || (a.in_pricebook ? "known / approved" : "possible shadow"))}</td></tr>`
+      ).join("") || "<tr><td colspan='3'>None</td></tr>";
+      document.getElementById("qbr").innerHTML = (c.qbr_talk_track || []).map(line => `<li>${esc(line)}</li>`).join("");
+      document.getElementById("gaps").innerHTML = (c.honest_gaps || STATE.honest_gaps || []).map(line => `<li>${esc(line)}</li>`).join("");
+      document.getElementById("wm").textContent = c.watermark || "";
+    }
+    document.getElementById("client-switch").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-client]");
+      if (btn) render(btn.getAttribute("data-client"));
+    });
+    render("acme");
+  </script>
+</body>
+</html>

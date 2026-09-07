@@ -116,3 +116,15 @@ def test_fixtures_golden_shape() -> None:
     github = json.loads((ROOT / "examples" / "github" / "members.json").read_text(encoding="utf-8"))
     outside = [m for m in github["members"] if m.get("role") == "outside_collaborator"]
     assert len(outside) == 1
+    northwind = json.loads((ROOT / "examples" / "northwind" / "m365" / "users.json").read_text(encoding="utf-8"))
+    assert len(northwind["users"]) == 20
+    assert all(row.get("sku") == "m365-e5" for row in northwind["users"])
+    slack_nw = json.loads((ROOT / "examples" / "northwind" / "slack" / "users_list.json").read_text(encoding="utf-8"))
+    guests_nw = [
+        m
+        for m in slack_nw["members"]
+        if m.get("is_restricted") or m.get("is_ultra_restricted") or m.get("role") == "guest"
+    ]
+    assert len(guests_nw) == 3
+    assert (PKG / "report" / "explorer.py").is_file()
+    assert "explorer" in (PKG / "report" / "README.md").read_text(encoding="utf-8").lower()

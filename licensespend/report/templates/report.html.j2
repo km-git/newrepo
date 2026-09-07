@@ -9,19 +9,52 @@
     table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
     th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
     .muted { color: #555; font-size: 0.9rem; }
+    .banner { background: #fff6d9; border: 1px solid #e0c36a; padding: 0.6rem 0.8rem; }
     code { font-size: 0.85rem; }
   </style>
 </head>
 <body>
   <h1>SaaS License &amp; Spend — {{ client }}</h1>
-  <p class="muted">Draft reclaim pack for human review. As of {{ as_of }}. Currency AUD.</p>
-  <p><strong>Reclaim (monthly):</strong> A${{ "%.2f"|format(reclaim_monthly_aud) }} across {{ unused_count }} unused seats.</p>
+  <p class="banner">{{ disclaimer }} As of {{ as_of }}. Currency AUD.</p>
+  <p><strong>Reclaim (monthly):</strong> A${{ "%.2f"|format(reclaim_monthly_aud) }}
+     (A${{ "%.2f"|format(reclaim_annual_aud) }}/year) across {{ unused_count }} unused of {{ seats_total }} assigned seats.</p>
   <h2>Bought vs used</h2>
   <table>
     <thead><tr><th>SKU</th><th>Bought</th><th>Used</th></tr></thead>
     <tbody>
     {% for sku, bought in seats_bought.items() %}
       <tr><td>{{ sku }}</td><td>{{ bought }}</td><td>{{ seats_used.get(sku, 0) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Vendor reclaim</h2>
+  <table>
+    <thead><tr><th>Vendor</th><th>Unused seats</th><th>AUD / month</th></tr></thead>
+    <tbody>
+    {% for row in vendor_breakdown %}
+      <tr><td>{{ row.vendor }}</td><td>{{ row.unused_seats }}</td><td>{{ "%.2f"|format(row.monthly_aud) }}</td></tr>
+    {% else %}
+      <tr><td colspan="3">None.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Department reclaim</h2>
+  <table>
+    <thead><tr><th>Department</th><th>Unused seats</th><th>AUD / month</th></tr></thead>
+    <tbody>
+    {% for row in department_breakdown %}
+      <tr><td>{{ row.department }}</td><td>{{ row.unused_seats }}</td><td>{{ "%.2f"|format(row.monthly_aud) }}</td></tr>
+    {% else %}
+      <tr><td colspan="3">None.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Idle buckets</h2>
+  <table>
+    <thead><tr><th>Bucket</th><th>Seats</th></tr></thead>
+    <tbody>
+    {% for bucket, count in idle_buckets.items() %}
+      <tr><td>{{ bucket }}</td><td>{{ count }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -53,6 +86,18 @@
       <li>{{ app.name }} ({{ app.source }}){% if app.note %} — {{ app.note }}{% endif %}</li>
     {% else %}
       <li>None in fixtures.</li>
+    {% endfor %}
+  </ul>
+  <h2>Draft QBR talk-track</h2>
+  <ul>
+    {% for line in qbr_talk_track %}
+      <li>{{ line }}</li>
+    {% endfor %}
+  </ul>
+  <h2>Honest gaps</h2>
+  <ul>
+    {% for line in honest_gaps %}
+      <li>{{ line }}</li>
     {% endfor %}
   </ul>
   <p class="muted">Watermark SHA-256: <code>{{ watermark }}</code></p>

@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "members": [
+    {"id": "NWS01", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1737331200, "last_active": "2026-01-20", "profile": {"email": "sam@northwind.example", "title": "ops"}},
+    {"id": "NWS02", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1739145600, "last_active": "2026-02-10", "profile": {"email": "rue@northwind.example", "title": "sales"}},
+    {"id": "NWS03", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1740787200, "last_active": "2026-03-01", "profile": {"email": "max@northwind.example", "title": "marketing"}},
+    {"id": "NWS04", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1756944000, "last_active": "2026-08-20", "profile": {"email": "nia@northwind.example", "title": "eng"}},
+    {"id": "NWS05", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757030400, "last_active": "2026-08-22", "profile": {"email": "obi@northwind.example", "title": "eng"}},
+    {"id": "NWS06", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757289600, "last_active": "2026-08-25", "profile": {"email": "pia@northwind.example", "title": "ops"}},
+    {"id": "NWS07", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757462400, "last_active": "2026-08-28", "profile": {"email": "rae@northwind.example", "title": "ops"}},
+    {"id": "NWS08", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757635200, "last_active": "2026-09-01", "profile": {"email": "sol@northwind.example", "title": "sales"}},
+    {"id": "NWS09", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757721600, "last_active": "2026-09-02", "profile": {"email": "ty@northwind.example", "title": "sales"}},
+    {"id": "NWS10", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757808000, "last_active": "2026-09-03", "profile": {"email": "uma@northwind.example", "title": "eng"}},
+    {"id": "NWS11", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757894400, "last_active": "2026-09-04", "profile": {"email": "vic@northwind.example", "title": "hr"}},
+    {"id": "NWS12", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757980800, "last_active": "2026-09-05", "profile": {"email": "wes@northwind.example", "title": "eng"}},
+    {"id": "NWG01", "deleted": false, "is_bot": false, "is_restricted": true, "is_ultra_restricted": false, "updated": 1756944000, "last_active": "2026-08-20", "role": "guest", "profile": {"email": "guest-a@northwind.example", "title": "contractor"}},
+    {"id": "NWG02", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": true, "updated": 1757030400, "last_active": "2026-08-22", "role": "guest", "profile": {"email": "guest-b@northwind.example", "title": "contractor"}},
+    {"id": "NWG03", "deleted": false, "is_bot": false, "is_restricted": true, "is_ultra_restricted": false, "updated": 1757289600, "last_active": "2026-08-25", "role": "guest", "profile": {"email": "guest-c@northwind.example", "title": "contractor"}},
+    {"id": "USLACKBOT", "deleted": false, "is_bot": true, "name": "slackbot"}
+  ]
+}

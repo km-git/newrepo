@@ -1,6 +1,6 @@
 ---
 description: SaaS License & Spend — 8-module seat-waste report, Graph+Slack+PyGithub extras, metadata-only, no revoke without dual gates. Apply when working on licensespend/ or licensespend-* workflows.
-globs: licensespend/**,.github/workflows/licensespend-*.yml,examples/m365/**,examples/slack/**,examples/github/**,examples/shadow/**
+globs: licensespend/**,.github/workflows/licensespend-*.yml,examples/m365/**,examples/slack/**,examples/github/**,examples/shadow/**,examples/northwind/**
 alwaysApply: false
 ---
 
@@ -25,4 +25,4 @@ alwaysApply: false
 
 ## CLI
 
-JSON default, `--human` for a table. `make licensespend-all` runs audit + unused + renewals + report against `examples/`.
+JSON default, `--human` for a table. `make licensespend-all` runs audit + unused + renewals + report + Explorer static HTML against `examples/` (Acme + Northwind). `licensespend ui --static` writes `reports/licensespend_explorer.html`. Explorer is part of the report module, not a ninth first-class module.

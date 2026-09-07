@@ -311,6 +311,7 @@ MONITOR_HTML = """<!DOCTYPE html>
     </div>
     <div class="controls">
       <a href="/monetize" style="color:var(--blue);text-decoration:none;font-size:0.85rem">Monetize</a>
+      <a href="/licensespend" style="color:var(--blue);text-decoration:none;font-size:0.85rem">LicenseSpend</a>
       <span id="status-dot"></span>
       <select id="refresh-interval">
         <option value="0">Manual</option>

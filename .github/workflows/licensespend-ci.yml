@@ -26,14 +26,14 @@ jobs:
 
       - run: uv sync --all-groups
 
-      - run: uv run ruff check licensespend tests/test_licensespend_architecture.py tests/test_licensespend_core.py
+      - run: uv run ruff check licensespend tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py
 
-      - run: uv run pytest tests/test_licensespend_architecture.py tests/test_licensespend_core.py licensespend -q --tb=short
+      - run: uv run pytest tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py licensespend -q --tb=short
 
       - name: Report fixture must not contain raw emails
         run: |
-          uv run python -m licensespend report build --client fixture --out reports/ --as-of 2026-09-07
-          if grep -R -E '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' reports/ --include='*.html' --include='*.md' --include='*.json'; then
+          uv run python -m licensespend ui --static --out reports/
+          if grep -R -E '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' reports/licensespend_explorer.html reports/licensespend --include='*.html' --include='*.md' --include='*.json'; then
             echo "raw email leaked into reports/"
             exit 1
           fi

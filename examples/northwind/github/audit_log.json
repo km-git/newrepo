@@ -1,0 +1,12 @@
+{
+  "events": [
+    {"actor": "nw-gh03", "action": "repo.push", "created_at": "2026-08-18T10:00:00Z"},
+    {"actor": "nw-gh04", "action": "pr.merge", "created_at": "2026-08-22T09:00:00Z"},
+    {"actor": "nw-gh05", "action": "repo.push", "created_at": "2026-08-26T12:00:00Z"},
+    {"actor": "nw-gh06", "action": "issue.comment", "created_at": "2026-08-28T08:00:00Z"},
+    {"actor": "nw-gh07", "action": "repo.push", "created_at": "2026-09-01T11:00:00Z"},
+    {"actor": "nw-gh08", "action": "pr.merge", "created_at": "2026-09-02T14:00:00Z"},
+    {"actor": "nw-gh09", "action": "repo.push", "created_at": "2026-09-03T09:30:00Z"},
+    {"actor": "nw-gh10", "action": "issue.comment", "created_at": "2026-09-04T16:00:00Z"}
+  ]
+}

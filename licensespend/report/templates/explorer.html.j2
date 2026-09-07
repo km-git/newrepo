@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>LicenseSpend Explorer — draft reclaim pack</title>
+  <style>
+    :root {
+      --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e;
+      --accent:#58a6ff; --green:#3fb950; --gold:#d29922; --red:#f85149; --purple:#bc8cff;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem 1.25rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    h1 { margin:0; font-size:1.2rem; }
+    .meta { color:var(--muted); font-size:0.82rem; margin-top:0.2rem; }
+    .nav a { color:var(--accent); margin-left:0.9rem; text-decoration:none; font-size:0.85rem; }
+    .nav a:hover { text-decoration:underline; }
+    main { padding:1.15rem 1.25rem 2.5rem; max-width:1200px; margin:0 auto; }
+    .banner { background:#3d2a00; border:1px solid var(--gold); color:#f0d78c; border-radius:8px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
+    .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:0.75rem; margin-bottom:1rem; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:0.85rem 0.95rem; }
+    .kpi .label { color:var(--muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em; }
+    .kpi .value { font-size:1.35rem; font-weight:650; margin-top:0.25rem; }
+    .kpi .hint { color:var(--muted); font-size:0.75rem; margin-top:0.15rem; }
+    h2 { margin:0 0 0.7rem; font-size:1rem; }
+    section.card { margin-bottom:1rem; }
+    .switch { display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .switch button { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.75rem; cursor:pointer; text-align:left; }
+    .switch button.active { border-color:var(--accent); color:var(--accent); }
+    .switch button .blurb { display:block; color:var(--muted); font-size:0.72rem; margin-top:0.15rem; }
+    table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+    th, td { text-align:left; padding:0.4rem 0.45rem; border-bottom:1px solid var(--border); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    code { font-size:0.78rem; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    @media (max-width: 840px) { .grid { grid-template-columns:1fr; } }
+    .bar { display:flex; align-items:center; gap:0.5rem; margin:0.35rem 0; }
+    .bar .name { width:7.5rem; font-size:0.8rem; flex-shrink:0; }
+    .track { flex:1; background:#21262d; height:10px; border-radius:99px; overflow:hidden; }
+    .fill { height:100%; background:var(--accent); }
+    .fill.gold { background:var(--gold); }
+    .fill.green { background:var(--green); }
+    .fill.purple { background:var(--purple); }
+    .bar .amt { width:5.5rem; text-align:right; font-size:0.8rem; color:var(--muted); }
+    ul.talk { margin:0; padding-left:1.15rem; color:var(--text); font-size:0.88rem; }
+    ul.talk li { margin:0.35rem 0; }
+    .gaps { color:var(--muted); font-size:0.82rem; }
+    .watermark { font-size:0.72rem; color:var(--muted); word-break:break-all; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>LicenseSpend Explorer</h1>
+      <div class="meta">SaaS seat-waste report · AUD list prices · as of {{ as_of }} · hashed ids only</div>
+    </div>
+    <nav class="nav">
+      <a href="/monitor">Monitor</a>
+      <a href="/monetize">Monetize</a>
+      <a href="/tape-to-cloud">Tape-to-Cloud</a>
+      <a href="/licensespend">LicenseSpend</a>
+    </nav>
+  </header>
+  <main>
+    <div class="banner">{{ disclaimer }} Dual-gate reclaim records intent only — no Graph, Slack, or GitHub mutate APIs.</div>
+    <div class="kpis" id="portfolio-kpis">
+      <div class="card kpi"><div class="label">Portfolio reclaim / mo</div><div class="value num" id="p-month">A${{ "%.2f"|format(portfolio.reclaim_monthly_aud) }}</div><div class="hint">Acme + Northwind sample tenants</div></div>
+      <div class="card kpi"><div class="label">Annualised</div><div class="value num" id="p-year">A${{ "%.2f"|format(portfolio.reclaim_annual_aud) }}</div><div class="hint">12 × monthly list price</div></div>
+      <div class="card kpi"><div class="label">Unused seats</div><div class="value num" id="p-unused">{{ portfolio.unused_seats }}</div><div class="hint">idle ≥ 90 days as of {{ as_of }}</div></div>
+      <div class="card kpi"><div class="label">Sample clients</div><div class="value num" id="p-clients">{{ portfolio.clients }}</div><div class="hint">{{ portfolio.seats_total }} assigned seats</div></div>
+    </div>
+    <section class="card">
+      <h2>Client switcher</h2>
+      <div class="switch" id="client-switch">
+        {% for c in client_index %}
+        <button type="button" data-client="{{ c.id }}"{% if loop.first %} class="active"{% endif %}>
+          {{ c.label }} · A${{ "%.0f"|format(c.reclaim_monthly_aud) }}/mo
+          <span class="blurb">{{ c.blurb }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+    <div class="kpis" id="client-kpis"></div>
+    <div class="grid">
+      <section class="card">
+        <h2>Vendor reclaim</h2>
+        <div id="vendor-bars"></div>
+      </section>
+      <section class="card">
+        <h2>Idle buckets (all assigned seats)</h2>
+        <div id="idle-bars"></div>
+      </section>
+    </div>
+    <div class="grid">
+      <section class="card">
+        <h2>Bought vs used</h2>
+        <table><thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th></tr></thead><tbody id="sku-body"></tbody></table>
+      </section>
+      <section class="card">
+        <h2>Department reclaim</h2>
+        <table><thead><tr><th>Department</th><th>Unused</th><th>AUD / mo</th></tr></thead><tbody id="dept-body"></tbody></table>
+      </section>
+    </div>
+    <section class="card">
+      <h2>Unused seats (hashed ids)</h2>
+      <table>
+        <thead><tr><th>User id</th><th>SKU</th><th>Vendor</th><th>Dept</th><th>Idle days</th><th>AUD / mo</th></tr></thead>
+        <tbody id="unused-body"></tbody>
+      </table>
+    </section>
+    <div class="grid">
+      <section class="card">
+        <h2>Renewals (60-day window)</h2>
+        <table><thead><tr><th>Vendor</th><th>Renew on</th><th>Days</th><th>AUD</th></tr></thead><tbody id="renew-body"></tbody></table>
+      </section>
+      <section class="card">
+        <h2>Shadow SaaS heuristics</h2>
+        <table><thead><tr><th>Name</th><th>Source</th><th>Note</th></tr></thead><tbody id="shadow-body"></tbody></table>
+      </section>
+    </div>
+    <section class="card">
+      <h2>Draft QBR talk-track</h2>
+      <ul class="talk" id="qbr"></ul>
+    </section>
+    <section class="card">
+      <h2>Honest gaps</h2>
+      <ul class="gaps" id="gaps"></ul>
+      <p class="watermark">Watermark SHA-256: <code id="wm"></code></p>
+    </section>
+  </main>
+  <script id="explorer-state" type="application/json">{{ state_json | safe }}</script>
+  <script>
+    const STATE = JSON.parse(document.getElementById("explorer-state").textContent);
+    const BUCKET_ORDER = ["0-29", "30-59", "60-89", "90+", "unknown"];
+    function aud(n) { return "A$" + Number(n || 0).toFixed(2); }
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
+    }
+    function bars(el, rows, max, colorClass) {
+      el.innerHTML = rows.map(([name, value, extra]) => {
+        const pct = max > 0 ? Math.max(2, Math.round((value / max) * 100)) : 0;
+        return `<div class="bar"><div class="name">${esc(name)}</div><div class="track"><div class="fill ${colorClass || ""}" style="width:${pct}%"></div></div><div class="amt">${esc(extra)}</div></div>`;
+      }).join("") || "<p class='meta'>None.</p>";
+    }
+    function render(clientId) {
+      const c = STATE.clients[clientId];
+      if (!c) return;
+      document.querySelectorAll("#client-switch button").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-client") === clientId);
+      });
+      document.getElementById("client-kpis").innerHTML = [
+        ["Client reclaim / mo", aud(c.reclaim_monthly_aud), c.label + " · idle ≥ " + c.idle_days_threshold + "d"],
+        ["Annualised", aud(c.reclaim_annual_aud), "operator list price, not invoice"],
+        ["Unused / assigned", c.unused_count + " / " + c.seats_total, "draft reclaim pack"],
+        ["Renewals in window", String((c.renewals || []).length), "60-day contract calendar"],
+      ].map(row => `<div class="card kpi"><div class="label">${row[0]}</div><div class="value num">${row[1]}</div><div class="hint">${esc(row[2])}</div></div>`).join("");
+      const vendors = c.vendor_breakdown || [];
+      const vmax = Math.max(0, ...vendors.map(v => v.monthly_aud));
+      bars(document.getElementById("vendor-bars"), vendors.map(v => [v.vendor, v.monthly_aud, aud(v.monthly_aud) + " · " + v.unused_seats]), vmax, "gold");
+      const buckets = c.idle_buckets || {};
+      const bmax = Math.max(0, ...BUCKET_ORDER.map(k => buckets[k] || 0));
+      const idleFill = { "0-29":"green", "30-59":"", "60-89":"gold", "90+":"purple", "unknown":"" };
+      document.getElementById("idle-bars").innerHTML = BUCKET_ORDER.map(k => {
+        const n = buckets[k] || 0;
+        const pct = bmax > 0 ? Math.max(n ? 4 : 0, Math.round((n / bmax) * 100)) : 0;
+        return `<div class="bar"><div class="name">${k} days</div><div class="track"><div class="fill ${idleFill[k] || ""}" style="width:${pct}%"></div></div><div class="amt">${n} seats</div></div>`;
+      }).join("");
+      const bought = c.seats_bought || {};
+      const used = c.seats_used || {};
+      const skus = Object.keys(bought);
+      document.getElementById("sku-body").innerHTML = skus.map(sku => {
+        const b = bought[sku] || 0, u = used[sku] || 0;
+        return `<tr><td><code>${esc(sku)}</code></td><td class="num">${b}</td><td class="num">${u}</td><td class="num">${b - u}</td></tr>`;
+      }).join("") || "<tr><td colspan='4'>None</td></tr>";
+      document.getElementById("dept-body").innerHTML = (c.department_breakdown || []).map(d =>
+        `<tr><td>${esc(d.department)}</td><td class="num">${d.unused_seats}</td><td class="num">${aud(d.monthly_aud)}</td></tr>`
+      ).join("") || "<tr><td colspan='3'>None</td></tr>";
+      document.getElementById("unused-body").innerHTML = (c.unused || []).map(r =>
+        `<tr><td><code>${esc(r.user_id)}</code></td><td>${esc(r.sku)}</td><td>${esc(r.vendor)}</td><td>${esc(r.department || "unassigned")}</td><td class="num">${r.idle_days ?? "unknown"}</td><td class="num">${aud(r.monthly_cost)}</td></tr>`
+      ).join("") || "<tr><td colspan='6'>None</td></tr>";
+      document.getElementById("renew-body").innerHTML = (c.renewals || []).map(r =>
+        `<tr><td>${esc(r.vendor)}</td><td>${esc(r.renew_on)}</td><td class="num">${r.days_until}</td><td class="num">${aud(r.amount_aud)}</td></tr>`
+      ).join("") || "<tr><td colspan='4'>None in window</td></tr>";
+      document.getElementById("shadow-body").innerHTML = (c.shadow_apps || []).map(a =>
+        `<tr><td>${esc(a.name)}</td><td>${esc(a.source)}</td><td>${esc(a.note || (a.in_pricebook ? "known / approved" : "possible shadow"))}</td></tr>`
+      ).join("") || "<tr><td colspan='3'>None</td></tr>";
+      document.getElementById("qbr").innerHTML = (c.qbr_talk_track || []).map(line => `<li>${esc(line)}</li>`).join("");
+      document.getElementById("gaps").innerHTML = (c.honest_gaps || STATE.honest_gaps || []).map(line => `<li>${esc(line)}</li>`).join("");
+      document.getElementById("wm").textContent = c.watermark || "";
+    }
+    document.getElementById("client-switch").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-client]");
+      if (btn) render(btn.getAttribute("data-client"));
+    });
+    render({{ default_client|tojson }});
+  </script>
+</body>
+</html>

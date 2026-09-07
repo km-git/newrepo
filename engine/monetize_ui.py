@@ -604,6 +604,7 @@ MONETIZE_HTML = """<!DOCTYPE html>
       <a href="/monitor">Monitor</a>
       <a href="/monetize">Monetize</a>
       <a href="/tape-to-cloud">Tape-to-Cloud</a>
+      <a href="/licensespend">LicenseSpend</a>
       <button id="btn-refresh" type="button">Refresh</button>
     </div>
   </header>

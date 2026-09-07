@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -47,6 +48,23 @@ def _register() -> None:
 
 
 _register()
+
+
+@app.command("ui")
+def ui_cmd(
+    static: bool = typer.Option(False, "--static", help="Write reports/licensespend_explorer.html and sample packs."),
+    out: Path = typer.Option(Path("reports"), "--out"),
+    bind: str = typer.Option("0.0.0.0", "--bind"),
+    port: int = typer.Option(8765, "--port"),
+) -> None:
+    """Serve LicenseSpend Explorer, or write a file:// HTML copy with --static."""
+    from licensespend.report.explorer import print_static_launch, serve, write_static
+
+    if static:
+        paths = write_static(out)
+        print_static_launch(paths)
+        return
+    serve(host=bind, port=port)
 
 
 def main() -> Any:

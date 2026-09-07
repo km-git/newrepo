@@ -7,7 +7,8 @@ trading-analysis tool. Local stdlib dashboards (no Flask/FastAPI): `--monitor`
 (binds `0.0.0.0:8765`) and `--monetize-ui` (Monetize Explorer at `/monetize`).
 On Cursor Cloud, `http://127.0.0.1:8765` is the VM, not the user's laptop —
 use `python3 ew_tool.py --monetize-ui --static` and open
-`reports/monetize_explorer.html`.
+`reports/monetize_explorer.html`. LicenseSpend Explorer:
+`python3 -m licensespend ui --static` → open `reports/licensespend_explorer.html`.
 
 ### Environment
 
@@ -32,6 +33,8 @@ use `python3 ew_tool.py --monetize-ui --static` and open
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
 - Monetize Explorer (server): `.venv/bin/python ew_tool.py --monetize-ui` binds `0.0.0.0:8765` and prints `http://127.0.0.1:8765/monetize` on its own line
+- LicenseSpend Explorer (offline): `uv run python -m licensespend ui --static` → open `reports/licensespend_explorer.html`
+- LicenseSpend Explorer (server): `uv run python -m licensespend ui` binds `0.0.0.0:8765` (`/licensespend`). On Cloud, use the static file — `127.0.0.1` is the VM.
 - The CLI and `pytest` work from the repo root without `PYTHONPATH`, but the helper
   scripts under `scripts/` (e.g. `scripts/run_top50_batch.py`, `scripts/show_latest_analysis.py`)
   require `PYTHONPATH=/workspace`.
@@ -108,3 +111,7 @@ use `python3 ew_tool.py --monetize-ui --static` and open
  CLI: `python3 ew_tool.py --monetize-report [--tier free|pro|enterprise] [--monetize-months N]`.
  Outputs: `output/monetize/latest_report.json` + `reports/MONETIZATION_STRATEGY.md`.
  Env: `EW_MONETIZE_JSON`, `EW_MONETIZE_MD` (path overrides for tests).
+- **LicenseSpend (SaaS seat-waste report):** `licensespend/` — 8 modules, fixture-first, AUD pricebook.
+ CLI: `uv run python -m licensespend ui --static` writes `reports/licensespend_explorer.html` plus
+ sample packs under `reports/licensespend/` (Acme A$127/mo, Northwind A$281/mo). Live:
+ `uv run python -m licensespend ui` or `--monitor` at `/licensespend`. Draft reclaim only.

@@ -28,3 +28,4 @@ def test_render_hub_html_includes_discovery_docs():
     html = render_hub_html()
     assert "free-tool-inventory.md" in html
     assert "/monetize" in html
+    assert "/licensespend" in html

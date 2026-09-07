@@ -131,6 +131,7 @@ def build_hub_state() -> dict[str, Any]:
             "hub": "/tape-to-cloud",
             "monitor": "/monitor",
             "monetize": "/monetize",
+            "licensespend": "/licensespend",
             "api": "/api/tape-to-cloud/status",
         },
     }
@@ -183,6 +184,7 @@ def render_hub_html() -> str:
       <a href="/monitor">Monitor</a>
       <a href="/monetize">Monetize</a>
       <a href="/tape-to-cloud">Tape-to-Cloud</a>
+      <a href="/licensespend">LicenseSpend</a>
     </nav>
   </header>
   <main>

@@ -424,7 +424,7 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud, /licensespend)",
   )
   parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
   parser.add_argument(
