@@ -53,11 +53,26 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Lint GitHub Actions workflows
         run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
-          ./actionlint -shellcheck= -color
+          set -euo pipefail
+          url="https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+          ok=0
+          for i in 1 2 3 4; do
+            if curl -fsSL --retry 3 --retry-delay 2 -o /tmp/actionlint.tgz "$url" \
+              && tar -tzf /tmp/actionlint.tgz >/dev/null \
+              && tar -xzf /tmp/actionlint.tgz -C /tmp actionlint; then
+              ok=1
+              break
+            fi
+            echo "actionlint download failed (attempt $i); retrying"
+            sleep $((i * 3))
+          done
+          test "$ok" = 1
+          /tmp/actionlint -shellcheck= -color
 
   gitleaks:
     name: gitleaks (secrets)
