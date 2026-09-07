@@ -23,8 +23,8 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          ruff check --config ruff.toml tape_to_cloud/ cost/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py
-          ruff format --check tape_to_cloud/ cost/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py
+          ruff check --output-format=github --config ruff.toml tape_to_cloud/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py cost/ tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py
+          ruff format --check tape_to_cloud/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py cost/ tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py
 
   dependency-audit:
     name: pip-audit (requirements.txt)
