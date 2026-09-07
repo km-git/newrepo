@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +100,7 @@ def _service_catalog(stage: str, metrics: dict[str, Any]) -> list[dict[str, Any]
             "buyer": "fintech apps and portfolio dashboards",
             "offer": "machine-readable setup rankings, abstentions, and evidence fields for embedded UX",
             "license_tag": "api.redistribution_limited",
-            "access_controls": common_controls + ["rate_limits", "signed_payloads"],
+            "access_controls": [*common_controls, "rate_limits", "signed_payloads"],
             "royalty_basis": "platform fee plus metered API calls",
             "minimum_stage": "pilot",
             "ready": stage in ("pilot", "scale"),
@@ -161,7 +161,7 @@ def build_monetization_strategy(
     ready_services = [s["id"] for s in services if s.get("ready")]
 
     report: dict[str, Any] = {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
         "module": "monetize",
         "commercial_stage": stage,
         "source": {

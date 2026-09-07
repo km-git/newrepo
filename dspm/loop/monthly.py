@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dspm.db.store import FindingsStore, default_db_path
 
 
 def _month_stamp(now: datetime | None = None) -> str:
-    stamp = now or datetime.now(timezone.utc)
+    stamp = now or datetime.now(UTC)
     return stamp.strftime("%Y-%m")
 
 

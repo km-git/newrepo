@@ -1,9 +1,10 @@
-# Narrow default for new tape-to-cloud modules; legacy engine/ is not fully linted yet.
+# Bugbot replacement (local, no LLM): Ruff + Bandit-equivalent S.
+# Select matches .pre-commit-config.yaml. Legacy engine/ is not fully linted yet.
 target-version = "py312"
 line-length = 120
 
 [lint]
-select = ["E", "F", "W", "I", "B", "S"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "S"]
 
 [lint.per-file-ignores]
 "tests/**" = ["S101", "S603"]

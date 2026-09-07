@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +28,7 @@ def inventory(*, init_db: bool = True) -> dict[str, Any]:
     return {
         "product": "dspm",
         "version": __version__,
-        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "modules": list(MODULES),
         "primary_oss_tools": list(OSS_PRIMARY_TOOLS),
         "tool_count": len(tools),

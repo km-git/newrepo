@@ -71,7 +71,7 @@ def run_cli(
     if path is None:
         raise ToolError(f"{binary} is not installed on PATH (CLI subprocess only)")
     if binary == "trivy" and check_trivy:
-        probe = subprocess.run(  # noqa: S603
+        probe = subprocess.run(
             [path, "--version"],
             capture_output=True,
             text=True,
@@ -80,7 +80,7 @@ def run_cli(
         )
         assert_trivy_allowed((probe.stdout or "") + (probe.stderr or ""))
     cmd = [path, *args]
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(
         cmd,
         capture_output=True,
         text=True,

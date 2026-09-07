@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -115,7 +115,7 @@ def audit(*, catalog_path: Path | None = None) -> dict[str, Any]:
             break
 
     return {
-        "timestamp_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "timestamp_utc": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "summary": {
             "total_watchlist": len(items),
             "gaps": len(gaps),

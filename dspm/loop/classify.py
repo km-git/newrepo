@@ -34,10 +34,7 @@ def classify_item(item: dict[str, Any], *, dspm_context: str = "") -> dict[str, 
             hits.append(word)
     if "dspm" in str(item.get("module_hint") or "").lower():
         score += 2
-    if os.environ.get("GEMINI_API_KEY"):
-        engine = "gemini-2.5-flash"
-    else:
-        engine = "heuristic"
+    engine = "gemini-2.5-flash" if os.environ.get("GEMINI_API_KEY") else "heuristic"
     if score >= 7:
         verdict = "discover"
     elif score >= 3:

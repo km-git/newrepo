@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ def default_db_path() -> Path:
 
 
 def utcnow() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
@@ -42,14 +42,14 @@ class FindingsStore:
         cols = ", ".join(payload)
         placeholders = ", ".join("?" for _ in payload)
         cur = self.conn.execute(
-            f"INSERT INTO {table} ({cols}) VALUES ({placeholders})",  # noqa: S608
+            f"INSERT INTO {table} ({cols}) VALUES ({placeholders})",
             tuple(payload.values()),
         )
         self.conn.commit()
         return int(cur.lastrowid or 0)
 
     def fetchall(self, table: str, where: str = "1=1", params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
-        cur = self.conn.execute(f"SELECT * FROM {table} WHERE {where}", params)  # noqa: S608
+        cur = self.conn.execute(f"SELECT * FROM {table} WHERE {where}", params)
         return [dict(r) for r in cur.fetchall()]
 
     def close(self) -> None:

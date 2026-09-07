@@ -8,7 +8,7 @@ from pathlib import Path
 
 def rebase_onto_main(*, cwd: Path | None = None) -> dict[str, object]:
     root = cwd or Path.cwd()
-    fetch = subprocess.run(  # noqa: S603
+    fetch = subprocess.run(
         ["git", "fetch", "origin", "main"],
         capture_output=True,
         text=True,
@@ -17,7 +17,7 @@ def rebase_onto_main(*, cwd: Path | None = None) -> dict[str, object]:
     )
     if fetch.returncode != 0:
         return {"ok": False, "stage": "fetch", "stderr": fetch.stderr}
-    rebase = subprocess.run(  # noqa: S603
+    rebase = subprocess.run(
         ["git", "rebase", "origin/main"],
         capture_output=True,
         text=True,
@@ -25,7 +25,7 @@ def rebase_onto_main(*, cwd: Path | None = None) -> dict[str, object]:
         check=False,
     )
     if rebase.returncode != 0:
-        subprocess.run(["git", "rebase", "--abort"], cwd=str(root), check=False, capture_output=True)  # noqa: S603
+        subprocess.run(["git", "rebase", "--abort"], cwd=str(root), check=False, capture_output=True)
         return {
             "ok": False,
             "stage": "rebase",

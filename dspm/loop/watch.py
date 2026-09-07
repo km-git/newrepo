@@ -95,7 +95,7 @@ def parse_rss(text: str, *, max_items: int) -> list[dict[str, str]]:
 
 def fetch_text(url: str, timeout: int = 20) -> str:
     req = Request(url, headers={"User-Agent": "dspm-watcher/0.1"})
-    with urlopen(req, timeout=timeout) as resp:  # noqa: S310
+    with urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", errors="replace")
 
 
@@ -120,7 +120,7 @@ def watch(
                     continue
             try:
                 body = fetch_text(source["url"])
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 discovered.append({"source": source["name"], "error": str(exc)})
                 continue
             if source.get("kind") == "json":

@@ -1,1 +1,1 @@
-"""DuckDB-equivalent SQL risk scoring over findings ∪ exposures."""
+"""DuckDB-equivalent SQL risk scoring over findings union exposures."""

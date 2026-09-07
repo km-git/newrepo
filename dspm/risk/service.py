@@ -1,4 +1,4 @@
-"""Deterministic DuckDB-equivalent risk scoring over findings ∪ exposures."""
+"""Deterministic DuckDB-equivalent risk scoring over findings union exposures."""
 
 from __future__ import annotations
 
