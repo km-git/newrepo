@@ -1,0 +1,4 @@
+[
+  {"id": 1, "source": "s3://public-bucket/customers.csv", "location": "email", "type": "PII", "extra": {"public": true, "unencrypted": true}},
+  {"id": 2, "source": "s3://private/logs.json", "location": "ip", "type": "IP", "extra": {"public": false}}
+]
