@@ -1,0 +1,10 @@
+{
+  "value": [
+    {
+      "skuId": "m365-e3",
+      "skuPartNumber": "SPE_E3",
+      "prepaidUnits": {"enabled": 12, "suspended": 0, "warning": 0},
+      "consumedUnits": 12
+    }
+  ]
+}

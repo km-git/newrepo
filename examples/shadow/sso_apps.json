@@ -1,0 +1,8 @@
+{
+  "apps": [
+    {"name": "Microsoft 365", "approved": true, "owner": "it"},
+    {"name": "Slack", "approved": true, "owner": "it"},
+    {"name": "Notion", "approved": false, "owner": "ops"},
+    {"name": "Grammarly", "approved": false, "owner": "marketing"}
+  ]
+}

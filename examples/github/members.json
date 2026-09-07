@@ -1,0 +1,11 @@
+{
+  "org": "acme",
+  "members": [
+    {"login": "gh-001", "role": "member", "last_active": "2026-01-05", "email": "pat@github.example", "department": "eng"},
+    {"login": "gh-002", "role": "member", "last_active": "2026-08-18", "email": "robin@github.example", "department": "eng"},
+    {"login": "gh-003", "role": "member", "last_active": "2026-08-28", "email": "sage@github.example", "department": "ops"},
+    {"login": "gh-004", "role": "member", "last_active": "2026-09-02", "email": "taylor@github.example", "department": "ops"},
+    {"login": "gh-005", "role": "member", "last_active": "2026-09-04", "email": "valen@github.example", "department": "eng"},
+    {"login": "gh-out", "role": "outside_collaborator", "last_active": "2026-08-01", "email": "vendor@github.example", "department": "vendor"}
+  ]
+}

@@ -7,3 +7,8 @@ select = ["E", "F", "W", "I", "B", "S"]
 
 [lint.per-file-ignores]
 "tests/**" = ["S101", "S603"]
+"licensespend/**/tests/**" = ["S101", "S603"]
+"licensespend/**/cli.py" = ["B008"]
+"licensespend/cli.py" = ["B008"]
+"licensespend/cli_util.py" = ["B008"]
+"licensespend/usage/service.py" = ["S608"]

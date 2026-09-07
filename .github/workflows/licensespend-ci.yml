@@ -1,0 +1,54 @@
+name: licensespend-ci
+
+on:
+  push:
+    paths: ["licensespend/**", "examples/**", ".github/workflows/licensespend-*.yml", "pyproject.toml"]
+  pull_request:
+    paths: ["licensespend/**", "examples/**", ".github/workflows/licensespend-*.yml", "pyproject.toml"]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LICENSESPEND_INCLUDE_EMAIL: "0"
+      LICENSESPEND_APPLY: "0"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: "3.12"
+
+      - run: uv sync --all-groups
+
+      - run: uv run ruff check licensespend tests/test_licensespend_architecture.py tests/test_licensespend_core.py
+
+      - run: uv run pytest tests/test_licensespend_architecture.py tests/test_licensespend_core.py licensespend -q --tb=short
+
+      - name: Report fixture must not contain raw emails
+        run: |
+          uv run python -m licensespend report build --client fixture --out reports/ --as-of 2026-09-07
+          if grep -R -E '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' reports/ --include='*.html' --include='*.md' --include='*.json'; then
+            echo "raw email leaked into reports/"
+            exit 1
+          fi
+
+      - run: uv run pip-audit --strict || uv run pip-audit
+
+      - name: Setup Trivy (safe post-CVE-2026-33634 pin)
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.71.2
+
+      - name: Trivy filesystem scan
+        run: trivy fs --severity HIGH,CRITICAL --exit-code 1 licensespend examples pyproject.toml
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

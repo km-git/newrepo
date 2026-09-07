@@ -1,0 +1,65 @@
+[project]
+name = "licensespend"
+version = "0.1.0"
+description = "SaaS License & Spend — MSP seat-waste report (M365, Slack, GitHub). Metadata only."
+requires-python = ">=3.11"
+dependencies = [
+  "duckdb>=1.2.0",
+  "pyarrow>=17.0.0",
+  "httpx>=0.27.0",
+  "pydantic>=2.9.0",
+  "typer>=0.15.0",
+  "pyyaml>=6.0.2",
+  "feedparser>=6.0.11",
+  "rich>=13.9.0",
+  "jinja2>=3.1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-cov>=6.0.0",
+  "ruff>=0.9.0",
+  "mypy>=1.14.0",
+  "pip-audit>=2.7.0",
+]
+m365 = ["msgraph-sdk", "azure-identity"]
+slack = ["slack-sdk"]
+github = ["PyGithub"]
+google = ["google-api-python-client", "google-auth"]
+
+[project.scripts]
+licensespend = "licensespend.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["licensespend"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-cov>=6.0.0",
+  "ruff>=0.9.0",
+  "mypy>=1.14.0",
+  "pip-audit>=2.7.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "licensespend"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+pretty = true
+files = ["licensespend"]
+exclude = "(^|/)tests(/|$)"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = [".venv", "libs", "output", ".cache"]

@@ -1,0 +1,39 @@
+# SaaS License & Spend — {{ client }}
+
+Draft reclaim pack for human review. As of {{ as_of }}. Currency AUD. Do not auto-revoke.
+
+**Reclaim (monthly): A${{ "%.2f"|format(reclaim_monthly_aud) }}** across {{ unused_count }} unused seats.
+
+## Bought vs used
+
+| SKU | Bought | Used |
+|---|---:|---:|
+{% for sku, bought in seats_bought.items() -%}
+| {{ sku }} | {{ bought }} | {{ seats_used.get(sku, 0) }} |
+{% endfor %}
+
+## Unused seats (hashed ids)
+
+| User id | SKU | Idle days | Monthly AUD |
+|---|---|---:|---:|
+{% for row in unused -%}
+| `{{ row.user_id }}` | {{ row.sku }} | {{ row.idle_days }} | {{ "%.2f"|format(row.monthly_cost) }} |
+{% endfor %}
+
+## Renewals (60 days)
+
+{% for item in renewals -%}
+- {{ item.vendor }} — {{ item.renew_on }} — A${{ item.amount_aud }} (draft nudge)
+{% else -%}
+- None in window.
+{% endfor %}
+
+## Shadow apps
+
+{% for app in shadow_apps -%}
+- {{ app.name }} ({{ app.source }}){% if app.note %} — {{ app.note }}{% endif %}
+{% else -%}
+- None in fixtures.
+{% endfor %}
+
+Watermark SHA-256: `{{ watermark }}`

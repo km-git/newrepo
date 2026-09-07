@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>License spend — {{ client }} (draft)</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #111; }
+    h1, h2 { font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
+    .muted { color: #555; font-size: 0.9rem; }
+    code { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>SaaS License &amp; Spend — {{ client }}</h1>
+  <p class="muted">Draft reclaim pack for human review. As of {{ as_of }}. Currency AUD.</p>
+  <p><strong>Reclaim (monthly):</strong> A${{ "%.2f"|format(reclaim_monthly_aud) }} across {{ unused_count }} unused seats.</p>
+  <h2>Bought vs used</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th></tr></thead>
+    <tbody>
+    {% for sku, bought in seats_bought.items() %}
+      <tr><td>{{ sku }}</td><td>{{ bought }}</td><td>{{ seats_used.get(sku, 0) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Unused seats (hashed ids)</h2>
+  <table>
+    <thead><tr><th>User id</th><th>SKU</th><th>Idle days</th><th>Monthly AUD</th></tr></thead>
+    <tbody>
+    {% for row in unused %}
+      <tr>
+        <td><code>{{ row.user_id }}</code></td>
+        <td>{{ row.sku }}</td>
+        <td>{{ row.idle_days }}</td>
+        <td>{{ "%.2f"|format(row.monthly_cost) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Renewals (60 days)</h2>
+  <ul>
+    {% for item in renewals %}
+      <li>{{ item.vendor }} — {{ item.renew_on }} — A${{ item.amount_aud }} (draft nudge)</li>
+    {% else %}
+      <li>None in window.</li>
+    {% endfor %}
+  </ul>
+  <h2>Shadow apps</h2>
+  <ul>
+    {% for app in shadow_apps %}
+      <li>{{ app.name }} ({{ app.source }}){% if app.note %} — {{ app.note }}{% endif %}</li>
+    {% else %}
+      <li>None in fixtures.</li>
+    {% endfor %}
+  </ul>
+  <p class="muted">Watermark SHA-256: <code>{{ watermark }}</code></p>
+</body>
+</html>

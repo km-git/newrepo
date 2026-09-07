@@ -1,0 +1,16 @@
+{
+  "users": [
+    {"user_id": "u-001", "sku": "m365-e3", "last_active": "2026-01-01", "department": "finance", "email": "alex@contoso.example"},
+    {"user_id": "u-002", "sku": "m365-e3", "last_active": "2026-02-15", "department": "finance", "email": "blair@contoso.example"},
+    {"user_id": "u-003", "sku": "m365-e3", "last_active": "2026-03-01", "department": "hr", "email": "casey@contoso.example"},
+    {"user_id": "u-004", "sku": "m365-e3", "last_active": "2026-08-20", "department": "ops", "email": "devon@contoso.example"},
+    {"user_id": "u-005", "sku": "m365-e3", "last_active": "2026-08-22", "department": "ops", "email": "ellis@contoso.example"},
+    {"user_id": "u-006", "sku": "m365-e3", "last_active": "2026-08-25", "department": "ops", "email": "finley@contoso.example"},
+    {"user_id": "u-007", "sku": "m365-e3", "last_active": "2026-08-28", "department": "sales", "email": "gray@contoso.example"},
+    {"user_id": "u-008", "sku": "m365-e3", "last_active": "2026-09-01", "department": "sales", "email": "harper@contoso.example"},
+    {"user_id": "u-009", "sku": "m365-e3", "last_active": "2026-09-02", "department": "eng", "email": "indigo@contoso.example"},
+    {"user_id": "u-010", "sku": "m365-e3", "last_active": "2026-09-03", "department": "eng", "email": "jordan@contoso.example"},
+    {"user_id": "u-011", "sku": "m365-e3", "last_active": "2026-09-04", "department": "eng", "email": "kai@contoso.example"},
+    {"user_id": "u-012", "sku": "m365-e3", "last_active": "2026-09-05", "department": "eng", "email": "logan@contoso.example"}
+  ]
+}
