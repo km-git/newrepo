@@ -1,9 +1,10 @@
 # Free-tier Bugbot replacement (local): Ruff on staged files only.
+# Keep rev current (not the guide's v0.6.9). Select includes Bandit-equivalent S.
 # See mavis-deep-research/20260907_bugbot_replacement/final_turn_001.md
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.10
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix, --exit-non-zero-on-fix, --select, "E,F,W,I,UP,B,SIM,RUF,S"]
       - id: ruff-format
