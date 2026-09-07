@@ -38,17 +38,15 @@ class MonitorHandler(SimpleHTTPRequestHandler):
 
   def do_GET(self) -> None:
     parsed = urlparse(self.path)
-    if parsed.path in ("/", "/monitor", "/monitor/"):
+    if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
+      return
+    if parsed.path in ("/monitor", "/monitor/"):
       self.send_response(302)
       self.send_header("Location", "/output/monitor.html")
       self.end_headers()
       return
     if parsed.path == "/api/dashboard":
       self._serve_dashboard()
-      return
-    if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
-      return
-    if _serve_licensespend(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
     if serve_monetize_http(
       self,
@@ -92,25 +90,6 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       self.wfile.write(err)
 
 
-def _serve_licensespend(handler, method: str, path: str, query) -> bool:
-  try:
-    from licensespend.report.explorer import serve_licensespend_http
-  except ImportError:
-    if method == "GET" and path.rstrip("/") == "/licensespend":
-      static = ROOT / "reports" / "licensespend_explorer.html"
-      if static.is_file():
-        body = static.read_bytes()
-        handler.send_response(200)
-        handler.send_header("Content-Type", "text/html; charset=utf-8")
-        handler.send_header("Cache-Control", "no-store")
-        handler.send_header("Content-Length", str(len(body)))
-        handler.end_headers()
-        handler.wfile.write(body)
-        return True
-    return False
-  return serve_licensespend_http(handler, method, path, query)
-
-
 def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir: str = "output", publish: bool = True) -> None:
   if publish:
     paths = publish_monitor(output_dir)
@@ -120,31 +99,19 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
 
   MonitorHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonitorHandler)
-  print("[monitor] Open the dashboard:")
+  print("[monitor] Tape-to-Cloud hub (default /):")
   print()
   for url in explorer_launch_urls(host, port, "/"):
     print(url)
     print()
-  print("[monitor] Monetize Explorer:")
+  print("[monitor] Tape-to-Cloud reports:")
   print()
-  for url in explorer_launch_urls(host, port, "/monetize"):
+  for url in explorer_launch_urls(host, port, "/tape-to-cloud/reports"):
     print(url)
     print()
-  print("[monitor] Tape-to-Cloud Hub:")
-  print()
-  for url in explorer_launch_urls(host, port, "/tape-to-cloud"):
-    print(url)
-    print()
-  print("[monitor] LicenseSpend Explorer:")
-  print()
-  for url in explorer_launch_urls(host, port, "/licensespend"):
-    print(url)
-    print()
-  print(f"[monitor] Dashboard API: http://127.0.0.1:{port}/api/dashboard")
   print(f"[monitor] Tape-to-Cloud API: http://127.0.0.1:{port}/api/tape-to-cloud/status")
   print(f"[monitor] Tape-to-Cloud reports: http://127.0.0.1:{port}/tape-to-cloud/reports")
   print(f"[monitor] Tape-to-Cloud validation: http://127.0.0.1:{port}/tape-to-cloud/validation")
-  print(f"[monitor] LicenseSpend API: http://127.0.0.1:{port}/api/licensespend/status")
   print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()

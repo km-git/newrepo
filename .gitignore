@@ -15,9 +15,6 @@ reports/*
 !reports/COMPLETE_TRADING_ANALYSIS.md
 !reports/trade_setups_matrix.html
 !reports/monetize_explorer.html
-!reports/licensespend_explorer.html
-!reports/licensespend/
-!reports/licensespend/**
 !reports/latest_executable_pair_tf.csv
 !reports/HISTORICAL_PERFORMANCE.md
 !reports/PAPER_PNL.md
@@ -33,4 +30,10 @@ venv/
 .pytest_cache/
 .mypy_cache/
 *.log
-licensespend/state/monthly.json
+state/accept-reject.jsonl
+state/discover_queue.json
+state/gap_audit.json
+state/candidates.md
+monthly/*.md
+.ruff_cache/
+dspm/**/__pycache__/

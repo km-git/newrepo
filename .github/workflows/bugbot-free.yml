@@ -77,9 +77,8 @@ jobs:
             --metrics off \
             --sarif \
             --output semgrep.sarif \
-            tape_to_cloud/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
-            licensespend/ tests/test_licensespend_architecture.py tests/test_licensespend_core.py \
-            tests/test_licensespend_ui.py ew_tool.py
+            tape_to_cloud/ dspm/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
+            ew_tool.py
         continue-on-error: true
 
       - name: Upload SARIF to GitHub code scanning

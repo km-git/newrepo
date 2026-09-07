@@ -9,5 +9,5 @@ This does not drive LTO libraries. Disk ingest is the live path.
 
 from . import monetize
 
-__all__ = ["monetize"]
+__all__ = ["catalog", "cli", "layers", "monetize", "sample_reports"]
 __version__ = "0.2.0"

@@ -1,0 +1,16 @@
+policies:
+  - name: c7n-mask-pii-laced-s3
+    resource: aws.s3
+    risk_level: high
+    comments: Quarantine buckets whose objects classified as PII. Masking via Presidio Anonymizer is a separate step.
+    filters:
+      - type: marked-for-op
+        tag: dspm:pii
+        op: quarantine
+    actions:
+      - type: toggle-versioning
+        enabled: true
+      - type: mark-for-op
+        tag: dspm:quarantine
+        op: notify
+        days: 1
