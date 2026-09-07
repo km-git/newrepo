@@ -1,6 +1,6 @@
 # Outcome-driven profit laboratory — install with:
 #   pip install -r requirements-outcome.txt
-purgedcv>=0.1.4
+purgedcv>=0.1.6
 quantstats-reloaded>=0.1.0
 vectorbt>=0.26.0
 polars>=1.0.0
