@@ -30,3 +30,7 @@ venv/
 .pytest_cache/
 .mypy_cache/
 *.log
+state/accept-reject.jsonl
+monthly/*.md
+.ruff_cache/
+dspm/**/__pycache__/

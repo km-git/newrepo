@@ -1,0 +1,24 @@
+---
+description: DSPM-like-Cyera OSS build — 12 modules, 95/5 free LLM routing, Trivy 0.71.2 pin, Steampipe CLI-only, $0/month. Apply when working on dspm/ or dspm-* workflows.
+globs: dspm/**,.github/workflows/dspm-*.yml,examples/sample.csv
+alwaysApply: false
+---
+
+# DSPM (Cyera-like) build rule
+
+12 modules: audit, discovery, classification, risk, access, exposure, encryption_check, shadow, custom_types, compliance, ai_security, remediation. Loop lives in `dspm/loop/` (Discover → Evaluate → Integrate → Validate → Compound).
+
+## Hard rules
+
+1. No paid services, no GPU, no Ollama. Hugging Face `dslim/bert-base-NER` is the only local NER (optional, CPU).
+2. Gemini Flash handles 95% of LLM calls. Do not route classification through Sonnet/Opus.
+3. Trivy must be 0.70+ / pin 0.71.2. Refuse 0.69.4/0.69.5/0.69.6 (CVE-2026-33634). SHA-pin GitHub Actions; never `trivy-action` mutable tags.
+4. Steampipe is a CLI subprocess only (AGPL-3.0). Never `import steampipe`.
+5. Presidio installs from `data-privacy-stack/presidio`, not `microsoft/presidio`.
+6. Do not auto-approve human PRs. Do not auto-merge `dspm/remediation/policies/`.
+7. Dedupe Discover items by SHA-256 of the canonical URL.
+8. Keepalive is an in-repo weekly timestamp (`state/keepalive.txt`). Do not use `gautamkrishnar/keepalive-workflow` (repo disabled).
+
+## CLI
+
+JSON default, `--human` for a table. `make dspm-all` runs every module against `examples/`.

@@ -23,8 +23,8 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          ruff check --config ruff.toml tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py
-          ruff format --check tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py
+          ruff check --config ruff.toml tape_to_cloud/ dspm/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py
+          ruff format --check tape_to_cloud/ dspm/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py
 
   dependency-audit:
     name: pip-audit (requirements.txt)

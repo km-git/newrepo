@@ -1,0 +1,105 @@
+- name: r/cybersecurity
+  url: https://www.reddit.com/r/cybersecurity/.rss
+  module_hint: dspm/classification, dspm/risk
+  max_items: 25
+- name: r/netsec
+  url: https://www.reddit.com/r/netsec/.rss
+  module_hint: dspm/exposure, dspm/encryption_check
+  max_items: 25
+- name: r/sysadmin
+  url: https://www.reddit.com/r/sysadmin/.rss
+  module_hint: dspm/discovery, dspm/remediation
+  max_items: 25
+- name: r/dataengineering
+  url: https://www.reddit.com/r/dataengineering/.rss
+  module_hint: dspm/discovery, dspm/risk
+  max_items: 25
+- name: r/MachineLearning
+  url: https://www.reddit.com/r/MachineLearning/.rss
+  module_hint: dspm/ai_security
+  max_items: 25
+- name: HN dspm
+  url: https://hn.algolia.com/api/v1/search_by_date?query=dspm&tags=story
+  module_hint: dspm/risk
+  max_items: 15
+  kind: json
+- name: SO tag presidio
+  url: https://stackoverflow.com/feeds/tag/presidio
+  module_hint: dspm/classification
+  max_items: 15
+- name: SO tag duckdb
+  url: https://stackoverflow.com/feeds/tag/duckdb
+  module_hint: dspm/risk, dspm/discovery
+  max_items: 25
+- name: SO tag cloudquery
+  url: https://stackoverflow.com/feeds/tag/cloudquery
+  module_hint: dspm/discovery
+  max_items: 15
+- name: SO tag prowler
+  url: https://stackoverflow.com/feeds/tag/prowler
+  module_hint: dspm/exposure
+  max_items: 15
+- name: SO tag trivy
+  url: https://stackoverflow.com/feeds/tag/trivy
+  module_hint: dspm/encryption_check
+  max_items: 15
+- name: SO tag steampipe
+  url: https://stackoverflow.com/feeds/tag/steampipe
+  module_hint: dspm/access
+  max_items: 15
+- name: SO tag datahub
+  url: https://stackoverflow.com/feeds/tag/datahub
+  module_hint: dspm/audit
+  max_items: 15
+- name: SO tag openmetadata
+  url: https://stackoverflow.com/feeds/tag/openmetadata
+  module_hint: dspm/audit
+  max_items: 15
+- name: Presidio releases
+  url: https://github.com/data-privacy-stack/presidio/releases.atom
+  module_hint: dspm/classification
+  max_items: 5
+- name: DuckDB releases
+  url: https://github.com/duckdb/duckdb/releases.atom
+  module_hint: dspm/risk
+  max_items: 5
+- name: CloudQuery releases
+  url: https://github.com/cloudquery/cloudquery/releases.atom
+  module_hint: dspm/discovery
+  max_items: 5
+- name: Prowler releases
+  url: https://github.com/prowler-cloud/prowler/releases.atom
+  module_hint: dspm/exposure
+  max_items: 5
+- name: Trivy releases
+  url: https://github.com/aquasecurity/trivy/releases.atom
+  module_hint: dspm/encryption_check
+  max_items: 5
+- name: Steampipe releases
+  url: https://github.com/turbot/steampipe/releases.atom
+  module_hint: dspm/access
+  max_items: 5
+- name: DataHub releases
+  url: https://github.com/datahub-project/datahub/releases.atom
+  module_hint: dspm/audit
+  max_items: 5
+- name: OpenMetadata releases
+  url: https://github.com/open-metadata/OpenMetadata/releases.atom
+  module_hint: dspm/audit
+  max_items: 5
+- name: Cloud Custodian releases
+  url: https://github.com/cloud-custodian/cloud-custodian/releases.atom
+  module_hint: dspm/remediation
+  max_items: 5
+- name: Greenmask releases
+  url: https://github.com/GreenmaskIO/greenmask/releases.atom
+  module_hint: dspm/classification
+  max_items: 5
+- name: PyDP releases
+  url: https://github.com/OpenMined/PyDP/releases.atom
+  module_hint: dspm/classification
+  max_items: 5
+- name: Cohesity DataProtect mock (Cyera partner signal)
+  url: https://github.com/cohesity/dataprotect-mock-cookies/releases.atom
+  module_hint: dspm/discovery
+  max_items: 5

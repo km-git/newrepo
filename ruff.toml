@@ -7,3 +7,8 @@ select = ["E", "F", "W", "I", "B", "S"]
 
 [lint.per-file-ignores]
 "tests/**" = ["S101", "S603"]
+"dspm/**/tests/**" = ["S101", "S603"]
+"dspm/tools.py" = ["S603"]
+"dspm/loop/conflict_resolve.py" = ["S603", "S607"]
+"dspm/loop/watch.py" = ["S310"]
+"dspm/db/store.py" = ["S608"]
