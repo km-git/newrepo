@@ -1,0 +1,35 @@
+name: sspm-rebase
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Same-repo bot PRs (or operator-tagged [auto-rebase]).
+    # Do not check out PR HEAD (CodeQL actions/untrusted-checkout/medium).
+    if: >
+      github.repository == github.event.pull_request.head.repo.full_name &&
+      (
+        github.event.pull_request.user.login == 'dependabot[bot]' ||
+        github.event.pull_request.user.login == 'github-actions[bot]' ||
+        contains(github.event.pull_request.body, '[auto-rebase]')
+      )
+    steps:
+      - name: Update PR branch from main via GitHub API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if echo '{}' | gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR}/update-branch" --input -; then
+            echo "PR branch updated from base (GitHub update-branch)."
+          else
+            gh pr comment "$PR" --body "@operator could not update this branch onto main — please rebase manually"
+            exit 1
+          fi

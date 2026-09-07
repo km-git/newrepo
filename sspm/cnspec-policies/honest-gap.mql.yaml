@@ -1,0 +1,5 @@
+policies:
+  - uid: sspm-honest-gap
+    name: SSPM honest-gap placeholder
+    version: 0.1.0
+    scoring_system: 2
