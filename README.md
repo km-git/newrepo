@@ -349,7 +349,15 @@ python3 ew_tool.py --monitor
 http://127.0.0.1:8765/tape-to-cloud
 ```
 
-The hub shows the 16-module map, discovery doc inventory (`free-tool-inventory.md`, forum-watcher spec, improvement loop), forum-watcher status, and CLI quick-start. JSON API: `/api/tape-to-cloud/status`. Same server also serves `/monitor` and `/monetize`.
+The hub shows the 16-module map, six cross-cutting layers, discovery doc inventory (`free-tool-inventory.md`, forum-watcher spec, improvement loop), forum-watcher status, CLI quick-start, and **sample detailed reports** (media audit, eDiscovery production, WORM/KMIP policy, restore chain-of-custody, integrity sidecar, migration volume grid). Each sample report carries a recomputed SHA-256 of canonical JSON (MD5/SHA-1 refused).
+
+```
+http://127.0.0.1:8765/tape-to-cloud
+http://127.0.0.1:8765/tape-to-cloud/reports
+http://127.0.0.1:8765/tape-to-cloud/validation
+```
+
+JSON APIs: `/api/tape-to-cloud/status`, `/api/tape-to-cloud/reports`, `/api/tape-to-cloud/validation`. Same server also serves `/monitor` and `/monetize`.
 
 ## Architecture
 

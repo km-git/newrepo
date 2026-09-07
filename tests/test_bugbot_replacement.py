@@ -87,8 +87,12 @@ def test_ruff_passes_on_replacement_paths() -> None:
     paths = [
         "tape_to_cloud/",
         "engine/monetization_strategy.py",
+        "engine/tape_to_cloud_hub.py",
+        "engine/tape_to_cloud_reports.py",
         "tests/test_monetization_strategy.py",
         "tests/test_tape_to_cloud_monetize.py",
+        "tests/test_tape_to_cloud_hub.py",
+        "tests/test_tape_to_cloud_reports.py",
         "tests/test_bugbot_replacement.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
