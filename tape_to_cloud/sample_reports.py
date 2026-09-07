@@ -13,6 +13,7 @@ from tape_to_cloud.catalog import (
     SAMPLE_GENERATED_UTC,
     SAMPLE_JOB_ID,
 )
+from tape_to_cloud.layers import apply_layers
 
 LAYERS_CALLED = {layer: "applied" for layer in LAYERS}
 
@@ -470,47 +471,6 @@ _RESULTS: dict[str, dict[str, Any]] = {
 }
 
 
-def _layer_block(module_id: str) -> dict[str, Any]:
-    pre = demo_sha256(f"pre:{module_id}")
-    post = demo_sha256(f"post:{module_id}")
-    return {
-        "integrity": {
-            "primary_algo": "SHA-256",
-            "md5_not_primary": True,
-            "pre_hash": pre,
-            "post_hash": post,
-            "sidecar": f"manifests/{SAMPLE_JOB_ID}/{module_id}.sha256.json",
-            "signed": True,
-        },
-        "ediscovery": {
-            "holds": ["HOLD-2024-0118"],
-            "custodians": ["j.lee"],
-            "defensibility_log": f"logs/{SAMPLE_JOB_ID}/{module_id}-ediscovery.jsonl",
-        },
-        "kms-kmip": {
-            "kmip_server": "kmip.demo.internal",
-            "cipher": "AES-GCM-256",
-            "key_present": True,
-            "refuse_if_missing": True,
-        },
-        "worm": {
-            "policy": "S3 Object Lock COMPLIANCE + Tape Retention Lock COMPLIANCE",
-            "retention_days": 2557,
-            "erasure_conflict": "stop-and-ask",
-        },
-        "format-readers": {
-            "plugin": "wrap-mediagenie-proteus",
-            "detected": "IBM Spectrum Protect / TSM",
-            "invented_parser": False,
-        },
-        "media-rescue": {
-            "condition": "pass",
-            "stiction": False,
-            "crypto_bypass_attempted": False,
-        },
-    }
-
-
 def report_id_for(module_id: str) -> str:
     return str(MODULE_CATALOG[module_id]["sample_report_id"])
 
@@ -532,7 +492,7 @@ def build_module_report(module_id: str) -> dict[str, Any]:
         "deliverable": spec["deliverable"],
         "citations": list(CITATIONS),
         "layers_called": dict(LAYERS_CALLED),
-        "layers": _layer_block(module_id),
+        "layers": apply_layers(module_id, result),
         "result": result,
         "kpis": result.get("kpis", []),
         "executive_summary": result.get("executive_summary", ""),

@@ -18,6 +18,8 @@ def test_build_hub_state_has_sixteen_modules():
     assert state["packages"]["forum_watcher"] is True
     assert state["focus"] == "tape-to-cloud-only"
     assert len(state["sample_reports"]) == 17
+    assert state["cli"]["report"] == "python -m tape_to_cloud report audit"
+    assert state["cli"]["list"] == "python -m tape_to_cloud list"
 
 
 def test_dispatch_tape_to_cloud_html_and_api():
@@ -43,6 +45,8 @@ def test_render_hub_html_includes_discovery_docs_and_reports():
     assert "free-tool-inventory.md" in html
     assert "/tape-to-cloud/reports/job-pack" in html
     assert "feature-completeness.md" in html
+    assert "tape_to_cloud.layers.apply_layers" in html
+    assert "python -m tape_to_cloud report audit" in html
 
 
 def test_every_module_has_sample_report_with_six_layers():
@@ -74,6 +78,8 @@ def test_job_pack_and_layers_routes():
     layers = dispatch_tape_to_cloud("GET", "/tape-to-cloud/layers")
     assert layers is not None and layers[0] == 200
     assert b"integrity" in layers[2]
+    assert b"tape_to_cloud.layers.apply_layers" in layers[2]
+    assert b"stop-and-ask" in layers[2]
     docs = dispatch_tape_to_cloud("GET", "/tape-to-cloud/docs/feature-completeness.md")
     assert docs is not None and docs[0] == 200
     assert b"Cross-cutting layers" in docs[2]

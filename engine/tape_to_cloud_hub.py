@@ -125,6 +125,8 @@ def build_hub_state() -> dict[str, Any]:
             "workflow": ".github/workflows/forum-watcher.yml",
         },
         "cli": {
+            "report": "python -m tape_to_cloud report audit",
+            "list": "python -m tape_to_cloud list",
             "tape_monetize_cli": "python -m tape_to_cloud.monetize",
             "forum_watcher": "cd forum-watcher && python scripts/watch.py",
             "hub": "python3 ew_tool.py --monitor",
@@ -271,6 +273,10 @@ def render_hub_html() -> str:
          for {html.escape(state["catalog"]["sample_customer"])} — 16 detailed module reports + combined job pack.</p>
       {latest_line}
       <p class="muted">Targets: {targets}</p>
+      <p>Every report calls <code>tape_to_cloud.layers.apply_layers</code>
+         (SHA-256 sidecar, KMIP refuse, license-or-wrap readers, WORM stop-and-ask).</p>
+      <pre>{html.escape(state["cli"]["report"])}
+{html.escape(state["cli"]["list"])}</pre>
     </section>
     <section>
       <h2>16 modules</h2>
@@ -335,7 +341,18 @@ def render_module_html(module_id: str) -> str:
 
 
 def render_layers_html() -> str:
-    blocks = []
+    intro = """
+    <section>
+      <h2>Engine</h2>
+      <p>Every sample report is produced by <code>tape_to_cloud.layers.apply_layers</code>.
+         Order: rescue → KMIP → format readers → integrity (SHA-256) → WORM → eDiscovery.
+         Missing KMIP key, invented TSM/NetBackup parsers, and crypto bypass are hard refusals.
+         WORM vs GDPR erasure is stop-and-ask.</p>
+      <pre>python -m tape_to_cloud report audit
+python -m tape_to_cloud list</pre>
+    </section>
+    """
+    blocks = [intro]
     for lid in LAYERS:
         spec = LAYER_CATALOG[lid]
         blocks.append(

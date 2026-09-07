@@ -23,8 +23,9 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          ruff check --config ruff.toml tape_to_cloud/ dspm/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py
-          ruff format --check tape_to_cloud/ dspm/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py
+          RUFF_PATHS="tape_to_cloud/ dspm/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_report_html.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_layers.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py"
+          ruff check --config ruff.toml $RUFF_PATHS
+          ruff format --check $RUFF_PATHS
 
   dependency-audit:
     name: pip-audit (requirements.txt)

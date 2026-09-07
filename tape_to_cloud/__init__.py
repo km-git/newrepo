@@ -6,5 +6,5 @@ service taxonomy maps to a submodule; ``monetize`` is the optional broker
 layer (license tagging, access control, royalty reporting).
 """
 
-__all__ = ["catalog", "monetize", "sample_reports"]
+__all__ = ["catalog", "cli", "layers", "monetize", "sample_reports"]
 __version__ = "0.1.0"
