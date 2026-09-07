@@ -74,8 +74,10 @@ def generate(
     drift = db.fetchall("findings_drift", "provider = ?", (provider,))
     compliance = db.fetchall("findings_compliance")
     top_costs = sorted(costs, key=lambda r: float(r.get("amount", 0)), reverse=True)[:5]
-    disclaimer = DISCLAIMER_PATH.read_text(encoding="utf-8") if DISCLAIMER_PATH.exists() else (
-        "This report is a read-only cost and configuration observation."
+    disclaimer = (
+        DISCLAIMER_PATH.read_text(encoding="utf-8")
+        if DISCLAIMER_PATH.exists()
+        else ("This report is a read-only cost and configuration observation.")
     )
     md = TEMPLATE.render(
         provider=provider,

@@ -20,8 +20,12 @@ def test_classify_finops():
     assert result["verdict"] in {"discover", "watch"}
 
 
-def test_watch_offline():
-    out = watch(fetch=False)
+def test_watch_offline(tmp_path, monkeypatch):
+    seen = tmp_path / "seen.json"
+    monkeypatch.setenv("COST_SEEN", str(seen))
+    log = tmp_path / "accept.jsonl"
+    monkeypatch.setenv("COST_ACCEPT_LOG", str(log))
+    out = watch(fetch=False, seen_path=seen)
     assert out["new_count"] >= 1
 
 

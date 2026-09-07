@@ -6,14 +6,16 @@ PRESIDIO_SOURCE = "data-privacy-stack/presidio"
 TRIVY_PIN = "0.71.2"
 TRIVY_MALICIOUS = frozenset({"0.69.4", "0.69.3", "0.69.2", "0.69.1", "0.69.0"})
 
-FORBIDDEN_REPORT_WORDS = frozenset({
-    "compliance",
-    "attestation",
-    "certified",
-    "secure",
-    "guaranteed",
-    "guarantees",
-})
+FORBIDDEN_REPORT_WORDS = frozenset(
+    {
+        "compliance",
+        "attestation",
+        "certified",
+        "secure",
+        "guaranteed",
+        "guarantees",
+    }
+)
 
 ALLOWED_REPORT_PHRASES = (
     "cost observation",
