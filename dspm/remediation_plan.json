@@ -1,0 +1,42 @@
+[
+  {
+    "target": "s3://public-bucket/*",
+    "action": "revoke-public-access",
+    "preconditions": {
+      "exposure": "public"
+    },
+    "risk_level": "high",
+    "dry_run_safe": true,
+    "mode": "dry-run"
+  },
+  {
+    "target": "rds:unencrypted-instance",
+    "action": "enable-encryption",
+    "preconditions": {
+      "encrypted": false
+    },
+    "risk_level": "medium",
+    "dry_run_safe": true,
+    "mode": "dry-run"
+  },
+  {
+    "target": "s3://pii-bucket/*",
+    "action": "mask-pii",
+    "preconditions": {
+      "contains_pii": true
+    },
+    "risk_level": "high",
+    "dry_run_safe": true,
+    "mode": "dry-run"
+  },
+  {
+    "target": "s3://shadow-bucket",
+    "action": "alert-operator",
+    "preconditions": {
+      "shadow": true
+    },
+    "risk_level": "low",
+    "dry_run_safe": true,
+    "mode": "dry-run"
+  }
+]

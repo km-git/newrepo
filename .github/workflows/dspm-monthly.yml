@@ -1,0 +1,35 @@
+name: dspm-monthly
+on:
+  schedule:
+    - cron: '0 23 1-7 * 1'
+      timezone: 'Australia/Sydney'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dspm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Generate monthly rollup
+        run: python dspm/loop/monthly.py
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: 'monthly: rollup'
+          title: 'Monthly rollup'
+          body: 'Auto-generated monthly rollup. Review and merge.'
+          branch: monthly/rollup
+          delete-branch: true
+          add-paths: |
+            dspm/monthly/*.md
+            dspm/state/seen.json

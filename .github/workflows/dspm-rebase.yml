@@ -1,0 +1,33 @@
+name: dspm-rebase
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.user.login == 'dependabot[bot]' ||
+      contains(github.event.pull_request.body, '[auto-rebase]')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rebase on main
+        run: |
+          git config user.name "dspm-bot"
+          git config user.email "dspm-bot@users.noreply.github.com"
+          git fetch origin main
+          git rebase origin/main || {
+            gh pr comment "$PR_URL" --body "@operator merge conflict on this PR — please resolve manually"
+            exit 1
+          }
+          git push --force-with-lease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}

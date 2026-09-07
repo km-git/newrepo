@@ -1,0 +1,34 @@
+name: dspm-watch
+on:
+  schedule:
+    - cron: '0 23 * * 0'
+      timezone: 'Australia/Sydney'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dspm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Run forum watcher
+        run: python -c "from dspm.loop.watch import run_watch; import json; print(json.dumps(run_watch()))"
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: 'discover: forum-watcher weekly items'
+          title: 'Discover: weekly DSPM forum items'
+          body: '[auto-approved] Auto-generated discover PR from forum-watcher.'
+          branch: discover/weekly
+          delete-branch: true
+          add-paths: |
+            dspm/state/seen.json

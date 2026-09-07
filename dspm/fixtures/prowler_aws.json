@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "resource": "s3://public-bucket",
+      "check_title": "S3 bucket is publicly accessible",
+      "severity": "critical",
+      "type": "public_s3"
+    },
+    {
+      "resource": "rds://unencrypted-db",
+      "check_title": "RDS storage is not encrypted",
+      "severity": "high",
+      "type": "unencrypted_rds"
+    }
+  ]
+}

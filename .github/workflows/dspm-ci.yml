@@ -1,0 +1,29 @@
+name: dspm-ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dspm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check dspm/ tests/
+      - name: Pytest
+        run: pytest tests/ -v --cov=dspm --cov-report=term-missing
+      - name: pip-audit
+        run: pip-audit --strict || true
