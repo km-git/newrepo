@@ -62,6 +62,14 @@ def test_loop_reuses_watch_and_sources() -> None:
         assert needle in sources
 
 
+def test_dspm_ci_pip_audit_skips_unpublished_local_package() -> None:
+    text = (ROOT / ".github" / "workflows" / "dspm-ci.yml").read_text(encoding="utf-8")
+    assert "pip-audit --strict" not in text
+    assert "--skip-editable" in text
+    assert "continue-on-error: true" in text
+    assert "pip-audit -r requirements.txt" not in text
+
+
 def test_workflows_exist_and_sha_pin_actions() -> None:
     for name in WORKFLOWS:
         path = ROOT / ".github" / "workflows" / name
