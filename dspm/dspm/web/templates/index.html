@@ -25,6 +25,7 @@
         <button class="nav" data-panel="governance">Governance</button>
         <button class="nav" data-panel="siem">SIEM</button>
         <button class="nav" data-panel="warehouse">SQL Warehouse</button>
+        <button class="nav" data-panel="sources">Data Sources</button>
         <button class="nav" data-panel="remediation">Remediation</button>
       </nav>
       <div class="sidebar-footer">
@@ -97,6 +98,32 @@
           <div id="sql-result" class="table-wrap"></div>
           <h4>Query History</h4>
           <div id="query-history" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="panel-sources" class="panel">
+        <div class="card">
+          <h3>Unified Data Sources</h3>
+          <p class="muted">Scan backup, NFS, SMB, S3, M365, SaaS unstructured data</p>
+          <div class="search-bar">
+            <select id="source-scheme">
+              <option value="file://">file:// (local/NFS mount)</option>
+              <option value="nfs://">nfs:// (mounted share)</option>
+              <option value="backup://">backup:// (archives)</option>
+              <option value="s3://">s3:// (object storage)</option>
+              <option value="smb://">smb:// (CIFS share)</option>
+              <option value="m365://sharepoint">m365://sharepoint</option>
+              <option value="m365://onedrive">m365://onedrive</option>
+              <option value="m365://exchange">m365://exchange</option>
+              <option value="saas://gdrive">saas://gdrive</option>
+            </select>
+            <input id="source-path" placeholder="path e.g. bucket/ or //server/share or examples/archives" value="examples/archives">
+          </div>
+          <button id="btn-source-discover" class="btn">Discover</button>
+          <button id="btn-source-scan" class="btn primary">Discover + Classify</button>
+          <div id="source-results" class="table-wrap" style="margin-top:1rem"></div>
+          <h4 style="margin-top:1rem">Recent Source Objects</h4>
+          <div id="source-objects-table" class="table-wrap"></div>
         </div>
       </section>
 

@@ -22,6 +22,7 @@ from dspm.siem.cli import app as siem_app
 from dspm.observability.cli import app as observability_app
 from dspm.warehouse.cli import app as warehouse_app
 from dspm.integrations.cli import app as integrations_app
+from dspm.sources.cli import app as sources_app
 from dspm.web.cli import app as web_app
 
 app = typer.Typer(name="dspm", help="Cyera-like DSPM from OSS components")
@@ -43,6 +44,7 @@ app.add_typer(siem_app, name="siem")
 app.add_typer(observability_app, name="observability")
 app.add_typer(warehouse_app, name="warehouse")
 app.add_typer(integrations_app, name="integrations")
+app.add_typer(sources_app, name="sources")
 app.add_typer(web_app, name="web")
 
 

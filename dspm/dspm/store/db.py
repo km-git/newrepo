@@ -80,6 +80,16 @@ def init_db(db_path: Path | None = None) -> Path:
                 sql_text TEXT, engine TEXT, duration_ms REAL,
                 row_count INTEGER, user_name TEXT, created_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS source_objects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_uri TEXT, path TEXT, name TEXT, provider TEXT,
+                store_type TEXT, size_bytes INTEGER, metadata TEXT, created_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS source_scans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_uri TEXT, provider TEXT, object_count INTEGER,
+                finding_count INTEGER, created_at TEXT
+            );
             """
         )
     return path
@@ -144,6 +154,8 @@ def fetch_all(table: str, limit: int = 100, db_path: Path | None = None) -> list
         "observability_metrics",
         "alert_rules",
         "query_history",
+        "source_objects",
+        "source_scans",
     }
     if table not in allowed:
         raise ValueError(f"unknown table: {table}")
@@ -157,7 +169,7 @@ def insert_row(table: str, data: dict[str, Any], db_path: Path | None = None) ->
     allowed = {
         "findings", "risk_scores", "exposures", "catalog_assets",
         "governance_policies", "siem_events", "observability_metrics",
-        "alert_rules", "query_history",
+        "alert_rules", "query_history", "source_objects", "source_scans",
     }
     if table not in allowed:
         raise ValueError(f"unknown table: {table}")

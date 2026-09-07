@@ -1,5 +1,7 @@
 """Web API tests."""
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from dspm.web.app import app
@@ -36,3 +38,16 @@ def test_governance_mask_api():
     r = client.post("/api/governance/mask", json={"value": "secret", "data_type": "PII"})
     assert r.status_code == 200
     assert "masked" in r.json()
+
+
+def test_sources_schemes_api():
+    r = client.get("/api/sources/schemes")
+    assert r.status_code == 200
+    assert "s3" in r.json()["schemes"]
+
+
+def test_sources_scan_api():
+    root = Path(__file__).resolve().parents[1]
+    r = client.post("/api/sources/scan", json={"uri": f"s3://test-bucket/", "max_objects": 10})
+    assert r.status_code == 200
+    assert r.json()["object_count"] >= 1

@@ -28,6 +28,7 @@ MODULES = [
     "observability",
     "warehouse",
     "integrations",
+    "sources",
     "web",
     "loop",
 ]

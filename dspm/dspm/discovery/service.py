@@ -2,14 +2,28 @@
 
 from __future__ import annotations
 
-import csv
 import json
 from pathlib import Path
 
 from dspm._cli_tools import run_cli
 from dspm.models import StoreFinding
+from dspm.sources.registry import discover as discover_uri
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
+
+
+def discover_any(uri: str, max_objects: int = 500) -> list[StoreFinding]:
+    """Discover via unified sources connector (file, nfs, smb, s3, backup, m365, saas)."""
+    objects = discover_uri(uri, max_objects=max_objects)
+    return [
+        StoreFinding(
+            source=obj.uri,
+            location=obj.path,
+            provider=obj.provider,
+            store_type=obj.store_type,
+        )
+        for obj in objects
+    ]
 
 
 def discover_directory(path: Path) -> list[StoreFinding]:

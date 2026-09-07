@@ -5,7 +5,7 @@ from dspm.audit.service import build_inventory
 
 def test_inventory_lists_modules():
     inv = build_inventory()
-    assert inv["module_count"] == 20
+    assert inv["module_count"] == 21
     assert len(inv["modules"]) >= 12
     assert inv["oss_tool_count"] == 11
 

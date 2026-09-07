@@ -1,29 +1,17 @@
-# DSPM-like-Cyera — Build Prompt + Implementation
+# DSPM Platform — Enterprise Features + Web UI
 
-This directory contains the Cyera-equivalent DSPM build specification and the implemented package at `/workspace/dspm/`.
+## New in v0.2
 
-## Implementation status
+- **Web UI** at `http://127.0.0.1:8766` — FastAPI dashboard with 9 panels
+- **Catalog & Lineage** — Unity Catalog / OpenMetadata / Apache Polaris inspired
+- **Governance** — Snowflake Horizon masking + row access policies
+- **Observability** — Datadog-style metrics and alerting
+- **SIEM** — Splunk-style event search and correlation
+- **SQL Warehouse** — Databricks/Snowflake DuckDB workspace
+- **GitHub Integrations** — Dependabot + secret scanning API
 
-| Stage | Status | Verification |
-|-------|--------|--------------|
-| 1 — Scaffold + audit + CI | Done | `make dspm-audit-inventory` |
-| 2 — Discovery + classification | Done | `make dspm-classify` |
-| 3 — Risk + exposure + access | Done | `make dspm-risk` |
-| 4 — Remediation + loop + workflows | Done | `make dspm-all` |
-
-## Quick start
+## Start
 
 ```bash
-cd dspm
-pip install -e ".[dev]"
-make test
-make dspm-all
+cd dspm && pip install -e ".[dev]" && make dspm-web
 ```
-
-## Full build prompt
-
-See `mavis-deep-research/20260907_dspm_cyera/final_turn_001.md` for the complete 12-module Cursor prompt, OSS tool mapping, forum-watcher sources, auto-PR/conflict/issue-fix patterns, and 5-stage improvement loop.
-
-## Cursor rule
-
-`.cursor/rules/dspm-cyera-build.mdc` — Apply Intelligently when working on DSPM modules.

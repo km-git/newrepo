@@ -22,6 +22,8 @@ from dspm.observability.service import dashboard_summary, evaluate_alerts, seed_
 from dspm.remediation.service import build_plan
 from dspm.risk.service import risks_to_dict, score_findings
 from dspm.siem.service import correlate_findings, search_events
+from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview, scan_and_classify
+from dspm.sources.persist import save_source_scan
 from dspm.store.db import fetch_all, init_db, persist_scan_results
 from dspm.warehouse.service import execute_sql, query_history
 
@@ -44,6 +46,11 @@ class MaskRequest(BaseModel):
 
 class SiemSearchRequest(BaseModel):
     query: str = "*"
+
+
+class SourceScanRequest(BaseModel):
+    uri: str
+    max_objects: int = 200
 
 
 def _run_full_scan() -> dict:
@@ -183,6 +190,47 @@ async def api_remediation() -> list:
 @app.get("/api/github/scan/{owner}/{repo}")
 async def api_github_scan(owner: str, repo: str) -> dict:
     return scan_repo(owner, repo)
+
+
+@app.get("/api/sources/schemes")
+async def api_source_schemes() -> dict:
+    return {"schemes": SUPPORTED_SCHEMES}
+
+
+@app.get("/api/sources/objects")
+async def api_source_objects(limit: int = 100) -> list:
+    return fetch_all("source_objects", limit=limit)
+
+
+@app.get("/api/sources/scans")
+async def api_source_scans(limit: int = 20) -> list:
+    return fetch_all("source_scans", limit=limit)
+
+
+@app.post("/api/sources/discover")
+async def api_sources_discover(body: SourceScanRequest) -> dict:
+    objects = discover(body.uri, max_objects=body.max_objects)
+    return {"uri": body.uri, "count": len(objects), "objects": [o.model_dump() for o in objects[:50]]}
+
+
+@app.post("/api/sources/scan")
+async def api_sources_scan(body: SourceScanRequest) -> dict:
+    result = scan_and_classify(body.uri, max_objects=body.max_objects)
+    saved = save_source_scan(result)
+    return {
+        "source_uri": result.source_uri,
+        "provider": result.provider,
+        "object_count": result.object_count,
+        "finding_count": len(result.findings),
+        "saved": saved,
+        "findings": result.findings[:30],
+        "objects": [o.model_dump() for o in result.objects[:20]],
+    }
+
+
+@app.get("/api/sources/preview")
+async def api_sources_preview(uri: str, path: str = "") -> dict:
+    return preview(uri, path).model_dump()
 
 
 def create_app() -> FastAPI:

@@ -8,6 +8,7 @@ const titles = {
   siem: "SIEM Events",
   warehouse: "SQL Warehouse",
   remediation: "Remediation Plan",
+  sources: "Data Sources",
 };
 
 function tableFromRows(rows, columns) {
@@ -104,6 +105,13 @@ async function loadRemediation() {
   ]);
 }
 
+async function loadSources() {
+  const objects = await api("/api/sources/objects?limit=50");
+  document.getElementById("source-objects-table").innerHTML = tableFromRows(objects, [
+    "provider", "name", "store_type", "source_uri", "path",
+  ]);
+}
+
 const loaders = {
   dashboard: loadDashboard,
   findings: loadFindings,
@@ -114,6 +122,7 @@ const loaders = {
   siem: () => loadSiem(document.getElementById("siem-query").value),
   warehouse: loadWarehouse,
   remediation: loadRemediation,
+  sources: loadSources,
 };
 
 document.querySelectorAll(".nav").forEach((btn) => {
@@ -159,6 +168,40 @@ document.getElementById("btn-sql").addEventListener("click", async () => {
   });
   document.getElementById("sql-result").innerHTML = tableFromRows(r.rows, r.columns);
   loadWarehouse();
+});
+
+document.getElementById("btn-source-scan").addEventListener("click", async () => {
+  const scheme = document.getElementById("source-scheme").value;
+  const path = document.getElementById("source-path").value;
+  const uri = scheme + path;
+  document.getElementById("btn-source-scan").textContent = "Scanning…";
+  const r = await api("/api/sources/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uri, max_objects: 200 }),
+  });
+  document.getElementById("btn-source-scan").textContent = "Discover + Classify";
+  document.getElementById("source-results").innerHTML = `
+    <p><strong>${r.object_count}</strong> objects, <strong>${r.finding_count}</strong> findings from <code>${r.source_uri}</code></p>
+    ${tableFromRows(r.findings || [], ["type", "location", "confidence", "verdict", "object_name"])}
+  `;
+  loadSources();
+  loadDashboard();
+});
+
+document.getElementById("btn-source-discover").addEventListener("click", async () => {
+  const scheme = document.getElementById("source-scheme").value;
+  const path = document.getElementById("source-path").value;
+  const uri = scheme + path;
+  const r = await api("/api/sources/discover", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uri, max_objects: 100 }),
+  });
+  document.getElementById("source-results").innerHTML = tableFromRows(
+    r.objects || [],
+    ["name", "provider", "store_type", "path", "size_bytes"]
+  );
 });
 
 api("/api/health").then((h) => {

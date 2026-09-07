@@ -12,6 +12,19 @@ from dspm.discovery.service import discover_cloud, discover_directory, stores_to
 app = typer.Typer(help="Agentless data-store inventory")
 
 
+@app.command("any")
+def any_cmd(
+    uri: str = typer.Argument(..., help="file://, nfs://, smb://, s3://, backup://, m365://, saas://"),
+    max_objects: int = typer.Option(200, "--max"),
+    human: bool = typer.Option(False, "--human"),
+) -> None:
+    """Discover objects at any supported source URI."""
+    from dspm.discovery.service import discover_any
+
+    stores = discover_any(uri, max_objects=max_objects)
+    emit(stores_to_dict(stores), human=human, title=f"Discovered ({uri})")
+
+
 @app.command("dir")
 def dir_cmd(
     path: Path = typer.Argument(..., help="Directory to scan"),
