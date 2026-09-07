@@ -74,7 +74,39 @@ def test_pr_agent_workflow_is_sha_pinned_and_skips_without_key() -> None:
         assert SHA_RE.fullmatch(ref), uses
 
 
-def test_gitleaks_action_is_sha_pinned() -> None:
+def test_no_compromised_reviewdog_action_setup_tag() -> None:
+    """CVE-2025-30154 hit the mutable @v1 tag. SHA-pinned action-setup is allowed."""
+    workflows = ROOT / ".github" / "workflows"
+    for path in workflows.glob("*.yml"):
+        text = path.read_text(encoding="utf-8")
+        assert "uses: reviewdog/action-setup@v1" not in text, path.name
+        assert "uses: reviewdog/action-setup@main" not in text, path.name
+        for uses in USES_RE.findall(text):
+            if not uses.startswith("reviewdog/action-setup@"):
+                continue
+            ref = uses.split("@", 1)[1].split("#", 1)[0]
+            assert SHA_RE.fullmatch(ref), uses
+            assert ref == REVIEWDOG_SHA, uses
+
+
+def test_codeql_and_trufflehog_are_sha_pinned() -> None:
+    assert not (ROOT / ".github" / "workflows" / "codeql.yml").exists()
+    bugbot = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in bugbot
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in bugbot
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c" in lint
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in lint
+    for uses in USES_RE.findall(bugbot + "\n" + lint):
+        if uses.startswith("actions/"):
+            continue
+        if uses.startswith("google/osv-scanner-action/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        if "/" not in uses:
+            continue
+        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/")):
+            assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert "--output-format=github" in text
     assert " cost/" in text or "tape_to_cloud/ cost/" in text

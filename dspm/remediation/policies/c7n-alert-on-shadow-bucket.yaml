@@ -1,0 +1,14 @@
+policies:
+  - name: c7n-alert-on-shadow-bucket
+    resource: aws.s3
+    risk_level: medium
+    comments: Alert on buckets with no CloudQuery managed=true tag (heuristic shadow data).
+    filters:
+      - tag:dspm:managed: absent
+    actions:
+      - type: notify
+        slack_template: ""
+        to:
+          - owner
+        transport:
+          type: plain
