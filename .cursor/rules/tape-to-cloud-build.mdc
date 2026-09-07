@@ -9,7 +9,7 @@ alwaysApply: false
 You are helping build a vendor-agnostic tape-to-cloud migration tool. Three constraints govern every decision:
 
 1. **Source-agnostic.** Handle LTO-1 through LTO-10, DLT/AIT/DDS/VXA, VTL, and proprietary backup-app formats (TSM, NetBackup, Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF, Catalogic DPX). NetBackup cannot read TSM tapes directly; the tool needs its own format-aware read/catalog layer.
-2. **Target-agnostic.** Same code path writes to AWS S3/Glacier/Deep Archive, Azure Blob (Hot/Cool/Archive), Google Cloud Storage, Backblaze B2, Wasabi, Cloudian, MinIO, Ceph. Use any S3-compatible SDK; do not hard-code to one cloud.
+2. **Target-agnostic.** Same code path writes to AWS S3/Glacier/Deep Archive, Azure Blob (Hot/Cool/Archive), Google Cloud Storage, Backblaze B2, Wasabi, Cloudian, SeaweedFS, Ceph. Use any S3-compatible SDK; do not hard-code to one cloud. MinIO Community Edition is archived (GitHub: April 25, 2026); do not recommend it as the self-hosted S3 layer.
 3. **Use-case-complete.** Every menu line below must be expressible as a first-class module on the same core.
 
 ## Menu → module map (the 16 first-class modules)

@@ -45,5 +45,7 @@ uv run ruff check --fix . && uv run ruff format . && uv run prek run --all-files
 4. Model feed watcher logs — bump pins if needed
 5. Track Awesome List RSS — eval queue candidates
 6. Latest release / CHANGELOG accuracy
+7. `discovery/tape-to-cloud/free-tool-inventory.md` — new loop-internal or module-library candidates
 
 Full prompt: `discovery/tape-to-cloud/continuous-improvement-loop-prompt.md`
+Inventory catalog: `discovery/tape-to-cloud/free-tool-inventory.md`
