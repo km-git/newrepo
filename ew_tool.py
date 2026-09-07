@@ -367,6 +367,16 @@ def main() -> None:
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
   parser.add_argument(
+    "--monetize",
+    action="store_true",
+    help="Build and save monetization strategy report (output/system/monetization_strategy.json)",
+  )
+  parser.add_argument(
+    "--monetization-best-trades",
+    default=None,
+    help="With --monetize: path to best-trades JSON (default: output/v6_scanner/best_trades_latest.json)",
+  )
+  parser.add_argument(
     "--monetize-report",
     action="store_true",
     help="Generate and save royalty/usage report (output/system/royalty_report.json)",
@@ -632,6 +642,18 @@ def main() -> None:
         signals.append((symbol, order.get("side") or ""))
     _record_usage(signals=signals, tickers=tickers)
     print(json.dumps(result, indent=2, default=str))
+    return
+
+  if args.monetize:
+    from engine.monetization_strategy import build_monetization_strategy, save_monetization_strategy
+
+    report = build_monetization_strategy(
+      best_trades_path=args.monetization_best_trades or "output/v6_scanner/best_trades_latest.json",
+      include_runtime=True,
+    )
+    path = save_monetization_strategy(report)
+    print(json.dumps(report, indent=2, default=str))
+    print(f"[monetize] saved monetization strategy to {path}", file=sys.stderr)
     return
 
   if args.monetize_status:

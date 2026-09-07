@@ -1,0 +1,9 @@
+# Narrow default for new tape-to-cloud modules; legacy engine/ is not fully linted yet.
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = ["E", "F", "W", "I", "B", "S"]
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "S603"]
