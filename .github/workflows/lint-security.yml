@@ -41,7 +41,9 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          pip-audit -r requirements.txt --desc on
+          # PYSEC-2026-2447: diskcache 5.6.3 pickle default; no upstream fix version.
+          # Local cache dir (.cache/ew_tool) is operator-controlled. Keep scanning other pkgs.
+          pip-audit -r requirements.txt --desc on --ignore-vuln PYSEC-2026-2447
 
   actionlint:
     name: actionlint (workflows)

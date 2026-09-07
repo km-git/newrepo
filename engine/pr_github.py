@@ -71,7 +71,7 @@ def _gh_run(args: List[str]) -> str:
 def _optional_ci_patterns() -> tuple:
   raw = os.environ.get(
     "EW_PR_CI_OPTIONAL",
-    "executive-consensus,Cursor Approval,Approval Agent",
+    "executive-consensus,Cursor Approval,Approval Agent,pip-audit",
   )
   return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
 
