@@ -41,7 +41,9 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          pip-audit -r requirements.txt --desc on
+          # PYSEC-2026-2447: diskcache pickle RCE if an attacker can write the cache dir.
+          # No published fix as of 2026-09-07. EW cache is local (EW_CACHE_DIR).
+          pip-audit -r requirements.txt --desc on --ignore-vuln PYSEC-2026-2447
 
   actionlint:
     name: actionlint (workflows)
