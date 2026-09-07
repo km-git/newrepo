@@ -172,3 +172,11 @@ def test_render_markdown_checkboxes():
     md = watch.render_markdown("2026-09-08", classified)
     assert "- [ ] **[tape-vault]** [SeaweedFS 4.0](https://example.com/sw)" in md
     assert "1 discover" in md
+
+
+def test_forum_monitoring_doc_exists():
+    doc = Path(__file__).resolve().parents[1] / "discovery" / "tape-to-cloud" / "forum-monitoring.md"
+    text = doc.read_text(encoding="utf-8")
+    assert "Australia/Sydney" in text
+    assert "forum-watcher" in text
+    assert "Vendor-forum + mhvtl layer" in text

@@ -44,4 +44,6 @@ def test_publish_monitor_writes_files(tmp_path):
 def test_write_monitor_html(tmp_path):
   path = write_monitor_html(str(tmp_path))
   assert path.exists()
-  assert "EW Monitor" in path.read_text()
+  html = path.read_text()
+  assert "EW Monitor" in html
+  assert "/monetize" in html

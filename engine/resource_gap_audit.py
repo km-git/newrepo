@@ -28,7 +28,7 @@ def _importable(module: str) -> bool:
   try:
     importlib.import_module(module)
     return True
-  except ImportError:
+  except Exception:
     return False
 
 
@@ -113,7 +113,11 @@ WATCHLIST: Tuple[Dict[str, Any], ...] = (
   {"id": "lib_ta_lib", "category": "python_lib", "impact": "low",
    "integrated_in": None, "challenge": "TA-Lib C dep heavy — justified vs pure-pandas TV ports?"},
   {"id": "lib_vectorbt", "category": "python_lib", "impact": "medium",
-   "integrated_in": None, "challenge": "No vectorized backtest — autoresearch env-only, not strategy code?"},
+   "integrated_in": "engine/profit_lab/vectorbt_sweep.py", "challenge": "Apply sweep recommended_env when expectancy improves?"},
+  {"id": "lib_quantstats", "category": "python_lib", "impact": "high",
+   "integrated_in": "engine/profit_lab/cost_analytics.py", "challenge": "Tear sheet in CI on every profit-lab run?"},
+  {"id": "lib_purgedcv", "category": "python_lib", "impact": "high",
+   "integrated_in": "engine/profit_lab/cpcv_audit.py", "challenge": "CPCV PBO gate wired to DEPLOY_HOLD?"},
   {"id": "lib_token_savers", "category": "python_lib", "impact": "high",
    "integrated_in": "engine/token_saver_registry.py", "challenge": "All token savers installed? Run --llm-savers."},
   {"id": "lib_websockets", "category": "python_lib", "impact": "high",
@@ -144,6 +148,8 @@ def _resolve_status(item: dict) -> Status:
       "lib_ta_lib": "talib",
       "lib_vectorbt": "vectorbt",
       "lib_token_savers": "tiktoken",
+      "lib_quantstats": "quantstats",
+      "lib_purgedcv": "purgedcv",
     }
     mod = mod_map.get(item["id"])
     if mod:

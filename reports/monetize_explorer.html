@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Monetize Explorer</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --red: #f85149;
+      --amber: #d29922;
+      --blue: #58a6ff;
+      --purple: #a371f7;
+      --free: #8b949e;
+      --pro: #58a6ff;
+      --enterprise: #a371f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+    .meta { color: var(--muted); font-size: 0.85rem; }
+    .nav { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .nav a { color: var(--blue); text-decoration: none; font-size: 0.85rem; }
+    .nav a:hover { text-decoration: underline; }
+    main { padding: 1rem 1.25rem 2.5rem; max-width: 1180px; margin: 0 auto; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+    }
+    .card .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .card .value { font-size: 1.25rem; font-weight: 600; margin-top: 0.15rem; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    section h2 {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .section-body { padding: 0.85rem 1rem; }
+    .tier-switch { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    button {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--blue); }
+    button.active-free { border-color: var(--free); box-shadow: 0 0 0 1px var(--free); }
+    button.active-pro { border-color: var(--pro); box-shadow: 0 0 0 1px var(--pro); }
+    button.active-enterprise { border-color: var(--enterprise); box-shadow: 0 0 0 1px var(--enterprise); }
+    .pill {
+      display: inline-block;
+      padding: 0.12rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .pill.free { background: rgba(139,148,158,0.18); color: var(--free); }
+    .pill.pro { background: rgba(88,166,255,0.16); color: var(--pro); }
+    .pill.enterprise { background: rgba(163,113,247,0.18); color: var(--enterprise); }
+    .pill.ok { background: rgba(63,185,80,0.15); color: var(--green); }
+    .pill.no { background: rgba(248,81,73,0.15); color: var(--red); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th, td { padding: 0.45rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; }
+    tr.denied td { opacity: 0.72; }
+    tr.highlight td { background: rgba(88,166,255,0.06); }
+    .check { color: var(--green); font-weight: 700; }
+    .cross { color: var(--red); font-weight: 700; }
+    .empty {
+      color: var(--muted);
+      padding: 0.75rem 0;
+      font-size: 0.9rem;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .banner {
+      margin-top: 0.85rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      white-space: pre-wrap;
+    }
+    .banner.ok { border-color: rgba(63,185,80,0.4); background: rgba(63,185,80,0.08); }
+    .banner.deny { border-color: rgba(248,81,73,0.4); background: rgba(248,81,73,0.08); }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+    }
+    pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 0.85rem;
+      overflow: auto;
+    }
+    .warn { color: var(--amber); font-size: 0.85rem; margin-bottom: 0.75rem; }
+    .preview-note { color: var(--amber); }
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+    #status-dot.live { background: var(--green); }
+    .error { color: var(--red); padding: 0.5rem 0; }
+    ul.detail { margin: 0.4rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.82rem; }
+  </style>
+<script type="application/json" id="embedded-state">{"license":{"tier":"free","allowed":["cache","llm_advisory","single_symbol"],"denied":["autonomous_daily","autoresearch","batch","brain_okf","e2e_cycle","effectiveness_validation","gap_audit","goal_mode","live_execution","outcome_tracking","paper_execution","pr_agent","tv_oss","universe_scanner","unlimited_batch","v6_scanner"],"descriptions":{"autonomous_daily":"24/7 autonomous daily ops daemon","autoresearch":"Nightly AutoResearch + goal-mode runs","batch":"Batch analysis up to 50 symbols","brain_okf":"OKF secondary brain + self-improvement loop","cache":"On-disk OHLCV and semantic cache","e2e_cycle":"End-to-end continuous-improvement cycle","effectiveness_validation":"Effectiveness validation + walk-forward testing","gap_audit":"Resource gap audit (self-challenge)","goal_mode":"Goal-mode multi-step planning cycles","live_execution":"Live order execution via Kraken API","llm_advisory":"Multi-model LLM advisory panel (read-only)","outcome_tracking":"Setup outcome tracking + performance metrics","paper_execution":"Paper (simulated) order execution","pr_agent":"PR executive consensus + auto-approve/merge","single_symbol":"Single-symbol Elliott Wave + harmonic analysis","tv_oss":"TradingView OSS indicator consensus","universe_scanner":"Universe scanner (overlapping 24/7 chunks)","unlimited_batch":"Unlimited batch size (all pairs)","v6_scanner":"V6 universe scanner (1 000 pairs \u00d7 6 TFs)"},"tagged_at":"2026-09-05T03:40:52.233069+00:00","max_batch_size":1},"features":[{"key":"cache","description":"On-disk OHLCV and semantic cache","min_tier":"free","allowed":true,"allowed_on":{"free":true,"pro":true,"enterprise":true}},{"key":"llm_advisory","description":"Multi-model LLM advisory panel (read-only)","min_tier":"free","allowed":true,"allowed_on":{"free":true,"pro":true,"enterprise":true}},{"key":"single_symbol","description":"Single-symbol Elliott Wave + harmonic analysis","min_tier":"free","allowed":true,"allowed_on":{"free":true,"pro":true,"enterprise":true}},{"key":"autoresearch","description":"Nightly AutoResearch + goal-mode runs","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"batch","description":"Batch analysis up to 50 symbols","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"brain_okf","description":"OKF secondary brain + self-improvement loop","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"effectiveness_validation","description":"Effectiveness validation + walk-forward testing","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"gap_audit","description":"Resource gap audit (self-challenge)","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"goal_mode","description":"Goal-mode multi-step planning cycles","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"outcome_tracking","description":"Setup outcome tracking + performance metrics","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"paper_execution","description":"Paper (simulated) order execution","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"tv_oss","description":"TradingView OSS indicator consensus","min_tier":"pro","allowed":false,"allowed_on":{"free":false,"pro":true,"enterprise":true}},{"key":"autonomous_daily","description":"24/7 autonomous daily ops daemon","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}},{"key":"e2e_cycle","description":"End-to-end continuous-improvement cycle","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}},{"key":"live_execution","description":"Live order execution via Kraken API","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}},{"key":"pr_agent","description":"PR executive consensus + auto-approve/merge","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}},{"key":"universe_scanner","description":"Universe scanner (overlapping 24/7 chunks)","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}},{"key":"unlimited_batch","description":"Unlimited batch size (all pairs)","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}},{"key":"v6_scanner","description":"V6 universe scanner (1 000 pairs \u00d7 6 TFs)","min_tier":"enterprise","allowed":false,"allowed_on":{"free":false,"pro":false,"enterprise":true}}],"tiers":{"free":{"tier":"free","allowed":["cache","llm_advisory","single_symbol"],"denied":["autonomous_daily","autoresearch","batch","brain_okf","e2e_cycle","effectiveness_validation","gap_audit","goal_mode","live_execution","outcome_tracking","paper_execution","pr_agent","tv_oss","universe_scanner","unlimited_batch","v6_scanner"],"max_batch_size":1},"pro":{"tier":"pro","allowed":["autoresearch","batch","brain_okf","cache","effectiveness_validation","gap_audit","goal_mode","llm_advisory","outcome_tracking","paper_execution","single_symbol","tv_oss"],"denied":["autonomous_daily","e2e_cycle","live_execution","pr_agent","universe_scanner","unlimited_batch","v6_scanner"],"max_batch_size":50},"enterprise":{"tier":"enterprise","allowed":["autonomous_daily","autoresearch","batch","brain_okf","cache","e2e_cycle","effectiveness_validation","gap_audit","goal_mode","live_execution","llm_advisory","outcome_tracking","paper_execution","pr_agent","single_symbol","tv_oss","universe_scanner","unlimited_batch","v6_scanner"],"denied":[],"max_batch_size":null}},"royalty_report":{"tier":"free","generated_at":"2026-09-05T02:27:29.681590+00:00","usage":{"setups_generated":0,"signals_fired":0,"tickers_scanned":6},"detail":{"setups":[],"signals":[],"tickers":["BTC/USDT","ETH/USDT"]}},"royalty_empty":false,"env_tier":"free","env_tier_valid":true,"process_tier":"free","preview":false,"demo_features":[{"key":"single_symbol","description":"Single-symbol Elliott Wave + harmonic analysis","min_tier":"free","allowed":true},{"key":"batch","description":"Batch analysis up to 50 symbols","min_tier":"pro","allowed":false},{"key":"paper_execution","description":"Paper (simulated) order execution","min_tier":"pro","allowed":false},{"key":"brain_okf","description":"OKF secondary brain + self-improvement loop","min_tier":"pro","allowed":false},{"key":"live_execution","description":"Live order execution via Kraken API","min_tier":"enterprise","allowed":false},{"key":"v6_scanner","description":"V6 universe scanner (1 000 pairs \u00d7 6 TFs)","min_tier":"enterprise","allowed":false},{"key":"autonomous_daily","description":"24/7 autonomous daily ops daemon","min_tier":"enterprise","allowed":false}],"cli":{"status":"python3 ew_tool.py --monetize-status","report":"python3 ew_tool.py --monetize-report","ui":"python3 ew_tool.py --monetize-ui","static":"python3 ew_tool.py --monetize-ui --static","env":"EW_LICENSE_TIER=free|pro|enterprise"},"upgrade_hint":"Upgrade via EW_LICENSE_TIER=pro or EW_LICENSE_TIER=enterprise. See --monetize-status.","status":{"license":{"tier":"free","allowed":["cache","llm_advisory","single_symbol"],"denied":["autonomous_daily","autoresearch","batch","brain_okf","e2e_cycle","effectiveness_validation","gap_audit","goal_mode","live_execution","outcome_tracking","paper_execution","pr_agent","tv_oss","universe_scanner","unlimited_batch","v6_scanner"],"descriptions":{"autonomous_daily":"24/7 autonomous daily ops daemon","autoresearch":"Nightly AutoResearch + goal-mode runs","batch":"Batch analysis up to 50 symbols","brain_okf":"OKF secondary brain + self-improvement loop","cache":"On-disk OHLCV and semantic cache","e2e_cycle":"End-to-end continuous-improvement cycle","effectiveness_validation":"Effectiveness validation + walk-forward testing","gap_audit":"Resource gap audit (self-challenge)","goal_mode":"Goal-mode multi-step planning cycles","live_execution":"Live order execution via Kraken API","llm_advisory":"Multi-model LLM advisory panel (read-only)","outcome_tracking":"Setup outcome tracking + performance metrics","paper_execution":"Paper (simulated) order execution","pr_agent":"PR executive consensus + auto-approve/merge","single_symbol":"Single-symbol Elliott Wave + harmonic analysis","tv_oss":"TradingView OSS indicator consensus","universe_scanner":"Universe scanner (overlapping 24/7 chunks)","unlimited_batch":"Unlimited batch size (all pairs)","v6_scanner":"V6 universe scanner (1 000 pairs \u00d7 6 TFs)"}},"royalty_report":{"tier":"free","generated_at":"2026-09-05T02:27:29.681590+00:00","usage":{"setups_generated":0,"signals_fired":0,"tickers_scanned":6},"detail":{"setups":[],"signals":[],"tickers":["BTC/USDT","ETH/USDT"]}},"env_tier":"free","env_tier_valid":true}}</script>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Monetize Explorer</h1>
+      <div class="meta" id="meta">Loading license status…</div>
+    </div>
+    <div class="nav">
+      <span id="status-dot"></span>
+      <a href="/monitor">Monitor</a>
+      <a href="/monetize">Monetize</a>
+      <button id="btn-refresh" type="button">Refresh</button>
+    </div>
+  </header>
+  <main>
+    <div id="error" class="error" hidden></div>
+    <div id="warning" class="warn" hidden></div>
+    <div class="cards" id="cards"></div>
+
+    <section>
+      <h2>Interactive tier switcher</h2>
+      <div class="section-body">
+        <p class="meta">Preview re-renders the access matrix for a tier. Apply writes <code>EW_LICENSE_TIER</code> on this local demo process only.</p>
+        <div class="tier-switch" id="tier-switch"></div>
+        <p class="meta" id="tier-note" style="margin-top:0.75rem"></p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Access matrix</h2>
+      <div class="section-body" style="overflow:auto">
+        <table id="matrix">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Description</th>
+              <th>Free</th>
+              <th>Pro</th>
+              <th>Enterprise</th>
+              <th>This tier</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Royalty report</h2>
+      <div class="section-body" id="royalty"></div>
+    </section>
+
+    <section>
+      <h2>Try a gated action</h2>
+      <div class="section-body">
+        <p class="meta">Calls <code>AccessController.require()</code> only. Does not run live trading, v6 scans, or autonomous daily.</p>
+        <div class="actions" id="demo-actions"></div>
+        <div id="require-result" hidden></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How to use the CLI</h2>
+      <div class="section-body">
+        <pre id="cli-help">python3 ew_tool.py --monetize-status
+python3 ew_tool.py --monetize-report
+python3 ew_tool.py --monetize-ui
+python3 ew_tool.py --monetize-ui --static
+EW_LICENSE_TIER=free|pro|enterprise</pre>
+      </div>
+    </section>
+  </main>
+  <script>
+    const STATUS_API = "/api/monetize/status";
+    const TIER_API = "/api/monetize/tier";
+    const REQUIRE_API = "/api/monetize/require";
+    let state = null;
+
+    function qsTier() {
+      return new URLSearchParams(location.search).get("tier");
+    }
+
+    function isHttp() {
+      return location.protocol === "http:" || location.protocol === "https:";
+    }
+
+    function embeddedState() {
+      const el = document.getElementById("embedded-state");
+      if (!el || !el.textContent) return null;
+      try { return JSON.parse(el.textContent); } catch (e) { return null; }
+    }
+
+    function stateForTier(base, tier) {
+      const t = tier || (base.license && base.license.tier) || "free";
+      const snapshot = (base.tiers || {})[t] || {};
+      const features = (base.features || []).map(function(row) {
+        const on = row.allowed_on || {};
+        return Object.assign({}, row, {allowed: !!on[t]});
+      });
+      const demo = (base.demo_features || []).map(function(f) {
+        const row = features.find(function(r) { return r.key === f.key; });
+        return Object.assign({}, f, {allowed: !!(row && row.allowed)});
+      });
+      return Object.assign({}, base, {
+        license: Object.assign({}, base.license || {}, {
+          tier: snapshot.tier || t,
+          allowed: snapshot.allowed || [],
+          denied: snapshot.denied || [],
+          max_batch_size: snapshot.max_batch_size
+        }),
+        features: features,
+        demo_features: demo,
+        preview: t !== base.process_tier
+      });
+    }
+
+    function requireFromState(feature) {
+      const row = (state && state.features || []).find(function(f) { return f.key === feature; });
+      const allowed = !!(row && row.allowed);
+      const tier = (state && state.license && state.license.tier) || "free";
+      if (allowed) {
+        return {
+          ok: true,
+          feature: feature,
+          tier: tier,
+          exit_code: 0,
+          message: "Feature '" + feature + "' is allowed on the '" + tier + "' tier."
+        };
+      }
+      const minTier = (row && row.min_tier) || "pro";
+      return {
+        ok: false,
+        feature: feature,
+        tier: tier,
+        exit_code: 2,
+        error: "Feature '" + feature + "' requires the '" + minTier + "' tier (current: '" + tier + "').",
+        hint: "Upgrade via EW_LICENSE_TIER=pro or EW_LICENSE_TIER=enterprise. See --monetize-status."
+      };
+    }
+
+    function mark(ok) {
+      return ok ? '<span class="check">✓</span>' : '<span class="cross">✗</span>';
+    }
+
+    function pill(tier) {
+      const t = (tier || "").toLowerCase();
+      return '<span class="pill ' + t + '">' + (tier || "—") + '</span>';
+    }
+
+    function renderCards(d) {
+      const lic = d.license || {};
+      const royalty = d.royalty_report || {};
+      const usage = royalty.usage || {};
+      const batch = lic.max_batch_size == null ? "unlimited" : lic.max_batch_size;
+      document.getElementById("cards").innerHTML = [
+        ["License tier", pill(lic.tier)],
+        ["Tagged at", lic.tagged_at || "—"],
+        ["Allowed features", (lic.allowed || []).length],
+        ["Denied features", (lic.denied || []).length],
+        ["Batch cap", batch],
+        ["Setups recorded", d.royalty_empty ? "—" : (usage.setups_generated ?? 0)],
+      ].map(([label, value]) =>
+        '<div class="card"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>'
+      ).join("");
+    }
+
+    function renderSwitcher(d) {
+      const active = (d.license || {}).tier;
+      const processTier = d.process_tier;
+      document.getElementById("tier-switch").innerHTML = ["free", "pro", "enterprise"].map((tier) => {
+        const cls = tier === active ? " active-" + tier : "";
+        return '<button type="button" class="tier-btn' + cls + '" data-tier="' + tier + '">' +
+          tier.charAt(0).toUpperCase() + tier.slice(1) + '</button>';
+      }).join("") +
+        '<button type="button" id="btn-apply">Apply to demo process</button>';
+      document.querySelectorAll(".tier-btn").forEach((btn) => {
+        btn.addEventListener("click", () => previewTier(btn.getAttribute("data-tier")));
+      });
+      document.getElementById("btn-apply").addEventListener("click", () => applyTier(active));
+      const note = document.getElementById("tier-note");
+      if (d.preview) {
+        note.innerHTML = '<span class="preview-note">Previewing ' + pill(active) +
+          ' — demo process is still ' + pill(processTier) + '.</span>';
+      } else {
+        note.textContent = "Showing the demo process tier (" + processTier + ").";
+      }
+    }
+
+    function renderMatrix(d) {
+      const tbody = document.querySelector("#matrix tbody");
+      const active = (d.license || {}).tier;
+      tbody.innerHTML = (d.features || []).map((row) => {
+        const on = row.allowed_on || {};
+        const cls = row.allowed ? "highlight" : "denied";
+        return '<tr class="' + cls + '"><td><code>' + row.key + '</code></td><td>' +
+          (row.description || "") + '</td><td>' + mark(on.free) + '</td><td>' +
+          mark(on.pro) + '</td><td>' + mark(on.enterprise) + '</td><td>' +
+          (row.allowed ? '<span class="pill ok">allowed</span>' : '<span class="pill no">denied</span>') +
+          '</td></tr>';
+      }).join("");
+      void active;
+    }
+
+    function renderRoyalty(d) {
+      const el = document.getElementById("royalty");
+      if (d.royalty_empty) {
+        el.innerHTML = '<div class="empty">No royalty report yet. Run <code>python3 ew_tool.py --monetize-report</code> or complete an analysis to create <code>output/system/royalty_report.json</code>.</div>';
+        return;
+      }
+      const r = d.royalty_report || {};
+      const usage = r.usage || {};
+      const detail = r.detail || {};
+      const setups = detail.setups || [];
+      const signals = detail.signals || [];
+      const tickers = detail.tickers || [];
+      el.innerHTML =
+        '<div class="cards">' +
+          '<div class="card"><div class="label">Setups</div><div class="value">' + (usage.setups_generated ?? 0) + '</div></div>' +
+          '<div class="card"><div class="label">Signals</div><div class="value">' + (usage.signals_fired ?? 0) + '</div></div>' +
+          '<div class="card"><div class="label">Tickers</div><div class="value">' + (usage.tickers_scanned ?? 0) + '</div></div>' +
+        '</div>' +
+        '<div class="meta">Generated ' + (r.generated_at || "—") + ' · report tier ' + pill(r.tier) + '</div>' +
+        '<ul class="detail">' +
+          '<li>Setups: ' + (setups.length ? setups.slice(0, 12).join(", ") : "none") + (setups.length > 12 ? "…" : "") + '</li>' +
+          '<li>Signals: ' + (signals.length ? signals.slice(0, 8).map(s => (s.symbol || s) + (s.direction ? " " + s.direction : "")).join(", ") : "none") + '</li>' +
+          '<li>Tickers: ' + (tickers.length ? tickers.slice(0, 12).join(", ") : "none") + '</li>' +
+        '</ul>';
+    }
+
+    function renderActions(d) {
+      const box = document.getElementById("demo-actions");
+      box.innerHTML = (d.demo_features || []).map((f) => {
+        const label = f.key.replace(/_/g, " ");
+        return '<button type="button" data-feature="' + f.key + '">' + label + '</button>';
+      }).join("");
+      box.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => tryFeature(btn.getAttribute("data-feature")));
+      });
+    }
+
+    function renderCli(d) {
+      const c = d.cli || {};
+      document.getElementById("cli-help").textContent =
+        (c.status || "python3 ew_tool.py --monetize-status") + "\n" +
+        (c.report || "python3 ew_tool.py --monetize-report") + "\n" +
+        (c.ui || "python3 ew_tool.py --monetize-ui") + "\n" +
+        (c.static || "python3 ew_tool.py --monetize-ui --static") + "\n" +
+        (c.env || "EW_LICENSE_TIER=free|pro|enterprise");
+    }
+
+    function showRequire(d, feature) {
+      const el = document.getElementById("require-result");
+      el.hidden = false;
+      el.className = "banner " + (d.ok ? "ok" : "deny");
+      if (d.ok) {
+        el.textContent = d.message + "\nAccessController.require('" + feature + "') passed.";
+      } else {
+        el.textContent = (d.error || "Denied") + "\n" +
+          (d.hint || "") + "\nCLI would exit " + (d.exit_code ?? 2) + ".";
+      }
+    }
+
+    function render(d) {
+      state = d;
+      const lic = d.license || {};
+      document.getElementById("meta").innerHTML =
+        "Tier " + pill(lic.tier) +
+        (d.preview ? ' <span class="preview-note">(preview)</span>' : "") +
+        " · tagged " + (lic.tagged_at || "—") +
+        " · env " + (d.env_tier || "free");
+      document.getElementById("status-dot").classList.add("live");
+      const warn = document.getElementById("warning");
+      if (d.warning) {
+        warn.hidden = false;
+        warn.textContent = d.warning;
+      } else if (!isHttp()) {
+        warn.hidden = false;
+        warn.textContent = "Offline explorer — Free / Pro / Enterprise switch uses the embedded access matrix. No server required.";
+      } else {
+        warn.hidden = true;
+      }
+      const mon = document.querySelector('.nav a[href="/monitor"]');
+      if (mon) mon.hidden = !isHttp();
+      renderCards(d);
+      renderSwitcher(d);
+      renderMatrix(d);
+      renderRoyalty(d);
+      renderActions(d);
+      renderCli(d);
+    }
+
+    function renderEmbedded(tier) {
+      const embedded = embeddedState();
+      if (!embedded) return false;
+      render(stateForTier(embedded, tier || qsTier() || (embedded.license && embedded.license.tier)));
+      return true;
+    }
+
+    async function load(tier) {
+      const err = document.getElementById("error");
+      err.hidden = true;
+      if (isHttp()) {
+        try {
+          const q = new URLSearchParams();
+          if (tier) q.set("tier", tier);
+          q.set("t", String(Date.now()));
+          const res = await fetch(STATUS_API + "?" + q.toString());
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          render(await res.json());
+          return;
+        } catch (e) {
+          if (renderEmbedded(tier)) return;
+          err.hidden = false;
+          err.textContent = "Failed to load Monetize Explorer: " + e.message +
+            ". Generate an offline copy with: python3 ew_tool.py --monetize-ui --static";
+          document.getElementById("status-dot").classList.remove("live");
+          return;
+        }
+      }
+      if (renderEmbedded(tier)) return;
+      err.hidden = false;
+      err.textContent = "No embedded access matrix. Generate with: python3 ew_tool.py --monetize-ui --static";
+    }
+
+    async function previewTier(tier) {
+      try {
+        const url = new URL(location.href);
+        url.searchParams.set("tier", tier);
+        history.replaceState(null, "", url);
+      } catch (e) { /* file:// without a host can reject URL mutation */ }
+      await load(tier);
+    }
+
+    async function applyTier(tier) {
+      if (isHttp()) {
+        try {
+          const res = await fetch(TIER_API, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({tier: tier})
+          });
+          const d = await res.json();
+          try {
+            const url = new URL(location.href);
+            url.searchParams.set("tier", (d.license || {}).tier || tier);
+            history.replaceState(null, "", url);
+          } catch (e) { /* ignore */ }
+          render(d);
+          return;
+        } catch (e) { /* fall back to embedded preview */ }
+      }
+      if (renderEmbedded(tier)) {
+        const note = document.getElementById("tier-note");
+        note.innerHTML = (note.innerHTML || "") +
+          ' <span class="preview-note">Apply-to-process needs the local server; this is a client-side preview.</span>';
+      }
+    }
+
+    async function tryFeature(feature) {
+      const tier = qsTier() || (state && state.license && state.license.tier);
+      if (isHttp()) {
+        try {
+          const q = new URLSearchParams({feature: feature});
+          if (tier) q.set("tier", tier);
+          const res = await fetch(REQUIRE_API + "?" + q.toString());
+          showRequire(await res.json(), feature);
+          return;
+        } catch (e) { /* fall back */ }
+      }
+      showRequire(requireFromState(feature), feature);
+    }
+
+    document.getElementById("btn-refresh").addEventListener("click", () => load(qsTier()));
+    load(qsTier());
+  </script>
+</body>
+</html>

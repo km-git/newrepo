@@ -20,7 +20,18 @@ def main() -> None:
   p.add_argument("--no-swap", action="store_true", help="Spot USDT only")
   args = p.parse_args()
 
+  from engine.monetize import AccessController
   from engine.v6_scanner import run_v6_chunk_scan, run_v6_full_batch
+
+  try:
+    AccessController().require("v6_scanner")
+  except AccessController.AccessDeniedError as exc:
+    print(f"[monetize] {exc}", file=sys.stderr)
+    print(
+      "[monetize] Upgrade via EW_LICENSE_TIER=enterprise. See --monetize-status.",
+      file=sys.stderr,
+    )
+    sys.exit(2)
 
   if args.full:
     result = run_v6_full_batch(n=args.pairs, include_swap=not args.no_swap)
