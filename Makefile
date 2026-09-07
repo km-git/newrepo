@@ -1,6 +1,6 @@
 .PHONY: install test lint sspm-all sspm-web sspm-test
 
-PYTHON ?= .venv/bin/python
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PIP ?= .venv/bin/pip
 
 install:
