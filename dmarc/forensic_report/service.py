@@ -55,12 +55,26 @@ def _child(parent: Element, name: str) -> Element | None:
     return None
 
 
+def _row_key(row: dict[str, Any]) -> tuple[str, ...]:
+    return (
+        str(row.get("domain") or ""),
+        str(row.get("source_ip") or ""),
+        str(row.get("from_address") or ""),
+        str(row.get("subject") or ""),
+        str(row.get("dkim_result") or ""),
+        str(row.get("spf_result") or ""),
+    )
+
+
 def parse_ruf_xml(xml_text: str, received_at: str | None = None) -> list[ForensicFinding]:
     root = xml_fromstring(xml_text)
     stamp = received_at or utcnow()
     findings: list[ForensicFinding] = []
-    # AFRF (RFC 6591) uses feedback/incident; tolerate empty trees.
-    incidents = [n for n in root.iter() if _local(n.tag) in {"incident", "record", "feedback"}]
+    # AFRF (RFC 6591) uses feedback/incident. Walk incident/record only so the
+    # wrapping <feedback> element is not counted as a second finding.
+    incidents = [n for n in root.iter() if _local(n.tag) in {"incident", "record"}]
+    if not incidents and _local(root.tag) == "feedback":
+        incidents = [root]
     if not incidents:
         return findings
     for node in incidents:
@@ -105,11 +119,21 @@ def ingest_ruf_directory(directory: Path, root: Path | None = None, persist: boo
             continue
     payload = [row.model_dump() for row in findings]
     if persist and payload:
-        insert_rows("findings_forensic", payload, root)
+        existing = {_row_key(row) for row in fetch_all("findings_forensic", root=root)}
+        fresh = [row for row in payload if _row_key(row) not in existing]
+        if fresh:
+            insert_rows("findings_forensic", fresh, root)
+        payload = fresh
     return payload
 
 
+def ingest_ruf_fixtures(root: Path | None = None, persist: bool = True) -> list[dict[str, Any]]:
+    return ingest_ruf_directory(RUF_FIXTURES, root=root, persist=persist)
+
+
 def list_forensic(since: str = "30d", domain: str | None = None, root: Path | None = None) -> list[dict[str, Any]]:
-    ingest_ruf_directory(RUF_FIXTURES, root=root, persist=True)
-    rows = fetch_all("findings_forensic", domain=domain, root=root)
-    return rows
+    from dmarc.aggregate_report.service import _since_cutoff
+
+    if not fetch_all("findings_forensic", domain=domain, root=root):
+        ingest_ruf_fixtures(root=root, persist=True)
+    return fetch_all("findings_forensic", domain=domain, root=root, since=_since_cutoff(since))

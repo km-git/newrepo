@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import smtplib
+import ssl
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
@@ -64,7 +65,7 @@ def run_test(
         message["Subject"] = subject
         message.set_content("Deliverability seed. No tracking pixel. Brand-protection probe only.")
         with smtplib.SMTP(smtp_host, int(os.environ.get("DMARC_SMTP_PORT") or 587), timeout=20) as smtp:
-            smtp.starttls()
+            smtp.starttls(context=ssl.create_default_context())
             user = os.environ.get("DMARC_SMTP_USER") or ""
             password = os.environ.get("DMARC_SMTP_PASS") or ""
             if user:

@@ -7,6 +7,7 @@ import gzip
 import imaplib
 import io
 import os
+import ssl
 import zipfile
 from email import message_from_bytes
 from pathlib import Path
@@ -110,7 +111,11 @@ def ingest_directory(directory: Path, root: Path | None = None, persist: bool = 
 
 
 def ingest_fixtures(root: Path | None = None) -> list[dict[str, Any]]:
-    return ingest_directory(RUA_FIXTURES, root=root)
+    rows = ingest_directory(RUA_FIXTURES, root=root)
+    from dmarc.forensic_report.service import ingest_ruf_fixtures
+
+    ingest_ruf_fixtures(root=root)
+    return rows
 
 
 def ingest_imap(
@@ -125,7 +130,7 @@ def ingest_imap(
     if not secret:
         raise RuntimeError("DMARC_IMAP_PASS is not set; refusing to bind a plaintext password")
     findings: list[DmarcFinding] = []
-    client = imaplib.IMAP4_SSL(host)
+    client = imaplib.IMAP4_SSL(host, ssl_context=ssl.create_default_context())
     try:
         client.login(user, secret)
         client.select(folder)

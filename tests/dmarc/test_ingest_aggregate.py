@@ -36,3 +36,35 @@ def test_parse_inline_xml() -> None:
     rows = parse_aggregate_xml(xml)
     assert rows[0].count == 3
     assert rows[0].dkim_result == "pass"
+
+
+def test_imap_uses_default_ssl_context(monkeypatch, tmp_path: Path) -> None:
+    import ssl
+
+    from dmarc.dmarc_ingest.service import ingest_imap
+
+    seen: dict = {}
+
+    class FakeIMAP:
+        def __init__(self, host, ssl_context=None, **kwargs):
+            seen["host"] = host
+            seen["ssl_context"] = ssl_context
+
+        def login(self, *_args):
+            return "OK"
+
+        def select(self, *_args):
+            return "OK"
+
+        def search(self, *_args):
+            return "OK", [b""]
+
+        def logout(self):
+            return "OK"
+
+    monkeypatch.setattr("dmarc.dmarc_ingest.service.imaplib.IMAP4_SSL", FakeIMAP)
+    monkeypatch.setenv("DMARC_IMAP_PASS", "unit-test-secret")
+    ingest_imap("imap.example.com", "user", root=tmp_path)
+    assert seen["host"] == "imap.example.com"
+    assert isinstance(seen["ssl_context"], ssl.SSLContext)
+    assert seen["ssl_context"].check_hostname is True
