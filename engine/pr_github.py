@@ -71,7 +71,7 @@ def _gh_run(args: List[str]) -> str:
 def _optional_ci_patterns() -> tuple:
   raw = os.environ.get(
     "EW_PR_CI_OPTIONAL",
-    "executive-consensus,Cursor Approval,Approval Agent",
+    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot",
   )
   return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
 
@@ -79,6 +79,33 @@ def _optional_ci_patterns() -> tuple:
 def _is_required_ci_check(check: dict) -> bool:
   name = (check.get("name") or "").lower()
   return not any(pat in name for pat in _optional_ci_patterns())
+
+
+_OK_CI_CONCLUSIONS = ("success", "skipped", "neutral", None)
+
+
+def summarize_ci_checks(check_runs: List[dict]) -> Dict[str, Any]:
+  """Aggregate GitHub check-runs into pass/fail/pending, ignoring advisory jobs.
+
+  Advisory (optional) names include pip-audit continue-on-error and Cursor Bugbot
+  usage-cap skips so they cannot REJECT a PR that otherwise passed required CI.
+  """
+  required = [c for c in check_runs if _is_required_ci_check(c)]
+  completed = [c for c in required if c.get("status") == "completed"]
+  ci_fail = any(c.get("conclusion") == "failure" for c in completed)
+  ci_pending = any(c.get("status") in ("queued", "in_progress") for c in required)
+  ci_pass = (
+    bool(completed)
+    and all(c.get("conclusion") in _OK_CI_CONCLUSIONS for c in completed)
+    and not ci_fail
+    and not ci_pending
+  )
+  return {
+    "pass": ci_pass,
+    "fail": ci_fail,
+    "pending": ci_pending,
+    "required": [{"name": c.get("name"), "conclusion": c.get("conclusion"), "status": c.get("status")} for c in required],
+  }
 
 
 def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
@@ -128,14 +155,7 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
   if len(diff) > diff_max:
     diff = diff[:diff_max] + f"\n... [truncated {len(diff) - diff_max} chars]"
 
-  required_checks = [c for c in check_runs if _is_required_ci_check(c)]
-  ci_pass = all(
-    c.get("conclusion") in ("success", "skipped", None)
-    for c in required_checks
-    if c.get("status") == "completed"
-  )
-  ci_fail = any(c.get("conclusion") == "failure" for c in required_checks)
-  ci_pending = any(c.get("status") in ("queued", "in_progress") for c in required_checks)
+  ci = summarize_ci_checks(check_runs)
 
   return {
     "repo": slug,
@@ -158,9 +178,9 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
       for f in files[:40]
     ],
     "ci": {
-      "pass": ci_pass and not ci_fail and not ci_pending,
-      "fail": ci_fail,
-      "pending": ci_pending,
+      "pass": ci["pass"],
+      "fail": ci["fail"],
+      "pending": ci["pending"],
       "checks": [
         {"name": c.get("name"), "conclusion": c.get("conclusion"), "status": c.get("status")}
         for c in check_runs[:15]
