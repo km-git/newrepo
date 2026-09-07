@@ -299,3 +299,4 @@ def run_continuous_proof_tick(
   )
   _append_tick({"type": "continuous_proof", **tick})
   return tick
+
