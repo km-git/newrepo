@@ -23,6 +23,7 @@ from engine.monetize_ui import (
 )
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
 from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
+from cost.webui.server import serve_cost_http
 from sspm.web.app import serve_sspm_http
 from sspm.web.app import write_static as write_sspm_static
 
@@ -41,6 +42,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
   def do_GET(self) -> None:
     parsed = urlparse(self.path)
     if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
+      return
+    if serve_cost_http(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
     if parsed.path in ("/monitor", "/monitor/"):
       self.send_response(302)
@@ -66,6 +69,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     parsed = urlparse(self.path)
     length = int(self.headers.get("Content-Length") or 0)
     body = self.rfile.read(length) if length else b""
+    if serve_cost_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
+      return
     if serve_sspm_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
       return
     if serve_monetize_http(
@@ -128,6 +133,12 @@ def run(
   print(f"[monitor] Tape-to-Cloud API: http://127.0.0.1:{port}/api/tape-to-cloud/status")
   print(f"[monitor] Tape-to-Cloud reports: http://127.0.0.1:{port}/tape-to-cloud/reports")
   print(f"[monitor] Tape-to-Cloud validation: http://127.0.0.1:{port}/tape-to-cloud/validation")
+  print("[monitor] Cost & Configuration Review:")
+  print()
+  for url in explorer_launch_urls(host, port, "/cost"):
+    print(url)
+    print()
+  print(f"[monitor] Cost API: http://127.0.0.1:{port}/api/cost/status")
   print("[monitor] SSPM Explorer:")
   print()
   for url in explorer_launch_urls(host, port, "/sspm"):
