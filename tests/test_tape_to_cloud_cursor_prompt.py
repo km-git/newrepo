@@ -6,7 +6,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-build.mdc"
+LOOP_MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-improvement-loop.mdc"
 PROMPT = ROOT / "discovery" / "tape-to-cloud" / "cursor-prompt.md"
+LOOP_PROMPT = ROOT / "discovery" / "tape-to-cloud" / "continuous-improvement-loop-prompt.md"
 USER_RULE = ROOT / "discovery" / "tape-to-cloud" / "user-rule.txt"
 
 MODULES = (
@@ -135,3 +137,26 @@ def test_prompt_has_numbered_sections_and_ten_references():
   assert "tape-to-cloud-build.mdc" in text
   assert MDC.read_text(encoding="utf-8") in text
   assert USER_RULE.read_text(encoding="utf-8").strip() in text
+
+
+def test_improvement_loop_rule_frontmatter_and_free_tier_stack():
+  meta, body = _frontmatter_and_body(LOOP_MDC.read_text(encoding="utf-8"))
+  assert meta["alwaysApply"] == "false"
+  assert "prek" in meta["description"].lower()
+  assert "No Bugbot" in body
+  assert "zizmor" in body
+  assert "OSV-Scanner" in body
+  assert "Monday 9 AM AEST" in body
+
+
+def test_improvement_loop_prompt_covers_modules_and_bugbot_replacement():
+  text = LOOP_PROMPT.read_text(encoding="utf-8")
+  assert text.startswith("# Cursor Prompt: Tape-to-Cloud Tool")
+  for name in MODULES:
+    assert f"`{name}`" in text, f"missing module {name}"
+  for tool in ("prek", "Ruff", "zizmor", "OSV-Scanner", "actionlint"):
+    assert tool in text
+  assert "No Bugbot" in text
+  assert "uv run prek run --all-files" in text
+  assert "Monday 9 AM AEST review checklist" in text
+  text.encode("utf-8")

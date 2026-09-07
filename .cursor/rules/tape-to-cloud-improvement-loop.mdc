@@ -1,0 +1,49 @@
+---
+description: Tape-to-cloud free-tier improvement loop — 95/5 routing, no Bugbot (use prek+Ruff+zizmor+OSV+actionlint), uv/pytest gate, Monday 9 AM AEST review. Apply when working on tape-to-cloud modules or CI/tooling for that tool.
+globs:
+alwaysApply: false
+---
+
+# Tape-to-Cloud — Free-Tier Self-Sustaining Improvement Loop
+
+16 modules: audit, analytics, vtl-cloud, restore, disk-ingest, email-extract, email-migrate, tape-duplicate, media-ingest, tape-ops, tape-saas, tape-vault, destroy, llm-corpus, ml-enrich, monetize.
+
+Every change: **discover → evaluate → integrate → verify → release**. Free tier only — no paid SaaS, no Bugbot, no Max Mode, no Ollama/GPU.
+
+## Model routing (95/5)
+
+**Bucket A (95%):** Grok Code Fast 1 → Grok 4.5 → GPT-5.6 Luna → Claude Haiku 4.5
+
+**Bucket B (5%):** Composer 2.5 Standard — vendor format readers, Snowball/Tape Gateway, WORM/NIST 800-88, Temporal restore-at-scale, Nexus chain-of-custody
+
+**Bucket C (≤1%, user-request only):** Sonnet 5, Opus 5, Fable 5.1
+
+## Hard rules
+
+1. **No Bugbot.** CI replacement: `prek` + Ruff + zizmor + OSV-Scanner + actionlint. Cap hit → Ruff locally + CI on PR; do not retry Bugbot.
+2. **No paid Cursor features** (Background Agents, Bugbot Pro, Max Mode).
+3. Before done: `uv run ruff check --fix .`, `uv run ruff format .`, `uv run prek run --all-files`, `uv run pytest -q`.
+4. SHA-pin every new GitHub Action: `uses: owner/action@<sha>  # vX.Y.Z`.
+5. Conventional Commits; CHANGELOG from commits.
+6. **`uv` only** for Python deps (`uv add`, `uv lock`, `uv sync`, `uv run`).
+7. One PR = one concern.
+8. Free-tier only: OSV.dev, Dependabot, Renovate, GlitchTip/SigNoz self-host when needed — not Snyk/Sentry cloud/Bugbot Pro.
+
+## Pre/post session commands
+
+```bash
+git pull --rebase origin main && uv sync --all-groups && uv run prek run --all-files && uv run pytest -q
+# ... work ...
+uv run ruff check --fix . && uv run ruff format . && uv run prek run --all-files && uv run pytest -q
+```
+
+## Monday 9 AM AEST (15–90 min)
+
+1. Dependabot dashboard PRs
+2. Renovate Dependency Dashboard — approve batched minor/patch
+3. Security tab — OSV/Dependabot alerts
+4. Model feed watcher logs — bump pins if needed
+5. Track Awesome List RSS — eval queue candidates
+6. Latest release / CHANGELOG accuracy
+
+Full prompt: `discovery/tape-to-cloud/continuous-improvement-loop-prompt.md`
