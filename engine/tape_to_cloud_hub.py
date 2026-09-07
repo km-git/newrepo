@@ -481,7 +481,12 @@ def render_report_html(report_key: str) -> str:
 def render_doc_text(name: str) -> tuple[int, dict[str, str], bytes] | None:
     if name not in _ALLOWED_DOCS:
         return None
-    path = _discovery_dir() / name
+    root = _discovery_dir().resolve()
+    path = (root / Path(name).name).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return None
     if not path.is_file():
         body = f"missing: {name}\n".encode()
         return 404, {"Content-Type": "text/plain; charset=utf-8"}, body
