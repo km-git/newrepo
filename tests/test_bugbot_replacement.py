@@ -163,6 +163,9 @@ def test_lint_security_has_detect_secrets_and_github_annotations() -> None:
     assert "merge_group:" in text
     assert "persist-credentials: false" in text
     assert "permissions:" in text.split("jobs:")[0]
+    assert text.count("permissions:") >= 8
+    assert "osv-scanner-action@" in text
+    assert "osv-scanner-action@v2.5.1\n" not in text
 
 
 def test_dmarc_third_party_actions_are_sha_pinned() -> None:
