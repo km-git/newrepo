@@ -337,6 +337,20 @@ http://127.0.0.1:8765/monetize
 
 A localhost URL on a remote Cloud Agent VM is not reachable from your laptop — use the static file there. The page shows the current `EW_LICENSE_TIER`, an interactive Free / Pro / Enterprise matrix, the royalty report (`output/system/royalty_report.json`), and gated-action probes that call `AccessController.require()` only (no live trading). APIs: `/api/monetize/status`, `/api/monetize/tier`, `/api/monetize/require`.
 
+## Tape-to-Cloud Hub (Web UI)
+
+When the monitor server is running, open the tape-to-cloud operations hub in a browser:
+
+```bash
+python3 ew_tool.py --monitor
+```
+
+```
+http://127.0.0.1:8765/tape-to-cloud
+```
+
+The hub shows the 16-module map, discovery doc inventory (`free-tool-inventory.md`, forum-watcher spec, improvement loop), forum-watcher status, and CLI quick-start. JSON API: `/api/tape-to-cloud/status`. Same server also serves `/monitor` and `/monetize`.
+
 ## Architecture
 
 ```
