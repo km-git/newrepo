@@ -1,0 +1,13 @@
+services:
+  parsedmarc:
+    extends:
+      file: docker-compose.yml
+      service: parsedmarc
+  elasticsearch:
+    extends:
+      file: docker-compose.yml
+      service: elasticsearch
+  kibana:
+    extends:
+      file: docker-compose.yml
+      service: kibana

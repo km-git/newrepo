@@ -1,0 +1,35 @@
+name: dmarc-monthly
+on:
+  schedule:
+    - cron: "0 23 1-7 * 1"
+      timezone: "Australia/Sydney"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dmarc
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Generate monthly rollup
+        run: python -c "from dmarc.loop.watch import monthly_rollup; monthly_rollup()"
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "monthly: dmarc deliverability rollup"
+          title: "Monthly DMARC deliverability rollup"
+          body: "[auto-approved] Auto-generated monthly rollup. Review and merge."
+          branch: monthly/dmarc-rollup
+          delete-branch: true
+          add-paths: |
+            dmarc/monthly/*.md
+            dmarc/state/seen.json

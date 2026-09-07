@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMARC Deliverability Monitor</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Email Deliverability &amp; Brand-Protection Review</h1>
+    <p class="muted">Read-only DNS / SPF / DKIM / DMARC observations — not a security assessment</p>
+    <button id="rescan">Run scan</button>
+  </header>
+  <main>
+    <section class="cards">
+      {% for key, val in data.counts.items() %}
+      <div class="card"><div class="label">{{ key }}</div><div class="value">{{ val }}</div></div>
+      {% endfor %}
+    </section>
+    <section>
+      <h2>Domain</h2>
+      <p><code>{{ data.domain }}</code></p>
+    </section>
+    <section>
+      <h2>Recent DMARC aggregate rows</h2>
+      <table>
+        <thead><tr><th>Org</th><th>IP</th><th>Count</th><th>DKIM</th><th>SPF</th></tr></thead>
+        <tbody>
+        {% for r in data.dmarc %}
+          <tr>
+            <td>{{ r.source_org }}</td><td>{{ r.source_ip }}</td><td>{{ r.count }}</td>
+            <td>{{ r.dkim_result }}</td><td>{{ r.spf_result }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">No rows — click Run scan</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Inbox placement</h2>
+      <ul>
+      {% for i in data.inbox %}
+        <li>{{ i.provider }} · {{ i.seed_account }} · <strong>{{ i.placement }}</strong></li>
+      {% else %}
+        <li>No inbox probes yet</li>
+      {% endfor %}
+      </ul>
+    </section>
+  </main>
+  <script>
+    document.getElementById('rescan').addEventListener('click', async () => {
+      const r = await fetch('/api/scan', {method:'POST'});
+      if (r.ok) location.reload();
+    });
+  </script>
+</body>
+</html>

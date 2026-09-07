@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 from engine.llm_backend import bootstrap_llm_env
 
@@ -457,18 +458,29 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud, /dmarc)",
   )
-  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
+  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui / --dmarc-ui")
   parser.add_argument(
     "--monitor-host",
     default="0.0.0.0",
-    help="Bind address for --monitor / --monetize-ui (default 0.0.0.0)",
+    help="Bind address for --monitor / --monetize-ui / --dmarc-ui (default 0.0.0.0)",
   )
   parser.add_argument(
     "--monetize-ui",
     action="store_true",
     help="Serve Monetize Explorer UI, or with --static write a file:// HTML copy",
+  )
+  parser.add_argument(
+    "--dmarc-ui",
+    action="store_true",
+    help="Serve DMARC Deliverability web dashboard (default port 8767)",
+  )
+  parser.add_argument(
+    "--dmarc-ui-port",
+    type=int,
+    default=8767,
+    help="Port for --dmarc-ui (default 8767)",
   )
   parser.add_argument(
     "--static",
@@ -503,11 +515,21 @@ def main() -> None:
   args = parser.parse_args()
   _warn_invalid_license_tier()
 
-  if args.monitor or args.monetize_ui:
+  if args.monitor or args.monetize_ui or args.dmarc_ui:
     if args.monetize_ui and args.static:
       from scripts.serve_monetize import write_static as write_monetize_static
 
       write_monetize_static(args.output_dir)
+      return
+    if args.dmarc_ui:
+      import subprocess
+      import sys
+
+      subprocess.run(
+        [sys.executable, "-m", "dmarc", "web", "serve", "--host", args.monitor_host, "--port", str(args.dmarc_ui_port)],
+        cwd=str(Path(__file__).resolve().parent / "dmarc"),
+        check=False,
+      )
       return
     if args.monitor:
       from scripts.serve_monitor import run as run_monitor

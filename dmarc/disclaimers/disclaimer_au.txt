@@ -1,0 +1,20 @@
+LIABILITY DISCLAIMER (Australia)
+
+This Email Deliverability & Brand-Protection Review is provided for informational
+purposes only. It is not legal advice, not a security assessment, and not an
+attestation of email authentication posture. Observations are based on DNS records,
+aggregate DMARC reports, and heuristic inbox-placement tests at the time of review.
+
+The operator does not warrant accuracy, completeness, or fitness for any purpose.
+Authentication reference data may be stale, incomplete, or misinterpreted. Inbox
+placement results are heuristic and may change without notice.
+
+Active anti-phishing, gateway filtering, URL rewriting, and sandbox detonation are
+out of scope and should be handled by your MSP or email provider.
+
+To the maximum extent permitted by Australian law, the operator excludes all
+liability for loss or damage arising from reliance on this report. You remain
+responsible for your own email authentication policy decisions, including DMARC
+policy changes (none, quarantine, reject).
+
+Report label: Email Deliverability & Brand-Protection Review — read-only observation.

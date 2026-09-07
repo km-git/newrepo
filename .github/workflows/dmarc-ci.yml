@@ -1,0 +1,31 @@
+name: dmarc-ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dmarc
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check dmarc/ tests/
+      - name: Pytest
+        run: pytest tests/ -v --cov=dmarc --cov-report=term-missing
+      - name: Web API smoke test
+        run: python -c "from fastapi.testclient import TestClient; from dmarc.web.app import app; c=TestClient(app); assert c.get('/api/health').json()['status']=='ok'"
+      - name: pip-audit
+        run: pip-audit --strict || true
