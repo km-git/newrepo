@@ -252,10 +252,16 @@ Dedicated repo layout (flatten `forum-watcher/`):
 ```
 t2c-forum-watcher/
 ├── .github/workflows/forum-watcher.yml
+├── .github/workflows/mhvtl-validate.yml
+├── .github/workflows/monthly-rollup.yml
 ├── scripts/watch.py
+├── scripts/validate.py
+├── scripts/monthly.py
 ├── sources.yaml
 ├── blocklist.yaml
+├── free-test-tools.yaml
 ├── discoveries/
+├── monthly/
 └── state/
     ├── seen.json
     └── accept-reject.jsonl

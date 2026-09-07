@@ -24,7 +24,10 @@ ITEM_RE = re.compile(
     r"^- \[[ xX]\] \*\*\[(?P<module>[^\]]+)\]\*\* \[(?P<title>[^\]]+)\]\((?P<url>[^)]+)\)\s*$"
 )
 META_RE = re.compile(r"^\s+(?P<source>.+?) · score (?P<score>\S+) · (?P<reason>.*)$")
-MAJOR_RE = re.compile(r"\bv?(\d+)\.0(?:\.0)?\b", re.I)
+MAJOR_RES = (
+    re.compile(r"(?i)(?:^|[\s])v(\d+)\.0(?:\.|$|\s)"),
+    re.compile(r"(?i)release\s+v?(\d+)\.0(?:\.|$|\s)"),
+)
 
 
 def load_tools() -> list[str]:
@@ -148,8 +151,13 @@ def major_version_crossings(items: list[dict]) -> list[dict]:
         title = item.get("title", "")
         if not any(tok in source.lower() for tok in ("releases", "sdk", "cvpysdk", "cohesity", "rubrik", "dell", "acronis", "commvault")):
             continue
-        match = MAJOR_RE.search(title)
-        if match and int(match.group(1)) >= 2:
+        version = None
+        for pat in MAJOR_RES:
+            match = pat.search(title)
+            if match:
+                version = int(match.group(1))
+                break
+        if version is not None and version >= 2:
             found.append({"source": source, "title": title, "url": item.get("url", "")})
     return found
 

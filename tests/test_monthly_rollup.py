@@ -40,7 +40,8 @@ def test_community_shift_and_ratios():
         {"source": "r/homelab", "decision": "reject", "month": "2026-09"},
         {"source": "r/homelab", "decision": "reject", "month": "2026-09"},
         {"source": "r/homelab", "decision": "reject", "month": "2026-09"},
-        {"source": "r/homelab", "decision": "accept", "month": "2026-09"},
+        {"source": "r/homelab", "decision": "reject", "month": "2026-09"},
+        {"source": "r/homelab", "decision": "reject", "month": "2026-09"},
     ]
     flips = monthly.community_shifts(
         monthly.accept_ratio(current),
@@ -63,7 +64,11 @@ def test_render_contains_required_sections(tmp_path):
     assert "Top 10 most-cited sources" in md
     assert "cvpysdk releases" in md
     assert "Vendor major-version crossings" in md
-    assert "12.0" in md or "Release 12.0.0" in md
+    assert "Release 12.0.0" in md
+    noisy = monthly.major_version_crossings(
+        [{"source": "dell csi-powerstore", "title": "Release v2.17.0", "url": "https://example.com"}]
+    )
+    assert noisy == []
 
 
 def test_accept_jsonl_round_trip(tmp_path):
