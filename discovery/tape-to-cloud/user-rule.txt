@@ -10,11 +10,11 @@ Escalate to an expensive model (Sonnet 5, Opus 5, Fable 5.1,
 Composer Fast, GPT-5.6 Sol/Terra) only when:
   - the change is a multi-file refactor with cross-cutting effects
     across the 16 modules of the tape-to-cloud tool,
-  - the bug is subtle concurrency / security / KMS / WORM / Temporal
-    replay / AWS credential scope,
+  - the bug is subtle concurrency / security / KMS / KMIP / WORM /
+    Temporal replay / AWS credential scope / eDiscovery hold,
   - I am making an architecture decision (license vs re-implement
     MediaGenie Proteus, orchestrator choice, multi-tenant data model,
-    chain-of-custody legal posture),
+    chain-of-custody legal posture, WORM vs GDPR erasure),
   - the task needs >50K tokens of code at once, or
   - a cheap model has already failed on the same task in this chat
     and you can name the specific failure.
@@ -32,11 +32,13 @@ license-tag writer.
 Default tech stack for this project:
 - Python 3.12+
 - mt-st, mbuffer, tar, ltfs, stenc for tape I/O
-- boto3 (S3-compatible) for cloud SDKs
+- boto3 (S3-compatible); SeaweedFS on-prem default (not MinIO CE)
 - Postgres + SQLAlchemy 2.x for the audit DB
 - Temporal (per-tape state machine), Argo (bursts), Airflow (daily refresh)
 - License MediaGenie Proteus for proprietary backup-app formats unless I say otherwise
 - mediainfo, ffmpeg, tesseract, presidio, datatrove for media/AI
+- Feature depth: discovery/tape-to-cloud/feature-completeness.md
+  (integrity, ediscovery, kms-kmip, worm, format-readers, media-rescue)
 
 Keep context small. Use @file / @folder, not @codebase. Point to the
 blueprint section by filename, not by full paste. Start fresh chats
@@ -51,6 +53,8 @@ At the end of multi-step tasks, write one line:
 
 Stop and ask me before: adding a per-token SaaS dependency, choosing
 license-vs-reimplement, picking a default cloud vendor, changing the
-manifest schema, or changing the WORM policy.
+manifest schema, changing the WORM policy, resolving WORM/hold vs
+GDPR erasure, defaulting bit-image vs file-extract, or reading
+hardware-encrypted media without a customer KMIP/KMS key.
 
 If I name a model in my request, use that one. Do not silently re-route.
