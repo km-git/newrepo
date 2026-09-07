@@ -58,6 +58,7 @@ def generate_monthly(
             if nxt:
                 gap_lines = [f"- {row.get('name')} → `{row.get('module')}` [{row.get('impact')}]" for row in nxt[:8]]
         except json.JSONDecodeError:
+            # Invalid gap_audit.json: keep the default next-integration placeholders.
             pass
     rollup.write_text(
         "\n".join(

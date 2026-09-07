@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 MODULES: tuple[str, ...] = (
@@ -199,6 +200,41 @@ TARGETS = (
 SAMPLE_JOB_ID = "JOB-DEMO-ACME-LTO"
 SAMPLE_CUSTOMER = "ACME Energy (demo)"
 SAMPLE_GENERATED_UTC = "2026-09-07T00:00:00+00:00"
+
+ROOT = Path(__file__).resolve().parent.parent
+CROSS_CUTTING = LAYERS
+DISCOVERY_DOCS = (
+    ("free-tool-inventory.md", "Free-tool inventory catalog"),
+    ("forum-monitoring.md", "Forum watcher spec"),
+    ("continuous-improvement-loop-prompt.md", "Improvement loop prompt"),
+    ("tape-to-cloud-migration-blueprint.md", "Migration blueprint"),
+    ("feature-completeness.md", "Feature completeness matrix"),
+    ("cursor-prompt.md", "Cursor build prompt"),
+    ("pyproject-dependencies.toml", "Dependency matrix reference"),
+)
+CURSOR_RULES = (
+    "tape-to-cloud-build.mdc",
+    "tape-to-cloud-improvement-loop.mdc",
+    "tape-to-cloud-free-tool-inventory.mdc",
+)
+
+
+def discovery_dir() -> Path:
+    return ROOT / "discovery" / "tape-to-cloud"
+
+
+def resolved_discovery_doc(name: str) -> Path | None:
+    """Return an allowlisted discovery-doc path using the constant filename, not the request string."""
+    allowed = next((filename for filename, _label in DISCOVERY_DOCS if filename == name), None)
+    if allowed is None:
+        return None
+    base = discovery_dir().resolve()
+    candidate = (base / allowed).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError:
+        return None
+    return candidate
 
 
 def module_ids() -> tuple[str, ...]:

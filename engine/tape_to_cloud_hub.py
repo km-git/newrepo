@@ -11,42 +11,26 @@ from typing import Any
 
 from engine.tape_to_cloud_report_html import render_detailed_report
 from tape_to_cloud.catalog import (
+    CURSOR_RULES,
+    DISCOVERY_DOCS,
     LAYER_CATALOG,
     LAYERS,
     MODULE_CATALOG,
     MODULES,
+    ROOT,
     catalog_snapshot,
+    resolved_discovery_doc,
+)
+from tape_to_cloud.catalog import (
+    discovery_dir as _discovery_dir,
 )
 from tape_to_cloud.sample_reports import CITATIONS, get_report, list_reports
 
-ROOT = Path(__file__).resolve().parent.parent
 CROSS_CUTTING = LAYERS
-
-DISCOVERY_DOCS = (
-    ("free-tool-inventory.md", "Free-tool inventory catalog"),
-    ("forum-monitoring.md", "Forum watcher spec"),
-    ("continuous-improvement-loop-prompt.md", "Improvement loop prompt"),
-    ("tape-to-cloud-migration-blueprint.md", "Migration blueprint"),
-    ("feature-completeness.md", "Feature completeness matrix"),
-    ("cursor-prompt.md", "Cursor build prompt"),
-    ("pyproject-dependencies.toml", "Dependency matrix reference"),
-)
-
-CURSOR_RULES = (
-    "tape-to-cloud-build.mdc",
-    "tape-to-cloud-improvement-loop.mdc",
-    "tape-to-cloud-free-tool-inventory.mdc",
-)
-
-_ALLOWED_DOCS = {name for name, _ in DISCOVERY_DOCS}
 
 
 def _repo_root() -> Path:
     return ROOT
-
-
-def _discovery_dir() -> Path:
-    return _repo_root() / "discovery" / "tape-to-cloud"
 
 
 def _forum_watcher_root() -> Path:
@@ -479,13 +463,8 @@ def render_report_html(report_key: str) -> str:
 
 
 def render_doc_text(name: str) -> tuple[int, dict[str, str], bytes] | None:
-    if name not in _ALLOWED_DOCS:
-        return None
-    root = _discovery_dir().resolve()
-    path = (root / Path(name).name).resolve()
-    try:
-        path.relative_to(root)
-    except ValueError:
+    path = resolved_discovery_doc(name)
+    if path is None:
         return None
     if not path.is_file():
         body = f"missing: {name}\n".encode()

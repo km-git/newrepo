@@ -90,13 +90,14 @@ def test_no_compromised_reviewdog_action_setup_tag() -> None:
 
 
 def test_codeql_and_trufflehog_are_sha_pinned() -> None:
-    codeql = (ROOT / ".github" / "workflows" / "codeql.yml").read_text(encoding="utf-8")
-    assert "github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d" in codeql
-    assert "github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d" in codeql
+    assert not (ROOT / ".github" / "workflows" / "codeql.yml").exists()
+    bugbot = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in bugbot
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in bugbot
     lint = LINT_SECURITY.read_text(encoding="utf-8")
     assert "trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c" in lint
-    assert "github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d" in lint
-    for uses in USES_RE.findall(codeql + "\n" + lint):
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in lint
+    for uses in USES_RE.findall(bugbot + "\n" + lint):
         if uses.startswith("actions/"):
             continue
         if uses.startswith("google/osv-scanner-action/"):
@@ -104,7 +105,7 @@ def test_codeql_and_trufflehog_are_sha_pinned() -> None:
         ref = uses.split("@", 1)[1].split("#", 1)[0]
         if "/" not in uses:
             continue
-        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/")):
+        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/")):
             assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text

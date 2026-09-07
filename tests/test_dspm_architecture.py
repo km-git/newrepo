@@ -176,3 +176,11 @@ def test_custom_type_registry_ships_au_and_nhs() -> None:
 
     names = {item.name for item in load_registry().types}
     assert names == {"au_tfn", "au_abn", "nhs_number"}
+
+
+def test_dspm_rebase_does_not_checkout_untrusted_head() -> None:
+    text = (ROOT / ".github" / "workflows" / "dspm-rebase.yml").read_text(encoding="utf-8")
+    assert "github.event.pull_request.head.ref" not in text
+    assert "git push --force" not in text
+    assert "uses: actions/checkout" not in text
+    assert "@dependabot rebase" in text

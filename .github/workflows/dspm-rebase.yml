@@ -16,9 +16,8 @@ jobs:
     timeout-minutes: 5
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      - name: Ask operator to rebase
+      - name: Ask Dependabot to rebase onto main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
-        run: |
-          gh pr comment "$PR" --body "Dependabot branch is behind main. Rebase from the GitHub UI or merge main; this workflow no longer force-pushes."
+        run: gh pr comment "$PR" --body "@dependabot rebase"
