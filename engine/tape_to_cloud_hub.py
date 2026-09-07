@@ -574,7 +574,7 @@ def dispatch_tape_to_cloud(
             if plat is not None:
                 return plat
         except Exception:
-            pass
+            plat = None  # overlay is optional; live ingest routes still run
     if method != "GET":
         try:
             from tape_to_cloud.web.api import handle_api
@@ -583,7 +583,7 @@ def dispatch_tape_to_cloud(
             if api is not None:
                 return api
         except Exception:
-            pass
+            api = None  # POST handlers optional when platform package is absent
         return None
 
     job_hit = _dispatch_live_jobs(path)
