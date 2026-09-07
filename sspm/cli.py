@@ -221,22 +221,27 @@ def _cmd_demo(ns: argparse.Namespace) -> int:
 
     store = _store(ns) if ns.persist else None
     inv = inventory(init_db=True)
-    snaps = {
-        "m365": discover_m365(store=store),
-        "gws": discover_gws(store=store),
-        "github": discover_github(store=store),
-        "slack": discover_slack(store=store),
-        "okta": discover_okta(store=store),
-    }
+    discover_m365(store=store)
+    discover_gws(store=store)
+    discover_github(store=store)
+    discover_slack(store=store)
+    discover_okta(store=store)
     with contextlib.suppress(ValueError):
         add_tenant(name="demo-m365", tenant_type="m365", store=store)
     reports = {
-        kind: generate(
-            tenant=kind,
-            tenant_name=f"{kind}-demo",
-            output=Path(f"output/sspm/{kind}_report.md"),
-        ).model_dump()
-        for kind in snaps
+        "m365": generate(
+            tenant="m365", tenant_name="m365-demo", output=Path("output/sspm/m365_report.md")
+        ).model_dump(),
+        "gws": generate(tenant="gws", tenant_name="gws-demo", output=Path("output/sspm/gws_report.md")).model_dump(),
+        "github": generate(
+            tenant="github", tenant_name="github-demo", output=Path("output/sspm/github_report.md")
+        ).model_dump(),
+        "slack": generate(
+            tenant="slack", tenant_name="slack-demo", output=Path("output/sspm/slack_report.md")
+        ).model_dump(),
+        "okta": generate(
+            tenant="okta", tenant_name="okta-demo", output=Path("output/sspm/okta_report.md")
+        ).model_dump(),
     }
     payload = {
         "inventory": {"tool_count": inv["tool_count"], "written": inv.get("written")},

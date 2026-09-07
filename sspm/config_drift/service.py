@@ -2,21 +2,30 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from sspm.config_drift.models import DriftFinding
 from sspm.db.store import FindingsStore, utcnow
 from sspm.discovery import load_fixture
-
-BASELINE_DIR = Path(__file__).resolve().parents[1] / "baselines"
+from sspm.paths import load_baseline_map
 
 
 def load_baseline(tenant_type: str, path: Path | None = None) -> dict[str, str]:
-    data = json.loads((path or BASELINE_DIR / f"{tenant_type}.json").read_text(encoding="utf-8"))
-    settings = data.get("settings") or {}
-    return {str(k): str(v) for k, v in settings.items()}
+    if path is None:
+        return load_baseline_map(tenant_type)
+    name = Path(path).name
+    if name == "m365.json":
+        return load_baseline_map("m365")
+    if name == "gws.json":
+        return load_baseline_map("gws")
+    if name == "github.json":
+        return load_baseline_map("github")
+    if name == "slack.json":
+        return load_baseline_map("slack")
+    if name == "okta.json":
+        return load_baseline_map("okta")
+    raise ValueError("baseline must be a shipped tenant filename")
 
 
 def _diff_maps(

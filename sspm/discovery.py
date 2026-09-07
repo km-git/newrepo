@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from sspm.cnspec import scan as cnspec_scan
 from sspm.db.store import FindingsStore, utcnow
-from sspm.paths import fixture_file, under_workdir
+from sspm.paths import load_fixture_json
 
 
 def load_fixture(tenant_type: str) -> dict[str, Any]:
-    path = fixture_file(tenant_type)
-    return json.loads(path.read_text(encoding="utf-8"))
+    return load_fixture_json(tenant_type)
 
 
 def persist_discovery(
@@ -70,7 +68,19 @@ def discover(
         payload = dict(live)
         payload.setdefault("scanner", "api")
     elif fixture:
-        payload = json.loads(under_workdir(Path(fixture)).read_text(encoding="utf-8"))
+        name = Path(fixture).name
+        if name == "m365.json":
+            payload = load_fixture_json("m365")
+        elif name == "gws.json":
+            payload = load_fixture_json("gws")
+        elif name == "github.json":
+            payload = load_fixture_json("github")
+        elif name == "slack.json":
+            payload = load_fixture_json("slack")
+        elif name == "okta.json":
+            payload = load_fixture_json("okta")
+        else:
+            raise ValueError("fixture must be a shipped tenant filename")
         payload.setdefault("scanner", "fixture")
     else:
         payload = load_fixture(tenant_type)

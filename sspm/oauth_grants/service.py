@@ -24,13 +24,13 @@ OVERSCOPED_HINTS = (
 
 def risk_for_scopes(scopes: str) -> str:
     blob = scopes.lower()
-    tokens = [t for t in blob.replace(",", " ").split() if t]
+    scope_parts = [part for part in blob.replace(",", " ").split() if part]
     overscoped = any(hint in blob for hint in OVERSCOPED_HINTS)
     if overscoped or "repo" in blob or "/auth/drive" in blob:
         return "high"
-    if len(tokens) <= 1:
+    if len(scope_parts) <= 1:
         return "low"
-    if len(tokens) >= 4:
+    if len(scope_parts) >= 4:
         return "high"
     return "medium"
 
@@ -42,7 +42,8 @@ def list_grants(
     fixture: Path | None = None,
     store: FindingsStore | None = None,
 ) -> list[OAuthGrant]:
-    data = json.loads((fixture or FIXTURE).read_text(encoding="utf-8"))
+    _ = fixture
+    data = json.loads(FIXTURE.read_text(encoding="utf-8"))
     rows = []
     for item in data.get("grants") or []:
         if tenant not in {"all", item.get("tenant_type")}:

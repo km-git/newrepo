@@ -23,7 +23,7 @@ def test_cli_human_and_report(tmp_path: Path, monkeypatch, capsys) -> None:
     assert main(["--human", "disclaimers", "show", "--name", "disclaimer_au"]) == 0
     out = capsys.readouterr().out
     assert "disclaimer_au" in out
-    assert main(["report", "generate", "--tenant", "github", "--output", str(tmp_path / "g.md")]) == 0
+    assert main(["report", "generate", "--tenant", "github", "--output", "github_report.md"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert Path(payload["markdown"]).is_file()
     assert payload["sha256"]

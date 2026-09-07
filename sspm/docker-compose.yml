@@ -3,8 +3,8 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: sspm
-      POSTGRES_PASSWORD: sspm
       POSTGRES_DB: sspm
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
     volumes:

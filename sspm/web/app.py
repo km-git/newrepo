@@ -14,14 +14,7 @@ from sspm.compliance_map.service import map_tenant
 from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import show
 from sspm.oauth_grants.service import list_grants_dicts
-from sspm.paths import (
-    EXPLORER_HTML_NAME,
-    EXPLORER_STATE,
-    report_html_file,
-    report_md_file,
-    tenant_from_report_url,
-    under_workdir,
-)
+from sspm.paths import explorer_html_path, explorer_state_path, report_html_file, report_md_file, tenant_from_report_url
 from sspm.report_writer.service import generate
 
 DEFAULT_HOST = "0.0.0.0"
@@ -59,7 +52,7 @@ def dashboard_state() -> dict[str, Any]:
         "disclaimer": show().text,
         "honest_gap": (
             "This explorer is a read-only Configuration & Inventory view. "
-            "It is not AppOmni. Live APIs run only when credentials and SSPM_LIVE=1 are set."
+            "It is not AppOmni. Live APIs run only when SSPM_LIVE=1 is set."
         ),
     }
 
@@ -208,10 +201,10 @@ if (scanBtn) {{
 def write_static(output_dir: str = "reports") -> dict[str, str]:
     state = dashboard_state()
     html = render_html(state)
-    dest = under_workdir(Path(output_dir)) / EXPLORER_HTML_NAME
+    dest = explorer_html_path(output_dir)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(html, encoding="utf-8")
-    sidecar = under_workdir(EXPLORER_STATE)
+    sidecar = explorer_state_path()
     sidecar.parent.mkdir(parents=True, exist_ok=True)
     sidecar.write_text(json.dumps(state, indent=2, default=str) + "\n", encoding="utf-8")
     return {"html": str(dest), "state": str(sidecar)}

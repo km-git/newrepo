@@ -45,11 +45,13 @@ def test_generate_rejects_path_escape(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="working directory"):
         generate(tenant="m365", output=Path("/etc/sspm-report.md"))
+    with pytest.raises(ValueError, match="unsupported report filename"):
+        generate(tenant="m365", output=Path("evil.md"))
 
 
 def test_email_redact_is_bounded() -> None:
-    from sspm.redact import EMAIL_RE, scrub_text
+    from sspm.redact import looks_like_email, scrub_text
 
-    assert EMAIL_RE.search("ops@example.com")
-    assert EMAIL_RE.search("%" * 4000) is None
+    assert looks_like_email("ops@example.com")
+    assert not looks_like_email("%" * 4000)
     assert "[REDACTED-EMAIL]" in scrub_text("write to ops@example.com please")

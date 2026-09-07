@@ -15,7 +15,7 @@ from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import append_to, show
 from sspm.discovery import load_fixture
 from sspm.oauth_grants.service import list_grants
-from sspm.paths import DEFAULT_REPORT_MD, under_workdir
+from sspm.paths import report_write_path
 from sspm.redact import scrub_text
 from sspm.report_writer.models import ReportFiles
 
@@ -144,7 +144,7 @@ def generate(
     body, hits = strip_forbidden(body)
     body = append_to(body)
     body = scrub_text(body)
-    dest = under_workdir(output if output is not None else DEFAULT_REPORT_MD)
+    dest = report_write_path(output)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(body, encoding="utf-8")
     digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
