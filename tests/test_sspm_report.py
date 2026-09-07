@@ -34,7 +34,7 @@ def test_generate_report_has_disclaimer_and_hash(tmp_path: Path, monkeypatch) ->
     assert result.sha256
     assert len(result.sha256) == 64
     assert result.sha256 != hashlib.sha256(text.encode("utf-8")).hexdigest()
-    generated = [line for line in text.splitlines() if line.startswith("**Generated:**")][0]
+    generated = next(line for line in text.splitlines() if line.startswith("**Generated:**"))
     stamp = generated.split("**Generated:**", 1)[1].strip()
     expected = hashlib.sha256(f"sspm|{stamp}|{__version__}".encode("ascii")).hexdigest()
     assert result.sha256 == expected

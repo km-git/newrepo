@@ -220,9 +220,7 @@ def write_static(output_dir: str = "reports") -> dict[str, str]:
     state_path = str(cwd / "output" / "sspm" / "explorer_state.json")
     if output_dir == "reports":
         (cwd / "reports").mkdir(parents=True, exist_ok=True)
-        (cwd / "reports" / "sspm_explorer.html").write_text(
-            STATIC_EXPLORER_HTML, encoding="utf-8"
-        )
+        (cwd / "reports" / "sspm_explorer.html").write_text(STATIC_EXPLORER_HTML, encoding="utf-8")
         return {"html": str(cwd / "reports" / "sspm_explorer.html"), "state": state_path}
     (cwd / "sspm_explorer.html").write_text(STATIC_EXPLORER_HTML, encoding="utf-8")
     return {"html": str(cwd / "sspm_explorer.html"), "state": state_path}
