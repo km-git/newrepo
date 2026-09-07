@@ -212,6 +212,21 @@ def _ensure_git_identity() -> None:
   _run_git(["config", "user.email", email], check=False)
 
 
+def should_skip_conflict_resolution(state: Dict[str, Any]) -> Optional[str]:
+  """Skip when GitHub already mergeable, or mergeability is still computing.
+
+  ``mergeable`` is JSON null with ``mergeable_state=unknown`` until GitHub
+  finishes the merge check. Treating that as a conflict re-posts blocked
+  comments on PRs that are already MERGEABLE.
+  """
+  if state.get("mergeable") is True:
+    return "already_mergeable"
+  mergeable_state = str(state.get("mergeable_state") or "").lower()
+  if state.get("mergeable") is None and mergeable_state in ("", "unknown"):
+    return "mergeable_unknown"
+  return None
+
+
 def fetch_pr_merge_state(pr_number: int, repo: str = "") -> Dict[str, Any]:
   slug = repo or _repo_slug()
   pr = _gh_json(["api", f"repos/{slug}/pulls/{pr_number}", "-H", "Accept: application/vnd.github+json"])
@@ -295,9 +310,10 @@ def resolve_pr_conflicts(
     "pushed": False,
   }
 
-  if state.get("mergeable") is True:
+  skip_reason = should_skip_conflict_resolution(state)
+  if skip_reason:
     result["skipped"] = True
-    result["reason"] = "already_mergeable"
+    result["reason"] = skip_reason
     return result
   if not head:
     result["error"] = "missing head ref"
@@ -435,8 +451,9 @@ def resolve_open_pr_conflicts(
     num = int(pr["number"])
     try:
       state = fetch_pr_merge_state(num, repo)
-      if state.get("mergeable") is True:
-        results.append({"pr_number": num, "skipped": True, "reason": "already_mergeable"})
+      skip_reason = should_skip_conflict_resolution(state)
+      if skip_reason:
+        results.append({"pr_number": num, "skipped": True, "reason": skip_reason})
         continue
       results.append(resolve_pr_conflicts(num, repo, dry_run=dry_run))
     except Exception as exc:

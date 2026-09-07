@@ -15,7 +15,8 @@ except ImportError:  # pragma: no cover - optional extra
 
 
 class Resolver(Protocol):
-    def lookup(self, name: str, rdtype: str) -> list[DnsAnswer]: ...
+    def lookup(self, name: str, rdtype: str) -> list[DnsAnswer]:
+        """Return DNS answers for ``name`` and record type ``rdtype``."""
 
 
 @dataclass

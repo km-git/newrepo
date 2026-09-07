@@ -120,15 +120,21 @@ def render_markdown(report: dict[str, Any]) -> str:
     ruff_line = "skipped" if ruff.get("skipped") else ("pass" if ruff.get("ok") else "FAIL")
     tls_status = "pass" if not any(str(f.get("rule", "")).startswith("tls") for f in findings) else "FAIL"
     pin_status = "pass" if not any(f.get("rule") == "action-main-pin" for f in findings) else "FAIL"
+    stack = (
+        "Zero-key GitHub stack: **Ruff** (`E,F,W,I,UP,B,SIM,RUF,S` Bandit-equivalent) + **gitleaks** + "
+        "**zizmor** + **actionlint** + **OSV-Scanner** + **pip-audit** + **detect-secrets** + **CodeQL**."
+    )
+    codium = (
+        "Public-repo AI narrative: comment `@CodiumAI-Agent /review`, or install CodeRabbit from the "
+        "GitHub Marketplace (~4 PRs/hr, no workflow file)."
+    )
     lines = [
         MARKER,
         "# Static review (Bugbot replacement)",
         "",
-        "Zero-key GitHub stack: **Ruff** (`E,F,W,I,UP,B,SIM,RUF,S` Bandit-equivalent) + **gitleaks** + "
-        "**zizmor** + **actionlint** + **OSV-Scanner** + **pip-audit** + **detect-secrets** + **CodeQL**.",
+        stack,
         "No LLM. Do not retry Cursor Bugbot after a usage-cap skip.",
-        "Public-repo AI narrative: comment `@CodiumAI-Agent /review`, or install CodeRabbit from the "
-        "GitHub Marketplace (~4 PRs/hr, no workflow file).",
+        codium,
         "",
         f"- Ruff: `{ruff_line}`",
         f"- TLS / IMAP / STARTTLS: `{tls_status}`",
