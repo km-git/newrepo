@@ -42,13 +42,16 @@ jobs:
         run: bash scripts/setup_environment.sh --skip-auth
 
       - name: Close superseded PRs
+        env:
+          PR_NUMBERS: ${{ github.event.inputs.pr_numbers }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           ARGS=()
-          if [[ -n "${{ github.event.inputs.pr_numbers }}" ]]; then
-            read -ra NUMS <<< "$(echo '${{ github.event.inputs.pr_numbers }}' | tr ',' ' ')"
+          if [[ -n "$PR_NUMBERS" ]]; then
+            read -ra NUMS <<< "$(echo "$PR_NUMBERS" | tr ',' ' ')"
             ARGS+=("${NUMS[@]}")
           fi
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "$DRY_RUN" == "true" ]]; then
             ARGS+=(--dry-run)
           fi
           .venv/bin/python scripts/pr_close_superseded.py "${ARGS[@]}"

@@ -68,3 +68,44 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  osv:
+    name: osv-scanner (requirements)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        with:
+          scan-args: |-
+            -L
+            ./requirements.txt
+            --allow-no-lockfiles
+
+  zizmor:
+    name: zizmor (workflows)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install zizmor
+        run: pip install "zizmor>=1.30.0"
+
+      - name: Audit GitHub Actions workflows
+        run: zizmor --config zizmor.yml --persona=regular --min-severity high .github/workflows
