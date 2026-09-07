@@ -23,8 +23,8 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          ruff check --config ruff.toml tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py
-          ruff format --check tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py
+          ruff check --config ruff.toml tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_bugbot_replacement.py
+          ruff format --check tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_bugbot_replacement.py
 
   dependency-audit:
     name: pip-audit (requirements.txt)
@@ -41,7 +41,10 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          pip-audit -r requirements.txt --desc on
+          # PYSEC-2026-2447: diskcache pickle RCE if an attacker can write the cache dir.
+          # No published fix as of 2026-09-07. EW cache is local (EW_CACHE_DIR), not a
+          # shared untrusted store. Ignore so the GitHub check stays green; new CVEs still fail.
+          pip-audit -r requirements.txt --desc on --ignore-vuln PYSEC-2026-2447
 
   actionlint:
     name: actionlint (workflows)
@@ -65,7 +68,7 @@ jobs:
           fetch-depth: 0
 
       - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v3
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

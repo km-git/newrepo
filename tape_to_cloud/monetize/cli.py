@@ -50,10 +50,7 @@ def _cmd_tag(args: argparse.Namespace) -> int:
 
 def _cmd_list(args: argparse.Namespace) -> int:
     store = LicenseStore(args.store)
-    if args.license_class:
-        tags = store.query_by_class(args.license_class)
-    else:
-        tags = store.load_tags()
+    tags = store.query_by_class(args.license_class) if args.license_class else store.load_tags()
     if args.asset_id:
         tags = [t for t in tags if t.asset_id == args.asset_id]
     _print_json([t.to_dict() for t in tags])
