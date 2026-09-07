@@ -8,6 +8,7 @@ on:
     branches: [main, "cursor/**"]
   pull_request:
     branches: [main]
+  merge_group:
   schedule:
     - cron: "18 7 * * 1"
 
@@ -78,7 +79,9 @@ jobs:
             --sarif \
             --output semgrep.sarif \
             tape_to_cloud/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
-            ew_tool.py
+            ew_tool.py sspm/ tests/test_sspm_architecture.py tests/test_sspm_core.py \
+            tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py \
+            tests/test_sspm_cli.py
         continue-on-error: true
 
       - name: Upload SARIF to GitHub code scanning
