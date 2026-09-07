@@ -1,0 +1,55 @@
+---
+description: Tape-to-cloud free-tool inventory — loop-internal CI/security tools + 16-module feature libraries (SeaweedFS not MinIO, libratom, DuckDB/Polars, Temporal, PaddleOCR, gitleaks). Apply when adding deps, storage, parsers, or CI for tape-to-cloud modules.
+globs:
+alwaysApply: false
+---
+
+# Tape-to-Cloud — Free-Tool Inventory
+
+Full catalog: `discovery/tape-to-cloud/free-tool-inventory.md`
+
+## Critical storage correction
+
+**MinIO Community Edition is archived (GitHub: April 25, 2026).** Self-hosted S3 default: **SeaweedFS** (`tape-vault`, `vtl-cloud`). Fallbacks: Garage (edge), RustFS (alpha + GUI). Migrate from MinIO with `rclone sync`.
+
+## Loop-internal (improve the tool)
+
+| Stage | Free tools |
+|---|---|
+| Quality | Ruff, mypy, pyright, interrogate, pip-audit |
+| Secrets | gitleaks-action, TruffleHog |
+| Workflows | actionlint, zizmor |
+| Static analysis | CodeQL (public repos) |
+| Release | release-please or git-cliff |
+| Observability | OpenTelemetry SDK → SigNoz/GlitchTip self-host |
+| Local CI | `act` (nektos/act) |
+| Supply chain | step-security/harden-runner (audit egress) |
+
+## Feature-coverage (deliver the 16 modules)
+
+| Area | Default stack |
+|---|---|
+| Tape/VTL | `mt-st` + `stenc`; `mhvtl` dev/CI; Holo-VTL for new Ubuntu 24.04 |
+| Backup parsers | `libratom` (MIT), `extract-msg` (GPLv3), `pst-utils`, `cvpysdk` (Commvault license) |
+| Email migrate | `msgraph-sdk` + `azure-identity`, `imapclient`, Temporal for durable jobs |
+| OCR | PaddleOCR prod, EasyOCR prototype, Tesseract fallback |
+| Transcription | faster-whisper (NVIDIA), whisper.cpp (Apple), Distil-Whisper (speed) |
+| Analytics | DuckDB + Polars + PyArrow |
+| Orchestration | Temporal (`restore`, `email-migrate`); Prefect/Dagster (`audit`, `analytics`) |
+| Hashing | SHA-256 chain-of-custody; BLAKE3 throughput/dedup only |
+| CLI | typer + rich + textual + httpx + pydantic v2 |
+| LLM | litellm + instructor + pydantic-evals + OpenLLMetry |
+
+## Dependency matrix
+
+Reference `discovery/tape-to-cloud/pyproject-dependencies.toml`. `pstmortem` is **not on PyPI** — git clone only. Drop `cvpysdk` until a Commvault customer exists.
+
+## Monday discover sources (add to improvement loop)
+
+awesome-selfhosted releases.atom, GitHub Topics (`tape`, `ltfs`, `pst`, `ocr`), libraries.io digest, per-repo `releases.atom`.
+
+## Rules
+
+1. Every new tool needs a **named fallback** (OCR: Paddle→Easy→Tesseract; storage: SeaweedFS→Garage→Ceph).
+2. **Free tier only** at 1-person scale; Temporal Cloud is paid ($100/mo Essentials) — prefer self-host OSS.
+3. Fact-check licenses before `uv add` (`libratom`=MIT, `extract-msg`=GPLv3, `cvpysdk`=Commvault).

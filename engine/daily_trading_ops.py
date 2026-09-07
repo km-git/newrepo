@@ -163,11 +163,6 @@ def run_daily_trading_tick(
   4. GOAT effectiveness audit (walk-forward)
   5. Profit laboratory (fee expectancy + CPCV + cost analytics)
   6. Health + composite readiness
-<<<<<<< HEAD
-  5. Health + composite readiness
-
-=======
->>>>>>> origin/main
 
   Resolve modes (EW_RESOLVE_MODE or resolve_mode arg):
   - skip: no OHLC resolve (cron default, ~1s)
