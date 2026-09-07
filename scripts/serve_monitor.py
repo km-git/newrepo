@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
 from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
+from dmarc.webui import serve_dmarc_http
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -56,6 +57,14 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       content_type=self.headers.get("Content-Type", ""),
     ):
       return
+    if serve_dmarc_http(
+      self,
+      "GET",
+      parsed.path,
+      parse_qs(parsed.query),
+      content_type=self.headers.get("Content-Type", ""),
+    ):
+      return
     super().do_GET()
 
   def do_POST(self) -> None:
@@ -63,6 +72,15 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     length = int(self.headers.get("Content-Length") or 0)
     body = self.rfile.read(length) if length else b""
     if serve_monetize_http(
+      self,
+      "POST",
+      parsed.path,
+      parse_qs(parsed.query),
+      body,
+      content_type=self.headers.get("Content-Type", ""),
+    ):
+      return
+    if serve_dmarc_http(
       self,
       "POST",
       parsed.path,

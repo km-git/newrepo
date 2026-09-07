@@ -1,0 +1,55 @@
+name: dmarc-ci
+
+on:
+  push:
+    paths:
+      - "dmarc/**"
+      - "tests/dmarc/**"
+      - "scripts/serve_dmarc.py"
+      - ".github/workflows/dmarc-*.yml"
+      - "docker-compose.yml"
+      - "Makefile"
+  pull_request:
+    paths:
+      - "dmarc/**"
+      - "tests/dmarc/**"
+      - "scripts/serve_dmarc.py"
+      - ".github/workflows/dmarc-*.yml"
+      - "docker-compose.yml"
+      - "Makefile"
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install toolkit deps
+        run: |
+          python -m pip install -U pip
+          pip install pydantic pyyaml httpx pytest ruff
+          pip install -r dmarc/requirements.txt || true
+
+      - name: Ruff
+        run: ruff check --config ruff.toml dmarc tests/dmarc scripts/serve_dmarc.py
+
+      - name: Pytest dmarc
+        run: python -m pytest tests/dmarc dmarc -q --tb=short
+
+      - name: End-to-end fixtures
+        run: |
+          python -m dmarc audit inventory --output-dir /tmp/dmarc-ci
+          python -m dmarc ingest pull --fixtures --output-dir /tmp/dmarc-ci
+          python -m dmarc report generate --domain example.com.au --offline --output-dir /tmp/dmarc-ci --output /tmp/dmarc-ci/report.md
+          python -m dmarc ui --static --output-dir /tmp/dmarc-ci

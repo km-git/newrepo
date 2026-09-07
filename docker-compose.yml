@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dmarc
+      POSTGRES_PASSWORD: dmarc
+      POSTGRES_DB: dmarc
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./dmarc/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  parsedmarc:
+    image: patschi/parsedmarc:latest
+    profiles: ["elastic"]
+    volumes:
+      - ./dmarc/parsedmarc.ini:/etc/parsedmarc/config.ini:ro
+      - parsedmarc-data:/var/lib/parsedmarc
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    profiles: ["elastic"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    profiles: ["elastic"]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+volumes:
+  postgres-data:
+  parsedmarc-data:
+  es-data:

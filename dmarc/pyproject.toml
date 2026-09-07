@@ -1,0 +1,46 @@
+[project]
+name = "dmarc"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "dnspython==2.7.0",
+  "cryptography==44.0.0",
+  "httpx==0.28.1",
+  "pydantic==2.10.4",
+  "pyyaml==6.0.2",
+  "feedparser==6.0.11",
+  "rich==14.0.0",
+  "jinja2==3.1.5",
+]
+
+[project.optional-dependencies]
+full = [
+  "duckdb==1.5.5",
+  "pyarrow==21.0.0",
+  "parsedmarc==8.6.4",
+  "imaplib2==3.6",
+  "aiosmtplib==3.0.1",
+  "plotly==5.24.0",
+  "presidio-analyzer==2.2.360",
+  "presidio-anonymizer==2.2.360",
+  "psycopg[binary]==3.2.5",
+  "typer==0.16.0",
+]
+dev = [
+  "pytest==9.0.0",
+  "pytest-cov==6.0.0",
+  "ruff==0.9.4",
+  "mypy==1.14.0",
+  "pip-audit==2.9.0",
+  "detect-secrets==1.5.0",
+]
+
+[project.scripts]
+dmarc = "dmarc.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dmarc"]

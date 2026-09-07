@@ -90,3 +90,23 @@
   kind: rss
   module_hint: monetize
   max_items: 5
+- name: parsedmarc releases
+  url: https://github.com/domainaware/parsedmarc/releases.atom
+  kind: rss
+  module_hint: dmarc_ingest, aggregate_report
+  max_items: 5
+- name: dnspython releases
+  url: https://github.com/rthalley/dnspython/releases.atom
+  kind: rss
+  module_hint: dns_check, spf_parser, dkim_check
+  max_items: 5
+- name: HN Algolia dmarc
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=dmarc%20OR%20spf%20OR%20dkim&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: dmarc_ingest, report_writer
+  max_items: 15
+- name: SO tag dmarc
+  url: https://stackoverflow.com/feeds/tag/dmarc
+  kind: rss
+  module_hint: dmarc_ingest, dns_check
+  max_items: 15

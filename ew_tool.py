@@ -457,9 +457,9 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /dmarc, /tape-to-cloud)",
   )
-  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
+  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui / --dmarc-ui")
   parser.add_argument(
     "--monitor-host",
     default="0.0.0.0",
@@ -473,7 +473,12 @@ def main() -> None:
   parser.add_argument(
     "--static",
     action="store_true",
-    help="With --monetize-ui: write self-contained HTML and print a file:// path (no server)",
+    help="With --monetize-ui or --dmarc-ui: write self-contained HTML and print a file:// path (no server)",
+  )
+  parser.add_argument(
+    "--dmarc-ui",
+    action="store_true",
+    help="Serve Email Deliverability explorer at /dmarc, or with --static write reports/dmarc_explorer.html",
   )
   parser.add_argument(
     "--tape-ingest",
@@ -502,6 +507,18 @@ def main() -> None:
   )
   args = parser.parse_args()
   _warn_invalid_license_tier()
+
+  if args.dmarc_ui:
+    if args.static:
+      from dmarc.webui import publish_static as publish_dmarc_static
+
+      paths = publish_dmarc_static()
+      print(paths["static"])
+      return
+    from scripts.serve_dmarc import run as run_dmarc
+
+    run_dmarc(host=args.monitor_host, port=args.monitor_port)
+    return
 
   if args.monitor or args.monetize_ui:
     if args.monetize_ui and args.static:
