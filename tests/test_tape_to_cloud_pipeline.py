@@ -16,6 +16,7 @@ from tape_to_cloud.cli import main as tape_cli
 from tape_to_cloud.ingest import ingest, restore_job, try_delete_job_object, verify_job
 from tape_to_cloud.integrity import sha256_file
 from tape_to_cloud.jobs import list_jobs, load_job
+from tape_to_cloud.store import object_path
 from tape_to_cloud.worm import WormLockedError
 
 EML = (
@@ -221,3 +222,43 @@ def test_hub_lists_live_job_not_sample(tmp_path, monkeypatch):
     assert hub is not None
     assert report["id"].encode() in hub[2]
     assert b"Live ingest jobs (real bytes)" in hub[2]
+
+
+def test_job_id_and_digest_cannot_escape_store(tmp_path, monkeypatch):
+    store = tmp_path / "store"
+    monkeypatch.setenv("EW_TAPE_STORE", str(store))
+    src = tmp_path / "ok.txt"
+    src.write_bytes(b"safe")
+    report = ingest(src, store=store, matter_id="SAFE")
+
+    assert load_job("../etc/passwd", store) is None
+    assert load_job("job-not-a-real-id", store) is None
+    assert load_job(report["id"], store) is not None
+
+    with pytest.raises(ValueError, match="invalid job id"):
+        restore_job("../../etc", tmp_path / "out", store=store)
+    with pytest.raises(ValueError, match="invalid sha256"):
+        object_path(store, "../../etc/passwd")
+    with pytest.raises(ValueError, match="invalid sha256"):
+        object_path(store, "deadbeef")
+
+    missing = dispatch_tape_to_cloud("GET", "/tape-to-cloud/jobs/..")
+    assert missing is not None
+    assert missing[0] == 404
+    missing = dispatch_tape_to_cloud("GET", "/api/tape-to-cloud/jobs/../../etc/passwd")
+    assert missing is not None
+    assert missing[0] == 404
+
+
+def test_hub_escapes_html_in_live_job_json(tmp_path, monkeypatch):
+    store = tmp_path / "store"
+    monkeypatch.setenv("EW_TAPE_STORE", str(store))
+    src = tmp_path / "<img src=x onerror=alert(1)>.txt"
+    src.write_bytes(b"xss-probe")
+    report = ingest(src, store=store, matter_id="<script>alert(1)</script>")
+    page = dispatch_tape_to_cloud("GET", f"/tape-to-cloud/jobs/{report['id']}")
+    assert page is not None
+    body = page[2].decode("utf-8")
+    assert "<script>" not in body
+    assert "&lt;script&gt;" in body
+    assert "&lt;img" in body

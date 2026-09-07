@@ -19,8 +19,11 @@ GUIDE = ROOT / "mavis-deep-research" / "20260907_bugbot_replacement" / "final_tu
 RUFF_SELECT = ("E", "F", "W", "I", "UP", "B", "SIM", "RUF", "S")
 PR_AGENT_SHA = "f3b385ea2927247ddcff2fe252472380b9c8f5fc"
 GITLEAKS_SHA = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
+CODEQL_SHA = "cdf488f595d80d6e07e03d4674febd5ab45fa938"
+REVIEWDOG_SHA = "d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 USES_RE = re.compile(r"^\s*uses:\s+(\S+)", re.MULTILINE)
+BUGBOT_FREE = ROOT / ".github" / "workflows" / "bugbot-free.yml"
 
 
 def test_guide_describes_the_five_minute_stack() -> None:
@@ -28,8 +31,9 @@ def test_guide_describes_the_five_minute_stack() -> None:
     assert "Ruff" in text
     assert "PR-Agent" in text
     assert "CodeRabbit" in text
-    assert "gitleaks" in text
-    assert "Bandit" in text or "`S`" in text
+    assert "CodeQL" in text
+    assert "Semgrep" in text
+    assert "reviewdog" in text
 
 
 def test_ruff_toml_selects_bugbot_replacement_rules() -> None:
@@ -70,7 +74,39 @@ def test_pr_agent_workflow_is_sha_pinned_and_skips_without_key() -> None:
         assert SHA_RE.fullmatch(ref), uses
 
 
-def test_gitleaks_action_is_sha_pinned() -> None:
+def test_no_compromised_reviewdog_action_setup_tag() -> None:
+    """CVE-2025-30154 hit the mutable @v1 tag. SHA-pinned action-setup is allowed."""
+    workflows = ROOT / ".github" / "workflows"
+    for path in workflows.glob("*.yml"):
+        text = path.read_text(encoding="utf-8")
+        assert "uses: reviewdog/action-setup@v1" not in text, path.name
+        assert "uses: reviewdog/action-setup@main" not in text, path.name
+        for uses in USES_RE.findall(text):
+            if not uses.startswith("reviewdog/action-setup@"):
+                continue
+            ref = uses.split("@", 1)[1].split("#", 1)[0]
+            assert SHA_RE.fullmatch(ref), uses
+            assert ref == REVIEWDOG_SHA, uses
+
+
+def test_codeql_and_trufflehog_are_sha_pinned() -> None:
+    assert not (ROOT / ".github" / "workflows" / "codeql.yml").exists()
+    bugbot = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in bugbot
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in bugbot
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c" in lint
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in lint
+    for uses in USES_RE.findall(bugbot + "\n" + lint):
+        if uses.startswith("actions/"):
+            continue
+        if uses.startswith("google/osv-scanner-action/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        if "/" not in uses:
+            continue
+        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/")):
+            assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
     assert "gitleaks/gitleaks-action@v2" not in text
@@ -102,3 +138,21 @@ def test_ruff_passes_on_replacement_paths() -> None:
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
+
+
+def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
+    text = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert "secrets.OPENAI_KEY" not in text
+    assert "CURSOR" not in text
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in text
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in text
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in text
+    assert f"reviewdog/action-setup@{REVIEWDOG_SHA}" in text
+    assert "semgrep" in text
+    assert "p/security-audit" in text
+    assert "pull_request_target" not in text
+    for uses in USES_RE.findall(text):
+        if uses.startswith("actions/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref), uses

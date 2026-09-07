@@ -1,0 +1,106 @@
+# Zero-key Bugbot replacement: GitHub-native + OSS scanners (no Cursor Bugbot, no LLM API secrets).
+# Public repo: CodeQL + Semgrep SARIF are free. reviewdog posts inline PR comments via GITHUB_TOKEN.
+# SHA-pin third-party actions (TeamPCP / mutable-tag lesson). First-party actions/checkout stays ref-pinned.
+name: Bugbot-free scanners
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "18 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            build-mode: none
+          - language: actions
+            build-mode: none
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  semgrep:
+    name: Semgrep CE + reviewdog
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Semgrep Community Edition
+        run: pip install "semgrep>=1.100.0"
+
+      - name: Scan (Python security rules, no Semgrep App token)
+        run: |
+          semgrep scan \
+            --config p/python \
+            --config p/security-audit \
+            --metrics off \
+            --sarif \
+            --output semgrep.sarif \
+            tape_to_cloud/ dspm/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
+            ew_tool.py
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Install reviewdog
+        if: github.event_name == 'pull_request'
+        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+        with:
+          reviewdog_version: v0.21.0
+
+      - name: Post Semgrep findings as PR review comments
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -s semgrep.sarif ]; then
+            reviewdog -f=sarif -name=semgrep -reporter=github-pr-review -fail-on-error=false < semgrep.sarif
+          fi
