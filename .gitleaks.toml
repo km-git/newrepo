@@ -1,12 +1,15 @@
-# Demo KMIP object UUID in sample reports is not a live secret.
-# gitleaks generic-api-key matches `key_uuid` + UUID; keep the sample value allowlisted
-# so historical PR commits stay green after the field rename.
+# Demo Tape-to-Cloud reports are SAMPLE JSON, not live credentials.
+# PR scans include historical commits (bb00f40 still has key_uuid); allowlist
+# that file + commit so generic-api-key does not fail CI on demo KMIP ids.
 title = "gitleaks config"
 
 [extend]
 useDefault = true
 
 [[allowlists]]
-description = "SAMPLE KMIP object UUID in Tape-to-Cloud demo reports (not a live key)"
-paths = ['''engine/tape_to_cloud_reports.py''']
-regexes = ['''8f3c1e2a-9b44-4d11-a6e0-00c0ffee4412''']
+description = "SAMPLE Tape-to-Cloud report payloads (demo KMIP ids, computed SHA-256)"
+paths = ['''(^|/)engine/tape_to_cloud_reports\.py$''']
+
+[[allowlists]]
+description = "Commit that first added SAMPLE key_uuid in demo reports"
+commits = ["bb00f4049343f5e9b7636fb1f841a88af26daa1f"]

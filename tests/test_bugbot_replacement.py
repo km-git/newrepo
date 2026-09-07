@@ -79,8 +79,8 @@ def test_gitleaks_action_is_sha_pinned() -> None:
     assert "--ignore-vuln PYSEC-2026-2447" in text
     allow = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
     assert "useDefault = true" in allow
-    assert "8f3c1e2a-9b44-4d11-a6e0-00c0ffee4412" in allow
-    assert "engine/tape_to_cloud_reports.py" in allow
+    ignore = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
+    assert "bb00f4049343f5e9b7636fb1f841a88af26daa1f:engine/tape_to_cloud_reports.py:generic-api-key:258" in ignore
 
 
 def test_ruff_passes_on_replacement_paths() -> None:
