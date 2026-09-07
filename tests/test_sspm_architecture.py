@@ -62,7 +62,9 @@ def test_workflows_exist() -> None:
     assert "pip-audit --strict" in ci
     assert "sspm/requirements-ci.txt" in ci
     approve = (wf / "sspm-auto-approve.yml").read_text(encoding="utf-8")
-    assert "pull_request_target" in approve
+    assert "pull_request_target" not in approve
+    assert "pull_request:" in approve
+    assert "github.event.pull_request.user.login" in approve
     assert "dependabot[bot]" in approve
     assert "hmarr/auto-approve-action" in approve
     watch = (wf / "sspm-watch.yml").read_text(encoding="utf-8")

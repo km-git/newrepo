@@ -5,8 +5,3 @@ rules:
     config:
       policies:
         "*": ref-pin
-  # Dependabot approval needs pull_request_target so GITHUB_TOKEN can approve
-  # the PR. The job never checks out PR HEAD (prompt hard rule: bot-only).
-  dangerous-triggers:
-    ignore:
-      - sspm-auto-approve.yml
