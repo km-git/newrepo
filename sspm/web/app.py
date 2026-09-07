@@ -198,41 +198,34 @@ if (scanBtn) {{
 """
 
 
+STATIC_EXPLORER_HTML = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSPM Configuration &amp; Inventory Explorer</title>
+</head><body>
+<h1>SSPM Configuration &amp; Inventory Explorer</h1>
+<p>read-only · not an attestation</p>
+<p>Static snapshot. Use the live explorer for OAuth grants and fixture rows.</p>
+<p><button type="button" disabled>Run fixture scan</button> (live server only)</p>
+</body></html>
+"""
+
+
 def write_static(output_dir: str = "reports") -> dict[str, str]:
-    html = render_html(_static_shell_state())
     cwd = Path.cwd().resolve()
-    if output_dir == "reports":
-        return _write_explorer_files(html, cwd / "reports" / "sspm_explorer.html")
-    return _write_explorer_files(html, cwd / "sspm_explorer.html")
-
-
-def _write_explorer_files(html: str, dest: Path) -> dict[str, str]:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(html, encoding="utf-8")
-    sidecar = Path.cwd().resolve() / "output" / "sspm" / "explorer_state.json"
-    sidecar.parent.mkdir(parents=True, exist_ok=True)
-    sidecar.write_text(
-        json.dumps({"service": "sspm-web", "version": __version__, "static": True}, indent=2) + "\n",
-        encoding="utf-8",
+    (cwd / "output" / "sspm").mkdir(parents=True, exist_ok=True)
+    (cwd / "output" / "sspm" / "explorer_state.json").write_text(
+        '{"service":"sspm-web","static":true}\n', encoding="utf-8"
     )
-    return {"html": str(dest), "state": str(sidecar)}
-
-
-def _static_shell_state() -> dict[str, Any]:
-    return {
-        "service": "sspm-web",
-        "version": __version__,
-        "title": "Configuration & Inventory Explorer",
-        "modules": list(MODULES),
-        "inventory": {"tool_count": len(MODULES)},
-        "oauth": [],
-        "oauth_high": 0,
-        "drift_m365": [],
-        "control_refs_m365": [],
-        "reports": {name: {} for name in ("m365", "gws", "github", "slack", "okta")},
-        "disclaimer": "Static snapshot. Open the live explorer Disclaimer panel for the AU liability text.",
-        "honest_gap": "Static snapshot. Run the explorer server for live fixture rows.",
-    }
+    state_path = str(cwd / "output" / "sspm" / "explorer_state.json")
+    if output_dir == "reports":
+        (cwd / "reports").mkdir(parents=True, exist_ok=True)
+        (cwd / "reports" / "sspm_explorer.html").write_text(
+            STATIC_EXPLORER_HTML, encoding="utf-8"
+        )
+        return {"html": str(cwd / "reports" / "sspm_explorer.html"), "state": state_path}
+    (cwd / "sspm_explorer.html").write_text(STATIC_EXPLORER_HTML, encoding="utf-8")
+    return {"html": str(cwd / "sspm_explorer.html"), "state": state_path}
 
 
 class SspmHandler(SimpleHTTPRequestHandler):

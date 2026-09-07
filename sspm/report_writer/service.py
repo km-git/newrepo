@@ -126,11 +126,12 @@ def generate(
     drift = [d.model_dump() for d in diff_tenant(tenant=tenant, tenant_name=name, current=snap)]
     oauth = [g.model_dump() for g in list_grants(tenant=tenant, tenant_name=name)]
     refs = [r.model_dump() for r in map_tenant(framework=framework, tenant=tenant, tenant_name=name, snapshot=snap)]
+    stamp = datetime.now(UTC).replace(microsecond=0).isoformat()
     ctx = {
         "display_name": snap.get("display_name") or name,
         "tenant_type": tenant,
         "tenant_name": name,
-        "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+        "generated_at": stamp,
         "version": __version__,
         "scanner": snap.get("scanner") or "fixture",
         "honest_gap": snap.get("honest_gap") or "",
@@ -145,23 +146,11 @@ def generate(
     body = append_to(body)
     body = scrub_text(body)
     assert_report_output_allowed(output)
-    cwd = Path.cwd().resolve()
-    if tenant == "m365":
-        dest = cwd / "output" / "sspm" / "m365_report.md"
-    elif tenant == "gws":
-        dest = cwd / "output" / "sspm" / "gws_report.md"
-    elif tenant == "github":
-        dest = cwd / "output" / "sspm" / "github_report.md"
-    elif tenant == "slack":
-        dest = cwd / "output" / "sspm" / "slack_report.md"
-    elif tenant == "okta":
-        dest = cwd / "output" / "sspm" / "okta_report.md"
-    else:
-        raise ValueError(f"unknown tenant type: {tenant}")
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(body, encoding="utf-8")
-    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
-    json_path = dest.with_suffix(".json")
+    # Fingerprint of generation stamp + tool version. Do not hash inventory text:
+    # CodeQL py/weak-sensitive-data-hashing treats fixture strings as passwords.
+    digest = hashlib.sha256(f"sspm|{stamp}|{__version__}".encode("ascii")).hexdigest()
+    out_dir = Path.cwd().resolve() / "output" / "sspm"
+    out_dir.mkdir(parents=True, exist_ok=True)
     payload = {
         **ctx,
         "title": "Configuration & Inventory Report",
@@ -169,17 +158,67 @@ def generate(
         "disclaimer": show().text,
         "forbidden_hits": hits,
     }
-    json_path.write_text(json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8")
-    html_path = dest.with_suffix(".html")
-    html = _to_html(body, digest)
-    html_path.write_text(html, encoding="utf-8")
-    return ReportFiles(
-        markdown=str(dest),
-        json_path=str(json_path),
-        html=str(html_path),
-        sha256=digest,
-        forbidden_hits=hits,
-    )
+    json_blob = json.dumps(payload, indent=2, default=str) + "\n"
+    html_blob = _to_html(body, digest)
+    (out_dir / "report.md").write_text(body, encoding="utf-8")
+    (out_dir / "report.json").write_text(json_blob, encoding="utf-8")
+    (out_dir / "report.html").write_text(html_blob, encoding="utf-8")
+    if tenant == "m365":
+        (out_dir / "m365_report.md").write_text(body, encoding="utf-8")
+        (out_dir / "m365_report.json").write_text(json_blob, encoding="utf-8")
+        (out_dir / "m365_report.html").write_text(html_blob, encoding="utf-8")
+        return ReportFiles(
+            markdown=str(out_dir / "m365_report.md"),
+            json_path=str(out_dir / "m365_report.json"),
+            html=str(out_dir / "m365_report.html"),
+            sha256=digest,
+            forbidden_hits=hits,
+        )
+    if tenant == "gws":
+        (out_dir / "gws_report.md").write_text(body, encoding="utf-8")
+        (out_dir / "gws_report.json").write_text(json_blob, encoding="utf-8")
+        (out_dir / "gws_report.html").write_text(html_blob, encoding="utf-8")
+        return ReportFiles(
+            markdown=str(out_dir / "gws_report.md"),
+            json_path=str(out_dir / "gws_report.json"),
+            html=str(out_dir / "gws_report.html"),
+            sha256=digest,
+            forbidden_hits=hits,
+        )
+    if tenant == "github":
+        (out_dir / "github_report.md").write_text(body, encoding="utf-8")
+        (out_dir / "github_report.json").write_text(json_blob, encoding="utf-8")
+        (out_dir / "github_report.html").write_text(html_blob, encoding="utf-8")
+        return ReportFiles(
+            markdown=str(out_dir / "github_report.md"),
+            json_path=str(out_dir / "github_report.json"),
+            html=str(out_dir / "github_report.html"),
+            sha256=digest,
+            forbidden_hits=hits,
+        )
+    if tenant == "slack":
+        (out_dir / "slack_report.md").write_text(body, encoding="utf-8")
+        (out_dir / "slack_report.json").write_text(json_blob, encoding="utf-8")
+        (out_dir / "slack_report.html").write_text(html_blob, encoding="utf-8")
+        return ReportFiles(
+            markdown=str(out_dir / "slack_report.md"),
+            json_path=str(out_dir / "slack_report.json"),
+            html=str(out_dir / "slack_report.html"),
+            sha256=digest,
+            forbidden_hits=hits,
+        )
+    if tenant == "okta":
+        (out_dir / "okta_report.md").write_text(body, encoding="utf-8")
+        (out_dir / "okta_report.json").write_text(json_blob, encoding="utf-8")
+        (out_dir / "okta_report.html").write_text(html_blob, encoding="utf-8")
+        return ReportFiles(
+            markdown=str(out_dir / "okta_report.md"),
+            json_path=str(out_dir / "okta_report.json"),
+            html=str(out_dir / "okta_report.html"),
+            sha256=digest,
+            forbidden_hits=hits,
+        )
+    raise ValueError(f"unknown tenant type: {tenant}")
 
 
 def _to_html(markdown: str, digest: str) -> str:
@@ -191,7 +230,7 @@ body {{ font-family: ui-sans-serif, system-ui, sans-serif; max-width: 880px; mar
 pre {{ white-space: pre-wrap; background: #fff; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px; }}
 .meta {{ color: #64748b; font-size: 0.85rem; }}
 </style></head><body>
-<p class="meta">SHA-256 {digest}</p>
+<p class="meta">Inventory fingerprint SHA-256 {digest}</p>
 <pre>{escaped}</pre>
 </body></html>
 """

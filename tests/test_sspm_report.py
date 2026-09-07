@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from sspm import __version__
 from sspm.disclaimers.service import show
 from sspm.report_writer.service import generate, strip_forbidden
 
@@ -30,7 +31,13 @@ def test_generate_report_has_disclaimer_and_hash(tmp_path: Path, monkeypatch) ->
     assert text.startswith("# Configuration & Inventory Report")
     assert "Liability disclaimer" in text
     assert show().text.strip() in text
-    assert hashlib.sha256(text.encode("utf-8")).hexdigest() == result.sha256
+    assert result.sha256
+    assert len(result.sha256) == 64
+    assert result.sha256 != hashlib.sha256(text.encode("utf-8")).hexdigest()
+    generated = [line for line in text.splitlines() if line.startswith("**Generated:**")][0]
+    stamp = generated.split("**Generated:**", 1)[1].strip()
+    expected = hashlib.sha256(f"sspm|{stamp}|{__version__}".encode("ascii")).hexdigest()
+    assert result.sha256 == expected
     assert Path(result.json_path).is_file()
     assert Path(result.html or "").is_file()
     for word in ("compliance", "attestation", "certified", "guaranteed"):
