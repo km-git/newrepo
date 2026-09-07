@@ -3,23 +3,28 @@
 from __future__ import annotations
 
 import json
+from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
-from urllib.request import Request, urlopen
 
 from sspm.web.app import SspmHandler, dashboard_state, render_html, write_static
 
+_LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
 
-def _get(url: str) -> tuple[int, str]:
-    with urlopen(url, timeout=10) as resp:
+
+def _http(host: str, port: int, method: str, path: str, *, timeout: float) -> tuple[int, str]:
+    """Talk to the in-process explorer. http.client has no file:// handler."""
+    if host not in _LOOPBACK:
+        raise AssertionError(f"refusing non-loopback test host {host!r}")
+    conn = HTTPConnection(host, int(port), timeout=timeout)
+    try:
+        body = b"" if method == "POST" else None
+        conn.request(method, path, body=body)
+        resp = conn.getresponse()
         return resp.status, resp.read().decode("utf-8")
-
-
-def _post(url: str) -> tuple[int, str]:
-    req = Request(url, data=b"", method="POST")
-    with urlopen(req, timeout=30) as resp:
-        return resp.status, resp.read().decode("utf-8")
+    finally:
+        conn.close()
 
 
 def test_dashboard_state_and_html(tmp_path: Path, monkeypatch) -> None:
@@ -45,20 +50,20 @@ def test_http_health_and_index(tmp_path: Path, monkeypatch) -> None:
     thread.start()
     host, port = httpd.server_address[:2]
     try:
-        status, body = _get(f"http://{host}:{port}/api/sspm/health")
+        status, body = _http(host, port, "GET", "/api/sspm/health", timeout=10)
         assert status == 200
         assert json.loads(body)["status"] == "ok"
-        status, page = _get(f"http://{host}:{port}/sspm")
+        status, page = _http(host, port, "GET", "/sspm", timeout=10)
         assert status == 200
         assert "Inventory Explorer" in page
-        status, api = _get(f"http://{host}:{port}/api/sspm")
+        status, api = _http(host, port, "GET", "/api/sspm", timeout=10)
         assert status == 200
         assert json.loads(api)["oauth"]
-        status, scanned = _post(f"http://{host}:{port}/api/sspm/scan")
+        status, scanned = _http(host, port, "POST", "/api/sspm/scan", timeout=30)
         assert status == 200
         payload = json.loads(scanned)
         assert payload["oauth"]
-        status, report = _get(f"http://{host}:{port}/sspm/report/m365")
+        status, report = _http(host, port, "GET", "/sspm/report/m365", timeout=10)
         assert status == 200
         assert "Configuration" in report
     finally:

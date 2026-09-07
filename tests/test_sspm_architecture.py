@@ -66,6 +66,7 @@ def test_workflows_exist() -> None:
     assert "pull_request:" in approve
     assert "github.event.pull_request.user.login" in approve
     assert "dependabot[bot]" in approve
+    assert "[auto-approved]" in approve
     assert "hmarr/auto-approve-action" in approve
     watch = (wf / "sspm-watch.yml").read_text(encoding="utf-8")
     assert "Australia/Sydney" in watch

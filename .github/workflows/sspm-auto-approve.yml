@@ -14,12 +14,13 @@ jobs:
   auto-approve:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Bot PRs only. Human-authored PRs are never auto-approved.
+    # Same-repo only. Bots, or operator opt-in via [auto-approved] in the body.
     if: >
       github.repository == github.event.pull_request.head.repo.full_name &&
       (
         github.event.pull_request.user.login == 'dependabot[bot]' ||
-        github.event.pull_request.user.login == 'github-actions[bot]'
+        github.event.pull_request.user.login == 'github-actions[bot]' ||
+        contains(github.event.pull_request.body, '[auto-approved]')
       )
     steps:
       - name: Block auto-merge of disclaimer and loop
