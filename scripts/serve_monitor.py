@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
 from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
+from cost.webui.server import serve_cost_http
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -40,6 +41,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     parsed = urlparse(self.path)
     if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
+    if serve_cost_http(self, "GET", parsed.path, parse_qs(parsed.query)):
+      return
     if parsed.path in ("/monitor", "/monitor/"):
       self.send_response(302)
       self.send_header("Location", "/output/monitor.html")
@@ -62,6 +65,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     parsed = urlparse(self.path)
     length = int(self.headers.get("Content-Length") or 0)
     body = self.rfile.read(length) if length else b""
+    if serve_cost_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
+      return
     if serve_monetize_http(
       self,
       "POST",
@@ -112,6 +117,12 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
   print(f"[monitor] Tape-to-Cloud API: http://127.0.0.1:{port}/api/tape-to-cloud/status")
   print(f"[monitor] Tape-to-Cloud reports: http://127.0.0.1:{port}/tape-to-cloud/reports")
   print(f"[monitor] Tape-to-Cloud validation: http://127.0.0.1:{port}/tape-to-cloud/validation")
+  print("[monitor] Cost & Configuration Review:")
+  print()
+  for url in explorer_launch_urls(host, port, "/cost"):
+    print(url)
+    print()
+  print(f"[monitor] Cost API: http://127.0.0.1:{port}/api/cost/status")
   print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()
