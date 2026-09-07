@@ -63,6 +63,7 @@ def test_pr_agent_workflow_is_sha_pinned_and_skips_without_key() -> None:
     assert "present=true" in text
     assert "CodeRabbit" in text
     assert "pull_request_target" not in text
+    assert "github.event.issue.pull_request" in text
     for uses in USES_RE.findall(text):
         assert not uses.endswith("@main"), uses
         ref = uses.split("@", 1)[1].split("#", 1)[0]
