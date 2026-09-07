@@ -90,6 +90,21 @@
   kind: rss
   module_hint: monetize
   max_items: 5
+- name: cnspec releases
+  url: https://github.com/mondoohq/cnspec/releases.atom
+  kind: rss
+  module_hint: sspm/m365_discovery
+  max_items: 10
+- name: HN SSPM
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=sspm%20OR%20cnspec%20OR%20appomni&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: sspm/audit
+  max_items: 15
+- name: SO microsoft-graph
+  url: https://stackoverflow.com/feeds/tag/microsoft-graph
+  kind: rss
+  module_hint: sspm/m365_discovery
+  max_items: 10
 - name: prowler releases
   url: https://github.com/prowler-cloud/prowler/releases.atom
   kind: rss

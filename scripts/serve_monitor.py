@@ -14,9 +14,6 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
-from engine.monitor_dashboard import build_dashboard_state, publish_monitor
-from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
-from cost.webui.server import serve_cost_http
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -24,6 +21,11 @@ from engine.monetize_ui import (
   publish_monetize,
   serve_monetize_http,
 )
+from engine.monitor_dashboard import build_dashboard_state, publish_monitor
+from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
+from cost.webui.server import serve_cost_http
+from sspm.web.app import serve_sspm_http
+from sspm.web.app import write_static as write_sspm_static
 
 
 class MonitorHandler(SimpleHTTPRequestHandler):
@@ -51,6 +53,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     if parsed.path == "/api/dashboard":
       self._serve_dashboard()
       return
+    if serve_sspm_http(self, "GET", parsed.path, parse_qs(parsed.query), b""):
+      return
     if serve_monetize_http(
       self,
       "GET",
@@ -66,6 +70,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     length = int(self.headers.get("Content-Length") or 0)
     body = self.rfile.read(length) if length else b""
     if serve_cost_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
+      return
+    if serve_sspm_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
       return
     if serve_monetize_http(
       self,
@@ -95,12 +101,22 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       self.wfile.write(err)
 
 
-def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir: str = "output", publish: bool = True) -> None:
+def run(
+  host: str = DEFAULT_BIND_HOST,
+  port: int = DEFAULT_BIND_PORT,
+  output_dir: str = "output",
+  publish: bool = True,
+) -> None:
   if publish:
     paths = publish_monitor(output_dir)
     mpaths = publish_monetize(output_dir)
     print(f"[monitor] wrote {paths['monitor_html']}")
     print(f"[monitor] wrote {mpaths['monetize_html']}")
+    try:
+      spaths = write_sspm_static("reports")
+      print(f"[monitor] wrote {spaths['html']}")
+    except Exception as exc:
+      print(f"[monitor] SSPM static skipped: {exc}")
 
   MonitorHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonitorHandler)
@@ -123,6 +139,12 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
     print(url)
     print()
   print(f"[monitor] Cost API: http://127.0.0.1:{port}/api/cost/status")
+  print("[monitor] SSPM Explorer:")
+  print()
+  for url in explorer_launch_urls(host, port, "/sspm"):
+    print(url)
+    print()
+  print(f"[monitor] SSPM API: http://127.0.0.1:{port}/api/sspm")
   print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()

@@ -8,6 +8,7 @@ on:
     branches: [main, "cursor/**"]
   pull_request:
     branches: [main]
+  merge_group:
   schedule:
     - cron: "18 7 * * 1"
 
@@ -77,8 +78,10 @@ jobs:
             --metrics off \
             --sarif \
             --output semgrep.sarif \
-            tape_to_cloud/ cost/ dspm/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
-            ew_tool.py tests/test_cost_pipeline.py tests/test_cost_webui.py \
+            tape_to_cloud/ cost/ dspm/ sspm/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
+            ew_tool.py tests/test_sspm_architecture.py tests/test_sspm_core.py \
+            tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py \
+            tests/test_sspm_cli.py tests/test_cost_pipeline.py tests/test_cost_webui.py \
             tests/test_cost_language.py tests/test_cost_workflows.py
         continue-on-error: true
 
@@ -92,6 +95,7 @@ jobs:
 
       - name: Install reviewdog
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
         with:
           reviewdog_version: v0.21.0

@@ -1,22 +1,48 @@
-.PHONY: cost-all cost-ui cost-test cost-ruff dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve dspm-gap-audit dspm-watch dspm-monthly
+.PHONY: sspm-audit-inventory sspm-all sspm-test sspm-watch sspm-monthly sspm-web-static sspm-demo \
+	dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve \
+	dspm-gap-audit dspm-watch dspm-monthly
 
 PYTHON ?= python3
+SSPM_DB ?= output/sspm/sspm.sqlite
 DSPM_DB ?= output/dspm/dspm.sqlite
+export SSPM_DB
 export DSPM_DB
 
-cost-all:
-	$(PYTHON) -m cost scan-all --sandbox
-	$(PYTHON) -m cost ui --static
+sspm-audit-inventory:
+	$(PYTHON) -m sspm audit inventory
 
-cost-ui:
-	$(PYTHON) -m cost ui --host 0.0.0.0 --port 8765
+sspm-watch:
+	$(PYTHON) -m sspm loop watch
 
-cost-test:
-	$(PYTHON) -m pytest tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py -q --tb=short
+sspm-monthly:
+	$(PYTHON) -m sspm loop monthly
 
-cost-ruff:
-	ruff check --config ruff.toml cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py
-	ruff format --check cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py
+sspm-web-static:
+	$(PYTHON) -m sspm web --static
+
+sspm-demo:
+	$(PYTHON) -m sspm --persist demo
+
+sspm-all: sspm-audit-inventory
+	$(PYTHON) -m sspm --persist discovery m365
+	$(PYTHON) -m sspm --persist discovery gws
+	$(PYTHON) -m sspm --persist discovery github
+	$(PYTHON) -m sspm --persist discovery slack
+	$(PYTHON) -m sspm --persist discovery okta
+	$(PYTHON) -m sspm --persist oauth-grants list --tenant all
+	$(PYTHON) -m sspm --persist drift diff --tenant m365
+	$(PYTHON) -m sspm --persist compliance map --framework cis-m365 --tenant m365
+	$(PYTHON) -m sspm report generate --tenant m365 --output output/sspm/report.md
+	$(PYTHON) -m sspm tenant add --name demo-m365 --type m365 --client-id demo || true
+	$(PYTHON) -m sspm tenant list
+	$(PYTHON) -m sspm disclaimers show --name disclaimer_au
+	$(PYTHON) -m sspm loop watch
+	$(PYTHON) -m sspm loop monthly
+	$(PYTHON) -m sspm web --static
+	$(PYTHON) -m sspm --persist demo
+
+sspm-test:
+	$(PYTHON) -m pytest tests/test_sspm_architecture.py tests/test_sspm_core.py tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py -q
 
 dspm-audit-inventory:
 	$(PYTHON) -m dspm audit inventory
@@ -57,3 +83,19 @@ dspm-all: dspm-audit-inventory dspm-discover dspm-classify dspm-risk
 
 dspm-test:
 	$(PYTHON) -m pytest tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py -q
+
+.PHONY: cost-all cost-ui cost-test cost-ruff
+
+cost-all:
+	$(PYTHON) -m cost scan-all --sandbox
+	$(PYTHON) -m cost ui --static
+
+cost-ui:
+	$(PYTHON) -m cost ui --host 0.0.0.0 --port 8765
+
+cost-test:
+	$(PYTHON) -m pytest tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py -q --tb=short
+
+cost-ruff:
+	ruff check --config ruff.toml cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py
+	ruff format --check cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py

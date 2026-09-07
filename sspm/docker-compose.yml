@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sspm
+      POSTGRES_DB: sspm
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./sspm/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  cnspec-runner:
+    image: mondoo/cnspec:latest
+    profiles: ["cnspec"]
+    volumes:
+      - ./sspm/cnspec-policies:/etc/cnspec-policies
+      - ./sspm/reports:/home/cnspec/reports
+
+volumes:
+  postgres-data:

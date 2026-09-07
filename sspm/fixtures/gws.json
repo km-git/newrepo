@@ -1,0 +1,16 @@
+{
+  "external_id": "example.com",
+  "display_name": "Example Workspace (demo)",
+  "tenant_type": "gws",
+  "scanner": "fixture",
+  "honest_gap": "cnspec covers Gmail, Drive, Admin; Vault and Cloud Search require a custom MQL policy.",
+  "apps": [{"name": "Drive Backup", "publisher": "Acme Add-on"}],
+  "settings": [
+    {"name": "admin.2sv.enforcement", "value": "off", "source": "admin-sdk", "control_hint": "CIS-GWS 1.2"},
+    {"name": "gmail.imap.enabled", "value": "true", "source": "admin-sdk", "control_hint": "CIS-GWS 2.1"},
+    {"name": "drive.sharing.external", "value": "anyoneWithLink", "source": "admin-sdk", "control_hint": "CIS-GWS 3.1"},
+    {"name": "admin.lessSecureApps", "value": "allowed", "source": "admin-sdk", "control_hint": "CIS-GWS 1.4"},
+    {"name": "calendar.externalSharing", "value": "freeBusy", "source": "admin-sdk", "control_hint": "CIS-GWS 4.1"},
+    {"name": "admin.superAdminCount", "value": "1", "source": "admin-sdk", "control_hint": "CIS-GWS 1.1"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "tenant_type": "m365",
+  "settings": {
+    "securityDefaults.enabled": "true",
+    "authorizationPolicy.defaultUserRolePermissions.allowedToCreateApps": "false",
+    "authorizationPolicy.guestUserRoleId": "2af84b1e-32c8-42b7-82bc-daa82404023b",
+    "authPolicy.expireEnabled": "false",
+    "conditionalAccess.mfaForAdmins": "true",
+    "userConsent.allowed": "false",
+    "sharePoint.sharingCapability": "ExistingExternalUserSharingOnly",
+    "teams.allowExternalDomains": "false",
+    "audit.logRetentionDays": "365"
+  }
+}

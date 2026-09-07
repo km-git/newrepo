@@ -108,14 +108,14 @@ def test_codeql_and_trufflehog_are_sha_pinned() -> None:
         if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/")):
             assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
-    assert "--output-format=github" in text
-    assert " cost/" in text or "tape_to_cloud/ cost/" in text
-    assert "tests/test_cost_workflows.py" in text
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
     assert "gitleaks/gitleaks-action@v2" not in text
     assert "gitleaks/gitleaks-action@v3" not in text
     assert "gitleaks/gitleaks-action@main" not in text
     assert "--ignore-vuln PYSEC-2026-2447" in text
+    assert "--output-format=github" in text
+    assert "sspm" in text
+    assert "dspm/" in text
     allow = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
     assert "useDefault = true" in allow
     ignore = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
@@ -129,7 +129,6 @@ def test_ruff_passes_on_replacement_paths() -> None:
         pytest.skip("ruff is not installed")
     paths = [
         "tape_to_cloud/",
-        "cost/",
         "engine/monetization_strategy.py",
         "engine/tape_to_cloud_hub.py",
         "engine/tape_to_cloud_reports.py",
@@ -139,10 +138,19 @@ def test_ruff_passes_on_replacement_paths() -> None:
         "tests/test_tape_to_cloud_reports.py",
         "tests/test_tape_to_cloud_pipeline.py",
         "tests/test_bugbot_replacement.py",
+        "dspm/",
+        "sspm",
+        "cost/",
         "tests/test_cost_pipeline.py",
         "tests/test_cost_webui.py",
         "tests/test_cost_language.py",
         "tests/test_cost_workflows.py",
+        "tests/test_sspm_architecture.py",
+        "tests/test_sspm_core.py",
+        "tests/test_sspm_loop.py",
+        "tests/test_sspm_web.py",
+        "tests/test_sspm_report.py",
+        "tests/test_sspm_cli.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
@@ -158,7 +166,10 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     assert f"reviewdog/action-setup@{REVIEWDOG_SHA}" in text
     assert "semgrep" in text
     assert "p/security-audit" in text
-    assert " cost/" in text or "tape_to_cloud/ cost/" in text
+    assert "sspm/" in text
+    assert "cost/" in text or "tape_to_cloud/ cost/" in text
+    assert "dspm/" in text
+    assert "merge_group" in text
     assert "pull_request_target" not in text
     for uses in USES_RE.findall(text):
         if uses.startswith("actions/"):

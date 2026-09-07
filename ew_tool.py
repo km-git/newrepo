@@ -457,7 +457,7 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud, /cost)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud, /sspm, /cost)",
   )
   parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui")
   parser.add_argument(
@@ -473,12 +473,22 @@ def main() -> None:
   parser.add_argument(
     "--static",
     action="store_true",
-    help="With --monetize-ui or --cost-ui: write self-contained HTML and print a file:// path (no server)",
+    help="With --monetize-ui, --sspm-ui, or --cost-ui: write self-contained HTML and print a file:// path (no server)",
+  )
+  parser.add_argument(
+    "--sspm-ui",
+    action="store_true",
+    help="Serve SSPM Configuration & Inventory Explorer, or with --static write reports/sspm_explorer.html",
   )
   parser.add_argument(
     "--cost-ui",
     action="store_true",
     help="Serve Cloud Cost & Configuration Review UI, or with --static write reports/cost_explorer.html",
+  )
+  parser.add_argument(
+    "--sspm-report",
+    action="store_true",
+    help="Generate fixture-backed SSPM reports for all tenant types and exit",
   )
   parser.add_argument(
     "--tape-ingest",
@@ -508,16 +518,44 @@ def main() -> None:
   args = parser.parse_args()
   _warn_invalid_license_tier()
 
-  if args.monitor or args.monetize_ui or args.cost_ui:
-    if args.cost_ui and args.static:
-      from cost.pipeline import run_all
-      from cost.webui.server import write_static_html
+  if args.sspm_report:
+    from sspm.cli import main as sspm_main
 
-      run_all(sandbox=True)
-      path = write_static_html()
-      print(path.resolve().as_uri())
-      print(str(path.resolve()))
-      return
+    raise SystemExit(sspm_main(["--persist", "demo"]))
+
+  if args.sspm_ui and args.static:
+    from pathlib import Path as _Path
+
+    from sspm.web.app import write_static as write_sspm_static
+
+    paths = write_sspm_static("reports")
+    print(f"file://{_Path(paths['html']).resolve()}")
+    print(f"[sspm-ui] wrote {paths['html']}")
+    return
+
+  if args.sspm_ui and not args.monitor:
+    from sspm.web.app import run as run_sspm
+
+    run_sspm(host=args.monitor_host, port=args.monitor_port)
+    return
+
+  if args.cost_ui and args.static:
+    from cost.pipeline import run_all
+    from cost.webui.server import write_static_html
+
+    run_all(sandbox=True)
+    path = write_static_html()
+    print(path.resolve().as_uri())
+    print(str(path.resolve()))
+    return
+
+  if args.cost_ui and not args.monitor:
+    from cost.webui.server import run_ui
+
+    run_ui(host=args.monitor_host, port=args.monitor_port, static=False, sandbox=True)
+    return
+
+  if args.monitor or args.monetize_ui:
     if args.monetize_ui and args.static:
       from scripts.serve_monetize import write_static as write_monetize_static
 
@@ -527,10 +565,6 @@ def main() -> None:
       from scripts.serve_monitor import run as run_monitor
 
       run_monitor(host=args.monitor_host, port=args.monitor_port, output_dir=args.output_dir)
-    elif args.cost_ui:
-      from cost.webui.server import run_ui
-
-      run_ui(host=args.monitor_host, port=args.monitor_port, static=False, sandbox=True)
     else:
       from scripts.serve_monetize import run as run_monetize
 
