@@ -97,9 +97,7 @@ a { color:var(--accent); }
         f"<tr><td>{r['control_id']}</td><td>{r['title']}</td><td>{r['reference_status']}</td></tr>"
         for r in state["control_refs_m365"]
     )
-    report_links = "".join(
-        f"<li>{kind}: <a href='/sspm/report/{kind}'>open HTML</a></li>" for kind in state["reports"]
-    )
+    report_links = "".join(f"<li>{kind}: <a href='/sspm/report/{kind}'>open HTML</a></li>" for kind in state["reports"])
     module_list = "".join(f"<li><code>sspm/{m}</code></li>" for m in state["modules"])
     disclaimer = state["disclaimer"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return f"""<!DOCTYPE html>
