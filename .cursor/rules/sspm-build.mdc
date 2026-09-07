@@ -1,0 +1,28 @@
+---
+description: SSPM-as-report build — 12 modules, cnspec backbone, $0/month, no Trivy/Steampipe, bot-only auto-approve.
+globs: sspm/**
+alwaysApply: false
+---
+
+# SSPM build
+
+Read-only Configuration & Inventory Report for M365, Google Workspace, GitHub, Slack, Okta.
+
+## Hard rules
+
+1. No new paid services. No Mondoo Platform requirement.
+2. No GPU, no Ollama, no local LLM beyond Hugging Face `dslim/bert-base-NER`.
+3. Do not break `peter-evans/create-pull-request@v8`, `hmarr/auto-approve-action@v4`.
+4. No Trivy in this build. No Steampipe in this build.
+5. Presidio from `data-privacy-stack/presidio`, not `microsoft/presidio`.
+6. Dedupe Discover items by SHA-256 of the canonical URL.
+7. Do not use the words compliance, attestation, certified, secure, guaranteed in **report output**.
+8. Do not scan Slack messages or Gmail bodies.
+9. Do not auto-approve human PRs. Do not auto-merge `sspm/disclaimers/` or `sspm/loop/`.
+10. `pip-audit` runs in `sspm-ci.yml`.
+
+## CLI
+
+JSON default, `--human` for a table. `make sspm-all` runs every module on fixtures.
+
+Web UI: stdlib HTTP (`sspm web` / `ew_tool.py --sspm-ui`). Cursor Cloud: `--sspm-ui --static` → `reports/sspm_explorer.html`.

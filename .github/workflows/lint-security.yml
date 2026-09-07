@@ -23,7 +23,7 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          RUFF_PATHS="tape_to_cloud/ dspm/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_report_html.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_layers.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py"
+          RUFF_PATHS="tape_to_cloud/ dspm/ sspm engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_report_html.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_layers.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py tests/test_sspm_architecture.py tests/test_sspm_core.py tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py tests/test_sspm_cli.py"
           ruff check --output-format=github --config ruff.toml $RUFF_PATHS
           ruff format --check $RUFF_PATHS
 

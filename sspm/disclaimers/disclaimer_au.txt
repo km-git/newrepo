@@ -1,0 +1,9 @@
+This document is a Configuration & Inventory Report produced from customer-authorised, read-only SaaS APIs and/or fixture data. It is not a security assessment, not a legal opinion, and not an audit opinion.
+
+Mavis / the operator does not warrant that any tenant is free of misconfiguration, that any control reference is complete, or that following any observation will produce a particular outcome. Observations can be incomplete, delayed, or wrong. Framework labels (CIS, ISO 27001, NIST 800-53, AU Essential Eight, APRA CPS 234) are mapping aids only — they are not a statement that a control is implemented, operating, or attested.
+
+No mailbox bodies, Drive file bytes, Slack messages, or other user content were retrieved. OAuth grant risk is inferred from granted scopes, not from runtime behaviour of the application.
+
+To the maximum extent permitted by Australian Consumer Law and applicable state law, liability is limited to resupply of the report. Active configuration change, incident response, and managed-service work should be referred to a licensed partner MSP listed in partner_msps.yaml.
+
+By receiving this report you acknowledge it is a point-in-time inventory of settings the customer authorised this tool to read.
