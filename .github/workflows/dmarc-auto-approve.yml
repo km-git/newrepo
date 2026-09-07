@@ -27,18 +27,27 @@ jobs:
 
       - name: Block auto-approve of operator-owned paths
         if: github.event_name != 'merge_group'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          files=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
-          if echo "$files" | grep -Eq 'dmarc/templates/|dmarc/parsedmarc.ini'; then
-            echo "DMARC templates require manual review"
-            exit 1
-          fi
+        id: gate
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            const blocked = files.some(f =>
+              f.filename.startsWith('dmarc/templates/') || f.filename === 'dmarc/parsedmarc.ini'
+            );
+            if (blocked) {
+              core.setOutput('skip', 'true');
+              core.info('Manual review required for templates/parsedmarc.ini');
+            } else {
+              core.setOutput('skip', 'false');
+            }
 
       - name: Approve bot PR
-        if: github.event_name != 'merge_group'
-        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
+        if: github.event_name != 'merge_group' && steps.gate.outputs.skip != 'true'
+        uses: hmarr/auto-approve-action@05a696a09d381a5a0d142c755f7eacbb19eb6525 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
