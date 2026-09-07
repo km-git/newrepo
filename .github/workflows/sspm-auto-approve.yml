@@ -1,0 +1,42 @@
+name: sspm-auto-approve
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >
+      github.repository == github.event.pull_request.head.repo.full_name &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+       github.event.pull_request.user.login == 'github-actions[bot]' ||
+       contains(github.event.pull_request.body, '[auto-approved]'))
+    steps:
+      - name: Block auto-merge of disclaimers and loop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api "repos/${{ github.repository }}/pulls/${PR}/files" --jq '.[].filename')
+          if echo "$files" | grep -qE 'sspm/disclaimers/|sspm/loop/'; then
+            echo "Disclaimer wording and forum-watcher logic require manual review"
+            exit 1
+          fi
+
+      - name: Approve the PR
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge (squash)
+        if: github.event.pull_request.user.login == 'dependabot[bot]' || contains(github.event.pull_request.body, '[auto-approved]')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr merge "$PR" --auto --squash

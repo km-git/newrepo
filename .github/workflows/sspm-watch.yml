@@ -1,0 +1,48 @@
+name: sspm-watch
+
+# Monday 09:00 AEST = Sunday 23:00 UTC
+on:
+  schedule:
+    - cron: "0 23 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install SSPM
+        run: pip install -e .
+
+      - name: Run Discover + improve cycle
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m sspm loop improve
+
+      - name: Force-add Discover artifacts
+        run: |
+          git add -f state/seen.json discoveries/sspm/ monthly/*.md || true
+
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "discover: SSPM forum improve cycle"
+          title: "Discover — SSPM improve cycle"
+          body: |
+            Auto-generated SSPM discovery cycle.
+            [auto-approved]
+          branch: discoveries/sspm-weekly
+          delete-branch: true
+          add-paths: |
+            discoveries/sspm/
+            state/seen.json
+            monthly/*.md

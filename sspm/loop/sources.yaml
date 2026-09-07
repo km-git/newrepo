@@ -1,0 +1,21 @@
+sources:
+  - name: Mondoo cnspec releases
+    url: https://github.com/mondoohq/cnspec/releases
+    module_hint: sspm/m365_discovery
+    description: Open-source xSPM scan engine updates
+  - name: CIS Microsoft 365 benchmark
+    url: https://www.cisecurity.org/benchmark/microsoft_365
+    module_hint: sspm/compliance_map
+    description: CIS M365 benchmark reference updates
+  - name: AppOmni blog
+    url: https://appomni.com/blog/
+    module_hint: sspm
+    description: SSPM vendor posture observations
+  - name: Microsoft Graph changelog
+    url: https://learn.microsoft.com/en-us/graph/changelog
+    module_hint: sspm/m365_discovery
+    description: Graph API changes affecting M365 discovery
+  - name: Okta developer blog
+    url: https://developer.okta.com/blog/
+    module_hint: sspm/okta_discovery
+    description: Okta API and posture updates

@@ -1,0 +1,2 @@
+See partner_msps.yaml for the operator-maintained list of Australian MSP partners
+who can perform active remediation work referred from SSPM reports.

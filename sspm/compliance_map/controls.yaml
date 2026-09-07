@@ -1,0 +1,27 @@
+cis-m365:
+  CIS-M365-1.1:
+    title: "Ensure MFA is enabled for all users"
+    matches: [mfa_enforced, mfa]
+  CIS-M365-1.2:
+    title: "Block legacy authentication"
+    matches: [legacy_auth_blocked, legacy_auth]
+cis-gws:
+  CIS-GWS-1.1:
+    title: "Enforce 2-Step Verification"
+    matches: [2sv_enforced, mfa]
+iso27001:
+  A.5.15:
+    title: "Access control"
+    matches: [mfa_enforced, 2fa_required, sso_enabled]
+nist-800-53:
+  IA-2:
+    title: "Identification and Authentication"
+    matches: [mfa_enforced, 2sv_enforced]
+au-essential-eight:
+  MFA:
+    title: "Multi-factor authentication"
+    matches: [mfa_enforced, 2fa_required]
+apra-cps-234:
+  INFO-SEC:
+    title: "Information security capability"
+    matches: [mfa_enforced, legacy_auth_blocked]

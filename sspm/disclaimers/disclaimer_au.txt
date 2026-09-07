@@ -1,0 +1,13 @@
+LIABILITY DISCLAIMER (AU)
+
+This Configuration & Inventory Report is provided for informational purposes only.
+It reflects read-only observations of SaaS tenant configuration at the time of scan.
+It is NOT a security assessment, audit, certification, or guarantee of any kind.
+
+The operator makes no warranties, express or implied, regarding accuracy or completeness.
+Active remediation, incident response, and policy enforcement are referred to partner MSPs
+listed in disclaimers/partner_msps.yaml.
+
+By using this report you agree that liability is limited to the fees paid for the report
+generation service (if any) and excludes consequential damages to the maximum extent
+permitted by Australian law.

@@ -1,0 +1,7 @@
+# Partner MSP registry — operator fills in their own partners.
+partners: []
+# Example:
+# - name: Example MSP Pty Ltd
+#   contact: ops@example.com.au
+#   regions: [AU-NSW, AU-VIC]
+#   services: [m365, google_workspace, okta]
