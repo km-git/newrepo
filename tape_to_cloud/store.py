@@ -18,9 +18,13 @@ def default_store() -> Path:
 
 def object_path(store: Path, digest: str) -> Path:
     digest = sha256_hex(digest)
-    dest = (store.resolve() / "objects" / digest[:2] / digest).resolve()
-    dest.relative_to((store.resolve() / "objects").resolve())
-    return dest
+    objects_root = os.path.realpath(os.path.join(os.path.realpath(str(store)), "objects"))
+    shard = digest[:2]
+    candidate = os.path.realpath(os.path.join(objects_root, shard, digest))
+    prefix = objects_root + os.sep
+    if not candidate.startswith(prefix):
+        raise ValueError(f"object path escapes store: {digest!r}")
+    return Path(candidate)
 
 
 def put_file(store: Path, source: Path, *, expected_sha256: str | None = None) -> tuple[str, Path]:

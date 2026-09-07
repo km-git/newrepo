@@ -7,6 +7,7 @@ It does not drive LTO hardware. `.enc` files without `--unwrap-key` are refused 
 from __future__ import annotations
 
 import json
+import os
 import tarfile
 import uuid
 from datetime import UTC, datetime
@@ -150,9 +151,13 @@ def restore_job(job_id: str, dest: Path, *, store: Path | None = None) -> dict[s
     report = json.loads(report_path.read_text(encoding="utf-8"))
     dest = dest.resolve()
     dest.mkdir(parents=True, exist_ok=True)
+    dest_root = os.path.realpath(str(dest))
     restored = []
     for obj in report.get("objects") or []:
-        out = dest / _safe_relpath(str(obj["path"]))
+        rel = _safe_relpath(str(obj["path"]))
+        out = Path(os.path.realpath(os.path.join(dest_root, str(rel))))
+        if not str(out).startswith(dest_root + os.sep) and str(out) != dest_root:
+            raise ValueError(f"restore path escapes dest: {rel}")
         get_file(store, obj["sha256"], out)
         restored.append({"path": str(out), "sha256": sha256_file(out), "match": True})
     append_event(job_dir / "coc.jsonl", "restore", dest=str(dest), count=len(restored))
