@@ -7,9 +7,8 @@ trading-analysis tool. Local stdlib dashboards (no Flask/FastAPI): `--monitor`
 (binds `0.0.0.0:8765`) and `--monetize-ui` (Monetize Explorer at `/monetize`).
 On Cursor Cloud, `http://127.0.0.1:8765` is the VM, not the user's laptop —
 use `python3 ew_tool.py --monetize-ui --static` and open
-`reports/monetize_explorer.html`. DMARC deliverability explorer: `python3 ew_tool.py --dmarc-ui --static`
-and open `reports/dmarc_explorer.html`, or `--dmarc-ui` (binds `0.0.0.0:8765`, path `/dmarc`).
-CLI: `python3 -m dmarc` / `make dmarc-all`.
+`reports/monetize_explorer.html`. DMARC deliverability explorer: `python3 ew_tool.py --dmarc-ui --static` and open `reports/dmarc_explorer.html`. SSPM Explorer: `python3 ew_tool.py --sspm-ui --static`
+and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`).
 
 ### Environment
 
@@ -37,6 +36,10 @@ CLI: `python3 -m dmarc` / `make dmarc-all`.
 - DMARC explorer (offline): `.venv/bin/python ew_tool.py --dmarc-ui --static` → open `reports/dmarc_explorer.html`
 - DMARC explorer (server): `.venv/bin/python ew_tool.py --dmarc-ui` prints `http://127.0.0.1:8765/dmarc`
 - DMARC CLI: `.venv/bin/python -m dmarc --help` or `make dmarc-all` (sandbox domain `example.com.au`)
+- SSPM Explorer (offline): `.venv/bin/python ew_tool.py --sspm-ui --static` → open `reports/sspm_explorer.html`
+- SSPM Explorer (server): `.venv/bin/python ew_tool.py --sspm-ui` or `--monitor` then `http://127.0.0.1:8765/sspm`
+- SSPM CLI: `.venv/bin/python -m sspm demo` or `make sspm-all`
+- DSPM CLI: `.venv/bin/python -m dspm audit inventory` or `make dspm-all`
 - Tape-to-Cloud live ingest (real file bytes, not sample reports):
   `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
   `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.

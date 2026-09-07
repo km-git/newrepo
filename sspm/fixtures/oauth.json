@@ -1,0 +1,52 @@
+{
+  "grants": [
+    {
+      "tenant_type": "m365",
+      "app_name": "Contoso Reports",
+      "publisher": "Contoso",
+      "scopes": "User.Read.All Mail.Read Files.ReadWrite.All Directory.ReadWrite.All",
+      "last_used": "2026-08-01",
+      "risk_level": "high"
+    },
+    {
+      "tenant_type": "m365",
+      "app_name": "Microsoft Graph Explorer",
+      "publisher": "Microsoft",
+      "scopes": "User.Read",
+      "last_used": "2026-09-01",
+      "risk_level": "low"
+    },
+    {
+      "tenant_type": "gws",
+      "app_name": "Drive Backup",
+      "publisher": "Acme Add-on",
+      "scopes": "https://www.googleapis.com/auth/drive",
+      "last_used": "2026-07-12",
+      "risk_level": "high"
+    },
+    {
+      "tenant_type": "github",
+      "app_name": "Slack GitHub",
+      "publisher": "Slack",
+      "scopes": "repo,read:org",
+      "last_used": "2026-09-04",
+      "risk_level": "high"
+    },
+    {
+      "tenant_type": "slack",
+      "app_name": "Google Drive",
+      "publisher": "Google",
+      "scopes": "files:read",
+      "last_used": "2026-09-02",
+      "risk_level": "low"
+    },
+    {
+      "tenant_type": "okta",
+      "app_name": "Custom SAML HR",
+      "publisher": "internal",
+      "scopes": "okta.users.read okta.groups.manage",
+      "last_used": "2026-06-20",
+      "risk_level": "high"
+    }
+  ]
+}

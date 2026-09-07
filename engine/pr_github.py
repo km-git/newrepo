@@ -71,13 +71,16 @@ def _gh_run(args: List[str]) -> str:
 def _optional_ci_patterns() -> tuple:
   raw = os.environ.get(
     "EW_PR_CI_OPTIONAL",
-    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot,codeql,pr-agent",
+    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot,auto-approve",
   )
   return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
 
 
 def _is_required_ci_check(check: dict) -> bool:
   name = (check.get("name") or "").lower()
+  # GitHub code-scanning rollup is named "CodeQL". Workflow jobs are "CodeQL (python)" / "CodeQL (actions)".
+  if name == "codeql":
+    return False
   return not any(pat in name for pat in _optional_ci_patterns())
 
 
@@ -262,56 +265,53 @@ def approve_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]
   return {"action": "approve", "output": out}
 
 
+def dismiss_stale_change_requests(
+  pr_number: int,
+  repo: str = "",
+  *,
+  actor: str = "github-actions[bot]",
+  message: str = "Stale change request: required CI is green.",
+) -> Dict[str, Any]:
+  """Dismiss leftover CHANGES_REQUESTED reviews from `actor`.
+
+  GitHub Actions often cannot *approve* (org setting), but the same bot can
+  dismiss its own earlier REJECT reviews so merge is no longer blocked.
+  """
+  slug = repo or _repo_slug()
+  reviews = _gh_json(["api", f"repos/{slug}/pulls/{pr_number}/reviews"])
+  dismissed: List[Dict[str, Any]] = []
+  errors: List[Dict[str, Any]] = []
+  if not isinstance(reviews, list):
+    return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
+  for review in reviews:
+    user = ((review.get("user") or {}).get("login") or "")
+    if user != actor or review.get("state") != "CHANGES_REQUESTED":
+      continue
+    rid = review.get("id")
+    try:
+      out = _gh_run(
+        [
+          "api",
+          "-X",
+          "PUT",
+          f"repos/{slug}/pulls/{pr_number}/reviews/{rid}/dismissals",
+          "-f",
+          f"message={message}",
+          "-F",
+          "event=DISMISS",
+        ]
+      )
+      dismissed.append({"id": rid, "output": out})
+    except RuntimeError as exc:
+      errors.append({"id": rid, "error": str(exc)})
+  return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
+
+
 def request_changes_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]:
   slug = repo or _repo_slug()
   args = ["pr", "review", str(pr_number), "--request-changes", "--repo", slug, "--body", body or "Changes requested by executive consensus."]
   out = _gh_run(args)
   return {"action": "request_changes", "output": out}
-
-
-def dismiss_stale_change_requests(
-  pr_number: int,
-  repo: str = "",
-  message: str = "Superseded: required CI is green; stale CHANGES_REQUESTED dismissed.",
-) -> Dict[str, Any]:
-  """Clear github-actions[bot] CHANGES_REQUESTED reviews that block merge after CI recovered."""
-  slug = repo or _repo_slug()
-  reviews = _gh_json(
-    [
-      "api",
-      f"repos/{slug}/pulls/{pr_number}/reviews",
-      "-H",
-      "Accept: application/vnd.github+json",
-    ]
-  )
-  if not isinstance(reviews, list):
-    reviews = []
-  dismissed: List[Any] = []
-  errors: List[str] = []
-  for review in reviews:
-    if review.get("state") != "CHANGES_REQUESTED":
-      continue
-    login = ((review.get("user") or {}).get("login") or "")
-    if login not in {"github-actions[bot]", "github-actions"}:
-      continue
-    review_id = review.get("id")
-    try:
-      _gh_run(
-        [
-          "api",
-          "-X",
-          "PUT",
-          f"repos/{slug}/pulls/{pr_number}/reviews/{review_id}/dismissals",
-          "-H",
-          "Accept: application/vnd.github+json",
-          "-f",
-          f"message={message}",
-        ]
-      )
-      dismissed.append(review_id)
-    except RuntimeError as exc:
-      errors.append(f"{review_id}: {exc}")
-  return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
 
 
 def comment_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]:
