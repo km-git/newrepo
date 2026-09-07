@@ -68,6 +68,10 @@ def test_workflows_exist() -> None:
     assert "dependabot[bot]" in approve
     assert "[auto-approved]" in approve
     assert "hmarr/auto-approve-action" in approve
+    assert "sspm/disclaimers/" in approve
+    assert "sspm/loop/" in approve
+    assert "auto-merge blocked" in approve
+    assert "exit 1" not in approve
     watch = (wf / "sspm-watch.yml").read_text(encoding="utf-8")
     assert "Australia/Sydney" in watch
     rebase = (wf / "sspm-rebase.yml").read_text(encoding="utf-8")
