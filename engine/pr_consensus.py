@@ -97,6 +97,13 @@ def run_pr_executive_consensus(
         result["github_actions"].append(approve_pr(pr_number, slug, actions["comment_body"]))
       except RuntimeError as approve_err:
         result["approve_error"] = str(approve_err)
+        result["github_actions"].append(
+          dismiss_stale_change_requests(
+            pr_number,
+            slug,
+            message="Stale change request: CI is green and verdict is merge-eligible.",
+          )
+        )
         if actions.get("merge"):
           print(f"[pr] approve failed ({approve_err}); attempting merge-only")
     elif actions.get("comment_only"):

@@ -50,7 +50,13 @@ def load_seen(path: Path | None = None) -> dict[str, Any]:
     target = path or STATE_PATH
     if not target.exists():
         return {"items": {}}
-    return json.loads(target.read_text(encoding="utf-8"))
+    raw = json.loads(target.read_text(encoding="utf-8"))
+    if isinstance(raw, list):
+        return {"items": {h: {"source": "legacy"} for h in raw if isinstance(h, str)}}
+    if isinstance(raw, dict):
+        raw.setdefault("items", {})
+        return raw
+    return {"items": {}}
 
 
 def save_seen(state: dict[str, Any], path: Path | None = None) -> None:

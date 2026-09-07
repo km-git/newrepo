@@ -118,6 +118,9 @@ def test_codeql_and_trufflehog_are_sha_pinned() -> None:
     assert "gitleaks/gitleaks-action@v3" not in text
     assert "gitleaks/gitleaks-action@main" not in text
     assert "--ignore-vuln PYSEC-2026-2447" in text
+    assert "--output-format=github" in text
+    assert "sspm" in text
+    assert "dspm/" in text
     allow = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
     assert "useDefault = true" in allow
     ignore = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
@@ -150,6 +153,13 @@ def test_ruff_passes_on_replacement_paths() -> None:
         "dmarc",
         "tests/dmarc",
         "scripts/serve_dmarc.py",
+        "sspm",
+        "tests/test_sspm_architecture.py",
+        "tests/test_sspm_core.py",
+        "tests/test_sspm_loop.py",
+        "tests/test_sspm_web.py",
+        "tests/test_sspm_report.py",
+        "tests/test_sspm_cli.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
@@ -165,6 +175,9 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     assert f"reviewdog/action-setup@{REVIEWDOG_SHA}" in text
     assert "semgrep" in text
     assert "p/security-audit" in text
+    assert "sspm/" in text
+    assert "dspm/" in text
+    assert "merge_group" in text
     assert "pull_request_target" not in text
     assert "dmarc/" in text
     assert "dspm/" in text
