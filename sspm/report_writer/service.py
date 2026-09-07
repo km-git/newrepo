@@ -146,9 +146,8 @@ def generate(
     body = scrub_text(body)
     dest = under_workdir(output if output is not None else DEFAULT_REPORT_MD)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    # Inventory report (not a credential store). SHA-256 is a tamper-evident digest.
-    dest.write_text(body, encoding="utf-8")  # codeql[py/clear-text-storage-sensitive-data]
-    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()  # codeql[py/weak-sensitive-data-hashing]
+    dest.write_text(body, encoding="utf-8")
+    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
     json_path = dest.with_suffix(".json")
     payload = {
         **ctx,
@@ -157,12 +156,10 @@ def generate(
         "disclaimer": show().text,
         "forbidden_hits": hits,
     }
-    json_path.write_text(
-        json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8"
-    )  # codeql[py/clear-text-storage-sensitive-data]
+    json_path.write_text(json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8")
     html_path = dest.with_suffix(".html")
     html = _to_html(body, digest)
-    html_path.write_text(html, encoding="utf-8")  # codeql[py/clear-text-storage-sensitive-data]
+    html_path.write_text(html, encoding="utf-8")
     return ReportFiles(
         markdown=str(dest),
         json_path=str(json_path),

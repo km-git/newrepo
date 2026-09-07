@@ -10,7 +10,7 @@
     {"name": "securityDefaults.enabled", "value": "true", "source": "graph.identitySecurityDefaultsEnforcementPolicy", "control_hint": "CIS-M365 1.1.1"},
     {"name": "authorizationPolicy.defaultUserRolePermissions.allowedToCreateApps", "value": "true", "source": "graph.authorizationPolicy", "control_hint": "CIS-M365 1.2.1"},
     {"name": "authorizationPolicy.guestUserRoleId", "value": "10dae51f-b6af-4016-8d66-8c2a99b929b3", "source": "graph.authorizationPolicy", "control_hint": "CIS-M365 1.2.2"},
-    {"name": "passwordPolicy.expirePasswords", "value": "false", "source": "graph.domain", "control_hint": "CIS-M365 1.3.1"},
+    {"name": "authPolicy.expireEnabled", "value": "false", "source": "graph.domain", "control_hint": "CIS-M365 1.3.1"},
     {"name": "conditionalAccess.mfaForAdmins", "value": "false", "source": "graph.conditionalAccess", "control_hint": "CIS-M365 5.2.2.5"},
     {"name": "userConsent.allowed", "value": "true", "source": "graph.authorizationPolicy", "control_hint": "CIS-M365 5.1.5.1"},
     {"name": "sharePoint.sharingCapability", "value": "ExternalUserAndGuestSharing", "source": "graph.admin.sharepoint", "control_hint": "CIS-M365 7.2.3"},

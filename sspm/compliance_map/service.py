@@ -15,7 +15,7 @@ CONTROLS_PATH = Path(__file__).with_name("controls.yaml")
 
 HARDENED_ON = {"true", "on", "required", "read", "365"}
 HARDENED_OFF = {"false", "blocked", "restricted", "none", "existingexternalusersharingonly"}
-INVERTED_HINTS = ("allowed", "public", "allowexternal", "lesssecure", "expirepasswords")
+INVERTED_HINTS = ("allowed", "public", "allowexternal", "lesssecure", "expireenabled")
 
 
 def load_controls(path: Path | None = None) -> dict[str, Any]:

@@ -66,5 +66,9 @@ def test_http_health_and_index(tmp_path: Path, monkeypatch) -> None:
         status, report = _http(host, port, "GET", "/sspm/report/m365", timeout=10)
         assert status == 200
         assert "Configuration" in report
+        status, _missing = _http(host, port, "GET", "/sspm/report/../etc/passwd", timeout=10)
+        assert status == 404
+        status, _unknown = _http(host, port, "GET", "/sspm/report/not-a-tenant", timeout=10)
+        assert status == 404
     finally:
         httpd.shutdown()

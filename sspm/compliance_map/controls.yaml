@@ -5,8 +5,8 @@ frameworks:
       maps_to_settings: ["securityDefaults.enabled"]
       expected: "true"
     - control_id: "1.3.1"
-      title: "Password expiration observed"
-      maps_to_settings: ["passwordPolicy.expirePasswords"]
+      title: "Auth expiration observed"
+      maps_to_settings: ["authPolicy.expireEnabled"]
       expected: "false"
     - control_id: "5.1.5.1"
       title: "User consent to apps observed"

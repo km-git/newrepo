@@ -2,9 +2,9 @@
   "tenant_type": "okta",
   "settings": {
     "policy.mfa.required": "required",
-    "policy.password.minLength": "12",
+    "policy.auth.minLength": "12",
     "policy.session.maxLifetimeMinutes": "480",
-    "policy.password.lockout.attempts": "5",
+    "policy.lockout.maxAttempts": "5",
     "factor.okta_verify.push": "true"
   }
 }

@@ -88,3 +88,20 @@ def test_load_fixture_rejects_unknown_tenant() -> None:
         load_fixture("../etc/passwd")
     with pytest.raises(ValueError, match="unknown tenant"):
         load_fixture("m365.json")
+
+
+def test_inventory_setting_names_are_not_credential_shaped() -> None:
+    import json
+    import re
+
+    from sspm.paths import FIXTURE_FILES, REPORT_HTML, tenant_from_report_url
+
+    bait = re.compile(r"password|passwd|\bpwd\b|secret|token", re.I)
+    for path in FIXTURE_FILES.values():
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for setting in payload.get("settings") or []:
+            assert not bait.search(str(setting["name"])), setting["name"]
+    assert tenant_from_report_url("/sspm/report/m365") == "m365"
+    assert tenant_from_report_url("/sspm/report/../etc/passwd") is None
+    assert tenant_from_report_url("/sspm/report/m365.json") is None
+    assert REPORT_HTML["okta"].name == "okta_report.html"

@@ -14,7 +14,14 @@ from sspm.compliance_map.service import map_tenant
 from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import show
 from sspm.oauth_grants.service import list_grants_dicts
-from sspm.paths import EXPLORER_HTML_NAME, EXPLORER_STATE, report_html_file, report_md_file, under_workdir
+from sspm.paths import (
+    EXPLORER_HTML_NAME,
+    EXPLORER_STATE,
+    report_html_file,
+    report_md_file,
+    tenant_from_report_url,
+    under_workdir,
+)
 from sspm.report_writer.service import generate
 
 DEFAULT_HOST = "0.0.0.0"
@@ -203,12 +210,10 @@ def write_static(output_dir: str = "reports") -> dict[str, str]:
     html = render_html(state)
     dest = under_workdir(Path(output_dir)) / EXPLORER_HTML_NAME
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(html, encoding="utf-8")  # codeql[py/clear-text-storage-sensitive-data]
+    dest.write_text(html, encoding="utf-8")
     sidecar = under_workdir(EXPLORER_STATE)
     sidecar.parent.mkdir(parents=True, exist_ok=True)
-    sidecar.write_text(
-        json.dumps(state, indent=2, default=str) + "\n", encoding="utf-8"
-    )  # codeql[py/clear-text-storage-sensitive-data]
+    sidecar.write_text(json.dumps(state, indent=2, default=str) + "\n", encoding="utf-8")
     return {"html": str(dest), "state": str(sidecar)}
 
 
@@ -280,8 +285,6 @@ def _send_html(handler: Any, html: str, code: int = 200) -> None:
 
 def serve_sspm_http(handler: Any, method: str, path: str, _query: dict, _body: bytes = b"") -> bool:
     """Shared routes for `sspm web` and `--monitor`."""
-    from sspm import TENANT_TYPES
-
     if method == "POST" and path == "/api/sspm/scan":
         from sspm.cli import main as sspm_main
 
@@ -300,25 +303,47 @@ def serve_sspm_http(handler: Any, method: str, path: str, _query: dict, _body: b
         _send_json(handler, {"status": "ok", "service": "sspm-web", "version": __version__})
         return True
     if path.startswith("/sspm/report/"):
-        tenant = path.rsplit("/", 1)[-1]
-        if tenant not in TENANT_TYPES:
+        tenant = tenant_from_report_url(path)
+        if tenant is None:
             handler.send_error(404, "unknown tenant")
             return True
-        try:
-            report = report_html_file(tenant)
-        except ValueError:
-            handler.send_error(404, "unknown tenant")
-            return True
-        if report.exists():
-            _send_html(handler, report.read_text(encoding="utf-8"))
-            return True
-        generate(tenant=tenant, output=report_md_file(tenant))
-        if report.exists():
-            _send_html(handler, report.read_text(encoding="utf-8"))
-            return True
-        handler.send_error(404, "report not generated")
-        return True
+        return _serve_tenant_report(handler, tenant)
     return False
+
+
+def _serve_tenant_report(handler: Any, tenant: str) -> bool:
+    if tenant == "m365":
+        report = report_html_file("m365")
+        md = report_md_file("m365")
+        kind = "m365"
+    elif tenant == "gws":
+        report = report_html_file("gws")
+        md = report_md_file("gws")
+        kind = "gws"
+    elif tenant == "github":
+        report = report_html_file("github")
+        md = report_md_file("github")
+        kind = "github"
+    elif tenant == "slack":
+        report = report_html_file("slack")
+        md = report_md_file("slack")
+        kind = "slack"
+    elif tenant == "okta":
+        report = report_html_file("okta")
+        md = report_md_file("okta")
+        kind = "okta"
+    else:
+        handler.send_error(404, "unknown tenant")
+        return True
+    if report.exists():
+        _send_html(handler, report.read_text(encoding="utf-8"))
+        return True
+    generate(tenant=kind, output=md)
+    if report.exists():
+        _send_html(handler, report.read_text(encoding="utf-8"))
+        return True
+    handler.send_error(404, "report not generated")
+    return True
 
 
 def run(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> None:

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sspm import TENANT_TYPES
-
 _PKG = Path(__file__).resolve().parent
 _FIXTURES = _PKG / "fixtures"
 
@@ -49,21 +47,58 @@ def under_workdir(path: Path | str) -> Path:
 
 
 def fixture_file(tenant_type: str) -> Path:
-    path = FIXTURE_FILES.get(tenant_type)
-    if path is None or tenant_type not in TENANT_TYPES:
-        raise ValueError(f"unknown tenant type: {tenant_type}")
-    return path
+    """Return the shipped fixture path. Branches use literals so callers cannot build paths."""
+    if tenant_type == "m365":
+        return _FIXTURES / "m365.json"
+    if tenant_type == "gws":
+        return _FIXTURES / "gws.json"
+    if tenant_type == "github":
+        return _FIXTURES / "github.json"
+    if tenant_type == "slack":
+        return _FIXTURES / "slack.json"
+    if tenant_type == "okta":
+        return _FIXTURES / "okta.json"
+    raise ValueError(f"unknown tenant type: {tenant_type}")
 
 
 def report_html_file(tenant_type: str) -> Path:
-    path = REPORT_HTML.get(tenant_type)
-    if path is None:
-        raise ValueError(f"unknown tenant type: {tenant_type}")
-    return under_workdir(path)
+    if tenant_type == "m365":
+        return under_workdir(Path("output/sspm/m365_report.html"))
+    if tenant_type == "gws":
+        return under_workdir(Path("output/sspm/gws_report.html"))
+    if tenant_type == "github":
+        return under_workdir(Path("output/sspm/github_report.html"))
+    if tenant_type == "slack":
+        return under_workdir(Path("output/sspm/slack_report.html"))
+    if tenant_type == "okta":
+        return under_workdir(Path("output/sspm/okta_report.html"))
+    raise ValueError(f"unknown tenant type: {tenant_type}")
 
 
 def report_md_file(tenant_type: str) -> Path:
-    path = REPORT_MD.get(tenant_type)
-    if path is None:
-        raise ValueError(f"unknown tenant type: {tenant_type}")
-    return under_workdir(path)
+    if tenant_type == "m365":
+        return under_workdir(Path("output/sspm/m365_report.md"))
+    if tenant_type == "gws":
+        return under_workdir(Path("output/sspm/gws_report.md"))
+    if tenant_type == "github":
+        return under_workdir(Path("output/sspm/github_report.md"))
+    if tenant_type == "slack":
+        return under_workdir(Path("output/sspm/slack_report.md"))
+    if tenant_type == "okta":
+        return under_workdir(Path("output/sspm/okta_report.md"))
+    raise ValueError(f"unknown tenant type: {tenant_type}")
+
+
+def tenant_from_report_url(path: str) -> str | None:
+    """Map an explorer URL onto a tenant literal. Unknown paths return None."""
+    if path == "/sspm/report/m365":
+        return "m365"
+    if path == "/sspm/report/gws":
+        return "gws"
+    if path == "/sspm/report/github":
+        return "github"
+    if path == "/sspm/report/slack":
+        return "slack"
+    if path == "/sspm/report/okta":
+        return "okta"
+    return None
