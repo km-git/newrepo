@@ -22,6 +22,13 @@ MODULES = [
     "compliance",
     "ai_security",
     "remediation",
+    "catalog",
+    "governance",
+    "siem",
+    "observability",
+    "warehouse",
+    "integrations",
+    "web",
     "loop",
 ]
 
@@ -34,6 +41,9 @@ PRIMARY_OSS_TOOLS = [
     ("steampipe", "AGPL-3.0", "access"),
     ("cloud-custodian", "Apache-2.0", "remediation"),
     ("datahub", "Apache-2.0", "audit"),
+    ("openmetadata", "Apache-2.0", "catalog"),
+    ("apache-polaris", "Apache-2.0", "catalog"),
+    ("fastapi", "MIT", "web"),
 ]
 
 
@@ -66,6 +76,9 @@ def build_inventory() -> dict:
         "steampipe": "steampipe",
         "cloud-custodian": "c7n",
         "datahub": "acryl-datahub",
+        "openmetadata": "openmetadata-ingestion",
+        "apache-polaris": "apache-polaris",
+        "fastapi": "fastapi",
     }
     for i, (name, license_, module) in enumerate(PRIMARY_OSS_TOOLS):
         pip_name = pip_map.get(name, name)

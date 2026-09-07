@@ -15,6 +15,9 @@ dependencies = [
   "feedparser==6.0.11",
   "rich==14.0.0",
   "psycopg[binary]==3.2.5",
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "jinja2==3.1.5",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +37,7 @@ heavy = [
 
 [project.scripts]
 dspm = "dspm.cli:app"
+dspm-web = "dspm.web.cli:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -41,6 +45,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dspm"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"dspm/web/static" = "dspm/web/static"
+"dspm/web/templates" = "dspm/web/templates"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

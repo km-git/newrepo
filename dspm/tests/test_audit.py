@@ -3,11 +3,11 @@ from pathlib import Path
 from dspm.audit.service import build_inventory
 
 
-def test_inventory_lists_12_modules():
+def test_inventory_lists_modules():
     inv = build_inventory()
-    assert inv["module_count"] == 13  # 12 + loop
+    assert inv["module_count"] == 20
     assert len(inv["modules"]) >= 12
-    assert inv["oss_tool_count"] == 8
+    assert inv["oss_tool_count"] == 11
 
 
 def test_inventory_json_written(tmp_path: Path):

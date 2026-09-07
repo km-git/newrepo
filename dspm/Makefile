@@ -1,4 +1,4 @@
-.PHONY: install test lint dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all
+.PHONY: install test lint dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-web
 
 PYTHON ?= python3
 
@@ -10,6 +10,9 @@ test:
 
 lint:
 	$(PYTHON) -m ruff check dspm/ tests/
+
+dspm-web:
+	$(PYTHON) -m dspm web serve --port 8766
 
 dspm-audit-inventory:
 	$(PYTHON) -m dspm audit inventory
@@ -28,3 +31,7 @@ dspm-all: dspm-audit-inventory dspm-discover dspm-classify dspm-risk
 	$(PYTHON) -m dspm access map --store 42
 	$(PYTHON) -m dspm shadow scan
 	$(PYTHON) -m dspm remediate plan --dry-run
+	$(PYTHON) -m dspm catalog sync --path examples
+	$(PYTHON) -m dspm governance seed
+	$(PYTHON) -m dspm observability dashboard
+	$(PYTHON) -m dspm siem correlate
