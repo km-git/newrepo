@@ -20,9 +20,39 @@ def _normalize_direction(direction: str) -> str:
 
 
 def blocked_timeframes() -> Set[str]:
-  return {
+  base = {
     t.strip() for t in os.environ.get("EW_BLOCKED_TFS", "1d,12h").split(",") if t.strip()
   }
+  if os.environ.get("EW_EXPECTANCY_GATES", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.profit_lab.expectancy import blocked_timeframes_from_expectancy
+
+      base |= blocked_timeframes_from_expectancy()
+    except Exception:
+      pass
+  return base
+
+
+def min_stop_pct() -> float:
+  return float(os.environ.get("EW_MIN_STOP_PCT", "0"))
+
+
+def _stop_distance_ok(row: dict) -> Tuple[bool, Optional[str]]:
+  """Reject setups where stop distance is too tight (fee drag dominates)."""
+  min_pct = min_stop_pct()
+  if min_pct <= 0:
+    return True, None
+  try:
+    wae = float(row.get("wae") or 0)
+    stop = float(row.get("stop_loss") or 0)
+  except (TypeError, ValueError):
+    return True, None
+  if wae <= 0:
+    return False, "invalid_wae"
+  stop_pct = abs(wae - stop) / wae
+  if stop_pct < min_pct:
+    return False, f"stop_too_tight_{stop_pct:.2%}_min_{min_pct:.2%}"
+  return True, None
 
 
 def allowed_directions() -> Optional[Set[str]]:
@@ -50,6 +80,13 @@ def blocked_directions(metrics: Optional[dict] = None) -> Set[str]:
   }
   if os.environ.get("EW_DIRECTION_GATES", "1").lower() in ("0", "false", "no"):
     return explicit
+
+  try:
+    from engine.profit_lab.expectancy import blocked_directions_from_expectancy
+
+    explicit |= blocked_directions_from_expectancy()
+  except Exception:
+    pass
 
   try:
     if metrics is None:
@@ -155,6 +192,11 @@ def gate_row(row: dict, *, intel: Optional[dict] = None, portfolio_state=None) -
 
   if str(row.get("timeframe") or "") in blocked_timeframes():
     reasons.append(f"tf_blocked={row.get('timeframe')}")
+    return False, reasons
+
+  stop_ok, stop_reason = _stop_distance_ok(row)
+  if not stop_ok and stop_reason:
+    reasons.append(stop_reason)
     return False, reasons
 
   dir_ok, dir_reason = direction_allowed(row)
