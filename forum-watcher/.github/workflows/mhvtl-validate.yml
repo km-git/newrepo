@@ -1,0 +1,63 @@
+# Kit copy of .github/workflows/mhvtl-validate.yml
+# Flatten to repo root when using a dedicated t2c-forum-watcher repository.
+name: mhvtl-validate
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: "Comma-separated modules from the promoted Discover"
+        required: false
+        default: "tape-ops,vtl-cloud,tape-duplicate"
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  refuse-hosted-tape:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'mhvtl-runner')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Disk-only smoke (tape tests must SKIP on this runner)
+        env:
+          VALIDATE_MODULES: ${{ github.event.inputs.modules || 'tape-ops,vtl-cloud,tape-duplicate' }}
+          GITHUB_ACTIONS: "true"
+        working-directory: forum-watcher
+        run: |
+          python scripts/validate.py --modules "$VALIDATE_MODULES"
+          echo "GitHub-hosted path is disk-only. Tape tests skip by hard rule."
+
+  mhvtl:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'mhvtl-runner')
+    runs-on: [self-hosted, linux, mhvtl]
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: forum-watcher
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tape + disk smoke on mhvtl runner
+        env:
+          VALIDATE_MODULES: ${{ github.event.inputs.modules || 'tape-ops,vtl-cloud,tape-duplicate' }}
+          MHVTL_FULL: "0"
+        run: python scripts/validate.py --modules "$VALIDATE_MODULES"
+
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gautamkrishnar/keepalive-workflow@v2
+        with:
+          time_elapsed: 45
