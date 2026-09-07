@@ -1,0 +1,46 @@
+name: cost-auto-approve
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  merge_group:
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'merge_group' || (
+        contains(fromJSON('["dependabot[bot]","github-actions[bot]","renovate[bot]"]'), github.actor) &&
+        contains(github.event.pull_request.body, '[auto-approved]')
+      )
+    steps:
+      - name: Skip remediation policy PRs
+        if: github.event_name != 'merge_group'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          files=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only --repo "${{ github.repository }}" || true)
+          if echo "$files" | grep -q '^cost/remediation/'; then
+            echo "cost/remediation/ changed — manual operator review required"
+            echo "skip=true" >> "$GITHUB_ENV"
+          else
+            echo "skip=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Auto approve bot PR
+        if: env.skip != 'true' && github.event_name != 'merge_group'
+        uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          review-message: "Auto-approved bot PR (cost-auto-approve). Remediation YAML is excluded."
+
+      - name: Enable auto-merge (merge_group 422-safe)
+        if: env.skip != 'true' && github.event_name != 'merge_group'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --auto --squash || true

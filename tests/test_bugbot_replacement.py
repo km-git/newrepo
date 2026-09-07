@@ -90,6 +90,7 @@ def test_ruff_passes_on_replacement_paths() -> None:
         pytest.skip("ruff is not installed")
     paths = [
         "tape_to_cloud/",
+        "cost/",
         "engine/monetization_strategy.py",
         "engine/tape_to_cloud_hub.py",
         "engine/tape_to_cloud_reports.py",
@@ -99,6 +100,10 @@ def test_ruff_passes_on_replacement_paths() -> None:
         "tests/test_tape_to_cloud_reports.py",
         "tests/test_tape_to_cloud_pipeline.py",
         "tests/test_bugbot_replacement.py",
+        "tests/test_cost_pipeline.py",
+        "tests/test_cost_webui.py",
+        "tests/test_cost_language.py",
+        "tests/test_cost_workflows.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)

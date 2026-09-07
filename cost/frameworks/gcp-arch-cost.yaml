@@ -1,0 +1,12 @@
+pillar: Cost Optimization
+controls:
+  - id: GCP-ARCH-COST-01
+    name: Visibility and allocation
+    maps_to: ["findings_untagged", "findings_costs"]
+  - id: GCP-ARCH-COST-02
+    name: Resource efficiency
+    maps_to: ["findings_rightsizing"]
+  - id: GCP-ARCH-COST-03
+    name: Continuously monitor and improve
+    maps_to: ["findings_drift"]
+attribution: "GCP Architecture Framework Cost Optimization. Mapping only."

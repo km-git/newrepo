@@ -4,10 +4,12 @@
 
 This repo is a single Python CLI product: `ew_tool.py`, an Elliott Wave + harmonic
 trading-analysis tool. Local stdlib dashboards (no Flask/FastAPI): `--monitor`
-(binds `0.0.0.0:8765`) and `--monetize-ui` (Monetize Explorer at `/monetize`).
+(binds `0.0.0.0:8765`), `--monetize-ui` (Monetize Explorer at `/monetize`),
+and `--cost-ui` (Cloud Cost & Configuration Review at `/cost`).
 On Cursor Cloud, `http://127.0.0.1:8765` is the VM, not the user's laptop —
 use `python3 ew_tool.py --monetize-ui --static` and open
-`reports/monetize_explorer.html`.
+`reports/monetize_explorer.html`, or `python3 ew_tool.py --cost-ui --static`
+and open `reports/cost_explorer.html`.
 
 ### Environment
 
@@ -32,6 +34,8 @@ use `python3 ew_tool.py --monetize-ui --static` and open
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
 - Monetize Explorer (server): `.venv/bin/python ew_tool.py --monetize-ui` binds `0.0.0.0:8765` and prints `http://127.0.0.1:8765/monetize` on its own line
+- Cloud Cost & Configuration Review (offline): `.venv/bin/python ew_tool.py --cost-ui --static` → open `reports/cost_explorer.html`
+- Cloud Cost & Configuration Review (server): `.venv/bin/python -m cost ui` or `--cost-ui` binds `/cost`. End-to-end sandbox: `make cost-all`
 - Tape-to-Cloud live ingest (real file bytes, not sample reports):
   `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
   `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.

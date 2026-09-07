@@ -1,0 +1,15 @@
+policies:
+  - name: cost-anomaly-alert-dryrun
+    resource: aws.ec2
+    description: >
+      Observation-only. Placeholder for cost-anomaly review (idle + untagged).
+      dryrun is true. No destructive actions.
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - type: instance-age
+            days: 30
+            op: greater-than
+    actions: []
+    metadata:
+      dryrun: true

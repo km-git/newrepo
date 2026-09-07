@@ -1,0 +1,65 @@
+name: cost-issue-fix
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to draft a fix for
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  draft-fix:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(join(github.event.issue.labels.*.name, ','), 'good first issue')
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Draft issue-fix note
+        env:
+          ISSUE: ${{ github.event.issue.number || inputs.issue_number }}
+          TITLE: ${{ github.event.issue.title || 'manual dispatch' }}
+        run: |
+          mkdir -p cost/loop/issue-fixes
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          issue = os.environ.get("ISSUE") or "unknown"
+          title = os.environ.get("TITLE") or ""
+          path = Path("cost/loop/issue-fixes") / f"issue-{issue}.md"
+          path.write_text(
+              f"# Draft fix for issue {issue}\n\n"
+              f"Title: {title}\n\n"
+              "This is an automated draft from cost-issue-fix. "
+              "Operator must review before merge. "
+              "Does not change cost/remediation/ policies.\n",
+              encoding="utf-8",
+          )
+          print(path)
+          PY
+
+      - name: Create draft Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "fix: draft for good-first-issue ${{ github.event.issue.number }}"
+          title: "fix: draft for issue ${{ github.event.issue.number || inputs.issue_number }}"
+          body: >
+            Automated draft from cost-issue-fix for a `good first issue`.
+            Operator review required. Does not auto-merge.
+          branch: cost/issue-fix-${{ github.event.issue.number || inputs.issue_number }}
+          draft: true
+          add-paths: |
+            cost/loop/issue-fixes/*.md
