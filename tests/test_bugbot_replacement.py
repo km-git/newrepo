@@ -75,6 +75,7 @@ def test_gitleaks_action_is_sha_pinned() -> None:
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
     assert "gitleaks/gitleaks-action@v2" not in text
     assert "gitleaks/gitleaks-action@main" not in text
+    assert "--ignore-vuln PYSEC-2026-2447" in text
 
 
 def test_ruff_passes_on_replacement_paths() -> None:
