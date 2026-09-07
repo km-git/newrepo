@@ -49,7 +49,8 @@ This section provides **framework reference** mappings only — not attestation.
 ---
 
 {{ disclaimer }}
-"""
+""",
+    autoescape=True,
 )
 
 

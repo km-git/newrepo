@@ -3,19 +3,18 @@
 from pathlib import Path
 
 import cost
-from cost import MODULES, OSS_PRIMARY_TOOLS
 
 
 def test_module_count():
-    assert len(MODULES) >= 10
-    assert "audit" in MODULES
-    assert "report_writer" in MODULES
-    assert "webui" in MODULES
+    assert len(cost.MODULES) >= 10
+    assert "audit" in cost.MODULES
+    assert "report_writer" in cost.MODULES
+    assert "webui" in cost.MODULES
 
 
 def test_primary_tools():
-    assert "steampipe" in OSS_PRIMARY_TOOLS
-    assert "duckdb" in OSS_PRIMARY_TOOLS
+    assert "steampipe" in cost.OSS_PRIMARY_TOOLS
+    assert "duckdb" in cost.OSS_PRIMARY_TOOLS
 
 
 def test_schema_tables():
