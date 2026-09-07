@@ -92,14 +92,13 @@ def write_static_html(path: Path | None = None) -> Path:
 def dispatch_cost(
     method: str,
     path: str,
-    query: Mapping[str, Sequence[str]] | None = None,
-    body: bytes = b"",
+    _query: Mapping[str, Sequence[str]] | None = None,
+    _body: bytes = b"",
     *,
     root_is_cost: bool = False,
 ) -> DispatchResult | None:
     path = path.rstrip("/") or "/"
     method = (method or "GET").upper()
-    query = query or {}
     html_hdr = {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
     json_hdr = {"Content-Type": "application/json", "Cache-Control": "no-store"}
 

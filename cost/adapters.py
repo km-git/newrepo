@@ -26,6 +26,7 @@ def list_resources(provider: str, **_kwargs: Any) -> tuple[list[dict[str, Any]],
         if rows:
             return [_normalize_steampipe(provider, r) for r in rows], "steampipe"
     except (CliUnavailable, RuntimeError, json.JSONDecodeError, OSError):
+        # Steampipe is optional (CLI subprocess, not imported). Fall through to SDK / sandbox.
         pass
     sdk_rows = _sdk_inventory(provider, **_kwargs)
     if sdk_rows:

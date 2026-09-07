@@ -14,8 +14,14 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: gautamkrishnar/keepalive-workflow@v2
-        with:
-          use_api: true
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Re-enable scheduled cost workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # gautamkrishnar/keepalive-workflow is GitHub-staff-disabled (TOS 403).
+          # First-party equivalent of use_api: true — PUT enable on scheduled workflows
+          # so the public-repo 60-day inactivity rule cannot silently kill crons.
+          repo="${{ github.repository }}"
+          for wf in cost-keepalive.yml cost-watch.yml cost-monthly.yml; do
+            gh api -X PUT "repos/${repo}/actions/workflows/${wf}/enable" --silent || true
+          done
