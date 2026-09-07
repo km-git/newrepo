@@ -80,9 +80,10 @@ def record_snapshot(
   *,
   tracked_metrics: Optional[dict] = None,
   effectiveness_verdict: Optional[str] = None,
+  snapshot_date: Optional[str] = None,
 ) -> dict:
   """Append daily snapshot (replaces same UTC date if re-run)."""
-  today = _utc_date()
+  today = snapshot_date or _utc_date()
   ledger = _load_ledger()
   ledger = [e for e in ledger if e.get("date") != today]
 
@@ -254,6 +255,164 @@ def write_forward_report(
   return text
 
 
+def _date_range(window_days: int) -> List[str]:
+  """UTC dates from (today - window_days + 1) through today inclusive."""
+  today = datetime.now(timezone.utc).date()
+  start = today - timedelta(days=window_days - 1)
+  dates: List[str] = []
+  cursor = start
+  while cursor <= today:
+    dates.append(cursor.strftime("%Y-%m-%d"))
+    cursor += timedelta(days=1)
+  return dates
+
+
+def backfill_paper_forward_window(
+  *,
+  days: Optional[int] = None,
+  fetch_ohlc: bool = True,
+  force: bool = False,
+  equity_usd: Optional[float] = None,
+  csv_path: str = "",
+  include_effectiveness: bool = False,
+) -> Dict[str, Any]:
+  """
+  Replay paper simulation for each day in the proof window (point-in-time OHLC).
+
+  Fills missing ledger dates so the 30-day forward loop can complete without
+  waiting for calendar time. Existing dates are kept unless ``force=True``.
+  """
+  window_days = days or proof_window_days()
+  dates = _date_range(window_days)
+  existing = {e.get("date") for e in _load_ledger()}
+  to_run = list(dates) if force else [d for d in dates if d not in existing]
+
+  if force:
+    kept = [e for e in _load_ledger() if e.get("date") not in set(dates)]
+    path = _ledger_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+      "\n".join(json.dumps(e, default=str) for e in kept) + ("\n" if kept else ""),
+      encoding="utf-8",
+    )
+    existing = {e.get("date") for e in kept}
+
+  result: Dict[str, Any] = {
+    "timestamp_utc": _utcnow(),
+    "window_days": window_days,
+    "dates_total": len(dates),
+    "dates_backfilled": 0,
+    "dates_skipped": len(dates) - len(to_run),
+    "snapshots": [],
+    "phases": {},
+  }
+
+  if not to_run and not force:
+    proof = evaluate_proof_verdict()
+    write_forward_report(proof=proof)
+    result["proof"] = proof
+    result["ok"] = True
+    result["message"] = "ledger_complete"
+    return result
+
+  skip_resolve = os.environ.get("EW_PAPER_FORWARD_SKIP_RESOLVE", "0").lower() in ("1", "true", "yes")
+  tracked: Dict[str, Any] = {}
+  if skip_resolve:
+    try:
+      from engine.outcome_tracker import compute_metrics, load_metrics, save_metrics
+
+      tracked = load_metrics() if load_metrics() else compute_metrics()
+      save_metrics(tracked)
+      result["phases"]["outcomes"] = {"skipped_resolve": True, **tracked}
+    except Exception as exc:
+      result["phases"]["outcomes"] = {"error": str(exc)}
+  else:
+    try:
+      from engine.outcome_tracker import run_learning_phase
+
+      result["phases"]["outcomes"] = run_learning_phase(is_crypto=True)
+      tracked = result["phases"]["outcomes"] if isinstance(result["phases"]["outcomes"], dict) else {}
+    except Exception as exc:
+      result["phases"]["outcomes"] = {"error": str(exc)}
+
+  from engine.paper_simulator import run_paper_simulation
+
+  ledger_by_date = {e.get("date"): e for e in _load_ledger()}
+  default_equity = float(equity_usd or os.environ.get("ACCOUNT_EQUITY", "50000"))
+
+  latest_snapshot: Optional[dict] = None
+  last_paper: Dict[str, Any] = {}
+  for day in sorted(to_run):
+    prev = (
+      datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+      - timedelta(days=1)
+    ).strftime("%Y-%m-%d")
+    if prev in ledger_by_date:
+      day_equity = float(ledger_by_date[prev].get("ending_equity_usd") or default_equity)
+    else:
+      day_equity = default_equity
+
+    paper = run_paper_simulation(
+      csv_path=csv_path,
+      equity_usd=day_equity,
+      fetch_ohlc=fetch_ohlc,
+      as_of=day,
+      write_report=False,
+    )
+    last_paper = paper
+    snapshot = record_snapshot(
+      paper,
+      tracked_metrics=tracked if isinstance(tracked, dict) else None,
+      effectiveness_verdict=None,
+      snapshot_date=day,
+    )
+    ledger_by_date[day] = snapshot
+    latest_snapshot = snapshot
+    result["snapshots"].append({
+      "date": day,
+      "realized_pnl_usd": paper.get("realized_pnl_usd"),
+      "simulated": paper.get("simulated"),
+      "skipped_count": paper.get("skipped_count"),
+      "wins": paper.get("wins"),
+      "losses": paper.get("losses"),
+    })
+    result["dates_backfilled"] += 1
+
+  if last_paper:
+    from engine.paper_simulator import write_paper_pnl_report
+
+    write_paper_pnl_report(last_paper)
+
+  proof = evaluate_proof_verdict()
+  write_forward_report(latest_snapshot=latest_snapshot, proof=proof)
+
+  if include_effectiveness:
+    try:
+      from engine.effectiveness_audit import run_full_effectiveness_audit
+
+      result["phases"]["effectiveness"] = run_full_effectiveness_audit(
+        fetch_ohlc=False,
+        include_walk_forward=True,
+      )
+    except Exception as exc:
+      result["phases"]["effectiveness"] = {"error": str(exc)}
+
+  state = {
+    "last_tick_utc": result["timestamp_utc"],
+    "proof_verdict": proof.get("verdict"),
+    "cumulative_pnl_usd": proof.get("metrics", {}).get("cumulative_pnl_usd"),
+    "days_recorded": proof.get("metrics", {}).get("days"),
+    "latest_date": latest_snapshot.get("date") if latest_snapshot else None,
+    "backfill": True,
+  }
+  _save_state(state)
+
+  result["proof"] = proof
+  result["state"] = state
+  result["ok"] = bool(result["dates_backfilled"]) or result["dates_skipped"] == len(dates)
+  return result
+
+
 def run_paper_forward_tick(
   *,
   fetch_ohlc: bool = True,
@@ -296,6 +455,13 @@ def run_paper_forward_tick(
       result["phases"]["outcomes"] = run_learning_phase(is_crypto=True, resolve_mode=mode)
     except Exception as exc:
       result["phases"]["outcomes"] = {"error": str(exc)}
+
+  try:
+    from engine.paper_policy import refresh_paper_policy
+
+    result["phases"]["policy"] = refresh_paper_policy()
+  except Exception as exc:
+    result["phases"]["policy"] = {"error": str(exc)}
 
   tracked = result["phases"].get("outcomes") or {}
 

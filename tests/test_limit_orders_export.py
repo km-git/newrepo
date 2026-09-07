@@ -106,6 +106,48 @@ def test_build_limit_order_row_executable_and_monitor_tiers():
   assert scalp["entry_zone_high"] == pytest.approx(101.0)
 
 
+def test_build_limit_order_row_has_dca_stop_metrics():
+  row = build_limit_order_row(_sample_result(), "15m")
+  for key in (
+    "stop_distance_pct",
+    "l1_stop_distance_pct",
+    "dca_stop_reduction_pct",
+    "dca_sl_wide_threshold_pct",
+    "dca_sl_target_pct",
+    "dca_staging_legs",
+    "dca_sl_resolvable",
+    "dca_staging_note",
+  ):
+    assert key in row, key
+  assert row.get("stop_distance_pct") is not None
+  assert row.get("l1_stop_distance_pct") is not None
+  assert row.get("dca_stop_reduction_pct") is not None
+
+  assert row["dca_sl_resolvable"] in ("Y", "N")
+  assert row["l1_stop_distance_pct"] >= row["stop_distance_pct"]
+  assert row["dca_stop_reduction_pct"] == pytest.approx(
+    max(0.0, row["l1_stop_distance_pct"] - row["stop_distance_pct"]), abs=0.01
+  )
+  assert 1 <= int(row["dca_staging_legs"]) <= 4
+  assert row["geometry_valid"] == "Y"
+  assert row["geometry_errors"] == ""
+  assert row["stop_loss"] > 0
+  assert row["tp1"] > 0
+  assert row["tp2"] > 0
+  assert row["tp3"] > 0
+  assert row["stop_distance_pct"] <= 3.5 * 1.05
+  assert row["rr_tp2"] <= 5.0
+
+
+def test_non_positive_price_is_geometry_invalid():
+  result = _sample_result()
+  result["step2_wave_structure"]["15m"]["current_price"] = -0.02
+  result["step1_htf_bias"]["wave_C_current"] = -0.02
+  row = build_limit_order_row(result, "15m")
+  assert row["geometry_valid"] == "N"
+  assert "non_positive_market_price" in row["geometry_errors"]
+
+
 def test_build_limit_order_row_has_dca_legs():
   row = build_limit_order_row(_sample_result(), "15m")
   assert len(row["dca_legs"]) == 4
@@ -150,6 +192,9 @@ def test_export_limit_orders_writes_csv(tmp_path: Path):
   exec_row = next(r for r in rows if r.get("gtc_tier") == "executable" and r.get("row_type") == "primary")
   assert float(exec_row.get("position_notional_usd") or 0) > 0
   assert float(exec_row.get("leg1_usd") or 0) > 0
+  assert "sqs_score" in exec_row
+  assert exec_row.get("sqs_tier") in ("EXECUTE", "STANDBY", "WATCH", "SKIP")
+  assert Path(meta.get("sqs_ranked_csv", "")).exists() or (tmp_path / "latest_sqs_ranked_setups.csv").exists()
 
 
 @pytest.mark.skipif(

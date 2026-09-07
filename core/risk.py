@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -63,15 +64,20 @@ _DCA_RATIONALE_SHORT = [
 
 def _r(x: float, decimals: int = 6) -> float:
   ax = abs(float(x))
-  if ax > 0 and ax < 0.01:
-    decimals = 10
-  elif ax > 0 and ax < 1:
-    decimals = 8
+  if ax > 0 and ax < 1:
+    # Preserve at least eight significant decimals for micro-priced tokens.
+    # A fixed 10-decimal round turned valid 1e-8 geometry into zeros/negative R:R.
+    decimals = max(decimals, min(18, int(-math.floor(math.log10(ax))) + 8))
   return round(float(x), decimals)
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
   return max(lo, min(hi, x))
+
+
+def _eps(reference: float) -> float:
+  """Scale-safe positive epsilon (fixed 1e-9 breaks micro-priced tokens)."""
+  return max(abs(float(reference)) * 1e-12, 1e-18)
 
 
 def _is_long(direction: str) -> bool:
@@ -100,7 +106,7 @@ def sensible_entry_anchor(
     return current
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo if hi > lo else 0.0
-  buf = max(atr * 0.12, abs(current) * 0.0008, span * 0.04 if span else 0.0, 1e-9)
+  buf = max(atr * 0.12, abs(current) * 0.0008, span * 0.04 if span else 0.0, _eps(current))
   long = _is_long(direction)
 
   if long:
@@ -135,7 +141,7 @@ def clamp_ladder_no_chase(
     return prices
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo if hi > lo else 0.0
-  buf = max(atr * 0.1, abs(current) * 0.0005, span * 0.06 if span else 0.0, 1e-9)
+  buf = max(atr * 0.1, abs(current) * 0.0005, span * 0.06 if span else 0.0, _eps(current))
   long = _is_long(direction)
   out = [_r(p) for p in prices]
 
@@ -182,7 +188,7 @@ def clamp_ladder_no_chase(
 
 def _min_leg_separation(span: float, atr: float, anchor: float) -> float:
   """Minimum price gap between consecutive DCA legs (capped to fit 4 legs in zone)."""
-  raw = max(span * 0.08, atr * 0.05, abs(anchor) * 0.0004, 1e-9)
+  raw = max(span * 0.08, atr * 0.05, abs(anchor) * 0.0004, _eps(anchor))
   return min(raw, span / 4.5)
 
 
@@ -258,7 +264,7 @@ def _zone_pyramid_prices(
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   span = hi - lo
   if span <= 0:
-    span = max(atr * 0.5, abs(anchor) * 0.002, 1e-9)
+    span = max(atr * 0.5, abs(anchor) * 0.002, _eps(anchor))
     lo = anchor - span / 2
     hi = anchor + span / 2
 
@@ -311,7 +317,7 @@ def build_dca_ladder(
   Profiles: pyramid_4 (10/20/30/40), two_layer_10_90, two_layer_30_70.
   """
   if atr <= 0:
-    atr = max(abs(anchor) * 0.01, 1e-9)
+    atr = max(abs(anchor) * 0.01, _eps(anchor))
   lo, hi = min(zone_low, zone_high), max(zone_low, zone_high)
   if lo <= 0 and hi <= 0 and anchor > 0:
     pad = anchor * 0.005
@@ -320,7 +326,7 @@ def build_dca_ladder(
   span = hi - lo
   min_sep = _min_leg_separation(max(span, abs(anchor) * 0.002), atr, anchor)
   if span < min_sep * 3:
-    pad = max(min_sep * 2, atr * 0.15, abs(anchor) * 0.002, 1e-9)
+    pad = max(min_sep * 2, atr * 0.15, abs(anchor) * 0.002, _eps(anchor))
     if anchor > 0:
       lo, hi = min(lo, anchor - pad), max(hi, anchor + pad)
     else:
@@ -380,7 +386,7 @@ def _clamp_structure_to_entry(
   max_atr: float = DEFAULT_MAX_STRUCTURE_ATR,
 ) -> Tuple[float, float]:
   if atr <= 0:
-    atr = max(abs(entry) * 0.01, 1e-9)
+    atr = max(abs(entry) * 0.01, _eps(entry))
   band = max_atr * atr
   s_low = _clamp(structure_low, entry - band, entry)
   s_high = _clamp(structure_high, entry, entry + band)
@@ -404,6 +410,105 @@ def stop_distance_pct(entry: float, stop: float) -> float:
   if entry <= 0 or stop <= 0:
     return 0.0
   return _r(abs(entry - stop) / entry * 100.0, 2)
+
+
+# Heuristic DCA staging SL tuning (user idea: wide L1 → ~2.3% WAE with 10/20/30/40).
+_DCA_SL_WIDE_BASE = 3.0
+_DCA_SL_TARGET_BASE = 2.3
+_DCA_SL_MIN_REDUCTION_PP = 0.5
+
+
+def dca_sl_wide_threshold(timeframe: Optional[str] = None) -> float:
+  """L1-only stop % above which pyramid staging is worth considering."""
+  min_pct, _ = _stop_pct_bounds(timeframe)
+  return _r(max(_DCA_SL_WIDE_BASE, min_pct * 2.2), 2)
+
+
+def dca_sl_target_pct(timeframe: Optional[str] = None) -> float:
+  """Target effective stop % after smart DCA fills (TF-scaled from ~2.3% base)."""
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  scaled = max(_DCA_SL_TARGET_BASE, min_pct * 1.65)
+  return _r(min(scaled, max_pct * 0.72), 2)
+
+
+def _partial_wae(legs: List[dict], n_legs: int) -> float:
+  sub = legs[:n_legs]
+  if not sub:
+    return 0.0
+  total = sum(float(leg["size_pct"]) for leg in sub)
+  if total <= 0:
+    return 0.0
+  norm = [{"price": leg["price"], "size_pct": float(leg["size_pct"]) / total * 100.0} for leg in sub]
+  return compute_wae(norm)
+
+
+def dca_stop_metrics(
+  legs: List[dict],
+  stop_price: float,
+  *,
+  timeframe: Optional[str] = None,
+) -> Dict[str, Any]:
+  """
+  Compare L1-only vs pyramid WAE stop distance.
+
+  Returns TF-aware wide/target thresholds, reduction, min legs to hit target,
+  and whether staging resolves a wide L1 into the practical risk band.
+  """
+  if not legs or stop_price <= 0:
+    return {
+      "l1_stop_distance_pct": 0.0,
+      "stop_distance_pct": 0.0,
+      "dca_stop_reduction_pct": 0.0,
+      "dca_sl_wide_threshold_pct": dca_sl_wide_threshold(timeframe),
+      "dca_sl_target_pct": dca_sl_target_pct(timeframe),
+      "dca_staging_legs": 0,
+      "dca_sl_resolvable": "N",
+      "dca_staging_note": "no_ladder",
+    }
+
+  stop_px = float(stop_price)
+  l1_px = float(legs[0]["price"])
+  wae = compute_wae(legs)
+  l1_pct = stop_distance_pct(l1_px, stop_px)
+  wae_pct = stop_distance_pct(wae, stop_px)
+  reduction = round(max(0.0, l1_pct - wae_pct), 2)
+  wide_thr = dca_sl_wide_threshold(timeframe)
+  target = dca_sl_target_pct(timeframe)
+
+  staging_legs = len(legs)
+  for n in range(1, len(legs) + 1):
+    partial = _partial_wae(legs, n)
+    if partial > 0 and stop_distance_pct(partial, stop_px) <= target:
+      staging_legs = n
+      break
+
+  if l1_pct <= target:
+    note = "l1_within_target"
+  elif l1_pct > wide_thr and wae_pct <= target and reduction >= _DCA_SL_MIN_REDUCTION_PP:
+    note = f"pyramid_L{staging_legs}_to_{target:.1f}pct"
+  elif l1_pct > wide_thr and reduction >= _DCA_SL_MIN_REDUCTION_PP:
+    note = f"pyramid_L{staging_legs}_partial_{wae_pct:.1f}pct"
+  elif l1_pct > wide_thr:
+    note = "wide_l1_no_pyramid_relief"
+  else:
+    note = "moderate_l1"
+
+  resolvable = (
+    l1_pct > wide_thr
+    and wae_pct <= target
+    and reduction >= _DCA_SL_MIN_REDUCTION_PP
+  )
+
+  return {
+    "l1_stop_distance_pct": l1_pct,
+    "stop_distance_pct": wae_pct,
+    "dca_stop_reduction_pct": reduction,
+    "dca_sl_wide_threshold_pct": wide_thr,
+    "dca_sl_target_pct": target,
+    "dca_staging_legs": staging_legs,
+    "dca_sl_resolvable": "Y" if resolvable else "N",
+    "dca_staging_note": note,
+  }
 
 
 def _target_r_multiples(timeframe: Optional[str]) -> Tuple[float, float, float]:
@@ -499,7 +604,7 @@ def dynamic_stop(
   clipped to the minimum by a tight invalidation tick.
   """
   if atr <= 0:
-    atr = max(abs(entry) * 0.01, 1e-9)
+    atr = max(abs(entry) * 0.01, _eps(entry))
 
   ref = _ladder_extreme(direction, ladder_legs, entry)
   lo = hi = None
@@ -556,12 +661,16 @@ def dynamic_stop(
     else:
       stop = ref * (1.0 + min_pct / 100.0)
 
+  # Final cap: WAE-sized risk must respect TF max (caller passes entry=WAE separately)
+  stop = cap_stop_for_entry(direction, entry, stop, timeframe=timeframe)
+
   return {
     "price": _r(stop),
     "type": "hard",
     "rule": rule,
-    "distance_pct": _r(abs(ref - stop) / ref * 100, 2) if ref else 0.0,
-    "reference_price": _r(ref),
+    "distance_pct": _r(abs(entry - stop) / entry * 100, 2) if entry else 0.0,
+    "reference_price": _r(entry),
+    "ladder_extreme_price": _r(ref),
     "min_distance_pct": _r(min_pct, 2),
     "architecture": "smart_dynamic_sl",
   }
@@ -581,6 +690,7 @@ def dynamic_targets(
   timeframe: Optional[str] = None,
   structure_low: Optional[float] = None,
   structure_high: Optional[float] = None,
+  max_rr_cap: float = 5.0,
 ) -> List[dict]:
   """
   Smart R-based targets from actual WAE→stop risk, structure, and harmonics.
@@ -603,37 +713,54 @@ def dynamic_targets(
     t3 = entry + risk * r3
     if lo is not None and hi is not None:
       t1 = max(t1, (lo + hi) / 2.0)
-      t1 = max(t1, hi)
-    if structure_high and structure_high > entry:
-      t2 = max(t2, structure_high)
+      t1 = max(t1, min(hi, entry + risk * r1 * 1.15))
+    if _valid_structure_anchor("LONG", entry, structure_high, atr):
+      t2 = max(t2, min(structure_high, entry + risk * max_rr_cap))
     if harmonic_prz:
-      t2 = max(t2, harmonic_prz[1])
-    if c_target_100 and c_target_100 > entry:
-      t3 = max(t3, c_target_100)
-    if c_target_161 and c_target_161 > entry:
-      t3 = max(t3, c_target_161)
+      prz_hi = float(harmonic_prz[1])
+      if prz_hi > entry:
+        t2 = max(t2, min(prz_hi, entry + risk * max_rr_cap))
+    if _valid_c_target("LONG", entry, c_target_100):
+      t3 = max(t3, min(float(c_target_100), entry + risk * max_rr_cap))
+    if _valid_c_target("LONG", entry, c_target_161):
+      t3 = max(t3, min(float(c_target_161), entry + risk * max_rr_cap))
+    # enforce ascending ladder
+    t1 = max(t1, entry + risk * 0.5)
+    t1 = min(t1, entry + risk * max(0.5, max_rr_cap - 0.5))
+    t2 = max(t2, t1 + risk * 0.25)
+    t3 = max(t3, t2 + risk * 0.25)
+    t2 = min(t2, entry + risk * max_rr_cap)
+    t3 = min(t3, entry + risk * (max_rr_cap + 1.5))
   else:
     t1 = entry - risk * r1
     t2 = entry - risk * r2
     t3 = entry - risk * r3
     if lo is not None and hi is not None:
       t1 = min(t1, (lo + hi) / 2.0)
-      t1 = min(t1, lo)
-    if structure_low and structure_low < entry:
-      t2 = min(t2, structure_low)
+      t1 = min(t1, max(lo, entry - risk * r1 * 1.15))
+    if _valid_structure_anchor("SHORT", entry, structure_low, atr):
+      t2 = min(t2, max(structure_low, entry - risk * max_rr_cap))
     if harmonic_prz:
-      t2 = min(t2, harmonic_prz[0])
-    if c_target_100 and c_target_100 < entry:
-      t3 = min(t3, c_target_100)
-    if c_target_161 and c_target_161 < entry:
-      t3 = min(t3, c_target_161)
+      prz_lo = float(harmonic_prz[0])
+      if 0 < prz_lo < entry:
+        t2 = min(t2, max(prz_lo, entry - risk * max_rr_cap))
+    if _valid_c_target("SHORT", entry, c_target_100):
+      t3 = min(t3, max(float(c_target_100), entry - risk * max_rr_cap))
+    if _valid_c_target("SHORT", entry, c_target_161):
+      t3 = min(t3, max(float(c_target_161), entry - risk * max_rr_cap))
+    t1 = min(t1, entry - risk * 0.5)
+    t1 = max(t1, entry - risk * max(0.5, max_rr_cap - 0.5))
+    t2 = min(t2, t1 - risk * 0.25)
+    t3 = min(t3, t2 - risk * 0.25)
+    t2 = max(t2, entry - risk * max_rr_cap)
+    t3 = max(t3, entry - risk * (max_rr_cap + 1.5))
 
   exits = [50, 25, 25]
   labels = ["TP1", "TP2", "TP3"]
   prices = [t1, t2, t3]
   out = []
   for label, px, pct in zip(labels, prices, exits):
-    rr = abs(px - entry) / max(risk, 1e-9)
+    rr = abs(px - entry) / max(risk, _eps(entry))
     out.append({
       "label": label,
       "price": _r(px),
@@ -654,3 +781,104 @@ def risk_package(entry: float, stop: float, account_risk_pct: float = 1.0) -> di
     "sizing_rule": f"Risk {account_risk_pct}% account; size = (equity×{account_risk_pct}%) / (WAE−stop)",
     "max_legs_active": 4,
   }
+
+
+def cap_stop_for_entry(
+  direction: str,
+  entry: float,
+  stop: float,
+  *,
+  timeframe: Optional[str] = None,
+) -> float:
+  """Tighten stop so WAE→stop distance respects TF max (export sizes on WAE)."""
+  if entry <= 0 or stop <= 0:
+    return stop
+  _, max_pct = _stop_pct_bounds(timeframe)
+  dist_pct = abs(entry - stop) / entry * 100.0
+  if dist_pct <= max_pct * 1.02:
+    return stop
+  if _is_long(direction):
+    return _r(entry * (1.0 - max_pct / 100.0))
+  return _r(entry * (1.0 + max_pct / 100.0))
+
+
+def _valid_c_target(direction: str, entry: float, value: Optional[float]) -> bool:
+  if value is None:
+    return False
+  try:
+    v = float(value)
+  except (TypeError, ValueError):
+    return False
+  if v <= 0:
+    return False
+  if _is_long(direction):
+    return v > entry
+  return v < entry
+
+
+def _valid_structure_anchor(direction: str, entry: float, value: Optional[float], atr: float) -> bool:
+  if value is None:
+    return False
+  try:
+    v = float(value)
+  except (TypeError, ValueError):
+    return False
+  if v <= 0:
+    return False
+  band = max(atr * 12, entry * 0.35, _eps(entry))
+  if _is_long(direction):
+    return entry < v <= entry + band
+  return entry - band <= v < entry
+
+
+def validate_trade_geometry(
+  direction: str,
+  entry: float,
+  stop: float,
+  targets: List[dict],
+  *,
+  timeframe: Optional[str] = None,
+  min_rr: float = 1.2,
+  max_rr: float = 5.0,
+) -> Tuple[bool, List[str]]:
+  """Validate stop + TP ladder relative to WAE entry."""
+  errors: List[str] = []
+  if entry <= 0:
+    errors.append("invalid_entry")
+  if stop <= 0:
+    errors.append("invalid_stop")
+  long = _is_long(direction)
+  if entry > 0 and stop > 0:
+    if long and stop >= entry:
+      errors.append("long_stop_above_entry")
+    if not long and stop <= entry:
+      errors.append("short_stop_below_entry")
+
+  min_pct, max_pct = _stop_pct_bounds(timeframe)
+  sl_pct = stop_distance_pct(entry, stop)
+  if sl_pct < min_pct * 0.8:
+    errors.append(f"stop_too_tight_{sl_pct:.2f}pct")
+  if sl_pct > max_pct * 1.05:
+    errors.append(f"stop_too_wide_{sl_pct:.2f}pct")
+
+  tps = [float(t.get("price") or 0) for t in targets[:3]]
+  if len(tps) < 3 or any(p <= 0 for p in tps):
+    errors.append("invalid_tp_prices")
+
+  if entry > 0 and len(tps) == 3 and all(p > 0 for p in tps):
+    if long:
+      if not (entry < tps[0] <= tps[1] <= tps[2]):
+        errors.append("long_tp_not_ascending")
+    else:
+      if not (entry > tps[0] >= tps[1] >= tps[2]):
+        errors.append("short_tp_not_descending")
+
+  risk = abs(entry - stop) if entry > 0 and stop > 0 else 0.0
+  if risk > 0 and len(tps) >= 2 and tps[1] > 0:
+    rr2 = abs(tps[1] - entry) / risk
+    if rr2 < min_rr * 0.95:
+      errors.append(f"rr_below_min_{rr2:.2f}")
+    if rr2 > max_rr * 1.05:
+      errors.append(f"rr_above_max_{rr2:.2f}")
+
+  return len(errors) == 0, errors

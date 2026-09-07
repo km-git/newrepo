@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from engine.paper_forward_tracker import (
+  backfill_paper_forward_window,
   evaluate_proof_verdict,
   record_snapshot,
   rolling_metrics,
@@ -93,3 +94,29 @@ def test_run_tick_offline(tmp_path, monkeypatch):
   risk = result["phases"].get("risk_ops") or {}
   assert risk.get("equity_usd") == 50250
   assert (tmp_path / "risk.json").exists()
+
+
+def test_backfill_records_missing_days(tmp_path, monkeypatch):
+  monkeypatch.setenv("EW_PAPER_FORWARD_LEDGER", str(tmp_path / "ledger.jsonl"))
+  monkeypatch.setenv("EW_PAPER_FORWARD_STATE", str(tmp_path / "state.json"))
+  monkeypatch.setenv("EW_PAPER_FORWARD_REPORT", str(tmp_path / "report.md"))
+  monkeypatch.setenv("EW_PAPER_PROOF_DAYS", "3")
+  monkeypatch.setenv("EW_PAPER_FORWARD_SKIP_RESOLVE", "1")
+
+  calls: list[str] = []
+
+  def fake_paper(**kwargs):
+    calls.append(kwargs.get("as_of") or "live")
+    pnl = 10.0 if len(calls) == 1 else -5.0
+    return _paper_summary(pnl, wins=1 if pnl > 0 else 0, losses=0 if pnl > 0 else 1)
+
+  monkeypatch.setattr("engine.paper_simulator.run_paper_simulation", fake_paper)
+
+  result = backfill_paper_forward_window(days=3, fetch_ohlc=False, force=True)
+  assert result["dates_backfilled"] == 3
+  assert len(calls) == 3
+  metrics = rolling_metrics(window_days=3)
+  assert metrics["days"] == 3
+  assert metrics["cumulative_pnl_usd"] == 0.0
+  proof = evaluate_proof_verdict(metrics)
+  assert proof["verdict"] in ("PROOF_PENDING", "PROOF_NO_GO", "PROOF_GO")

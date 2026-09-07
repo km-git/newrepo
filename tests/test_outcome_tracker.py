@@ -116,6 +116,7 @@ def test_feedback_downgrades_poor_history():
   assert out["gtc_tier"] == "monitor"
   assert out["gtc_size_cap_pct"] == 37.5
   assert out["hist_action"] == "downgrade"
+  assert out["hist_scope"] == "pair_tf"
 
 
 def test_feedback_boosts_strong_history():
@@ -143,6 +144,27 @@ def test_feedback_boosts_strong_history():
   assert out["gtc_tier"] == "executable"
   assert out["gtc_size_cap_pct"] == 100.0
   assert out["hist_action"] == "boost"
+  assert out["hist_scope"] == "pair_tf"
+
+
+def test_feedback_labels_aggregate_history_as_context_only():
+  metrics = {
+    "by_pair_tf": {},
+    "by_timeframe": {
+      "15m": {"decided": 100, "win_rate": 0.70},
+    },
+    "overall": {"decided": 200, "win_rate": 0.62},
+  }
+  row = {
+    "symbol": "NEW/USDT",
+    "timeframe": "15m",
+    "direction": "SHORT",
+    "gtc_tier": "monitor",
+  }
+  out = apply_feedback_to_row(row, metrics)
+  assert out["hist_win_rate"] == 0.70
+  assert out["hist_n"] == 100
+  assert out["hist_scope"] == "timeframe"
 
 
 def test_compute_metrics_dedupes_by_setup_id(tmp_path: Path, monkeypatch):

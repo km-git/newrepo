@@ -137,11 +137,19 @@ def run_top_crypto_batch(
 
   stable_summary = out / "latest_summary.csv"
   shutil.copy2(summary_path, stable_summary)
+
+  from engine.executive_board import apply_board_to_results, build_executive_board, save_executive_board
+
+  executive_board = build_executive_board(results, picks_per_tf=8, max_total=60)
+  results = apply_board_to_results(results, executive_board)
+  board_paths = save_executive_board(executive_board)
+
   limit_meta = export_limit_orders(
     results,
     output_dir=out,
     account_equity=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
     usdt_d_pct=float(os.environ["USDT_D_PCT"]) if os.environ.get("USDT_D_PCT") else None,
+    board=executive_board,
   )
   _sync_reports_from_export(out, limit_meta)
 
@@ -195,6 +203,9 @@ def run_top_crypto_batch(
     "limit_orders_csv": limit_meta["latest_csv"],
     "limit_orders_matrix_html": limit_meta.get("matrix_html"),
     "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
+    "executive_board_csv": board_paths.get("csv"),
+    "sqs_ranked_csv": limit_meta.get("sqs_ranked_csv"),
+    "sqs": limit_meta.get("sqs"),
     "paper_pnl": paper_summary,
     "pairs_csv": str(pairs_csv),
     "summary_csv": str(stable_summary),
