@@ -9,6 +9,9 @@ MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-build.mdc"
 LOOP_MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-improvement-loop.mdc"
 PROMPT = ROOT / "discovery" / "tape-to-cloud" / "cursor-prompt.md"
 LOOP_PROMPT = ROOT / "discovery" / "tape-to-cloud" / "continuous-improvement-loop-prompt.md"
+INVENTORY = ROOT / "discovery" / "tape-to-cloud" / "free-tool-inventory.md"
+INVENTORY_MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-free-tool-inventory.mdc"
+PYPROJECT_DEPS = ROOT / "discovery" / "tape-to-cloud" / "pyproject-dependencies.toml"
 USER_RULE = ROOT / "discovery" / "tape-to-cloud" / "user-rule.txt"
 
 MODULES = (
@@ -160,3 +163,43 @@ def test_improvement_loop_prompt_covers_modules_and_bugbot_replacement():
   assert "uv run prek run --all-files" in text
   assert "Monday 9 AM AEST review checklist" in text
   text.encode("utf-8")
+
+
+def test_free_tool_inventory_catalog_structure():
+  text = INVENTORY.read_text(encoding="utf-8")
+  assert text.startswith("# Expanding the Free-Tool Inventory")
+  for n, title in (
+    (1, "Two Asks"),
+    (2, "MinIO Archival and SeaweedFS Replacement"),
+    (7, "Single `pyproject.toml` Install Matrix"),
+    (11, "Inventory Summary"),
+    (12, "References"),
+  ):
+    assert f"## {n}. {title}" in text, f"missing section {n}"
+  for tool in ("SeaweedFS", "libratom", "DuckDB", "Temporal", "PaddleOCR", "gitleaks", "mhvtl"):
+    assert tool in text
+  assert "April 25, 2026" in text
+  assert "MinIO Community Edition is archived" in text or "MinIO CE" in text
+  for n in range(1, 19):
+    assert f"[{n}]" in text, f"missing citation [{n}]"
+  text.encode("utf-8")
+
+
+def test_free_tool_inventory_rule_and_deps_matrix():
+  meta, body = _frontmatter_and_body(INVENTORY_MDC.read_text(encoding="utf-8"))
+  assert meta["alwaysApply"] == "false"
+  assert "SeaweedFS" in body
+  assert "MinIO" in body
+  assert "free-tool-inventory.md" in body
+  deps = PYPROJECT_DEPS.read_text(encoding="utf-8")
+  assert "[project]" in deps
+  assert "duckdb>=" in deps
+  assert "temporalio>=" in deps
+  assert "libratom>=" in deps
+
+
+def test_build_rule_recommends_seaweedfs_not_minio():
+  text = MDC.read_text(encoding="utf-8")
+  assert "SeaweedFS" in text
+  assert "April 25, 2026" in text
+  assert "MinIO, Ceph" not in text
