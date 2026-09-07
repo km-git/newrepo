@@ -13,6 +13,8 @@ header small { color:var(--muted); }
 nav { border-right:1px solid var(--line); padding:1rem; }
 nav button { display:block; width:100%; text-align:left; background:transparent; color:var(--text); border:0; padding:.6rem .8rem; border-radius:8px; cursor:pointer; }
 nav button.active, nav button:hover { background:var(--card); }
+#scan { background:var(--accent); color:#0b1220; border:0; padding:.55rem 1rem; border-radius:8px; cursor:pointer; font-weight:600; margin-right:.75rem; }
+#scan:disabled { opacity:.6; cursor:wait; }
 main { padding:1.5rem 2rem; }
 .cards { display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:1rem; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1rem; }
@@ -52,7 +54,11 @@ a { color:var(--accent); }
         <div class="card"><div class="muted">High-scope grants</div><div class="n">4</div></div>
         <div class="card"><div class="muted">M365 drift rows</div><div class="n">7</div></div>
       </div>
-      <p class="muted" style="margin-top:1.2rem">This explorer is a read-only Configuration & Inventory view. It is not AppOmni. Live APIs run only when credentials and SSPM_LIVE=1 are set.</p>
+      <p style="margin-top:1.2rem">
+        <button id="scan" type="button">Run fixture scan</button>
+        <span class="muted" id="scan-status">Read-only fixtures unless SSPM_LIVE=1</span>
+      </p>
+      <p class="muted">This explorer is a read-only Configuration & Inventory view. It is not AppOmni. Live APIs run only when credentials and SSPM_LIVE=1 are set.</p>
       <h3>12 modules</h3>
       <ul><li><code>sspm/audit</code></li><li><code>sspm/m365_discovery</code></li><li><code>sspm/google_workspace_discovery</code></li><li><code>sspm/github_discovery</code></li><li><code>sspm/slack_discovery</code></li><li><code>sspm/okta_discovery</code></li><li><code>sspm/oauth_grants</code></li><li><code>sspm/config_drift</code></li><li><code>sspm/compliance_map</code></li><li><code>sspm/report_writer</code></li><li><code>sspm/multi_tenant</code></li><li><code>sspm/disclaimers</code></li></ul>
     </section>
@@ -75,7 +81,7 @@ a { color:var(--accent); }
     <section class="panel" id="reports">
       <div class="card">
         <h3>Generated reports</h3>
-        <ul><li>m365: <a href='/sspm/report/m365'>open</a> · SHA in JSON sidecar</li><li>gws: <a href='/sspm/report/gws'>open</a> · SHA in JSON sidecar</li><li>github: <a href='/sspm/report/github'>open</a> · SHA in JSON sidecar</li><li>slack: <a href='/sspm/report/slack'>open</a> · SHA in JSON sidecar</li><li>okta: <a href='/sspm/report/okta'>open</a> · SHA in JSON sidecar</li></ul>
+        <ul><li>m365: <a href='/sspm/report/m365'>open HTML</a></li><li>gws: <a href='/sspm/report/gws'>open HTML</a></li><li>github: <a href='/sspm/report/github'>open HTML</a></li><li>slack: <a href='/sspm/report/slack'>open HTML</a></li><li>okta: <a href='/sspm/report/okta'>open HTML</a></li></ul>
         <p class="muted">On Cursor Cloud use <code>python3 ew_tool.py --sspm-ui --static</code> and open <code>reports/sspm_explorer.html</code>.</p>
       </div>
     </section>
@@ -102,5 +108,21 @@ document.querySelectorAll('nav button').forEach(btn => {
     document.getElementById(btn.dataset.panel).classList.add('active');
   });
 });
+const scanBtn = document.getElementById('scan');
+if (scanBtn) {
+  scanBtn.addEventListener('click', async () => {
+    scanBtn.disabled = true;
+    scanBtn.textContent = 'Scanning…';
+    try {
+      const r = await fetch('/api/sspm/scan', {method: 'POST'});
+      if (!r.ok) throw new Error(String(r.status));
+      location.reload();
+    } catch (err) {
+      scanBtn.disabled = false;
+      scanBtn.textContent = 'Run fixture scan';
+      document.getElementById('scan-status').textContent = 'Scan failed: ' + err;
+    }
+  });
+}
 </script>
 </body></html>
