@@ -118,6 +118,7 @@ def write_daily_ops_report(tick: dict, path: Optional[Path] = None) -> str:
     "",
     f"**Tick:** {tick.get('timestamp_utc', '')}  ",
     f"**Readiness:** `{readiness.get('verdict', 'UNKNOWN')}`  ",
+    f"**Resolve mode:** `{tick.get('resolve_mode', 'n/a')}`  ",
     "",
     "## Gates",
     "",
@@ -146,6 +147,7 @@ def run_daily_trading_tick(
   fetch_ohlc: bool = False,
   include_goat_audit: bool = True,
   bootstrap: bool = True,
+  resolve_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
   """
   Next-level daily tick (no LLM):
@@ -154,8 +156,18 @@ def run_daily_trading_tick(
   3. Tactical posture
   4. GOAT effectiveness audit (walk-forward)
   5. Health + composite readiness
+
+  Resolve modes (EW_RESOLVE_MODE or resolve_mode arg):
+  - skip: no OHLC resolve (cron default, ~1s)
+  - incremental: resolve stale setups only (EW_RESOLVE_RECHECK_HOURS, default 6h)
+  - full: resolve all open setups (weekly / manual)
   """
   tick: Dict[str, Any] = {"timestamp_utc": _utcnow(), "phases": {}}
+  if resolve_mode is None:
+    from engine.outcome_tracker import _resolve_mode
+
+    resolve_mode = _resolve_mode()
+  tick["resolve_mode"] = resolve_mode
 
   if bootstrap:
     tick["phases"]["bootstrap"] = bootstrap_ops_artifacts()
@@ -166,6 +178,7 @@ def run_daily_trading_tick(
     tick["phases"]["paper_forward"] = run_paper_forward_tick(
       fetch_ohlc=fetch_ohlc,
       include_effectiveness=False,
+      resolve_mode=resolve_mode,
     )
   except Exception as exc:
     tick["phases"]["paper_forward"] = {"error": str(exc)}

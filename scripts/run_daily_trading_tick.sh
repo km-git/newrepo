@@ -32,8 +32,12 @@ export EW_TACTICAL_SAFEGUARD=1
 export EW_GATEWAY_QUIET=1
 export EW_FETCH_QUIET=1
 export EW_PAPER_FORWARD_SKIP_RESOLVE="${EW_PAPER_FORWARD_SKIP_RESOLVE:-1}"
+export EW_RESOLVE_MODE="${EW_RESOLVE_MODE:-skip}"
+export EW_OHLC_PARALLEL="${EW_OHLC_PARALLEL:-1}"
+export EW_OHLC_PARALLEL_WORKERS="${EW_OHLC_PARALLEL_WORKERS:-8}"
 
 exec > >(tee -a "$LOG") 2>&1
 echo "[daily-ops] started $(date -u +%Y-%m-%dT%H:%M:%SZ) log=$LOG"
-"$PY" ew_tool.py --daily-trading-tick "$@"
+echo "[daily-ops] resolve_mode=${EW_RESOLVE_MODE} skip_resolve=${EW_PAPER_FORWARD_SKIP_RESOLVE}"
+"$PY" ew_tool.py --daily-trading-tick --daily-trading-tick-resolve skip "$@"
 echo "[daily-ops] complete $(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -226,6 +226,27 @@ def main() -> None:
     help="With --paper-forward: skip OHLC network fetch (structural test only)",
   )
   parser.add_argument(
+    "--paper-forward-backfill",
+    action="store_true",
+    help="Backfill missing days in the 30-day paper-forward proof window (point-in-time OHLC)",
+  )
+  parser.add_argument(
+    "--paper-forward-backfill-force",
+    action="store_true",
+    help="With --paper-forward-backfill: rerun all window days (replaces existing snapshots)",
+  )
+  parser.add_argument(
+    "--paper-forward-days",
+    type=int,
+    default=0,
+    help="Proof window length in days (default EW_PAPER_PROOF_DAYS or 30)",
+  )
+  parser.add_argument(
+    "--continuous-proof",
+    action="store_true",
+    help="LLM-free learn→policy→paper-forward cycle (continuous improvement)",
+  )
+  parser.add_argument(
     "--daily-trading-tick",
     action="store_true",
     help="LLM-free composite tick: proof + GOAT audit + tactical posture + health readiness",
@@ -234,6 +255,12 @@ def main() -> None:
     "--daily-trading-tick-fetch",
     action="store_true",
     help="With --daily-trading-tick: include OHLC network fetch for paper sim",
+  )
+  parser.add_argument(
+    "--daily-trading-tick-resolve",
+    choices=("skip", "incremental", "full"),
+    default=None,
+    help="Outcome resolve mode for --daily-trading-tick (default: skip via cron script, incremental otherwise)",
   )
   parser.add_argument(
     "--goal-mode-quick",
@@ -515,11 +542,45 @@ def main() -> None:
     ))
     return
 
+  if args.paper_forward_backfill:
+    from engine.autonomous_ops import run_paper_backfill_tick
+
+    print(json.dumps(
+      run_paper_backfill_tick(
+        fetch_ohlc=not args.paper_forward_no_fetch,
+        force=args.paper_forward_backfill_force,
+        days=args.paper_forward_days or None,
+      ),
+      indent=2,
+      default=str,
+    ))
+    return
+
+  if getattr(args, "continuous_proof", False):
+    from engine.autonomous_ops import run_continuous_proof_tick
+
+    print(json.dumps(
+      run_continuous_proof_tick(fetch_ohlc=not args.paper_forward_no_fetch),
+      indent=2,
+      default=str,
+    ))
+    return
+
   if args.daily_trading_tick:
     from engine.daily_trading_ops import run_daily_trading_tick
 
+    resolve_mode = args.daily_trading_tick_resolve
+    if resolve_mode == "skip":
+      os.environ["EW_PAPER_FORWARD_SKIP_RESOLVE"] = "1"
+    elif resolve_mode:
+      os.environ["EW_PAPER_FORWARD_SKIP_RESOLVE"] = "0"
+      os.environ["EW_RESOLVE_MODE"] = resolve_mode
+
     print(json.dumps(
-      run_daily_trading_tick(fetch_ohlc=args.daily_trading_tick_fetch),
+      run_daily_trading_tick(
+        fetch_ohlc=args.daily_trading_tick_fetch,
+        resolve_mode=resolve_mode,
+      ),
       indent=2,
       default=str,
     ))
