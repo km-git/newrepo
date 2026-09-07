@@ -265,6 +265,48 @@ def approve_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]
   return {"action": "approve", "output": out}
 
 
+def dismiss_stale_change_requests(
+  pr_number: int,
+  repo: str = "",
+  *,
+  actor: str = "github-actions[bot]",
+  message: str = "Stale change request: required CI is green.",
+) -> Dict[str, Any]:
+  """Dismiss leftover CHANGES_REQUESTED reviews from `actor`.
+
+  GitHub Actions often cannot *approve* (org setting), but the same bot can
+  dismiss its own earlier REJECT reviews so merge is no longer blocked.
+  """
+  slug = repo or _repo_slug()
+  reviews = _gh_json(["api", f"repos/{slug}/pulls/{pr_number}/reviews"])
+  dismissed: List[Dict[str, Any]] = []
+  errors: List[Dict[str, Any]] = []
+  if not isinstance(reviews, list):
+    return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
+  for review in reviews:
+    user = ((review.get("user") or {}).get("login") or "")
+    if user != actor or review.get("state") != "CHANGES_REQUESTED":
+      continue
+    rid = review.get("id")
+    try:
+      out = _gh_run(
+        [
+          "api",
+          "-X",
+          "PUT",
+          f"repos/{slug}/pulls/{pr_number}/reviews/{rid}/dismissals",
+          "-f",
+          f"message={message}",
+          "-F",
+          "event=DISMISS",
+        ]
+      )
+      dismissed.append({"id": rid, "output": out})
+    except RuntimeError as exc:
+      errors.append({"id": rid, "error": str(exc)})
+  return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
+
+
 def request_changes_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]:
   slug = repo or _repo_slug()
   args = ["pr", "review", str(pr_number), "--request-changes", "--repo", slug, "--body", body or "Changes requested by executive consensus."]

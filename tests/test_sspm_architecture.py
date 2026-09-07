@@ -72,6 +72,8 @@ def test_workflows_exist() -> None:
     assert "sspm/loop/" in approve
     assert "auto-merge blocked" in approve
     assert "exit 1" not in approve
+    assert "dismissals" in approve
+    assert "CHANGES_REQUESTED" in approve
     # Org setting "Allow GitHub Actions to create and approve pull requests"
     # is often off; keep the job green while still attempting approval.
     assert "continue-on-error: true" in approve

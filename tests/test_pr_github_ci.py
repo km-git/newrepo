@@ -120,3 +120,34 @@ def test_draft_executive_does_not_reject_auto_approve_failure() -> None:
     )
     assert ex["verdict"] != "REJECT"
     assert "CI checks failed" not in ex["structural_gaps"]
+
+
+def test_dismiss_stale_change_requests_targets_bot_rejects(monkeypatch) -> None:
+    from engine import pr_github
+
+    calls: list[list[str]] = []
+
+    def fake_json(args):
+        assert args[0] == "api"
+        return [
+            {"id": 1, "state": "CHANGES_REQUESTED", "user": {"login": "github-actions[bot]"}},
+            {"id": 2, "state": "COMMENTED", "user": {"login": "github-actions[bot]"}},
+            {"id": 3, "state": "CHANGES_REQUESTED", "user": {"login": "alice"}},
+            {"id": 4, "state": "CHANGES_REQUESTED", "user": {"login": "github-actions[bot]"}},
+        ]
+
+    def fake_run(args):
+        calls.append(args)
+        return "{}"
+
+    monkeypatch.setattr(pr_github, "_gh_json", fake_json)
+    monkeypatch.setattr(pr_github, "_gh_run", fake_run)
+    result = pr_github.dismiss_stale_change_requests(76, "km-git/newrepo")
+    assert result["action"] == "dismiss_stale_change_requests"
+    assert [row["id"] for row in result["dismissed"]] == [1, 4]
+    assert result["errors"] == []
+    assert len(calls) == 2
+    joined = " ".join(" ".join(c) for c in calls)
+    assert "/reviews/1/dismissals" in joined
+    assert "/reviews/4/dismissals" in joined
+    assert "/reviews/3/dismissals" not in joined

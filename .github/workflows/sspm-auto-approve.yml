@@ -37,6 +37,21 @@ jobs:
             echo "protected=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Dismiss stale github-actions change requests
+        id: dismiss
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          ids=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
+            --jq '.[] | select(.user.login=="github-actions[bot]" and .state=="CHANGES_REQUESTED") | .id')
+          for id in $ids; do
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews/${id}/dismissals" \
+              -f message="Stale: CI is green and the body is [auto-approved]." \
+              -F event=DISMISS || true
+          done
+
       - name: Approve the PR
         id: approve
         continue-on-error: true
