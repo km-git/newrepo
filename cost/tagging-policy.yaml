@@ -1,0 +1,8 @@
+required_tags:
+  - Environment
+  - CostCenter
+  - Owner
+description: >
+  Default tagging policy for the Cloud Cost & Configuration Review.
+  Untagged spend is an organisational problem; review with the team
+  that owns the account before changing production tags.

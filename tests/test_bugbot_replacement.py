@@ -154,6 +154,11 @@ def test_ruff_passes_on_replacement_paths() -> None:
         "tests/dmarc",
         "scripts/serve_dmarc.py",
         "sspm",
+        "cost/",
+        "tests/test_cost_pipeline.py",
+        "tests/test_cost_webui.py",
+        "tests/test_cost_language.py",
+        "tests/test_cost_workflows.py",
         "tests/test_sspm_architecture.py",
         "tests/test_sspm_core.py",
         "tests/test_sspm_loop.py",
@@ -176,6 +181,7 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     assert "semgrep" in text
     assert "p/security-audit" in text
     assert "sspm/" in text
+    assert "cost/" in text or "tape_to_cloud/ cost/" in text
     assert "dspm/" in text
     assert "merge_group" in text
     assert "pull_request_target" not in text

@@ -125,3 +125,23 @@
   kind: rss
   module_hint: sspm/m365_discovery
   max_items: 10
+- name: prowler releases
+  url: https://github.com/prowler-cloud/prowler/releases.atom
+  kind: rss
+  module_hint: cost
+  max_items: 5
+- name: steampipe releases
+  url: https://github.com/turbot/steampipe/releases.atom
+  kind: rss
+  module_hint: cost
+  max_items: 5
+- name: cloud-custodian releases
+  url: https://github.com/cloud-custodian/cloud-custodian/releases.atom
+  kind: rss
+  module_hint: cost
+  max_items: 5
+- name: r/FinOps
+  url: https://www.reddit.com/r/FinOps/.rss
+  kind: rss
+  module_hint: cost
+  max_items: 15

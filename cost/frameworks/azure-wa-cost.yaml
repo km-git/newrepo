@@ -1,0 +1,12 @@
+pillar: Cost Optimization
+controls:
+  - id: AZ-WA-COST-01
+    name: Track costs with tags and management groups
+    maps_to: ["findings_untagged"]
+  - id: AZ-WA-COST-02
+    name: Choose the right resource type and size
+    maps_to: ["findings_rightsizing"]
+  - id: AZ-WA-COST-03
+    name: Monitor and optimize continuously
+    maps_to: ["findings_costs", "findings_drift"]
+attribution: "Azure Well-Architected Cost Optimization. Mapping only."

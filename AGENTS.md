@@ -9,7 +9,8 @@ On Cursor Cloud, `http://127.0.0.1:8765` is the VM, not the user's laptop —
 use `python3 ew_tool.py --monetize-ui --static` and open
 `reports/monetize_explorer.html`. DMARC deliverability explorer: `python3 ew_tool.py --dmarc-ui --static`
 and open `reports/dmarc_explorer.html`, or `--dmarc-ui` (binds `0.0.0.0:8765`, path `/dmarc`).
-CLI: `python3 -m dmarc` / `make dmarc-all`. SSPM Explorer: `python3 ew_tool.py --sspm-ui --static`
+CLI: `python3 -m dmarc` / `make dmarc-all`. Cloud Cost explorer: `python3 ew_tool.py --cost-ui --static`
+and open `reports/cost_explorer.html`. SSPM Explorer: `python3 ew_tool.py --sspm-ui --static`
 and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`).
 
 ### Environment
@@ -38,6 +39,8 @@ and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`
 - DMARC explorer (offline): `.venv/bin/python ew_tool.py --dmarc-ui --static` → open `reports/dmarc_explorer.html`
 - DMARC explorer (server): `.venv/bin/python ew_tool.py --dmarc-ui` prints `http://127.0.0.1:8765/dmarc`
 - DMARC CLI: `.venv/bin/python -m dmarc --help` or `make dmarc-all` (sandbox domain `example.com.au`)
+- Cloud Cost & Configuration Review (offline): `.venv/bin/python ew_tool.py --cost-ui --static` → open `reports/cost_explorer.html`
+- Cloud Cost & Configuration Review (server): `.venv/bin/python -m cost ui` or `--cost-ui` binds `/cost`. End-to-end sandbox: `make cost-all`
 - SSPM Explorer (offline): `.venv/bin/python ew_tool.py --sspm-ui --static` → open `reports/sspm_explorer.html`
 - SSPM Explorer (server): `.venv/bin/python ew_tool.py --sspm-ui` or `--monitor` then `http://127.0.0.1:8765/sspm`
 - SSPM CLI: `.venv/bin/python -m sspm demo` or `make sspm-all`
