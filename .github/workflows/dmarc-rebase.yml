@@ -16,7 +16,12 @@ jobs:
       github.event_name == 'merge_group' ||
       contains(fromJSON('["dependabot[bot]","github-actions[bot]"]'), github.actor)
     steps:
+      - name: Merge-queue status
+        if: github.event_name == 'merge_group'
+        run: echo "dmarc-rebase merge_group check reported"
+
       - uses: actions/checkout@v5
+        if: github.event_name != 'merge_group'
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -25,13 +30,15 @@ jobs:
         if: github.event_name != 'merge_group'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "${{ github.base_ref }}"
-          git checkout "${{ github.head_ref }}"
-          if git rebase "origin/${{ github.base_ref }}"; then
-            git push --force-with-lease origin "${{ github.head_ref }}"
+          git fetch origin "$BASE_REF"
+          git checkout "$HEAD_REF"
+          if git rebase "origin/$BASE_REF"; then
+            git push --force-with-lease origin "$HEAD_REF"
           else
             echo "rebase conflict — leaving for operator"
             git rebase --abort || true
