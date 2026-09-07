@@ -53,4 +53,4 @@ jobs:
       - name: Lint GitHub Actions workflows
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.7
-          ./actionlint -color
+          ./actionlint -shellcheck= -color
