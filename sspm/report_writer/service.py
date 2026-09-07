@@ -15,7 +15,7 @@ from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import append_to, show
 from sspm.discovery import load_fixture
 from sspm.oauth_grants.service import list_grants
-from sspm.paths import report_write_path
+from sspm.paths import assert_report_output_allowed
 from sspm.redact import scrub_text
 from sspm.report_writer.models import ReportFiles
 
@@ -144,7 +144,20 @@ def generate(
     body, hits = strip_forbidden(body)
     body = append_to(body)
     body = scrub_text(body)
-    dest = report_write_path(output)
+    assert_report_output_allowed(output)
+    cwd = Path.cwd().resolve()
+    if tenant == "m365":
+        dest = cwd / "output" / "sspm" / "m365_report.md"
+    elif tenant == "gws":
+        dest = cwd / "output" / "sspm" / "gws_report.md"
+    elif tenant == "github":
+        dest = cwd / "output" / "sspm" / "github_report.md"
+    elif tenant == "slack":
+        dest = cwd / "output" / "sspm" / "slack_report.md"
+    elif tenant == "okta":
+        dest = cwd / "output" / "sspm" / "okta_report.md"
+    else:
+        raise ValueError(f"unknown tenant type: {tenant}")
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(body, encoding="utf-8")
     digest = hashlib.sha256(body.encode("utf-8")).hexdigest()

@@ -14,7 +14,7 @@ from sspm.compliance_map.service import map_tenant
 from sspm.config_drift.service import diff_tenant
 from sspm.disclaimers.service import show
 from sspm.oauth_grants.service import list_grants_dicts
-from sspm.paths import explorer_html_path, explorer_state_path, report_html_file, report_md_file, tenant_from_report_url
+from sspm.paths import report_html_file, report_md_file, tenant_from_report_url
 from sspm.report_writer.service import generate
 
 DEFAULT_HOST = "0.0.0.0"
@@ -199,15 +199,40 @@ if (scanBtn) {{
 
 
 def write_static(output_dir: str = "reports") -> dict[str, str]:
-    state = dashboard_state()
-    html = render_html(state)
-    dest = explorer_html_path(output_dir)
+    html = render_html(_static_shell_state())
+    cwd = Path.cwd().resolve()
+    if output_dir == "reports":
+        return _write_explorer_files(html, cwd / "reports" / "sspm_explorer.html")
+    return _write_explorer_files(html, cwd / "sspm_explorer.html")
+
+
+def _write_explorer_files(html: str, dest: Path) -> dict[str, str]:
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(html, encoding="utf-8")
-    sidecar = explorer_state_path()
+    sidecar = Path.cwd().resolve() / "output" / "sspm" / "explorer_state.json"
     sidecar.parent.mkdir(parents=True, exist_ok=True)
-    sidecar.write_text(json.dumps(state, indent=2, default=str) + "\n", encoding="utf-8")
+    sidecar.write_text(
+        json.dumps({"service": "sspm-web", "version": __version__, "static": True}, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return {"html": str(dest), "state": str(sidecar)}
+
+
+def _static_shell_state() -> dict[str, Any]:
+    return {
+        "service": "sspm-web",
+        "version": __version__,
+        "title": "Configuration & Inventory Explorer",
+        "modules": list(MODULES),
+        "inventory": {"tool_count": len(MODULES)},
+        "oauth": [],
+        "oauth_high": 0,
+        "drift_m365": [],
+        "control_refs_m365": [],
+        "reports": {name: {} for name in ("m365", "gws", "github", "slack", "okta")},
+        "disclaimer": "Static snapshot. Open the live explorer Disclaimer panel for the AU liability text.",
+        "honest_gap": "Static snapshot. Run the explorer server for live fixture rows.",
+    }
 
 
 class SspmHandler(SimpleHTTPRequestHandler):

@@ -34,10 +34,6 @@ REPORT_HTML: dict[str, Path] = {
     "okta": Path("output/sspm/okta_report.html"),
 }
 
-EXPLORER_HTML_NAME = "sspm_explorer.html"
-EXPLORER_STATE = Path("output/sspm/explorer_state.json")
-DEFAULT_REPORT_MD = Path("output/sspm/report.md")
-
 
 def under_workdir(path: Path | str) -> Path:
     """Resolve `path` and reject anything outside the current working directory."""
@@ -127,21 +123,17 @@ def report_md_file(tenant_type: str) -> Path:
     raise ValueError(f"unknown tenant type: {tenant_type}")
 
 
-def report_write_path(output: Path | str | None) -> Path:
-    """Return a report destination built from cwd + an allowlisted filename."""
-    cwd = Path.cwd().resolve()
+def assert_report_output_allowed(output: Path | str | None) -> None:
+    """Reject path escapes and unknown filenames. Does not return a user path."""
     if output is None:
-        dest = cwd / "output" / "sspm" / "report.md"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        return dest
+        return
     raw = Path(output)
+    cwd = Path.cwd().resolve()
     if raw.is_absolute():
         resolved = raw.resolve()
         if not resolved.is_relative_to(cwd):
             raise ValueError("refusing path outside the working directory")
-    dest = _literal_named_report(cwd, raw.name)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    return dest
+    _literal_named_report(cwd, raw.name)
 
 
 def _literal_named_report(cwd: Path, name: str) -> Path:
@@ -158,17 +150,6 @@ def _literal_named_report(cwd: Path, name: str) -> Path:
     if name == "okta_report.md":
         return cwd / "output" / "sspm" / "okta_report.md"
     raise ValueError(f"unsupported report filename: {name}")
-
-
-def explorer_html_path(output_dir: str = "reports") -> Path:
-    cwd = Path.cwd().resolve()
-    if output_dir == "reports":
-        return cwd / "reports" / EXPLORER_HTML_NAME
-    return cwd / EXPLORER_HTML_NAME
-
-
-def explorer_state_path() -> Path:
-    return Path.cwd().resolve() / "output" / "sspm" / "explorer_state.json"
 
 
 def tenant_from_report_url(path: str) -> str | None:

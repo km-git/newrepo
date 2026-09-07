@@ -26,7 +26,7 @@ def test_generate_report_has_disclaimer_and_hash(tmp_path: Path, monkeypatch) ->
     monkeypatch.chdir(tmp_path)
     dest = Path("report.md")
     result = generate(tenant="m365", tenant_name="demo-customer", output=dest)
-    text = dest.read_text(encoding="utf-8")
+    text = Path(result.markdown).read_text(encoding="utf-8")
     assert text.startswith("# Configuration & Inventory Report")
     assert "Liability disclaimer" in text
     assert show().text.strip() in text
