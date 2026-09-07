@@ -19,8 +19,10 @@ from tape_to_cloud.catalog import (
     MODULES,
     ROOT,
     catalog_snapshot,
-    discovery_dir as _discovery_dir,
     resolved_discovery_doc,
+)
+from tape_to_cloud.catalog import (
+    discovery_dir as _discovery_dir,
 )
 from tape_to_cloud.sample_reports import CITATIONS, get_report, list_reports
 

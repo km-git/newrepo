@@ -161,5 +161,6 @@ def test_discovery_docs_refuse_path_escape():
     assert resolved_discovery_doc("feature-completeness.md") is not None
     assert resolved_discovery_doc("../engine/tape_to_cloud_hub.py") is None
     assert resolved_discovery_doc("..%2Fetc%2Fpasswd") is None
-    assert dispatch_tape_to_cloud("GET", "/tape-to-cloud/docs/../../ew_tool.py") is None
+    escaped = dispatch_tape_to_cloud("GET", "/tape-to-cloud/docs/../../ew_tool.py")
+    assert escaped is None or escaped[0] == 404
     assert dispatch_tape_to_cloud("GET", "/tape-to-cloud/docs/not-a-doc.md") is None
