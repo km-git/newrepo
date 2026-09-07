@@ -117,6 +117,13 @@ else
   echo "[autonomous] gh not available — skip conflict resolution"
 fi
 
+echo "=== Phase 5c: close superseded duplicate PRs (monetize dupes on main) ==="
+if command -v gh >/dev/null 2>&1; then
+  EW_LICENSE_TIER=enterprise "$PY" scripts/pr_close_superseded.py ${EW_PR_DRY_RUN:+--dry-run} || echo "[autonomous] close superseded note: $?"
+else
+  echo "[autonomous] gh not available — skip close superseded"
+fi
+
 echo "=== Phase 6: ready draft PRs + executive consensus merge ==="
 if command -v gh >/dev/null 2>&1; then
   gh pr list --state open --json number,isDraft -q '.[] | select(.isDraft==true) | .number' 2>/dev/null | while read -r n; do

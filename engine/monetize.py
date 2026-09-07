@@ -1,435 +1,531 @@
 """
-Monetization Strategy Services — optional broker layer.
+Monetization Strategy Services — license tagging, access control, royalty reporting.
 
-A dependency-free (stdlib only) broker that sits on top of any asset catalog and
-provides three capabilities from the product blueprint:
+Tier definitions
+----------------
+free       : single-symbol analysis only; no batch, no live execution, no brain/OKF
+pro        : batch up to 50 symbols, paper execution, brain/OKF, effectiveness validation
+enterprise : unlimited batch, live execution, v6 scanner, autonomous daily ops, all features
 
-  1. License tagging — per-asset license metadata persisted in a manifest.
-  2. Access control  — policy decisions (allow/deny + reason) for a principal
-     performing an action on an asset given its license class.
-  3. Royalty reporting — accrue royalties per license holder from usage events
-     using a rate card, aggregated into a report.
+Environment
+-----------
+EW_LICENSE_TIER : "free" | "pro" | "enterprise"  (default "free")
 
-Fully deterministic: no network and no implicit clock in the decision logic.
-Expiry checks accept an injectable ``now`` for testability.
+Usage
+-----
+    from engine.monetize import AccessController, LicenseTagger, RoyaltyReporter
+
+    ac = AccessController()
+    if ac.can("batch"):
+        ...
+    LicenseTagger.tag(analysis_dict)
+    RoyaltyReporter().record_setup("BTC/USDT").save()
 """
 
 from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, FrozenSet, Iterable, List, Literal, Optional
+
+# ---------------------------------------------------------------------------
+# Tier type
+# ---------------------------------------------------------------------------
+
+Tier = Literal["free", "pro", "enterprise"]
+
+TIERS: tuple[Tier, ...] = ("free", "pro", "enterprise")
+
+#: Pro-tier batch cap (enterprise unlocks ``unlimited_batch``).
+PRO_BATCH_LIMIT = 50
+
+# ---------------------------------------------------------------------------
+# Feature matrix
+# ---------------------------------------------------------------------------
+
+#: Features available at each tier (additive — each tier inherits lower tiers).
+_TIER_FEATURES: Dict[str, FrozenSet[str]] = {
+    "free": frozenset({
+        "single_symbol",
+        "cache",
+        "llm_advisory",
+    }),
+    "pro": frozenset({
+        "single_symbol",
+        "cache",
+        "llm_advisory",
+        "batch",
+        "paper_execution",
+        "brain_okf",
+        "effectiveness_validation",
+        "gap_audit",
+        "autoresearch",
+        "goal_mode",
+        "outcome_tracking",
+        "tv_oss",
+    }),
+    "enterprise": frozenset({
+        "single_symbol",
+        "cache",
+        "llm_advisory",
+        "batch",
+        "paper_execution",
+        "brain_okf",
+        "effectiveness_validation",
+        "gap_audit",
+        "autoresearch",
+        "goal_mode",
+        "outcome_tracking",
+        "tv_oss",
+        "live_execution",
+        "v6_scanner",
+        "autonomous_daily",
+        "unlimited_batch",
+        "e2e_cycle",
+        "universe_scanner",
+        "pr_agent",
+    }),
+}
+
+#: Human-readable description for each feature.
+FEATURE_DESCRIPTIONS: Dict[str, str] = {
+    "single_symbol":          "Single-symbol Elliott Wave + harmonic analysis",
+    "cache":                  "On-disk OHLCV and semantic cache",
+    "llm_advisory":           "Multi-model LLM advisory panel (read-only)",
+    "batch":                  "Batch analysis up to 50 symbols",
+    "paper_execution":        "Paper (simulated) order execution",
+    "brain_okf":              "OKF secondary brain + self-improvement loop",
+    "effectiveness_validation": "Effectiveness validation + walk-forward testing",
+    "gap_audit":              "Resource gap audit (self-challenge)",
+    "autoresearch":           "Nightly AutoResearch + goal-mode runs",
+    "goal_mode":              "Goal-mode multi-step planning cycles",
+    "outcome_tracking":       "Setup outcome tracking + performance metrics",
+    "tv_oss":                 "TradingView OSS indicator consensus",
+    "live_execution":         "Live order execution via Kraken API",
+    "v6_scanner":             "V6 universe scanner (1 000 pairs × 6 TFs)",
+    "autonomous_daily":       "24/7 autonomous daily ops daemon",
+    "unlimited_batch":        "Unlimited batch size (all pairs)",
+    "e2e_cycle":              "End-to-end continuous-improvement cycle",
+    "universe_scanner":       "Universe scanner (overlapping 24/7 chunks)",
+    "pr_agent":               "PR executive consensus + auto-approve/merge",
+}
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def raw_env_tier() -> str:
+    """Return the raw ``EW_LICENSE_TIER`` value (default ``free``)."""
+    return os.environ.get("EW_LICENSE_TIER", "free")
 
 
-STATE_PATH = Path(os.environ.get("EW_MONETIZE_STATE", "output/system/monetize.json"))
-
-LICENSE_TYPES = ("proprietary", "cc-by", "public-domain", "restricted")
-DEFAULT_USAGE_RIGHTS = ("read", "train", "redistribute")
-# License classes that gate access behind an explicit allow-list.
-GATED_LICENSE_TYPES = ("proprietary", "restricted")
+def env_tier_is_valid(raw: Optional[str] = None) -> bool:
+    """Return True when *raw* (or the env var) is a known tier."""
+    value = (raw if raw is not None else raw_env_tier()).lower().strip()
+    return value in TIERS
 
 
-def _state_path() -> Path:
-  return Path(os.environ.get("EW_MONETIZE_STATE", str(STATE_PATH)))
+def env_tier_warning() -> Optional[str]:
+    """Return a warning when ``EW_LICENSE_TIER`` is set but invalid, else None."""
+    if "EW_LICENSE_TIER" not in os.environ:
+        return None
+    raw = os.environ.get("EW_LICENSE_TIER", "")
+    if env_tier_is_valid(raw):
+        return None
+    return (
+        f"EW_LICENSE_TIER={raw!r} is invalid; using 'free'. "
+        f"Valid: {', '.join(TIERS)}"
+    )
 
 
-def _parse_dt(value: Optional[str]) -> Optional[datetime]:
-  """Parse an ISO-8601 timestamp; tolerate a trailing ``Z``."""
-  if not value:
+def _resolve_tier(tier: Optional[str] = None) -> Tier:
+    """Return a validated tier, reading EW_LICENSE_TIER env var when *tier* is None.
+
+    Unknown values fail safe to ``free`` so access gates stay conservative.
+    """
+    raw = (tier if tier is not None else raw_env_tier()).lower().strip()
+    if raw not in TIERS:
+        raw = "free"
+    return raw  # type: ignore[return-value]
+
+
+def features_for_tier(tier: Optional[str] = None) -> FrozenSet[str]:
+    """Return the set of feature keys available for *tier*."""
+    return _TIER_FEATURES[_resolve_tier(tier)]
+
+
+def known_features() -> FrozenSet[str]:
+    """Return every feature key defined on the enterprise matrix."""
+    return _TIER_FEATURES["enterprise"]
+
+
+def max_batch_size(tier: Optional[str] = None) -> Optional[int]:
+    """Return the batch-size cap for *tier*, or None when unlimited."""
+    resolved = _resolve_tier(tier)
+    if resolved == "free":
+        return 1
+    if resolved == "pro":
+        return PRO_BATCH_LIMIT
     return None
-  try:
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
-  except ValueError:
-    return None
 
 
-@dataclass
-class LicenseTag:
-  """Per-asset license metadata persisted in the manifest."""
+# ---------------------------------------------------------------------------
+# LicenseTagger
+# ---------------------------------------------------------------------------
 
-  asset_id: str
-  license_id: str
-  license_type: str = "proprietary"
-  holder: str = "unknown"
-  terms_url: Optional[str] = None
-  usage_rights: List[str] = field(default_factory=lambda: list(DEFAULT_USAGE_RIGHTS))
-  allow_list: List[str] = field(default_factory=list)
-  issued_at: Optional[str] = None
-  expires_at: Optional[str] = None
+class LicenseTagger:
+    """Attach license metadata to any analysis output dict (in-place + return)."""
 
-  def is_expired(self, now: Optional[datetime] = None) -> bool:
-    """Whether the license has lapsed relative to an injectable ``now``."""
-    exp = _parse_dt(self.expires_at)
-    if exp is None:
-      return False
-    ref = now or datetime.now(timezone.utc)
-    if exp.tzinfo is None:
-      exp = exp.replace(tzinfo=timezone.utc)
-    if ref.tzinfo is None:
-      ref = ref.replace(tzinfo=timezone.utc)
-    return ref >= exp
+    @staticmethod
+    def tag(
+        payload: Dict[str, Any],
+        *,
+        tier: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Inject a ``_license`` key into *payload* and return it.
 
-  def to_dict(self) -> Dict[str, Any]:
-    return asdict(self)
+        Args:
+            payload: The analysis dict to tag (modified in-place).
+            tier:    Override tier; falls back to ``EW_LICENSE_TIER`` env var.
+            extra:   Additional metadata merged into the license block.
 
-  @classmethod
-  def from_dict(cls, data: Dict[str, Any]) -> "LicenseTag":
-    fields = {
-      "asset_id", "license_id", "license_type", "holder", "terms_url",
-      "usage_rights", "allow_list", "issued_at", "expires_at",
+        Returns:
+            The same *payload* dict, now containing ``_license``.
+
+        Raises:
+            TypeError: When *payload* is not a dict.
+        """
+        if not isinstance(payload, dict):
+            raise TypeError(
+                f"LicenseTagger.tag expects a dict, got {type(payload).__name__}"
+            )
+        resolved = _resolve_tier(tier)
+        block: Dict[str, Any] = {
+            "tier": resolved,
+            "features": sorted(features_for_tier(resolved)),
+            "tagged_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if extra:
+            for key, value in extra.items():
+                if key not in ("tier", "features", "tagged_at"):
+                    block[key] = value
+        payload["_license"] = block
+        return payload
+
+    @staticmethod
+    def strip(payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove the ``_license`` key from *payload* (in-place + return)."""
+        if not isinstance(payload, dict):
+            return payload
+        payload.pop("_license", None)
+        return payload
+
+    @staticmethod
+    def read(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Return the ``_license`` block from *payload*, or None."""
+        if not isinstance(payload, dict):
+            return None
+        block = payload.get("_license")
+        return block if isinstance(block, dict) else None
+
+
+# ---------------------------------------------------------------------------
+# AccessController
+# ---------------------------------------------------------------------------
+
+class AccessController:
+    """Enforce feature access according to the active license tier.
+
+    Args:
+        tier: Override tier; falls back to ``EW_LICENSE_TIER`` env var.
+
+    Examples::
+
+        ac = AccessController()
+        if not ac.can("batch"):
+            raise PermissionError("Batch requires pro or enterprise tier")
+        ac.require("live_execution")  # raises AccessDeniedError if denied
+    """
+
+    class AccessDeniedError(PermissionError):
+        """Raised by :meth:`require` when a feature is not available."""
+
+    def __init__(self, tier: Optional[str] = None) -> None:
+        self._tier: Tier = _resolve_tier(tier)
+        self._features: FrozenSet[str] = _TIER_FEATURES[self._tier]
+
+    # ------------------------------------------------------------------
+    @property
+    def tier(self) -> Tier:
+        return self._tier
+
+    @property
+    def features(self) -> FrozenSet[str]:
+        return self._features
+
+    # ------------------------------------------------------------------
+    def can(self, feature: str) -> bool:
+        """Return True if *feature* is available on the current tier."""
+        return feature in self._features
+
+    def require(self, feature: str) -> None:
+        """Raise :class:`AccessDeniedError` when *feature* is not available.
+
+        Args:
+            feature: Feature key to check.
+
+        Raises:
+            AccessDeniedError: When the tier does not include *feature*.
+        """
+        if not self.can(feature):
+            min_tier = self._minimum_tier_for(feature)
+            if min_tier is None:
+                msg = f"Feature '{feature}' is not a recognized monetize feature."
+            else:
+                msg = (
+                    f"Feature '{feature}' is not available on the '{self._tier}' tier."
+                    f" Requires '{min_tier}' or higher."
+                )
+            raise self.AccessDeniedError(msg)
+
+    def denied_features(self) -> List[str]:
+        """Return all features *not* available on this tier."""
+        all_features: FrozenSet[str] = _TIER_FEATURES["enterprise"]
+        return sorted(all_features - self._features)
+
+    def access_matrix(self) -> Dict[str, Any]:
+        """Return a serialisable dict with tier, allowed, and denied feature lists."""
+        return {
+            "tier": self._tier,
+            "allowed": sorted(self._features),
+            "denied": self.denied_features(),
+            "descriptions": {
+                k: FEATURE_DESCRIPTIONS.get(k, k)
+                for k in sorted(_TIER_FEATURES["enterprise"])
+            },
+        }
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _minimum_tier_for(feature: str) -> Optional[Tier]:
+        """Return the cheapest tier that includes *feature*, or None."""
+        for t in TIERS:
+            if feature in _TIER_FEATURES[t]:
+                return t
+        return None
+
+
+# ---------------------------------------------------------------------------
+# RoyaltyReporter
+# ---------------------------------------------------------------------------
+
+def _default_royalty_path() -> Path:
+    """Resolve the royalty report path from env (evaluated at call time)."""
+    return Path(os.environ.get("EW_ROYALTY_REPORT_PATH", "output/system/royalty_report.json"))
+
+
+class RoyaltyReporter:
+    """Accumulate usage metrics for SaaS metering / billing integration.
+
+    Each call to :meth:`record_setup`, :meth:`record_signal`, or
+    :meth:`record_ticker` increments the in-memory counters.  Call
+    :meth:`save` to persist (or merge) with ``output/system/royalty_report.json``.
+
+    Args:
+        tier:        Override tier; falls back to ``EW_LICENSE_TIER`` env var.
+        report_path: Override output path (defaults to ``EW_ROYALTY_REPORT_PATH``
+                     or ``output/system/royalty_report.json``).
+
+    Example::
+
+        rr = RoyaltyReporter()
+        rr.record_setup("BTC/USDT").record_signal("BTC/USDT", "SHORT")
+        rr.record_tickers(["BTC/USDT", "ETH/USDT"])
+        rr.save()
+        print(rr.report())
+    """
+
+    def __init__(
+        self,
+        tier: Optional[str] = None,
+        report_path: Optional[Path] = None,
+    ) -> None:
+        self._tier: Tier = _resolve_tier(tier)
+        self._path: Path = Path(report_path) if report_path is not None else _default_royalty_path()
+        self._setups: List[str] = []
+        self._signals: List[Dict[str, str]] = []
+        self._tickers: List[str] = []
+
+    # ------------------------------------------------------------------
+    def record_setup(self, symbol: str) -> "RoyaltyReporter":
+        """Record one analysis setup event for *symbol*."""
+        self._setups.append(symbol)
+        return self
+
+    def record_signal(self, symbol: str, direction: str = "") -> "RoyaltyReporter":
+        """Record one signal fired (e.g. entry/exit signal)."""
+        self._signals.append({"symbol": symbol, "direction": direction})
+        return self
+
+    def record_ticker(self, symbol: str) -> "RoyaltyReporter":
+        """Record one ticker scanned."""
+        self._tickers.append(symbol)
+        return self
+
+    def record_tickers(self, symbols: List[str]) -> "RoyaltyReporter":
+        """Record multiple tickers scanned in a single call."""
+        self._tickers.extend(symbols)
+        return self
+
+    # ------------------------------------------------------------------
+    def report(self) -> Dict[str, Any]:
+        """Return the current usage report as a plain dict (not persisted)."""
+        return {
+            "tier": self._tier,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "usage": {
+                "setups_generated": len(self._setups),
+                "signals_fired": len(self._signals),
+                "tickers_scanned": len(self._tickers),
+            },
+            "detail": {
+                "setups": self._setups,
+                "signals": self._signals,
+                "tickers": sorted(set(self._tickers)),
+            },
+        }
+
+    def save(self, *, merge: bool = True) -> Path:
+        """Persist (or merge) the current report to disk.
+
+        When *merge* is True (default) and an existing report exists on disk,
+        counters from both are summed so the file acts as a running total.
+
+        Args:
+            merge: Whether to merge with an existing on-disk report.
+
+        Returns:
+            Path to the saved file.
+        """
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+
+        def _merge_and_write() -> Dict[str, Any]:
+            current = self.report()
+            if merge and self._path.exists():
+                try:
+                    existing: Dict[str, Any] = json.loads(self._path.read_text())
+                    ex_usage = existing.get("usage", {})
+                    current["usage"]["setups_generated"] += int(ex_usage.get("setups_generated", 0) or 0)
+                    current["usage"]["signals_fired"] += int(ex_usage.get("signals_fired", 0) or 0)
+                    current["usage"]["tickers_scanned"] += int(ex_usage.get("tickers_scanned", 0) or 0)
+                    current["detail"]["setups"] = (
+                        list(existing.get("detail", {}).get("setups", []) or [])
+                        + current["detail"]["setups"]
+                    )
+                    current["detail"]["signals"] = (
+                        list(existing.get("detail", {}).get("signals", []) or [])
+                        + current["detail"]["signals"]
+                    )
+                    combined_tickers = list(
+                        set(existing.get("detail", {}).get("tickers", []) or [])
+                        | set(current["detail"]["tickers"])
+                    )
+                    current["detail"]["tickers"] = sorted(combined_tickers)
+                except (json.JSONDecodeError, KeyError, TypeError, OSError, ValueError):
+                    pass
+            self._path.write_text(json.dumps(current, indent=2, default=str))
+            return current
+
+        lock_path = self._path.with_name(self._path.name + ".lock")
+        try:
+            import fcntl
+
+            with lock_path.open("a+") as lockf:
+                fcntl.flock(lockf.fileno(), fcntl.LOCK_EX)
+                try:
+                    _merge_and_write()
+                finally:
+                    fcntl.flock(lockf.fileno(), fcntl.LOCK_UN)
+        except (ImportError, OSError):
+            _merge_and_write()
+        return self._path
+
+    @classmethod
+    def load(cls, report_path: Optional[Path] = None) -> Dict[str, Any]:
+        """Load and return the persisted report dict (empty dict if none exists)."""
+        path = Path(report_path) if report_path is not None else _default_royalty_path()
+        if not path.exists():
+            return {}
+        try:
+            loaded = json.loads(path.read_text())
+            return loaded if isinstance(loaded, dict) else {}
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+
+# ---------------------------------------------------------------------------
+# Module-level convenience helpers
+# ---------------------------------------------------------------------------
+
+def monetize_status(tier: Optional[str] = None) -> Dict[str, Any]:
+    """Return a combined status dict: tier, access matrix, and saved royalty report."""
+    ac = AccessController(tier=tier)
+    raw = raw_env_tier()
+    status: Dict[str, Any] = {
+        "license": ac.access_matrix(),
+        "royalty_report": RoyaltyReporter.load(),
+        "env_tier": raw,
+        "env_tier_valid": env_tier_is_valid(raw),
     }
-    return cls(**{k: v for k, v in data.items() if k in fields})
+    warning = env_tier_warning()
+    if warning:
+        status["warning"] = warning
+    return status
 
 
-@dataclass
-class AccessDecision:
-  """Structured result of an access-control check."""
-
-  allowed: bool
-  reason: str
-  principal: str = ""
-  action: str = ""
-  asset_id: str = ""
-
-  def to_dict(self) -> Dict[str, Any]:
-    return asdict(self)
-
-
-@dataclass
-class UsageEvent:
-  """A single recorded use of a tagged asset."""
-
-  asset_id: str
-  principal: str
-  action: str
-  gb: float = 0.0
-  revenue: float = 0.0
-  timestamp: Optional[str] = None
-
-  def to_dict(self) -> Dict[str, Any]:
-    return asdict(self)
-
-  @classmethod
-  def from_dict(cls, data: Dict[str, Any]) -> "UsageEvent":
-    fields = {"asset_id", "principal", "action", "gb", "revenue", "timestamp"}
-    return cls(**{k: v for k, v in data.items() if k in fields})
+def enforce_batch_size(n: int, tier: Optional[str] = None) -> None:
+    """Require ``batch`` and raise if *n* exceeds the tier's batch cap."""
+    ac = AccessController(tier=tier)
+    ac.require("batch")
+    limit = max_batch_size(ac.tier)
+    if limit is not None and n > limit:
+        raise AccessController.AccessDeniedError(
+            f"Feature 'unlimited_batch' is not available on the '{ac.tier}' tier. "
+            f"Batch size {n} exceeds the {ac.tier} limit of {limit}. "
+            f"Requires 'enterprise' or higher."
+        )
 
 
-@dataclass
-class RateCard:
-  """Royalty pricing: flat per-access fee, per-GB fee, and revenue share."""
-
-  per_access: float = 0.0
-  per_gb: float = 0.0
-  revenue_share_pct: float = 0.0
-
-  def royalty_for(self, event: UsageEvent) -> float:
-    """Royalty owed for a single usage event under this rate card."""
-    fee = self.per_access
-    fee += self.per_gb * max(0.0, float(event.gb))
-    fee += (self.revenue_share_pct / 100.0) * max(0.0, float(event.revenue))
-    return round(fee, 8)
-
-  def to_dict(self) -> Dict[str, Any]:
-    return asdict(self)
-
-  @classmethod
-  def from_dict(cls, data: Dict[str, Any]) -> "RateCard":
-    fields = {"per_access", "per_gb", "revenue_share_pct"}
-    return cls(**{k: v for k, v in data.items() if k in fields})
-
-
-def evaluate_access(
-  tag: LicenseTag,
-  principal: str,
-  action: str,
-  *,
-  now: Optional[datetime] = None,
-) -> AccessDecision:
-  """
-  Decide whether ``principal`` may perform ``action`` on the tagged asset.
-
-  Rules (evaluated in order):
-    - public-domain licenses allow every action.
-    - expired licenses deny (compared against injectable ``now``).
-    - the action must appear in the license's ``usage_rights``.
-    - proprietary/restricted licenses require the principal in ``allow_list``
-      (an empty allow-list denies all principals for those classes).
-  """
-  def _decision(allowed: bool, reason: str) -> AccessDecision:
-    return AccessDecision(
-      allowed=allowed,
-      reason=reason,
-      principal=principal,
-      action=action,
-      asset_id=tag.asset_id,
-    )
-
-  if tag.license_type == "public-domain":
-    return _decision(True, "public-domain: all actions permitted")
-
-  if tag.is_expired(now):
-    return _decision(False, f"license {tag.license_id} expired at {tag.expires_at}")
-
-  if action not in tag.usage_rights:
-    return _decision(False, f"action '{action}' not in usage_rights {tag.usage_rights}")
-
-  if tag.license_type in GATED_LICENSE_TYPES:
-    if principal not in tag.allow_list:
-      return _decision(
-        False,
-        f"{tag.license_type} license: principal '{principal}' not in allow-list",
-      )
-    return _decision(True, f"{tag.license_type} license: principal in allow-list")
-
-  return _decision(True, f"{tag.license_type} license: action '{action}' permitted")
-
-
-class MonetizationBroker:
-  """
-  Holds tagged assets + usage events and exposes the broker capabilities.
-
-  State is a JSON manifest round-trippable via the env-configured path
-  (``EW_MONETIZE_STATE``, default ``output/system/monetize.json``).
-  """
-
-  def __init__(
-    self,
+def record_usage(
     *,
-    default_rate_card: Optional[RateCard] = None,
-    rate_cards_by_type: Optional[Dict[str, RateCard]] = None,
-    rate_cards_by_holder: Optional[Dict[str, RateCard]] = None,
-  ) -> None:
-    self.tags: Dict[str, LicenseTag] = {}
-    self.events: List[UsageEvent] = []
-    self.default_rate_card: RateCard = default_rate_card or RateCard()
-    self.rate_cards_by_type: Dict[str, RateCard] = dict(rate_cards_by_type or {})
-    self.rate_cards_by_holder: Dict[str, RateCard] = dict(rate_cards_by_holder or {})
-
-  # --- License tagging ---------------------------------------------------
-
-  def tag_asset(self, tag: LicenseTag) -> LicenseTag:
-    """Persist (in memory) a license tag for an asset and return it."""
-    self.tags[tag.asset_id] = tag
-    return tag
-
-  def get_license(self, asset_id: str) -> Optional[LicenseTag]:
-    """Look up an asset's license tag, or ``None`` if untagged."""
-    return self.tags.get(asset_id)
-
-  # --- Access control ----------------------------------------------------
-
-  def check_access(
-    self,
-    principal: str,
-    action: str,
-    asset_id: str,
-    *,
-    now: Optional[datetime] = None,
-  ) -> AccessDecision:
-    """Policy decision for a principal/action/asset triple."""
-    tag = self.get_license(asset_id)
-    if tag is None:
-      return AccessDecision(
-        allowed=False,
-        reason=f"asset '{asset_id}' has no license tag",
-        principal=principal,
-        action=action,
-        asset_id=asset_id,
-      )
-    return evaluate_access(tag, principal, action, now=now)
-
-  # --- Royalty reporting -------------------------------------------------
-
-  def record_usage(
-    self,
-    asset_id: str,
-    principal: str,
-    action: str,
-    *,
-    gb: float = 0.0,
-    revenue: float = 0.0,
-    timestamp: Optional[str] = None,
-  ) -> UsageEvent:
-    """Record a usage event against a (tagged or untagged) asset."""
-    event = UsageEvent(
-      asset_id=asset_id,
-      principal=principal,
-      action=action,
-      gb=float(gb),
-      revenue=float(revenue),
-      timestamp=timestamp,
-    )
-    self.events.append(event)
-    return event
-
-  def rate_card_for(self, tag: Optional[LicenseTag]) -> RateCard:
-    """
-    Resolve the applicable rate card, most specific first:
-    per-holder, then per-license-type, then the default.
-    """
-    if tag is not None:
-      if tag.holder in self.rate_cards_by_holder:
-        return self.rate_cards_by_holder[tag.holder]
-      if tag.license_type in self.rate_cards_by_type:
-        return self.rate_cards_by_type[tag.license_type]
-    return self.default_rate_card
-
-  def royalty_report(self) -> Dict[str, Any]:
-    """
-    Aggregate royalties per license holder from all recorded usage events.
-
-    Returns totals per holder with a per-asset breakdown, event counts,
-    total GB moved, and total fees.
-    """
-    holders: Dict[str, Dict[str, Any]] = {}
-    grand_total = 0.0
-
-    for event in self.events:
-      tag = self.get_license(event.asset_id)
-      holder = tag.holder if tag is not None else "unlicensed"
-      rate = self.rate_card_for(tag)
-      fee = rate.royalty_for(event)
-      grand_total += fee
-
-      hrec = holders.setdefault(holder, {
-        "holder": holder,
-        "total_fees": 0.0,
-        "event_count": 0,
-        "total_gb": 0.0,
-        "total_revenue": 0.0,
-        "assets": {},
-      })
-      hrec["total_fees"] = round(hrec["total_fees"] + fee, 8)
-      hrec["event_count"] += 1
-      hrec["total_gb"] = round(hrec["total_gb"] + max(0.0, float(event.gb)), 8)
-      hrec["total_revenue"] = round(hrec["total_revenue"] + max(0.0, float(event.revenue)), 8)
-
-      arec = hrec["assets"].setdefault(event.asset_id, {
-        "asset_id": event.asset_id,
-        "fees": 0.0,
-        "event_count": 0,
-        "gb": 0.0,
-      })
-      arec["fees"] = round(arec["fees"] + fee, 8)
-      arec["event_count"] += 1
-      arec["gb"] = round(arec["gb"] + max(0.0, float(event.gb)), 8)
-
-    for hrec in holders.values():
-      hrec["assets"] = sorted(hrec["assets"].values(), key=lambda a: a["asset_id"])
-
-    return {
-      "generated_at": datetime.now(timezone.utc).isoformat(),
-      "grand_total_fees": round(grand_total, 8),
-      "event_count": len(self.events),
-      "holders": sorted(holders.values(), key=lambda h: -h["total_fees"]),
-    }
-
-  # --- Persistence -------------------------------------------------------
-
-  def to_dict(self) -> Dict[str, Any]:
-    return {
-      "tags": [t.to_dict() for t in self.tags.values()],
-      "events": [e.to_dict() for e in self.events],
-      "default_rate_card": self.default_rate_card.to_dict(),
-      "rate_cards_by_type": {k: v.to_dict() for k, v in self.rate_cards_by_type.items()},
-      "rate_cards_by_holder": {k: v.to_dict() for k, v in self.rate_cards_by_holder.items()},
-    }
-
-  @classmethod
-  def from_dict(cls, data: Dict[str, Any]) -> "MonetizationBroker":
-    broker = cls(
-      default_rate_card=RateCard.from_dict(data.get("default_rate_card") or {}),
-      rate_cards_by_type={
-        k: RateCard.from_dict(v) for k, v in (data.get("rate_cards_by_type") or {}).items()
-      },
-      rate_cards_by_holder={
-        k: RateCard.from_dict(v) for k, v in (data.get("rate_cards_by_holder") or {}).items()
-      },
-    )
-    for t in data.get("tags", []):
-      tag = LicenseTag.from_dict(t)
-      broker.tags[tag.asset_id] = tag
-    for e in data.get("events", []):
-      broker.events.append(UsageEvent.from_dict(e))
-    return broker
-
-  def save(self, path: Optional[Path] = None) -> Path:
-    """Persist the manifest to the env-configured JSON path (or ``path``)."""
-    target = Path(path) if path is not None else _state_path()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(self.to_dict(), indent=2, default=str), encoding="utf-8")
-    return target
-
-  @classmethod
-  def load(cls, path: Optional[Path] = None) -> "MonetizationBroker":
-    """Load a manifest from the env-configured JSON path (or ``path``)."""
-    target = Path(path) if path is not None else _state_path()
-    if not target.exists():
-      return cls()
+    setups: Optional[Iterable[str]] = None,
+    signals: Optional[Iterable[Any]] = None,
+    tickers: Optional[Iterable[str]] = None,
+    report_path: Optional[Path] = None,
+) -> Optional[Path]:
+    """Record usage events and persist them. Never raises (offline-safe)."""
     try:
-      data = json.loads(target.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-      return cls()
-    return cls.from_dict(data)
-
-
-# --- Module-level convenience -------------------------------------------
-
-
-def tag_asset(broker: MonetizationBroker, **kwargs: Any) -> LicenseTag:
-  """Build a :class:`LicenseTag` from kwargs and register it on ``broker``."""
-  return broker.tag_asset(LicenseTag(**kwargs))
-
-
-def check_access(
-  broker: MonetizationBroker,
-  principal: str,
-  action: str,
-  asset_id: str,
-  *,
-  now: Optional[datetime] = None,
-) -> AccessDecision:
-  """Thin wrapper over :meth:`MonetizationBroker.check_access`."""
-  return broker.check_access(principal, action, asset_id, now=now)
-
-
-def run_monetize_demo() -> Dict[str, Any]:
-  """
-  Build a tiny in-memory example and return its royalty report.
-
-  Deterministic and self-contained — no I/O, network, or persistence.
-  """
-  broker = MonetizationBroker(
-    default_rate_card=RateCard(per_access=0.01, per_gb=0.10),
-    rate_cards_by_type={
-      "proprietary": RateCard(per_access=1.0, per_gb=0.50, revenue_share_pct=10.0),
-    },
-  )
-  broker.tag_asset(LicenseTag(
-    asset_id="tape-001",
-    license_id="LIC-PROP-1",
-    license_type="proprietary",
-    holder="AcmeArchives",
-    usage_rights=["read", "train"],
-    allow_list=["research-team"],
-  ))
-  broker.tag_asset(LicenseTag(
-    asset_id="tape-002",
-    license_id="LIC-PD-1",
-    license_type="public-domain",
-    holder="PublicTrust",
-    usage_rights=["read", "train", "redistribute"],
-  ))
-
-  broker.record_usage("tape-001", "research-team", "train", gb=4.0, revenue=100.0)
-  broker.record_usage("tape-002", "anyone", "redistribute", gb=2.0)
-
-  return {
-    "access_allowed": broker.check_access("research-team", "train", "tape-001").to_dict(),
-    "access_denied": broker.check_access("outsider", "train", "tape-001").to_dict(),
-    "royalty_report": broker.royalty_report(),
-  }
+        setup_list = [str(s) for s in (setups or []) if s]
+        signal_list = list(signals or [])
+        ticker_list = [str(t) for t in (tickers or []) if t]
+        if not setup_list and not signal_list and not ticker_list:
+            return None
+        rr = RoyaltyReporter(report_path=report_path)
+        for symbol in setup_list:
+            rr.record_setup(symbol)
+        for sig in signal_list:
+            if isinstance(sig, dict):
+                rr.record_signal(str(sig.get("symbol", "")), str(sig.get("direction", "")))
+            elif isinstance(sig, (tuple, list)) and sig:
+                direction = str(sig[1]) if len(sig) > 1 else ""
+                rr.record_signal(str(sig[0]), direction)
+            elif sig:
+                rr.record_signal(str(sig))
+        if ticker_list:
+            rr.record_tickers(ticker_list)
+        return rr.save(merge=True)
+    except Exception:
+        return None

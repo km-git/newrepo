@@ -1,223 +1,566 @@
-"""Tests for the Monetization Strategy Services broker layer."""
+"""Unit tests for engine.monetize — LicenseTagger, AccessController, RoyaltyReporter.
+
+All tests are offline-safe (no network calls, no live data).
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import json
+import os
+
+import pytest
 
 from engine.monetize import (
-  AccessDecision,
-  LicenseTag,
-  MonetizationBroker,
-  RateCard,
-  UsageEvent,
-  run_monetize_demo,
+    FEATURE_DESCRIPTIONS,
+    PRO_BATCH_LIMIT,
+    TIERS,
+    AccessController,
+    LicenseTagger,
+    RoyaltyReporter,
+    enforce_batch_size,
+    env_tier_warning,
+    features_for_tier,
+    known_features,
+    max_batch_size,
+    monetize_status,
+    record_usage,
 )
 
-
-def _now(y=2026, m=1, d=1):
-  return datetime(y, m, d, tzinfo=timezone.utc)
-
-
-def _proprietary_tag(**overrides):
-  base = dict(
-    asset_id="tape-001",
-    license_id="LIC-1",
-    license_type="proprietary",
-    holder="Acme",
-    usage_rights=["read", "train"],
-    allow_list=["research-team"],
-  )
-  base.update(overrides)
-  return LicenseTag(**base)
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-def test_license_tag_round_trip():
-  tag = _proprietary_tag(expires_at="2027-01-01T00:00:00+00:00")
-  restored = LicenseTag.from_dict(tag.to_dict())
-  assert restored == tag
+def _make_payload(**kwargs) -> dict:
+    return {"symbol": "BTC/USDT", "status": "ok", **kwargs}
 
 
-def test_tag_and_get_license():
-  broker = MonetizationBroker()
-  broker.tag_asset(_proprietary_tag())
-  assert broker.get_license("tape-001").holder == "Acme"
-  assert broker.get_license("missing") is None
+# ---------------------------------------------------------------------------
+# LicenseTagger
+# ---------------------------------------------------------------------------
 
 
-def test_access_allow_when_action_in_rights():
-  broker = MonetizationBroker()
-  broker.tag_asset(_proprietary_tag())
-  d = broker.check_access("research-team", "read", "tape-001", now=_now())
-  assert isinstance(d, AccessDecision)
-  assert d.allowed is True
+class TestLicenseTagger:
+    def test_tag_adds_license_block(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free")
+        assert "_license" in payload
+
+    def test_tag_returns_same_dict(self):
+        payload = _make_payload()
+        returned = LicenseTagger.tag(payload, tier="free")
+        assert returned is payload
+
+    def test_tag_free_tier_fields(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free")
+        block = payload["_license"]
+        assert block["tier"] == "free"
+        assert "single_symbol" in block["features"]
+        assert "tagged_at" in block
+
+    def test_tag_pro_includes_batch(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro")
+        assert "batch" in payload["_license"]["features"]
+
+    def test_tag_enterprise_includes_live_execution(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="enterprise")
+        assert "live_execution" in payload["_license"]["features"]
+
+    def test_tag_extra_merged(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free", extra={"customer_id": "cust_123"})
+        assert payload["_license"]["customer_id"] == "cust_123"
+
+    def test_strip_removes_license(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free")
+        LicenseTagger.strip(payload)
+        assert "_license" not in payload
+
+    def test_strip_no_error_when_absent(self):
+        payload = _make_payload()
+        LicenseTagger.strip(payload)  # should not raise
+        assert "_license" not in payload
+
+    def test_read_returns_block(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro")
+        block = LicenseTagger.read(payload)
+        assert block is not None
+        assert block["tier"] == "pro"
+
+    def test_read_returns_none_when_absent(self):
+        payload = _make_payload()
+        assert LicenseTagger.read(payload) is None
+
+    def test_tag_uses_env_var(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "pro")
+        payload = _make_payload()
+        LicenseTagger.tag(payload)
+        assert payload["_license"]["tier"] == "pro"
+
+    def test_tag_invalid_tier_defaults_to_free(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="invalid_tier_xyz")
+        assert payload["_license"]["tier"] == "free"
+
+    def test_features_list_is_sorted(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="enterprise")
+        features = payload["_license"]["features"]
+        assert features == sorted(features)
+
+    def test_tag_rejects_non_dict(self):
+        with pytest.raises(TypeError, match="dict"):
+            LicenseTagger.tag(["not", "a", "dict"])  # type: ignore[arg-type]
+
+    def test_tag_rejects_none(self):
+        with pytest.raises(TypeError, match="dict"):
+            LicenseTagger.tag(None)  # type: ignore[arg-type]
+
+    def test_strip_non_dict_returns_payload(self):
+        assert LicenseTagger.strip("nope") == "nope"  # type: ignore[arg-type]
+
+    def test_read_non_dict_returns_none(self):
+        assert LicenseTagger.read(42) is None  # type: ignore[arg-type]
+
+    def test_tag_extra_cannot_overwrite_reserved(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro", extra={"tier": "enterprise", "customer_id": "x"})
+        assert payload["_license"]["tier"] == "pro"
+        assert payload["_license"]["customer_id"] == "x"
 
 
-def test_access_deny_when_action_not_permitted():
-  broker = MonetizationBroker()
-  # redistribute not in usage_rights, but principal is allow-listed
-  broker.tag_asset(_proprietary_tag())
-  d = broker.check_access("research-team", "redistribute", "tape-001", now=_now())
-  assert d.allowed is False
-  assert "usage_rights" in d.reason
+# ---------------------------------------------------------------------------
+# AccessController
+# ---------------------------------------------------------------------------
 
 
-def test_access_deny_on_expired_license():
-  broker = MonetizationBroker()
-  broker.tag_asset(_proprietary_tag(expires_at="2026-06-01T00:00:00+00:00"))
-  # inject a "now" past expiry
-  d = broker.check_access("research-team", "read", "tape-001", now=_now(2026, 7, 1))
-  assert d.allowed is False
-  assert "expired" in d.reason
-  # before expiry the same access is allowed
-  ok = broker.check_access("research-team", "read", "tape-001", now=_now(2026, 5, 1))
-  assert ok.allowed is True
+class TestAccessController:
+    def test_free_tier_default(self, monkeypatch):
+        monkeypatch.delenv("EW_LICENSE_TIER", raising=False)
+        ac = AccessController()
+        assert ac.tier == "free"
+
+    def test_env_var_sets_tier(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "enterprise")
+        ac = AccessController()
+        assert ac.tier == "enterprise"
+
+    def test_explicit_tier_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "enterprise")
+        ac = AccessController(tier="pro")
+        assert ac.tier == "pro"
+
+    def test_invalid_tier_falls_back_to_free(self):
+        ac = AccessController(tier="gold")
+        assert ac.tier == "free"
+
+    # can()
+    def test_free_can_single_symbol(self):
+        assert AccessController(tier="free").can("single_symbol") is True
+
+    def test_free_cannot_batch(self):
+        assert AccessController(tier="free").can("batch") is False
+
+    def test_free_cannot_live_execution(self):
+        assert AccessController(tier="free").can("live_execution") is False
+
+    def test_pro_can_batch(self):
+        assert AccessController(tier="pro").can("batch") is True
+
+    def test_pro_can_brain_okf(self):
+        assert AccessController(tier="pro").can("brain_okf") is True
+
+    def test_pro_cannot_live_execution(self):
+        assert AccessController(tier="pro").can("live_execution") is False
+
+    def test_enterprise_can_live_execution(self):
+        assert AccessController(tier="enterprise").can("live_execution") is True
+
+    def test_enterprise_can_v6_scanner(self):
+        assert AccessController(tier="enterprise").can("v6_scanner") is True
+
+    def test_enterprise_can_all_features(self):
+        ac = AccessController(tier="enterprise")
+        for feature in features_for_tier("enterprise"):
+            assert ac.can(feature), f"enterprise should have {feature}"
+
+    # require()
+    def test_require_passes_when_allowed(self):
+        ac = AccessController(tier="pro")
+        ac.require("batch")  # should not raise
+
+    def test_require_raises_when_denied(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(AccessController.AccessDeniedError):
+            ac.require("batch")
+
+    def test_access_denied_is_permission_error(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(PermissionError):
+            ac.require("live_execution")
+
+    def test_error_message_mentions_feature(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(AccessController.AccessDeniedError, match="batch"):
+            ac.require("batch")
+
+    def test_error_message_mentions_required_tier(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(AccessController.AccessDeniedError, match="pro"):
+            ac.require("batch")
+
+    # denied_features()
+    def test_free_has_denied_features(self):
+        ac = AccessController(tier="free")
+        denied = ac.denied_features()
+        assert "batch" in denied
+        assert "live_execution" in denied
+
+    def test_enterprise_has_no_denied_features(self):
+        ac = AccessController(tier="enterprise")
+        assert ac.denied_features() == []
+
+    def test_denied_features_sorted(self):
+        ac = AccessController(tier="free")
+        denied = ac.denied_features()
+        assert denied == sorted(denied)
+
+    # access_matrix()
+    def test_access_matrix_keys(self):
+        ac = AccessController(tier="pro")
+        matrix = ac.access_matrix()
+        assert "tier" in matrix
+        assert "allowed" in matrix
+        assert "denied" in matrix
+        assert "descriptions" in matrix
+
+    def test_access_matrix_tier_matches(self):
+        ac = AccessController(tier="pro")
+        assert ac.access_matrix()["tier"] == "pro"
+
+    def test_access_matrix_descriptions_cover_enterprise(self):
+        ac = AccessController(tier="enterprise")
+        matrix = ac.access_matrix()
+        for feat in features_for_tier("enterprise"):
+            assert feat in matrix["descriptions"]
+
+    def test_access_matrix_serialisable(self):
+        ac = AccessController(tier="free")
+        json.dumps(ac.access_matrix())  # must not raise
+
+    def test_require_unknown_feature_mentions_unrecognized(self):
+        ac = AccessController(tier="enterprise")
+        with pytest.raises(AccessController.AccessDeniedError, match="not a recognized"):
+            ac.require("teleportation")
+
+    def test_whitespace_tier_normalised(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "  PRO  ")
+        ac = AccessController()
+        assert ac.tier == "pro"
 
 
-def test_public_domain_allows_all_actions():
-  broker = MonetizationBroker()
-  broker.tag_asset(LicenseTag(
-    asset_id="pd-1",
-    license_id="LIC-PD",
-    license_type="public-domain",
-    holder="PublicTrust",
-    usage_rights=["read"],
-    expires_at="2000-01-01T00:00:00+00:00",
-  ))
-  # even an unlisted action on an "expired" public-domain asset is allowed
-  d = broker.check_access("anyone", "redistribute", "pd-1", now=_now())
-  assert d.allowed is True
-  assert "public-domain" in d.reason
+# ---------------------------------------------------------------------------
+# RoyaltyReporter
+# ---------------------------------------------------------------------------
 
 
-def test_restricted_allow_list_enforcement():
-  broker = MonetizationBroker()
-  broker.tag_asset(LicenseTag(
-    asset_id="r-1",
-    license_id="LIC-R",
-    license_type="restricted",
-    holder="Gov",
-    usage_rights=["read", "train"],
-    allow_list=["alice"],
-  ))
-  allowed = broker.check_access("alice", "read", "r-1", now=_now())
-  denied = broker.check_access("bob", "read", "r-1", now=_now())
-  assert allowed.allowed is True
-  assert denied.allowed is False
-  assert "allow-list" in denied.reason
+class TestRoyaltyReporter:
+    def test_report_structure(self):
+        rr = RoyaltyReporter(tier="free")
+        report = rr.report()
+        assert "tier" in report
+        assert "generated_at" in report
+        assert "usage" in report
+        assert "detail" in report
+
+    def test_initial_counters_zero(self):
+        rr = RoyaltyReporter(tier="free")
+        usage = rr.report()["usage"]
+        assert usage["setups_generated"] == 0
+        assert usage["signals_fired"] == 0
+        assert usage["tickers_scanned"] == 0
+
+    def test_record_setup_increments(self):
+        rr = RoyaltyReporter(tier="free")
+        rr.record_setup("BTC/USDT").record_setup("ETH/USDT")
+        assert rr.report()["usage"]["setups_generated"] == 2
+
+    def test_record_signal_increments(self):
+        rr = RoyaltyReporter(tier="pro")
+        rr.record_signal("BTC/USDT", "SHORT").record_signal("ETH/USDT", "LONG")
+        assert rr.report()["usage"]["signals_fired"] == 2
+
+    def test_record_ticker_increments(self):
+        rr = RoyaltyReporter(tier="enterprise")
+        rr.record_ticker("BTC/USDT").record_ticker("SOL/USDT")
+        assert rr.report()["usage"]["tickers_scanned"] == 2
+
+    def test_record_tickers_batch(self):
+        rr = RoyaltyReporter()
+        rr.record_tickers(["A", "B", "C"])
+        assert rr.report()["usage"]["tickers_scanned"] == 3
+
+    def test_record_setup_chaining(self):
+        rr = RoyaltyReporter()
+        returned = rr.record_setup("X")
+        assert returned is rr  # fluent interface
+
+    def test_detail_includes_symbols(self):
+        rr = RoyaltyReporter()
+        rr.record_setup("BTC/USDT")
+        assert "BTC/USDT" in rr.report()["detail"]["setups"]
+
+    def test_detail_signals_have_direction(self):
+        rr = RoyaltyReporter()
+        rr.record_signal("BTC/USDT", "LONG")
+        signals = rr.report()["detail"]["signals"]
+        assert any(s["direction"] == "LONG" for s in signals)
+
+    def test_report_tier_matches(self):
+        rr = RoyaltyReporter(tier="enterprise")
+        assert rr.report()["tier"] == "enterprise"
+
+    def test_report_serialisable(self):
+        rr = RoyaltyReporter()
+        rr.record_setup("BTC/USDT").record_signal("BTC/USDT")
+        json.dumps(rr.report())  # must not raise
+
+    # save / load
+    def test_save_creates_file(self, tmp_path):
+        rr = RoyaltyReporter(report_path=tmp_path / "royalty.json")
+        rr.record_setup("BTC/USDT")
+        path = rr.save(merge=False)
+        assert path.exists()
+
+    def test_save_content_valid_json(self, tmp_path):
+        rr = RoyaltyReporter(report_path=tmp_path / "royalty.json")
+        rr.record_setup("ETH/USDT")
+        path = rr.save(merge=False)
+        data = json.loads(path.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_save_merge_accumulates(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        rr1 = RoyaltyReporter(report_path=p)
+        rr1.record_setup("BTC/USDT")
+        rr1.save(merge=False)
+
+        rr2 = RoyaltyReporter(report_path=p)
+        rr2.record_setup("ETH/USDT")
+        rr2.save(merge=True)
+
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 2
+
+    def test_save_no_merge_overwrites(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        rr1 = RoyaltyReporter(report_path=p)
+        rr1.record_setup("BTC/USDT").record_setup("ETH/USDT")
+        rr1.save(merge=False)
+
+        rr2 = RoyaltyReporter(report_path=p)
+        rr2.record_setup("SOL/USDT")
+        rr2.save(merge=False)
+
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_load_returns_empty_when_no_file(self, tmp_path):
+        result = RoyaltyReporter.load(report_path=tmp_path / "nonexistent.json")
+        assert result == {}
+
+    def test_load_returns_saved_report(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        rr = RoyaltyReporter(report_path=p)
+        rr.record_setup("BTC/USDT")
+        rr.save(merge=False)
+        loaded = RoyaltyReporter.load(report_path=p)
+        assert loaded["usage"]["setups_generated"] == 1
+
+    def test_save_creates_parent_dirs(self, tmp_path):
+        deep = tmp_path / "a" / "b" / "c" / "royalty.json"
+        rr = RoyaltyReporter(report_path=deep)
+        rr.record_setup("X")
+        rr.save(merge=False)
+        assert deep.exists()
+
+    def test_uses_env_var_for_tier(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "enterprise")
+        rr = RoyaltyReporter()
+        assert rr.report()["tier"] == "enterprise"
+
+    def test_empty_report_save_is_valid_json(self, tmp_path):
+        p = tmp_path / "empty.json"
+        rr = RoyaltyReporter(report_path=p)
+        rr.save(merge=False)
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 0
+        assert data["detail"]["setups"] == []
+
+    def test_save_corrupt_existing_does_not_crash(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        p.write_text("{not json")
+        rr = RoyaltyReporter(report_path=p)
+        rr.record_setup("BTC/USDT")
+        rr.save(merge=True)
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_load_non_dict_json_returns_empty(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        p.write_text("[1, 2, 3]")
+        assert RoyaltyReporter.load(report_path=p) == {}
+
+    def test_uses_env_path_lazily(self, monkeypatch, tmp_path):
+        p = tmp_path / "from_env.json"
+        monkeypatch.setenv("EW_ROYALTY_REPORT_PATH", str(p))
+        rr = RoyaltyReporter()
+        rr.record_setup("SOL/USDT")
+        rr.save(merge=False)
+        assert p.exists()
+        assert RoyaltyReporter.load()["usage"]["setups_generated"] == 1
+
+    def test_concurrent_save_merge(self, tmp_path):
+        import threading
+
+        p = tmp_path / "royalty.json"
+
+        def worker(symbol: str) -> None:
+            rr = RoyaltyReporter(report_path=p)
+            rr.record_setup(symbol)
+            rr.save(merge=True)
+
+        threads = [threading.Thread(target=worker, args=(f"S{i}",)) for i in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 8
+        assert len(data["detail"]["setups"]) == 8
 
 
-def test_check_access_untagged_asset_denies():
-  broker = MonetizationBroker()
-  d = broker.check_access("alice", "read", "ghost", now=_now())
-  assert d.allowed is False
-  assert "no license tag" in d.reason
+# ---------------------------------------------------------------------------
+# features_for_tier helper
+# ---------------------------------------------------------------------------
 
 
-def test_rate_card_per_access_fee():
-  card = RateCard(per_access=0.25)
-  ev = UsageEvent(asset_id="a", principal="p", action="read", gb=10.0, revenue=100.0)
-  assert card.royalty_for(ev) == 0.25
+class TestFeaturesForTier:
+    def test_free_features_subset_of_pro(self):
+        free = features_for_tier("free")
+        pro = features_for_tier("pro")
+        assert free.issubset(pro)
+
+    def test_pro_features_subset_of_enterprise(self):
+        pro = features_for_tier("pro")
+        ent = features_for_tier("enterprise")
+        assert pro.issubset(ent)
+
+    def test_all_tiers_valid(self):
+        for t in TIERS:
+            feats = features_for_tier(t)
+            assert len(feats) > 0
+
+    def test_invalid_tier_returns_free_features(self):
+        free = features_for_tier("free")
+        invalid = features_for_tier("nonexistent")
+        assert free == invalid
 
 
-def test_rate_card_per_gb_fee():
-  card = RateCard(per_gb=0.10)
-  ev = UsageEvent(asset_id="a", principal="p", action="read", gb=8.0)
-  assert card.royalty_for(ev) == 0.8
+# ---------------------------------------------------------------------------
+# monetize_status helper
+# ---------------------------------------------------------------------------
 
 
-def test_rate_card_revenue_share():
-  card = RateCard(revenue_share_pct=15.0)
-  ev = UsageEvent(asset_id="a", principal="p", action="read", revenue=200.0)
-  assert card.royalty_for(ev) == 30.0
+class TestMonetizeStatus:
+    def test_status_keys(self):
+        status = monetize_status(tier="free")
+        assert "license" in status
+        assert "royalty_report" in status
+
+    def test_status_license_has_tier(self):
+        status = monetize_status(tier="pro")
+        assert status["license"]["tier"] == "pro"
+
+    def test_status_serialisable(self):
+        status = monetize_status(tier="enterprise")
+        json.dumps(status)  # must not raise
+
+    def test_status_invalid_env_includes_warning(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "garbage")
+        status = monetize_status()
+        assert status["license"]["tier"] == "free"
+        assert status["env_tier_valid"] is False
+        assert "warning" in status
+        assert "garbage" in status["warning"]
+
+    def test_status_valid_env_has_no_warning(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "pro")
+        status = monetize_status()
+        assert status["env_tier_valid"] is True
+        assert "warning" not in status
 
 
-def test_rate_card_resolution_precedence():
-  broker = MonetizationBroker(
-    default_rate_card=RateCard(per_access=0.01),
-    rate_cards_by_type={"proprietary": RateCard(per_access=1.0)},
-    rate_cards_by_holder={"Acme": RateCard(per_access=5.0)},
-  )
-  tag = _proprietary_tag(holder="Acme")
-  assert broker.rate_card_for(tag).per_access == 5.0
-  # falls back to type when holder has no card
-  tag2 = _proprietary_tag(holder="Other")
-  assert broker.rate_card_for(tag2).per_access == 1.0
-  # falls back to default when neither matches
-  assert broker.rate_card_for(None).per_access == 0.01
+# ---------------------------------------------------------------------------
+# FEATURE_DESCRIPTIONS completeness
+# ---------------------------------------------------------------------------
 
 
-def test_royalty_report_aggregates_multiple_holders():
-  broker = MonetizationBroker(
-    default_rate_card=RateCard(per_access=1.0, per_gb=0.5, revenue_share_pct=10.0),
-  )
-  broker.tag_asset(_proprietary_tag(asset_id="a1", holder="Acme"))
-  broker.tag_asset(_proprietary_tag(asset_id="b1", holder="Beta"))
-  broker.record_usage("a1", "p", "read", gb=2.0, revenue=100.0)  # 1 + 1 + 10 = 12
-  broker.record_usage("a1", "p", "train", gb=0.0, revenue=0.0)   # 1
-  broker.record_usage("b1", "q", "read", gb=4.0)                 # 1 + 2 = 3
-
-  report = broker.royalty_report()
-  assert report["event_count"] == 3
-  assert report["grand_total_fees"] == 16.0
-  holders = {h["holder"]: h for h in report["holders"]}
-  assert holders["Acme"]["total_fees"] == 13.0
-  assert holders["Acme"]["event_count"] == 2
-  assert holders["Beta"]["total_fees"] == 3.0
-  # per-asset breakdown present
-  assert holders["Acme"]["assets"][0]["asset_id"] == "a1"
-  # holders sorted by total fees desc
-  assert report["holders"][0]["holder"] == "Acme"
+def test_feature_descriptions_cover_all_enterprise():
+    all_feats = features_for_tier("enterprise")
+    for feat in all_feats:
+        assert feat in FEATURE_DESCRIPTIONS, f"Missing description for feature: {feat}"
 
 
-def test_royalty_report_unlicensed_asset_bucket():
-  broker = MonetizationBroker(default_rate_card=RateCard(per_access=2.0))
-  broker.record_usage("untagged", "p", "read")
-  report = broker.royalty_report()
-  holders = {h["holder"]: h for h in report["holders"]}
-  assert "unlicensed" in holders
-  assert holders["unlicensed"]["total_fees"] == 2.0
+class TestBatchLimits:
+    def test_free_max_is_one(self):
+        assert max_batch_size("free") == 1
+
+    def test_pro_max_is_50(self):
+        assert max_batch_size("pro") == PRO_BATCH_LIMIT
+
+    def test_enterprise_unlimited(self):
+        assert max_batch_size("enterprise") is None
+
+    def test_enforce_batch_blocks_free(self):
+        with pytest.raises(AccessController.AccessDeniedError, match="batch"):
+            enforce_batch_size(2, tier="free")
+
+    def test_enforce_batch_allows_pro_at_limit(self):
+        enforce_batch_size(50, tier="pro")
+
+    def test_enforce_batch_blocks_pro_over_limit(self):
+        with pytest.raises(AccessController.AccessDeniedError, match="unlimited_batch"):
+            enforce_batch_size(51, tier="pro")
 
 
-def test_json_persistence_round_trip_env(tmp_path, monkeypatch):
-  monkeypatch.setenv("EW_MONETIZE_STATE", str(tmp_path / "monetize.json"))
-  broker = MonetizationBroker(
-    default_rate_card=RateCard(per_access=1.0, per_gb=0.5),
-    rate_cards_by_type={"proprietary": RateCard(per_access=2.0)},
-  )
-  broker.tag_asset(_proprietary_tag(expires_at="2027-01-01T00:00:00+00:00"))
-  broker.record_usage("tape-001", "research-team", "train", gb=3.0, revenue=50.0)
-  saved = broker.save()
-  assert saved.exists()
+class TestRecordUsage:
+    def test_record_usage_persists(self, tmp_path):
+        path = record_usage(setups=["BTC/USDT"], report_path=tmp_path / "r.json")
+        assert path is not None
+        loaded = RoyaltyReporter.load(path)
+        assert loaded["usage"]["setups_generated"] == 1
 
-  restored = MonetizationBroker.load()
-  assert restored.get_license("tape-001") == broker.get_license("tape-001")
-  assert len(restored.events) == 1
-  assert restored.default_rate_card == broker.default_rate_card
-  assert restored.rate_cards_by_type["proprietary"].per_access == 2.0
-  # reports match after round-trip
-  assert restored.royalty_report()["grand_total_fees"] == broker.royalty_report()["grand_total_fees"]
+    def test_record_usage_empty_is_noop(self, tmp_path):
+        assert record_usage(report_path=tmp_path / "r.json") is None
+        assert not (tmp_path / "r.json").exists()
+
+    def test_record_usage_signal_tuple(self, tmp_path):
+        path = record_usage(signals=[("ETH/USDT", "SHORT")], report_path=tmp_path / "r.json")
+        loaded = RoyaltyReporter.load(path)
+        assert loaded["usage"]["signals_fired"] == 1
+        assert loaded["detail"]["signals"][0]["direction"] == "SHORT"
 
 
-def test_json_persistence_explicit_path(tmp_path):
-  path = tmp_path / "manifest.json"
-  broker = MonetizationBroker()
-  broker.tag_asset(_proprietary_tag())
-  broker.save(path)
-  restored = MonetizationBroker.load(path)
-  assert restored.get_license("tape-001") == broker.get_license("tape-001")
+def test_env_tier_warning_none_when_unset(monkeypatch):
+    monkeypatch.delenv("EW_LICENSE_TIER", raising=False)
+    assert env_tier_warning() is None
 
 
-def test_load_missing_returns_empty(tmp_path):
-  restored = MonetizationBroker.load(tmp_path / "nope.json")
-  assert restored.tags == {}
-  assert restored.events == []
-
-
-def test_run_monetize_demo():
-  report = run_monetize_demo()
-  assert report["access_allowed"]["allowed"] is True
-  assert report["access_denied"]["allowed"] is False
-  assert report["royalty_report"]["event_count"] == 2
-  # proprietary rate card applied to AcmeArchives usage
-  holders = {h["holder"]: h for h in report["royalty_report"]["holders"]}
-  assert "AcmeArchives" in holders
+def test_known_features_match_enterprise():
+    assert known_features() == features_for_tier("enterprise")
