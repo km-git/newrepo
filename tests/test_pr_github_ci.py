@@ -18,6 +18,8 @@ def test_pip_audit_and_bugbot_are_optional() -> None:
             _check("pip-audit (requirements.txt)", conclusion="failure"),
             _check("Cursor Bugbot", conclusion="neutral"),
             _check("executive-consensus", conclusion="failure"),
+            _check("codeql (python)", conclusion="failure"),
+            _check("pr-agent (AI review)", conclusion="skipped"),
         ]
     )
     assert summary["fail"] is False
@@ -72,3 +74,30 @@ def test_draft_executive_does_not_reject_advisory_ci_failures() -> None:
     )
     assert ex["verdict"] != "REJECT"
     assert "CI checks failed" not in ex["structural_gaps"]
+
+
+def test_dismiss_stale_change_requests_targets_actions_bot(monkeypatch) -> None:
+    from engine import pr_github
+
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(pr_github, "_repo_slug", lambda: "km-git/newrepo")
+
+    def fake_json(args):
+        return [
+            {"id": 11, "state": "CHANGES_REQUESTED", "user": {"login": "github-actions[bot]"}},
+            {"id": 12, "state": "COMMENTED", "user": {"login": "github-actions[bot]"}},
+            {"id": 13, "state": "CHANGES_REQUESTED", "user": {"login": "human-reviewer"}},
+        ]
+
+    def fake_run(args):
+        calls.append(args)
+        return "dismissed"
+
+    monkeypatch.setattr(pr_github, "_gh_json", fake_json)
+    monkeypatch.setattr(pr_github, "_gh_run", fake_run)
+    result = pr_github.dismiss_stale_change_requests(78)
+    assert result["action"] == "dismiss_stale_change_requests"
+    assert result["dismissed"] == [11]
+    assert result["errors"] == []
+    assert any("reviews/11/dismissals" in " ".join(c) for c in calls)

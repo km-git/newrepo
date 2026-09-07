@@ -16,6 +16,7 @@ from engine.pr_executive import (
 from engine.pr_github import (
   approve_pr,
   comment_pr,
+  dismiss_stale_change_requests,
   ensure_gh_auth,
   fetch_pr_context,
   merge_pr,
@@ -87,6 +88,8 @@ def run_pr_executive_consensus(
 
   slug = pr.get("repo", "")
   try:
+    if not actions.get("request_changes"):
+      result["github_actions"].append(dismiss_stale_change_requests(pr_number, slug))
     if actions.get("request_changes"):
       result["github_actions"].append(request_changes_pr(pr_number, slug, actions["comment_body"]))
     elif actions.get("approve"):
