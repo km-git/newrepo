@@ -14,6 +14,7 @@ reports/*
 !reports/TRADE_SETUPS.md
 !reports/COMPLETE_TRADING_ANALYSIS.md
 !reports/trade_setups_matrix.html
+!reports/monetize_explorer.html
 !reports/latest_executable_pair_tf.csv
 !reports/HISTORICAL_PERFORMANCE.md
 !reports/PAPER_PNL.md

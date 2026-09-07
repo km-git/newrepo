@@ -64,6 +64,7 @@ def test_run_daily_tick_offline(tmp_path, monkeypatch):
   monkeypatch.setenv("EW_HEALTH_REQUIRE_ARTIFACTS", "0")
   monkeypatch.setenv("EW_PORTFOLIO_RISK", "0")
   monkeypatch.setenv("EW_TACTICAL_SAFEGUARD", "0")
+  monkeypatch.setenv("EW_PROFIT_LAB", "0")
 
   def fake_paper(**kwargs):
     return {"ok": True, "proof": {"verdict": "PROOF_PENDING", "metrics": {"days": 1}}}

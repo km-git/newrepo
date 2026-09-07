@@ -1,337 +1,566 @@
-"""Tests for engine/monetize.py — signal licensing + royalty desk."""
+"""Unit tests for engine.monetize — LicenseTagger, AccessController, RoyaltyReporter.
+
+All tests are offline-safe (no network calls, no live data).
+"""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import os
 
 import pytest
 
 from engine.monetize import (
-  ALL_TIERS,
-  REPORT_JSON,
-  REPORT_MD,
-  TIER_ENTERPRISE,
-  TIER_FREE,
-  TIER_PRO,
-  TierPolicy,
-  apply_license,
-  build_report,
-  default_tier_policies,
-  get_policy,
-  royalty_report,
-  run_monetize_report,
-  signal_hash,
-  watermark_id,
-  write_reports,
+    FEATURE_DESCRIPTIONS,
+    PRO_BATCH_LIMIT,
+    TIERS,
+    AccessController,
+    LicenseTagger,
+    RoyaltyReporter,
+    enforce_batch_size,
+    env_tier_warning,
+    features_for_tier,
+    known_features,
+    max_batch_size,
+    monetize_status,
+    record_usage,
 )
 
-
-def _sig(**overrides) -> dict:
-  base = {
-    "symbol": "BTC/USDT",
-    "timeframe": "1h",
-    "direction": "LONG",
-    "wae": 100.0,
-    "stop_loss": 95.0,
-    "tp1": 110.0,
-    "tp2": 120.0,
-    "tp3": 130.0,
-    "tp1_exit_pct": 50,
-    "gtc_tier": "executable",
-    "honest_execution_tier": "full",
-  }
-  base.update(overrides)
-  return base
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-def test_default_policies_shape():
-  policies = default_tier_policies()
-  assert set(policies) == set(ALL_TIERS)
-  free = policies[TIER_FREE]
-  pro = policies[TIER_PRO]
-  ent = policies[TIER_ENTERPRISE]
-  assert free.monthly_price_aud == 0.0
-  assert pro.monthly_price_aud > 0
-  assert ent.monthly_price_aud > pro.monthly_price_aud
-  assert free.tf_allowlist == frozenset({"1d", "1w"})
-  assert pro.tf_allowlist is None
-  assert ent.royalty_pct_of_r > 0
+def _make_payload(**kwargs) -> dict:
+    return {"symbol": "BTC/USDT", "status": "ok", **kwargs}
 
 
-def test_get_policy_unknown_raises():
-  with pytest.raises(ValueError):
-    get_policy("platinum")
+# ---------------------------------------------------------------------------
+# LicenseTagger
+# ---------------------------------------------------------------------------
 
 
-def test_signal_hash_is_deterministic_and_ordering_independent():
-  a = _sig(symbol="ETH/USDT", timeframe="4h", direction="SHORT")
-  b = {"tp1": 110.0, "wae": 100.0, "symbol": "ETH/USDT", "timeframe": "4h",
-       "direction": "SHORT", "stop_loss": 95.0, "tp2": 120.0, "tp3": 130.0,
-       "gtc_tier": "executable", "honest_execution_tier": "full",
-       "tp1_exit_pct": 50, "extra": "ignored"}
-  a_hash = signal_hash(a)
-  b_hash = signal_hash(b)
-  assert a_hash == b_hash
-  assert len(a_hash) == 64
+class TestLicenseTagger:
+    def test_tag_adds_license_block(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free")
+        assert "_license" in payload
+
+    def test_tag_returns_same_dict(self):
+        payload = _make_payload()
+        returned = LicenseTagger.tag(payload, tier="free")
+        assert returned is payload
+
+    def test_tag_free_tier_fields(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free")
+        block = payload["_license"]
+        assert block["tier"] == "free"
+        assert "single_symbol" in block["features"]
+        assert "tagged_at" in block
+
+    def test_tag_pro_includes_batch(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro")
+        assert "batch" in payload["_license"]["features"]
+
+    def test_tag_enterprise_includes_live_execution(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="enterprise")
+        assert "live_execution" in payload["_license"]["features"]
+
+    def test_tag_extra_merged(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free", extra={"customer_id": "cust_123"})
+        assert payload["_license"]["customer_id"] == "cust_123"
+
+    def test_strip_removes_license(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="free")
+        LicenseTagger.strip(payload)
+        assert "_license" not in payload
+
+    def test_strip_no_error_when_absent(self):
+        payload = _make_payload()
+        LicenseTagger.strip(payload)  # should not raise
+        assert "_license" not in payload
+
+    def test_read_returns_block(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro")
+        block = LicenseTagger.read(payload)
+        assert block is not None
+        assert block["tier"] == "pro"
+
+    def test_read_returns_none_when_absent(self):
+        payload = _make_payload()
+        assert LicenseTagger.read(payload) is None
+
+    def test_tag_uses_env_var(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "pro")
+        payload = _make_payload()
+        LicenseTagger.tag(payload)
+        assert payload["_license"]["tier"] == "pro"
+
+    def test_tag_invalid_tier_defaults_to_free(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="invalid_tier_xyz")
+        assert payload["_license"]["tier"] == "free"
+
+    def test_features_list_is_sorted(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="enterprise")
+        features = payload["_license"]["features"]
+        assert features == sorted(features)
+
+    def test_tag_rejects_non_dict(self):
+        with pytest.raises(TypeError, match="dict"):
+            LicenseTagger.tag(["not", "a", "dict"])  # type: ignore[arg-type]
+
+    def test_tag_rejects_none(self):
+        with pytest.raises(TypeError, match="dict"):
+            LicenseTagger.tag(None)  # type: ignore[arg-type]
+
+    def test_strip_non_dict_returns_payload(self):
+        assert LicenseTagger.strip("nope") == "nope"  # type: ignore[arg-type]
+
+    def test_read_non_dict_returns_none(self):
+        assert LicenseTagger.read(42) is None  # type: ignore[arg-type]
+
+    def test_tag_extra_cannot_overwrite_reserved(self):
+        payload = _make_payload()
+        LicenseTagger.tag(payload, tier="pro", extra={"tier": "enterprise", "customer_id": "x"})
+        assert payload["_license"]["tier"] == "pro"
+        assert payload["_license"]["customer_id"] == "x"
 
 
-def test_signal_hash_changes_when_price_changes():
-  a = _sig()
-  b = _sig(wae=101.0)
-  assert signal_hash(a) != signal_hash(b)
+# ---------------------------------------------------------------------------
+# AccessController
+# ---------------------------------------------------------------------------
 
 
-def test_watermark_id_deterministic_and_tier_scoped():
-  s = _sig()
-  wm_pro_a = watermark_id(s, TIER_PRO)
-  wm_pro_b = watermark_id(s, TIER_PRO)
-  wm_free = watermark_id(s, TIER_FREE)
-  assert wm_pro_a == wm_pro_b
-  assert wm_pro_a.startswith("wm_pro_")
-  assert wm_free.startswith("wm_free_")
-  assert wm_pro_a != wm_free
+class TestAccessController:
+    def test_free_tier_default(self, monkeypatch):
+        monkeypatch.delenv("EW_LICENSE_TIER", raising=False)
+        ac = AccessController()
+        assert ac.tier == "free"
+
+    def test_env_var_sets_tier(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "enterprise")
+        ac = AccessController()
+        assert ac.tier == "enterprise"
+
+    def test_explicit_tier_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "enterprise")
+        ac = AccessController(tier="pro")
+        assert ac.tier == "pro"
+
+    def test_invalid_tier_falls_back_to_free(self):
+        ac = AccessController(tier="gold")
+        assert ac.tier == "free"
+
+    # can()
+    def test_free_can_single_symbol(self):
+        assert AccessController(tier="free").can("single_symbol") is True
+
+    def test_free_cannot_batch(self):
+        assert AccessController(tier="free").can("batch") is False
+
+    def test_free_cannot_live_execution(self):
+        assert AccessController(tier="free").can("live_execution") is False
+
+    def test_pro_can_batch(self):
+        assert AccessController(tier="pro").can("batch") is True
+
+    def test_pro_can_brain_okf(self):
+        assert AccessController(tier="pro").can("brain_okf") is True
+
+    def test_pro_cannot_live_execution(self):
+        assert AccessController(tier="pro").can("live_execution") is False
+
+    def test_enterprise_can_live_execution(self):
+        assert AccessController(tier="enterprise").can("live_execution") is True
+
+    def test_enterprise_can_v6_scanner(self):
+        assert AccessController(tier="enterprise").can("v6_scanner") is True
+
+    def test_enterprise_can_all_features(self):
+        ac = AccessController(tier="enterprise")
+        for feature in features_for_tier("enterprise"):
+            assert ac.can(feature), f"enterprise should have {feature}"
+
+    # require()
+    def test_require_passes_when_allowed(self):
+        ac = AccessController(tier="pro")
+        ac.require("batch")  # should not raise
+
+    def test_require_raises_when_denied(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(AccessController.AccessDeniedError):
+            ac.require("batch")
+
+    def test_access_denied_is_permission_error(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(PermissionError):
+            ac.require("live_execution")
+
+    def test_error_message_mentions_feature(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(AccessController.AccessDeniedError, match="batch"):
+            ac.require("batch")
+
+    def test_error_message_mentions_required_tier(self):
+        ac = AccessController(tier="free")
+        with pytest.raises(AccessController.AccessDeniedError, match="pro"):
+            ac.require("batch")
+
+    # denied_features()
+    def test_free_has_denied_features(self):
+        ac = AccessController(tier="free")
+        denied = ac.denied_features()
+        assert "batch" in denied
+        assert "live_execution" in denied
+
+    def test_enterprise_has_no_denied_features(self):
+        ac = AccessController(tier="enterprise")
+        assert ac.denied_features() == []
+
+    def test_denied_features_sorted(self):
+        ac = AccessController(tier="free")
+        denied = ac.denied_features()
+        assert denied == sorted(denied)
+
+    # access_matrix()
+    def test_access_matrix_keys(self):
+        ac = AccessController(tier="pro")
+        matrix = ac.access_matrix()
+        assert "tier" in matrix
+        assert "allowed" in matrix
+        assert "denied" in matrix
+        assert "descriptions" in matrix
+
+    def test_access_matrix_tier_matches(self):
+        ac = AccessController(tier="pro")
+        assert ac.access_matrix()["tier"] == "pro"
+
+    def test_access_matrix_descriptions_cover_enterprise(self):
+        ac = AccessController(tier="enterprise")
+        matrix = ac.access_matrix()
+        for feat in features_for_tier("enterprise"):
+            assert feat in matrix["descriptions"]
+
+    def test_access_matrix_serialisable(self):
+        ac = AccessController(tier="free")
+        json.dumps(ac.access_matrix())  # must not raise
+
+    def test_require_unknown_feature_mentions_unrecognized(self):
+        ac = AccessController(tier="enterprise")
+        with pytest.raises(AccessController.AccessDeniedError, match="not a recognized"):
+            ac.require("teleportation")
+
+    def test_whitespace_tier_normalised(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "  PRO  ")
+        ac = AccessController()
+        assert ac.tier == "pro"
 
 
-def test_apply_license_filters_free_tier_by_tf():
-  sigs = [_sig(timeframe="1h"), _sig(timeframe="1d"), _sig(timeframe="1w")]
-  free = apply_license(sigs, TIER_FREE)
-  tfs = sorted({row["timeframe"] for row in free})
-  assert tfs == ["1d", "1w"]
-  pro = apply_license(sigs, TIER_PRO)
-  assert len(pro) == 3
+# ---------------------------------------------------------------------------
+# RoyaltyReporter
+# ---------------------------------------------------------------------------
 
 
-def test_apply_license_free_tier_redacts_entry_sl_tp():
-  sigs = [_sig(timeframe="1d")]
-  free = apply_license(sigs, TIER_FREE)
-  assert len(free) == 1
-  row = free[0]
-  # No exact prices leak
-  for hidden in ("wae", "stop_loss", "tp1", "tp2", "tp3"):
-    assert hidden not in row, f"free tier leaked {hidden}"
-  # Delayed hint is a rough approximation, not the exact WAE
-  assert "delayed_hint" in row
-  assert row["delayed_hint"] == "~100"
-  # License and royalty terms attached
-  lic = row["license"]
-  assert lic["tier"] == TIER_FREE
-  assert lic["watermark_id"].startswith("wm_free_")
-  assert lic["signal_hash"] == signal_hash(sigs[0])
-  assert lic["redistribution_allowed"] is True
-  assert lic["expiry_utc"] == "delayed_24h"
-  assert row["royalty_terms"]["monthly_price_aud"] == 0.0
+class TestRoyaltyReporter:
+    def test_report_structure(self):
+        rr = RoyaltyReporter(tier="free")
+        report = rr.report()
+        assert "tier" in report
+        assert "generated_at" in report
+        assert "usage" in report
+        assert "detail" in report
+
+    def test_initial_counters_zero(self):
+        rr = RoyaltyReporter(tier="free")
+        usage = rr.report()["usage"]
+        assert usage["setups_generated"] == 0
+        assert usage["signals_fired"] == 0
+        assert usage["tickers_scanned"] == 0
+
+    def test_record_setup_increments(self):
+        rr = RoyaltyReporter(tier="free")
+        rr.record_setup("BTC/USDT").record_setup("ETH/USDT")
+        assert rr.report()["usage"]["setups_generated"] == 2
+
+    def test_record_signal_increments(self):
+        rr = RoyaltyReporter(tier="pro")
+        rr.record_signal("BTC/USDT", "SHORT").record_signal("ETH/USDT", "LONG")
+        assert rr.report()["usage"]["signals_fired"] == 2
+
+    def test_record_ticker_increments(self):
+        rr = RoyaltyReporter(tier="enterprise")
+        rr.record_ticker("BTC/USDT").record_ticker("SOL/USDT")
+        assert rr.report()["usage"]["tickers_scanned"] == 2
+
+    def test_record_tickers_batch(self):
+        rr = RoyaltyReporter()
+        rr.record_tickers(["A", "B", "C"])
+        assert rr.report()["usage"]["tickers_scanned"] == 3
+
+    def test_record_setup_chaining(self):
+        rr = RoyaltyReporter()
+        returned = rr.record_setup("X")
+        assert returned is rr  # fluent interface
+
+    def test_detail_includes_symbols(self):
+        rr = RoyaltyReporter()
+        rr.record_setup("BTC/USDT")
+        assert "BTC/USDT" in rr.report()["detail"]["setups"]
+
+    def test_detail_signals_have_direction(self):
+        rr = RoyaltyReporter()
+        rr.record_signal("BTC/USDT", "LONG")
+        signals = rr.report()["detail"]["signals"]
+        assert any(s["direction"] == "LONG" for s in signals)
+
+    def test_report_tier_matches(self):
+        rr = RoyaltyReporter(tier="enterprise")
+        assert rr.report()["tier"] == "enterprise"
+
+    def test_report_serialisable(self):
+        rr = RoyaltyReporter()
+        rr.record_setup("BTC/USDT").record_signal("BTC/USDT")
+        json.dumps(rr.report())  # must not raise
+
+    # save / load
+    def test_save_creates_file(self, tmp_path):
+        rr = RoyaltyReporter(report_path=tmp_path / "royalty.json")
+        rr.record_setup("BTC/USDT")
+        path = rr.save(merge=False)
+        assert path.exists()
+
+    def test_save_content_valid_json(self, tmp_path):
+        rr = RoyaltyReporter(report_path=tmp_path / "royalty.json")
+        rr.record_setup("ETH/USDT")
+        path = rr.save(merge=False)
+        data = json.loads(path.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_save_merge_accumulates(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        rr1 = RoyaltyReporter(report_path=p)
+        rr1.record_setup("BTC/USDT")
+        rr1.save(merge=False)
+
+        rr2 = RoyaltyReporter(report_path=p)
+        rr2.record_setup("ETH/USDT")
+        rr2.save(merge=True)
+
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 2
+
+    def test_save_no_merge_overwrites(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        rr1 = RoyaltyReporter(report_path=p)
+        rr1.record_setup("BTC/USDT").record_setup("ETH/USDT")
+        rr1.save(merge=False)
+
+        rr2 = RoyaltyReporter(report_path=p)
+        rr2.record_setup("SOL/USDT")
+        rr2.save(merge=False)
+
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_load_returns_empty_when_no_file(self, tmp_path):
+        result = RoyaltyReporter.load(report_path=tmp_path / "nonexistent.json")
+        assert result == {}
+
+    def test_load_returns_saved_report(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        rr = RoyaltyReporter(report_path=p)
+        rr.record_setup("BTC/USDT")
+        rr.save(merge=False)
+        loaded = RoyaltyReporter.load(report_path=p)
+        assert loaded["usage"]["setups_generated"] == 1
+
+    def test_save_creates_parent_dirs(self, tmp_path):
+        deep = tmp_path / "a" / "b" / "c" / "royalty.json"
+        rr = RoyaltyReporter(report_path=deep)
+        rr.record_setup("X")
+        rr.save(merge=False)
+        assert deep.exists()
+
+    def test_uses_env_var_for_tier(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "enterprise")
+        rr = RoyaltyReporter()
+        assert rr.report()["tier"] == "enterprise"
+
+    def test_empty_report_save_is_valid_json(self, tmp_path):
+        p = tmp_path / "empty.json"
+        rr = RoyaltyReporter(report_path=p)
+        rr.save(merge=False)
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 0
+        assert data["detail"]["setups"] == []
+
+    def test_save_corrupt_existing_does_not_crash(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        p.write_text("{not json")
+        rr = RoyaltyReporter(report_path=p)
+        rr.record_setup("BTC/USDT")
+        rr.save(merge=True)
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 1
+
+    def test_load_non_dict_json_returns_empty(self, tmp_path):
+        p = tmp_path / "royalty.json"
+        p.write_text("[1, 2, 3]")
+        assert RoyaltyReporter.load(report_path=p) == {}
+
+    def test_uses_env_path_lazily(self, monkeypatch, tmp_path):
+        p = tmp_path / "from_env.json"
+        monkeypatch.setenv("EW_ROYALTY_REPORT_PATH", str(p))
+        rr = RoyaltyReporter()
+        rr.record_setup("SOL/USDT")
+        rr.save(merge=False)
+        assert p.exists()
+        assert RoyaltyReporter.load()["usage"]["setups_generated"] == 1
+
+    def test_concurrent_save_merge(self, tmp_path):
+        import threading
+
+        p = tmp_path / "royalty.json"
+
+        def worker(symbol: str) -> None:
+            rr = RoyaltyReporter(report_path=p)
+            rr.record_setup(symbol)
+            rr.save(merge=True)
+
+        threads = [threading.Thread(target=worker, args=(f"S{i}",)) for i in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        data = json.loads(p.read_text())
+        assert data["usage"]["setups_generated"] == 8
+        assert len(data["detail"]["setups"]) == 8
 
 
-def test_apply_license_pro_tier_keeps_entry_sl_tp():
-  sigs = [_sig(timeframe="4h")]
-  pro = apply_license(sigs, TIER_PRO)
-  assert len(pro) == 1
-  row = pro[0]
-  assert row["wae"] == 100.0
-  assert row["stop_loss"] == 95.0
-  assert row["tp1"] == 110.0
-  assert row["license"]["tier"] == TIER_PRO
-  assert row["license"]["expiry_utc"] is None
-  assert row["license"]["redistribution_allowed"] is False
+# ---------------------------------------------------------------------------
+# features_for_tier helper
+# ---------------------------------------------------------------------------
 
 
-def test_apply_license_enterprise_adds_paper_and_custom_risk_terms():
-  sigs = [_sig()]
-  ent = apply_license(sigs, TIER_ENTERPRISE)
-  assert len(ent) == 1
-  terms = ent[0]["royalty_terms"]
-  assert terms["paper_fill_included"] is True
-  assert terms["custom_risk_profile"] is True
-  assert terms["royalty_pct_of_r"] > 0
+class TestFeaturesForTier:
+    def test_free_features_subset_of_pro(self):
+        free = features_for_tier("free")
+        pro = features_for_tier("pro")
+        assert free.issubset(pro)
+
+    def test_pro_features_subset_of_enterprise(self):
+        pro = features_for_tier("pro")
+        ent = features_for_tier("enterprise")
+        assert pro.issubset(ent)
+
+    def test_all_tiers_valid(self):
+        for t in TIERS:
+            feats = features_for_tier(t)
+            assert len(feats) > 0
+
+    def test_invalid_tier_returns_free_features(self):
+        free = features_for_tier("free")
+        invalid = features_for_tier("nonexistent")
+        assert free == invalid
 
 
-def test_apply_license_respects_max_signals_per_day():
-  sigs = [_sig(timeframe="1d", symbol=f"SYM{i}/USDT") for i in range(10)]
-  free = apply_license(sigs, TIER_FREE)
-  assert len(free) == 3
+# ---------------------------------------------------------------------------
+# monetize_status helper
+# ---------------------------------------------------------------------------
 
 
-def test_apply_license_ignores_non_dict_entries():
-  sigs = [_sig(timeframe="1d"), None, "junk", 42, _sig(timeframe="1w")]
-  free = apply_license(sigs, TIER_FREE)
-  assert len(free) == 2
+class TestMonetizeStatus:
+    def test_status_keys(self):
+        status = monetize_status(tier="free")
+        assert "license" in status
+        assert "royalty_report" in status
+
+    def test_status_license_has_tier(self):
+        status = monetize_status(tier="pro")
+        assert status["license"]["tier"] == "pro"
+
+    def test_status_serialisable(self):
+        status = monetize_status(tier="enterprise")
+        json.dumps(status)  # must not raise
+
+    def test_status_invalid_env_includes_warning(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "garbage")
+        status = monetize_status()
+        assert status["license"]["tier"] == "free"
+        assert status["env_tier_valid"] is False
+        assert "warning" in status
+        assert "garbage" in status["warning"]
+
+    def test_status_valid_env_has_no_warning(self, monkeypatch):
+        monkeypatch.setenv("EW_LICENSE_TIER", "pro")
+        status = monetize_status()
+        assert status["env_tier_valid"] is True
+        assert "warning" not in status
 
 
-def test_apply_license_watermarks_stable_across_calls():
-  s = _sig(timeframe="1d")
-  a = apply_license([s], TIER_FREE)[0]["license"]["watermark_id"]
-  b = apply_license([s], TIER_FREE)[0]["license"]["watermark_id"]
-  assert a == b
+# ---------------------------------------------------------------------------
+# FEATURE_DESCRIPTIONS completeness
+# ---------------------------------------------------------------------------
 
 
-def _out(status: str, **overrides) -> dict:
-  base = _sig(status=status, license_tier=TIER_PRO)
-  base.update(overrides)
-  return base
+def test_feature_descriptions_cover_all_enterprise():
+    all_feats = features_for_tier("enterprise")
+    for feat in all_feats:
+        assert feat in FEATURE_DESCRIPTIONS, f"Missing description for feature: {feat}"
 
 
-def test_royalty_report_expected_revenue_and_royalty():
-  # 3 wins + 1 loss on Pro, tp1_exit_pct=50 → per-win R = (10/5)*0.5 = 1.0
-  outcomes = [
-    _out("tp1_hit"),
-    _out("tp1_hit"),
-    _out("tp1_hit"),
-    _out("sl_hit"),
-    _out("expired"),
-    _out("tp1_hit", license_tier=TIER_ENTERPRISE),
-  ]
-  subs = {TIER_FREE: 20, TIER_PRO: 4, TIER_ENTERPRISE: 2}
-  report = royalty_report(outcomes, active_subscribers=subs, months=2)
-  per_tier = report["per_tier"]
+class TestBatchLimits:
+    def test_free_max_is_one(self):
+        assert max_batch_size("free") == 1
 
-  # Subscription revenue = price × subs × months
-  assert per_tier[TIER_FREE]["subscription_revenue_aud"] == 0.0
-  assert per_tier[TIER_PRO]["subscription_revenue_aud"] == pytest.approx(49.0 * 4 * 2)
-  assert per_tier[TIER_ENTERPRISE]["subscription_revenue_aud"] == pytest.approx(249.0 * 2 * 2)
+    def test_pro_max_is_50(self):
+        assert max_batch_size("pro") == PRO_BATCH_LIMIT
 
-  # Pro: 3 wins × 1R + 1 loss × -1R = 2R sum, 3R positive, royalty 0
-  assert per_tier[TIER_PRO]["wins"] == 3
-  assert per_tier[TIER_PRO]["losses"] == 1
-  assert per_tier[TIER_PRO]["expired"] == 1
-  assert per_tier[TIER_PRO]["sum_r"] == pytest.approx(2.0)
-  assert per_tier[TIER_PRO]["positive_r"] == pytest.approx(3.0)
-  assert per_tier[TIER_PRO]["royalty_r"] == 0.0
-  assert per_tier[TIER_PRO]["win_rate"] == pytest.approx(0.75)
+    def test_enterprise_unlimited(self):
+        assert max_batch_size("enterprise") is None
 
-  # Enterprise: 1 win × 1R positive, royalty = 1R * 0.10 = 0.10
-  assert per_tier[TIER_ENTERPRISE]["wins"] == 1
-  assert per_tier[TIER_ENTERPRISE]["positive_r"] == pytest.approx(1.0)
-  assert per_tier[TIER_ENTERPRISE]["royalty_r"] == pytest.approx(0.10)
+    def test_enforce_batch_blocks_free(self):
+        with pytest.raises(AccessController.AccessDeniedError, match="batch"):
+            enforce_batch_size(2, tier="free")
 
-  totals = report["totals"]
-  assert totals["subscribers"] == 26
-  # 49*4*2 + 249*2*2 = 392 + 996 = 1388
-  assert totals["subscription_revenue_aud"] == pytest.approx(1388.0)
-  assert totals["royalty_revenue_aud"] == pytest.approx(0.10)
+    def test_enforce_batch_allows_pro_at_limit(self):
+        enforce_batch_size(50, tier="pro")
+
+    def test_enforce_batch_blocks_pro_over_limit(self):
+        with pytest.raises(AccessController.AccessDeniedError, match="unlimited_batch"):
+            enforce_batch_size(51, tier="pro")
 
 
-def test_royalty_report_counts_invalid_outcomes():
-  outcomes = [_out("tp1_hit"), {"license_tier": "pro"}, "junk", {"status": "tp1_hit", "license_tier": "platinum"}]
-  report = royalty_report(outcomes, active_subscribers={TIER_PRO: 0})
-  assert report["invalid_outcomes"] >= 2
-  assert report["per_tier"][TIER_PRO]["wins"] == 1
+class TestRecordUsage:
+    def test_record_usage_persists(self, tmp_path):
+        path = record_usage(setups=["BTC/USDT"], report_path=tmp_path / "r.json")
+        assert path is not None
+        loaded = RoyaltyReporter.load(path)
+        assert loaded["usage"]["setups_generated"] == 1
+
+    def test_record_usage_empty_is_noop(self, tmp_path):
+        assert record_usage(report_path=tmp_path / "r.json") is None
+        assert not (tmp_path / "r.json").exists()
+
+    def test_record_usage_signal_tuple(self, tmp_path):
+        path = record_usage(signals=[("ETH/USDT", "SHORT")], report_path=tmp_path / "r.json")
+        loaded = RoyaltyReporter.load(path)
+        assert loaded["usage"]["signals_fired"] == 1
+        assert loaded["detail"]["signals"][0]["direction"] == "SHORT"
 
 
-def test_royalty_report_watermark_reconciliation():
-  s1 = _sig(symbol="AAA/USDT", timeframe="1h")
-  s2 = _sig(symbol="BBB/USDT", timeframe="1h")
-  outcomes = [
-    dict(s1, status="tp1_hit", license_tier=TIER_PRO, watermark_id=watermark_id(s1, TIER_PRO)),
-    dict(s2, status="sl_hit", license_tier=TIER_PRO, watermark_id=watermark_id(s2, TIER_PRO)),
-    dict(s1, status="tp1_hit", license_tier=TIER_PRO, watermark_id=watermark_id(s1, TIER_PRO)),
-  ]
-  report = royalty_report(outcomes, active_subscribers={TIER_PRO: 1})
-  pro = report["per_tier"][TIER_PRO]
-  # 2 unique watermarks despite 3 outcomes
-  assert pro["watermark_count"] == 2
-  assert all(w.startswith("wm_pro_") for w in pro["watermarks"])
+def test_env_tier_warning_none_when_unset(monkeypatch):
+    monkeypatch.delenv("EW_LICENSE_TIER", raising=False)
+    assert env_tier_warning() is None
 
 
-def test_royalty_report_defaults_tier_to_pro_when_missing():
-  outcomes = [dict(_sig(), status="tp1_hit")]  # no license_tier key
-  report = royalty_report(outcomes, active_subscribers={TIER_PRO: 1})
-  assert report["per_tier"][TIER_PRO]["wins"] == 1
-
-
-def test_build_report_populates_all_tiers_when_no_tier_specified(tmp_path, monkeypatch):
-  # Isolate report + data dirs
-  monkeypatch.chdir(tmp_path)
-  signals = [_sig(timeframe="1d"), _sig(timeframe="1h", symbol="ETH/USDT")]
-  outcomes = [_out("tp1_hit"), _out("sl_hit")]
-  report = build_report(signals=signals, outcomes=outcomes, subscribers={TIER_PRO: 2}, months=1)
-  assert set(report["tier_scope"]) == set(ALL_TIERS)
-  assert report["input"]["signal_count"] == 2
-  assert report["input"]["outcome_count"] == 2
-  # Free tier drops the 1h signal
-  assert len(report["licensed_signals"][TIER_FREE]) == 1
-  # Pro tier keeps both
-  assert len(report["licensed_signals"][TIER_PRO]) == 2
-
-
-def test_build_report_scoped_to_single_tier():
-  report = build_report(
-    tier=TIER_ENTERPRISE,
-    signals=[_sig(timeframe="1d")],
-    outcomes=[],
-    subscribers={TIER_ENTERPRISE: 1},
-    months=1,
-  )
-  assert report["tier_scope"] == [TIER_ENTERPRISE]
-  assert set(report["licensed_signals"]) == {TIER_ENTERPRISE}
-
-
-def test_run_monetize_report_writes_json_and_md(tmp_path, monkeypatch):
-  json_path = tmp_path / "out" / "report.json"
-  md_path = tmp_path / "reports" / "MON.md"
-  monkeypatch.setenv("EW_MONETIZE_JSON", str(json_path))
-  monkeypatch.setenv("EW_MONETIZE_MD", str(md_path))
-
-  # Reload module-level constants so overrides take effect
-  import importlib
-  import engine.monetize as m
-  importlib.reload(m)
-
-  monkeypatch.chdir(tmp_path)  # empty cwd → no on-disk signals/outcomes
-  result = m.run_monetize_report(tier=None, months=1)
-
-  assert result["ok"] is True
-  assert Path(result["paths"]["json"]).exists()
-  assert Path(result["paths"]["md"]).exists()
-  payload = json.loads(Path(result["paths"]["json"]).read_text())
-  assert set(payload["tier_scope"]) == set(ALL_TIERS)
-  md_text = Path(result["paths"]["md"]).read_text()
-  assert "Signal Licensing" in md_text
-  assert "free" in md_text and "pro" in md_text and "enterprise" in md_text
-
-  # Reload once more so subsequent tests use default paths again
-  importlib.reload(m)
-
-
-def test_write_reports_returns_paths(tmp_path):
-  report = build_report(
-    signals=[_sig(timeframe="1d")],
-    outcomes=[_out("tp1_hit")],
-    subscribers={TIER_PRO: 1},
-  )
-  jp = tmp_path / "r.json"
-  mp = tmp_path / "r.md"
-  paths = write_reports(report, json_path=jp, md_path=mp)
-  assert paths["json"] == str(jp)
-  assert paths["md"] == str(mp)
-  assert jp.exists() and mp.exists()
-
-
-def test_custom_tier_policy_overrides_default():
-  custom = {
-    TIER_FREE: TierPolicy(
-      tier=TIER_FREE,
-      monthly_price_aud=0.0,
-      royalty_pct_of_r=0.0,
-      tf_allowlist=frozenset({"1w"}),
-      max_signals_per_day=1,
-    ),
-    TIER_PRO: TierPolicy(
-      tier=TIER_PRO,
-      monthly_price_aud=100.0,
-      royalty_pct_of_r=0.0,
-    ),
-    TIER_ENTERPRISE: TierPolicy(
-      tier=TIER_ENTERPRISE,
-      monthly_price_aud=999.0,
-      royalty_pct_of_r=0.25,
-    ),
-  }
-  sigs = [_sig(timeframe="1d"), _sig(timeframe="1w")]
-  free = apply_license(sigs, TIER_FREE, policies=custom)
-  assert len(free) == 1
-  assert free[0]["timeframe"] == "1w"
-  outcomes = [_out("tp1_hit", license_tier=TIER_ENTERPRISE)]
-  report = royalty_report(outcomes, tier_policy=custom, active_subscribers={TIER_ENTERPRISE: 3}, months=1)
-  assert report["per_tier"][TIER_ENTERPRISE]["subscription_revenue_aud"] == pytest.approx(2997.0)
-  assert report["per_tier"][TIER_ENTERPRISE]["royalty_r"] == pytest.approx(0.25)
+def test_known_features_match_enterprise():
+    assert known_features() == features_for_tier("enterprise")

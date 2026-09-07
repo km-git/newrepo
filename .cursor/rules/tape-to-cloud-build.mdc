@@ -1,0 +1,133 @@
+---
+description: Build the tape-to-cloud migration tool from the blueprint. Route 95% of work to Grok Code Fast / Grok 4.5 / Composer 2.5 Standard / Claude Haiku 4.5 / GPT-5.6 Luna; reserve Claude Sonnet 5 / Opus 5 / Fable 5.1 for ~5% hard triggers. Source-agnostic, target-agnostic, audit-first. Max Mode off.
+globs:
+alwaysApply: false
+---
+
+# Tape-to-Cloud Build Rule (95/5 routing)
+
+You are helping build a vendor-agnostic tape-to-cloud migration tool. Three constraints govern every decision:
+
+1. **Source-agnostic.** Handle LTO-1 through LTO-10, DLT/AIT/DDS/VXA, VTL, and proprietary backup-app formats (TSM, NetBackup, Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF, Catalogic DPX). NetBackup cannot read TSM tapes directly; the tool needs its own format-aware read/catalog layer.
+2. **Target-agnostic.** Same code path writes to AWS S3/Glacier/Deep Archive, Azure Blob (Hot/Cool/Archive), Google Cloud Storage, Backblaze B2, Wasabi, Cloudian, SeaweedFS, Ceph. Use any S3-compatible SDK; do not hard-code to one cloud. MinIO Community Edition is archived (GitHub: April 25, 2026); do not recommend it as the self-hosted S3 layer.
+3. **Use-case-complete.** Every menu line below must be expressible as a first-class module on the same core.
+
+## Menu → module map (the 16 first-class modules)
+
+When asked to implement a feature, locate it here first and reuse the same core:
+
+| Menu item | Module | Concrete deliverable |
+|---|---|---|
+| Comprehensive Media Audit | `audit` | Per-tape JSON: barcode, format, byte count, header hash, file list |
+| Archive Insight | `analytics` | SQL/indexed view over audit data: age distribution, duplicate detection, PII flagging |
+| Tape Migration: Virtualization | `vtl-cloud` | AWS Tape Gateway / StarWind deployment + lifecycle policy |
+| Tape Migration: Restore | `restore` | On-demand read from cloud → staging → courier/network return |
+| Disk-Based Data Ingest | `disk-ingest` | USB/NAS reader, S3 sync, manifest generation |
+| Email Restore From Tape | `email-extract` | GroupWise, Lotus, Notes, Exchange, PST extractors as plugins |
+| GroupWise to M365 | `email-migrate` | GroupWise Post Office parse + O365 import (Graph API or PST) |
+| Tape Copy and Duplication | `tape-duplicate` | 1-to-N hardware duplication, hash verification, signed manifests |
+| Video Digitization | `media-ingest` | LTO → staging → proxy/transcode → S3 + Media2Cloud enrichment |
+| Legacy Tape Management | `tape-ops` | Barcode tracking, drive/library health, scheduled audit |
+| Cloud-based Legacy Tape Mgmt (Nexus) | `tape-saas` | Tenant-isolated VTL, restore portal, immutable catalog |
+| Tape Storage | `tape-vault` | Integration with offsite-vault APIs for residual physical tape |
+| Media Destruction | `destroy` | NIST 800-88 + IRS Pub 1075 certificate generation |
+| Legacy Data for LLM | `llm-corpus` | Extract → dedup → PII-scrub → tokenize → training format |
+| AI and ML Services | `ml-enrich` | Rekognition / Transcribe / Comprehend / Textract pipeline |
+| Monetization Strategy | `monetize` | License tagging, access control, royalty reporting |
+
+## Default model selection (95%)
+
+For routine work on this repo, use a **Bucket A** model:
+
+1. **Grok Code Fast** — free, fastest for repo search, small edits, type fixes, lint.
+2. **Grok 4.5** — slightly more nuanced reasoning, still cheap ($2/$6 per M tokens).
+3. **Composer 2.5 Standard** (not Fast) — for sustained agent work, multi-file refactors, migration scripts. Standard is 6× cheaper than Fast for the same weights.
+4. **GPT-5.6 Luna** — only when a Claude-family model has been failing.
+5. **Claude Haiku 4.5** — last resort in Bucket A; still cheap.
+
+For long agent loops, the `audit`, `disk-ingest`, `tape-vault`, `monetize`, `analytics`, and `llm-corpus` modules are Bucket A/B by default.
+
+## Escalate to Bucket C / D (the 5%)
+
+Escalate to an expensive model **only** when at least one of these is true:
+
+- The change is a **multi-file refactor with cross-cutting effects** across the 16 modules (e.g., refactoring the manifest schema affects `audit`, `analytics`, `tape-ops`, `tape-saas`).
+- The bug is **subtle concurrency, distributed-systems, or security-sensitive** (auth on the restore portal, KMS envelope key handling, manifest signature, WORM retention lock, Temporal workflow replay safety, AWS credential scope).
+- The user is **making an architecture decision**: license vs re-implement MediaGenie Proteus for TSM/NetBackup/BackupExec readers; Temporal vs Airflow vs Argo for the orchestrator; multi-tenant data model for `tape-saas`; chain-of-custody legal posture.
+- The task requires **long-context reasoning over >50K tokens** of code at once (e.g., the full module map, the full integrity layer, the full target-cloud matrix).
+- A Bucket A model has already failed on this same task in the same chat, and you can name the specific failure (e.g., a wrong TSM header parser, a wrong AWS Snowball OpsHub step, a wrong S3 Glacier retrieval tier).
+
+For every escalation, state in the response *why* you escalated and which trigger fired. Do not escalate silently.
+
+The 5% is concentrated in these specific areas of this tool:
+- **Format-specific readers for proprietary backup-app formats** (TSM, NetBackup, Backup Exec, ARCserve, NetWorker, Data Protector, CommVault, Veeam MTF) — the headers are undocumented and require careful reverse-engineering reasoning.
+- **AWS Snowball + Tape Gateway state machine** — the OpsHub-driven workflow, KMS key selection, manifest format, virtual-tape status transitions are subtle.
+- **WORM-anchor policy logic** — S3 Object Lock Compliance mode, GCS Bucket Lock, Azure Immutable Blob; the legal posture and key-deletion semantics.
+- **Temporal workflow design** — activity timeouts, retry policies, signal handling, durable execution semantics.
+- **Multi-tenant Nexus portal data model** — tenant isolation, restore-permission graph, immutable catalog.
+- **Chain-of-custody legal posture** — what the certificate must say for IRS Pub 1075, FISMA, HIPAA, GDPR.
+
+## Hard "never escalate" list
+
+Do **not** use Bucket C or D for any of these, even if asked:
+
+- Writing docstrings, comments, README, ADRs, or type annotations.
+- Renaming variables, reformatting, fixing lint warnings.
+- Generating unit tests for already-written code.
+- Scaffolding the controller/worker skeleton, the S3 SDK adapter, the SHA-256 manifest writer, the multipart uploader, the lifecycle policy sweep, the `ffmpeg` proxy pipeline, the `tesseract` OCR call, the PII scrubber, the tokenization sharder, the Postgres audit schema, the `disk-ingest` reader, the `tape-vault` API integration, the `monetize` license-tag writer.
+- Translating between obvious equivalents (e.g., boto3 vs azure-storage-blob — pick one, the other is a Bucket A port).
+- Searching the repo, explaining a file, summarizing the blueprint.
+
+## Tech-stack defaults
+
+When the task is to scaffold, default to this stack unless the user says otherwise:
+
+- **Language**: Python 3.12+ (best library coverage for tape I/O, ML, and cloud SDKs).
+- **Tape I/O**: `mt-st` for control, `mbuffer` for streaming buffer, `tar` or `ltfs` for read, `stenc` for hardware-decryption of AIT.
+- **Hashing**: `hashlib` SHA-256, with `xxhash` for fast non-cryptographic checksums on dedup.
+- **Cloud SDK**: `boto3` for AWS, `azure-storage-blob` for Azure, `google-cloud-storage` for GCP, all S3-compatible.
+- **Catalog DB**: Postgres + SQLAlchemy 2.x + Alembic.
+- **Orchestrator**: Temporal (per-tape state machine) + Argo (parallel bursts) + Airflow (daily catalog refresh). Default to Temporal for new code.
+- **Backup-format readers**: license MediaGenie Proteus or implement custom; do not invent a half-working TSM/NetBackup parser on a cheap model.
+- **Video**: `mediainfo` for metadata, `ffmpeg` for proxies, AWS Media2Cloud reference pipeline.
+- **Email**: Transend Migrator (or equivalent) for GroupWise-to-O365.
+- **AI/LLM**: `tesseract`, `pdftotext`, `presidio` for PII, `datatrove` or `dolma` for tokenization.
+
+## Context discipline (the silent cost killer)
+
+Cheap models get expensive when you feed them 200K tokens of unrelated files. Before every call:
+
+- Use `@file` and `@folder` references instead of pasting code blocks.
+- Never use `@codebase` unless the question genuinely spans the repo.
+- For the 16-module map, the integrity layer, and the target-cloud matrix, point to the relevant section of the blueprint by filename, not by full paste.
+- Add a short "what matters" note before the code: the entry point, the failing behavior, the constraints, the exact files expected to change.
+- Maintain an ignore list: `node_modules/`, `.venv/`, `dist/`, `build/`, `__pycache__/`, `*.pyc`, `tests/fixtures/large_*.bin`, `vendor/`, `coverage/`.
+- Start fresh conversations when the context gets bloated.
+
+## Max Mode
+
+Max Mode is **off by default**. Do not turn it on unless the user explicitly approves it for the current task. Max Mode expands context to the model's full window and bills proportionally. It is the single most common budget blow-up.
+
+For thinking-mode models (GPT-5.4, Opus 4.5/4.6, Sonnet 4.5/4.6), Max Mode is currently selected by default when you pick the model, and there are reports it cannot be toggled off. If you find yourself in this state, switch off the thinking-mode model and use a non-thinking cheap model instead.
+
+## Self-report at the end of every multi-step task
+
+When the work is done, append a one-line note:
+
+`[model used: <name>] [Bucket: A/B/C/D] [reason if Bucket C/D: <trigger>]` `[module: <audit|analytics|vtl-cloud|restore|...>]`
+
+This makes the 95/5 split auditable in chat history and ties each model call to a specific module.
+
+## When the user explicitly asks for a specific model
+
+If the user names a model in their request (e.g., "use Opus 5 to design the Nexus multi-tenant data model"), use that model. Do not silently re-route to a cheaper one. The user is paying attention; respect their override.
+
+## Stop conditions
+
+Stop and ask the user before:
+
+- Adding a new third-party dependency that has a per-token or per-GB cost (e.g., a new SaaS API).
+- Choosing between license-and-wrap vs re-implement for any proprietary backup format.
+- Committing to a specific cloud vendor for the default target.
+- Any change to the chain-of-custody manifest schema (legal exposure).
+- Any change to the WORM retention policy (regulatory exposure).
