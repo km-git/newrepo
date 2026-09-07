@@ -20,6 +20,7 @@ from tape_to_cloud.catalog import (
 from tape_to_cloud.sample_reports import CITATIONS, get_report, list_reports
 
 ROOT = Path(__file__).resolve().parent.parent
+CROSS_CUTTING = LAYERS
 
 DISCOVERY_DOCS = (
     ("free-tool-inventory.md", "Free-tool inventory catalog"),
@@ -115,6 +116,7 @@ def build_hub_state() -> dict[str, Any]:
             for name in CURSOR_RULES
         ],
         "packages": {
+            "tape_to_cloud_ingest": (root / "tape_to_cloud" / "ingest.py").is_file(),
             "tape_to_cloud_monetize": (root / "tape_to_cloud" / "monetize").is_dir(),
             "forum_watcher": fw.is_dir(),
         },
@@ -125,8 +127,13 @@ def build_hub_state() -> dict[str, Any]:
             "workflow": ".github/workflows/forum-watcher.yml",
         },
         "cli": {
+            "ingest": "python -m tape_to_cloud ingest PATH --matter MATTER",
+            "restore": "python -m tape_to_cloud restore JOB_ID DEST",
+            "verify": "python -m tape_to_cloud verify JOB_ID",
+            "status": "python -m tape_to_cloud status",
             "report": "python -m tape_to_cloud report audit",
             "list": "python -m tape_to_cloud list",
+            "ew_tool_ingest": "python3 ew_tool.py --tape-ingest PATH --tape-matter MATTER",
             "tape_monetize_cli": "python -m tape_to_cloud.monetize",
             "forum_watcher": "cd forum-watcher && python scripts/watch.py",
             "hub": "python3 ew_tool.py --monitor",
@@ -136,12 +143,29 @@ def build_hub_state() -> dict[str, Any]:
             "hub": "/tape-to-cloud",
             "modules": "/tape-to-cloud/modules",
             "layers": "/tape-to-cloud/layers",
+            "jobs": "/tape-to-cloud/jobs",
             "reports": "/tape-to-cloud/reports",
             "job_pack": "/tape-to-cloud/reports/job-pack",
+            "validation": "/tape-to-cloud/validation",
             "api": "/api/tape-to-cloud/status",
+            "api_jobs": "/api/tape-to-cloud/jobs",
             "api_reports": "/api/tape-to-cloud/reports",
+            "api_validation": "/api/tape-to-cloud/validation",
         },
+        "honesty": {
+            "working": "disk ingest of real file bytes with pre/post SHA-256, CoC, restore, verify, optional WORM, stdlib .eml/.mbox",
+            "not_working": "LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network",
+        },
+        "live_jobs": _live_jobs_snapshot(),
     }
+
+
+def _live_jobs_snapshot() -> dict[str, Any]:
+    from tape_to_cloud.ingest import default_store
+    from tape_to_cloud.jobs import list_jobs
+
+    jobs = list_jobs()
+    return {"count": len(jobs), "store": str(default_store()), "jobs": jobs[:50]}
 
 
 def _css() -> str:
@@ -210,8 +234,10 @@ def _shell(title: str, body: str) -> str:
       <a href="/tape-to-cloud">Home</a>
       <a href="/tape-to-cloud/modules">Modules</a>
       <a href="/tape-to-cloud/layers">Layers</a>
+      <a href="/tape-to-cloud/jobs">Live jobs</a>
       <a href="/tape-to-cloud/reports">Reports</a>
       <a href="/tape-to-cloud/reports/job-pack">Job pack</a>
+      <a href="/tape-to-cloud/validation">Validation</a>
       <a href="/api/tape-to-cloud/status">API</a>
     </nav>
   </header>
@@ -263,6 +289,30 @@ def render_hub_html() -> str:
         f'<li><a href="{html.escape(c["url"])}">{html.escape(c["title"])}</a> — {html.escape(c["fields"])}</li>'
         for c in CITATIONS
     )
+    from engine.tape_to_cloud_reports import list_report_summaries, validate_intactness
+    from tape_to_cloud.jobs import list_jobs
+
+    intact = validate_intactness()
+    intact_label = "INTACT" if intact["ok"] else "FAILED"
+    intact_class = "ok" if intact["ok"] else "bad"
+    intact_rows = "\n".join(
+        "<tr>"
+        f'<td><a href="{html.escape(r["href"])}"><code>{html.escape(r["id"])}</code></a></td>'
+        f"<td>{html.escape(r['kind'])}</td><td>{html.escape(r['title'])}</td>"
+        f"<td>{'verified' if r['hash_verified'] else 'MISMATCH'}</td></tr>"
+        for r in list_report_summaries()
+    )
+    live = list_jobs()
+    live_rows = (
+        "\n".join(
+            "<tr>"
+            f'<td><a href="{html.escape(j["href"])}"><code>{html.escape(j["id"])}</code></a></td>'
+            f"<td>{j['object_count']}</td><td>{j['bytes']}</td>"
+            f"<td>{html.escape(str(j['status']))}</td></tr>"
+            for j in live
+        )
+        or "<tr><td colspan='4'>No live jobs yet. Run <code>python -m tape_to_cloud ingest PATH</code></td></tr>"
+    )
     body = f"""
     <section>
       <h2>Public demo</h2>
@@ -273,10 +323,20 @@ def render_hub_html() -> str:
          for {html.escape(state["catalog"]["sample_customer"])} — 16 detailed module reports + combined job pack.</p>
       {latest_line}
       <p class="muted">Targets: {targets}</p>
+      <p>Intactness: <strong class="{intact_class}">{intact_label}</strong>
+         · 6 cross-cutting layers on every module.</p>
       <p>Every report calls <code>tape_to_cloud.layers.apply_layers</code>
          (SHA-256 sidecar, KMIP refuse, license-or-wrap readers, WORM stop-and-ask).</p>
-      <pre>{html.escape(state["cli"]["report"])}
+      <pre>{html.escape(state["cli"]["ingest"])}
+{html.escape(state["cli"]["report"])}
 {html.escape(state["cli"]["list"])}</pre>
+      <p class="muted">{html.escape(state["honesty"]["working"])}. Not in this MVP: {html.escape(state["honesty"]["not_working"])}.</p>
+    </section>
+    <section>
+      <h2>Live ingest jobs (real bytes)</h2>
+      <p class="muted">SHA-256 of actual file contents. CLI: <code>python -m tape_to_cloud ingest PATH --matter MATTER</code></p>
+      <table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th></tr></thead>
+      <tbody>{live_rows}</tbody></table>
     </section>
     <section>
       <h2>16 modules</h2>
@@ -290,6 +350,12 @@ def render_hub_html() -> str:
       <h2>Sample reports</h2>
       <table><thead><tr><th>Report ID</th><th>Menu</th><th>Open</th></tr></thead>
       <tbody>{report_rows}</tbody></table>
+    </section>
+    <section>
+      <h2>SHA-256 intactness fixtures</h2>
+      <p class="muted">Vendor-shaped demo packages (not live tapes). Validation: <a href="/tape-to-cloud/validation">/tape-to-cloud/validation</a></p>
+      <table><thead><tr><th>ID</th><th>Kind</th><th>Title</th><th>Hash</th></tr></thead>
+      <tbody>{intact_rows}</tbody></table>
     </section>
     <section>
       <h2>Discovery docs</h2>
@@ -365,6 +431,8 @@ python -m tape_to_cloud list</pre>
 
 
 def render_reports_index_html() -> str:
+    from engine.tape_to_cloud_reports import list_report_summaries
+
     rows = "\n".join(
         "<tr>"
         f"<td><code>{html.escape(r['report_id'])}</code></td>"
@@ -374,6 +442,14 @@ def render_reports_index_html() -> str:
         f'<a href="{html.escape(r["json"])}">JSON</a></td></tr>'
         for r in list_reports()
     )
+    intact_rows = "\n".join(
+        "<tr>"
+        f'<td><a href="{html.escape(r["href"])}"><code>{html.escape(r["id"])}</code></a></td>'
+        f"<td>{html.escape(r['kind'])}</td>"
+        f"<td>{html.escape(r['title'])}</td>"
+        f"<td>{'verified' if r['hash_verified'] else 'MISMATCH'}</td></tr>"
+        for r in list_report_summaries()
+    )
     body = f"""
     <section>
       <h2>Sample reports</h2>
@@ -381,6 +457,12 @@ def render_reports_index_html() -> str:
       <p><a href="/tape-to-cloud/reports/job-pack">Open combined job pack</a></p>
       <table><thead><tr><th>Report ID</th><th>Module</th><th>Menu</th><th>Open</th></tr></thead>
       <tbody>{rows}</tbody></table>
+    </section>
+    <section>
+      <h2>SHA-256 intactness fixtures</h2>
+      <p class="muted">Vendor-shaped demo packages. Canonical JSON hashed with SHA-256.</p>
+      <table><thead><tr><th>ID</th><th>Kind</th><th>Title</th><th>Hash</th></tr></thead>
+      <tbody>{intact_rows}</tbody></table>
     </section>
     """
     return _shell("Tape-to-Cloud sample reports", body)
@@ -422,17 +504,79 @@ def _not_found(msg: str) -> tuple[int, dict[str, str], bytes]:
     return 404, {"Content-Type": "text/plain; charset=utf-8"}, msg.encode("utf-8")
 
 
+def _dispatch_live_jobs(path: str) -> tuple[int, dict[str, str], bytes] | None:
+    from tape_to_cloud.jobs import list_jobs, load_job
+
+    html_hdr = {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
+    json_hdr = {"Content-Type": "application/json", "Cache-Control": "no-store"}
+    if path == "/tape-to-cloud/jobs":
+        rows = list_jobs()
+        body_rows = (
+            "\n".join(
+                f"<tr><td><a href='{html.escape(j['href'])}'><code>{html.escape(j['id'])}</code></a></td>"
+                f"<td>{j['object_count']}</td><td>{j['bytes']}</td>"
+                f"<td>{html.escape(str(j['status']))}</td></tr>"
+                for j in rows
+            )
+            or "<tr><td colspan='4'>No live jobs. Run python -m tape_to_cloud ingest PATH</td></tr>"
+        )
+        page = _shell(
+            "Live ingest jobs",
+            "<section><h2>Live ingest jobs</h2>"
+            f"<table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th></tr></thead>"
+            f"<tbody>{body_rows}</tbody></table></section>",
+        )
+        return 200, html_hdr, page.encode("utf-8")
+    if path.startswith("/tape-to-cloud/jobs/"):
+        job_id = path.rsplit("/", 1)[-1]
+        job = load_job(job_id)
+        if job is None:
+            return 404, html_hdr, b"<html><body>unknown job</body></html>"
+        payload = json.dumps(job, indent=2, default=str)
+        sample = job.get("sample")
+        page = (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>"
+            f"{html.escape(job_id)}</title></head>"
+            "<body style='font-family:sans-serif;background:#0d1117;color:#e6edf3'>"
+            "<p><a href='/tape-to-cloud/jobs'>All live jobs</a></p>"
+            f"<h1>Live job {html.escape(job_id)}</h1>"
+            f"<p>sample={sample} (must be false) · objects={job.get('object_count')} · "
+            f"SHA-256 {html.escape(str(job.get('canonical_sha256')))}</p>"
+            f"<pre>{html.escape(payload)}</pre></body></html>"
+        )
+        return 200, html_hdr, page.encode("utf-8")
+    if path == "/api/tape-to-cloud/jobs":
+        rows = list_jobs()
+        return 200, json_hdr, json.dumps({"jobs": rows, "count": len(rows)}, indent=2).encode("utf-8")
+    if path.startswith("/api/tape-to-cloud/jobs/"):
+        job_id = path.rsplit("/", 1)[-1]
+        job = load_job(job_id)
+        if job is None:
+            return 404, json_hdr, json.dumps({"error": "unknown_job", "id": job_id}).encode("utf-8")
+        return 200, json_hdr, json.dumps(job, indent=2, default=str).encode("utf-8")
+    return None
+
+
+def _module_or_pack(key: str) -> bool:
+    return key in MODULES or key == "job-pack"
+
+
 def dispatch_tape_to_cloud(
     method: str,
     path: str,
     query: Mapping[str, Sequence[str]] | None = None,
 ) -> tuple[int, dict[str, str], bytes] | None:
-    del query
+    from engine import tape_to_cloud_reports as intact_mod
+
     raw = path or "/"
     path = raw.rstrip("/") or "/"
     method = (method or "GET").upper()
     if method != "GET":
         return None
+
+    job_hit = _dispatch_live_jobs(path)
+    if job_hit is not None:
+        return job_hit
 
     parts = [p for p in path.split("/") if p]
     if parts[:1] == ["tape-to-cloud"]:
@@ -443,6 +587,15 @@ def dispatch_tape_to_cloud(
         rest = ["api", *parts[2:]]
     else:
         return None
+
+    if rest == ["validation"]:
+        return _html_bytes(intact_mod.render_validation_html())
+    if rest[:1] == ["api"] and rest[1:] == ["validation"]:
+        return _json_bytes(intact_mod.validate_intactness())
+
+    kind = None
+    if query and query.get("kind"):
+        kind = query["kind"][0]
 
     if rest[:1] == ["api"]:
         api_rest = rest[1:]
@@ -458,12 +611,20 @@ def dispatch_tape_to_cloud(
         if api_rest == ["layers"]:
             return _json_bytes(catalog_snapshot()["layers"])
         if api_rest == ["reports"]:
-            return _json_bytes(list_reports())
+            rows = intact_mod.list_report_summaries(kind)
+            return _json_bytes({"reports": rows, "count": len(rows)})
         if len(api_rest) == 2 and api_rest[0] == "reports":
-            try:
-                return _json_bytes(get_report(api_rest[1]))
-            except KeyError:
-                return _not_found(f"unknown report: {api_rest[1]}\n")
+            key = api_rest[1]
+            if _module_or_pack(key):
+                try:
+                    return _json_bytes(get_report(key))
+                except KeyError:
+                    return _not_found(f"unknown report: {key}\n")
+            fixture = intact_mod.get_report(key)
+            if fixture is None:
+                body = json.dumps({"error": "unknown_report", "id": key}).encode("utf-8")
+                return 404, {"Content-Type": "application/json", "Cache-Control": "no-store"}, body
+            return _json_bytes(fixture)
         return _not_found("unknown tape-to-cloud API path\n")
 
     if rest == []:
@@ -483,16 +644,29 @@ def dispatch_tape_to_cloud(
         key = rest[1]
         if key.endswith(".json"):
             key = key[: -len(".json")]
+            if _module_or_pack(key):
+                try:
+                    return _json_bytes(get_report(key))
+                except KeyError:
+                    return _not_found(f"unknown report: {key}\n")
+            fixture = intact_mod.get_report(key)
+            if fixture is None:
+                return _not_found(f"unknown report: {key}\n")
+            return _json_bytes(fixture)
+        if _module_or_pack(key):
             try:
-                return _json_bytes(get_report(key))
+                return _html_bytes(render_report_html(key))
             except KeyError:
                 return _not_found(f"unknown report: {key}\n")
-        try:
-            return _html_bytes(render_report_html(key))
-        except KeyError:
+        fixture = intact_mod.get_report(key)
+        if fixture is None:
             return _not_found(f"unknown report: {key}\n")
+        return _html_bytes(intact_mod.render_report_detail_html(fixture))
     if len(rest) == 2 and rest[0] == "docs":
         return render_doc_text(rest[1])
+    report_hit = intact_mod.dispatch_report_routes(method, path, query)
+    if report_hit is not None:
+        return report_hit
     return _not_found("unknown tape-to-cloud path\n")
 
 

@@ -70,13 +70,40 @@ def test_pr_agent_workflow_is_sha_pinned_and_skips_without_key() -> None:
         assert SHA_RE.fullmatch(ref), uses
 
 
-def test_gitleaks_action_is_sha_pinned() -> None:
+def test_no_compromised_reviewdog_action_setup_tag() -> None:
+    workflows = ROOT / ".github" / "workflows"
+    for path in workflows.glob("*.yml"):
+        text = path.read_text(encoding="utf-8")
+        assert "uses: reviewdog/action-setup@" not in text, path.name
+
+
+def test_codeql_and_trufflehog_are_sha_pinned() -> None:
+    codeql = (ROOT / ".github" / "workflows" / "codeql.yml").read_text(encoding="utf-8")
+    assert "github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d" in codeql
+    assert "github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d" in codeql
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c" in lint
+    assert "github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d" in lint
+    for uses in USES_RE.findall(codeql + "\n" + lint):
+        if uses.startswith("actions/"):
+            continue
+        if uses.startswith("google/osv-scanner-action/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        if "/" not in uses:
+            continue
+        if uses.startswith(("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/")):
+            assert SHA_RE.fullmatch(ref), uses
     text = LINT_SECURITY.read_text(encoding="utf-8")
     assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
     assert "gitleaks/gitleaks-action@v2" not in text
     assert "gitleaks/gitleaks-action@v3" not in text
     assert "gitleaks/gitleaks-action@main" not in text
     assert "--ignore-vuln PYSEC-2026-2447" in text
+    allow = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
+    assert "useDefault = true" in allow
+    ignore = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
+    assert "bb00f4049343f5e9b7636fb1f841a88af26daa1f:engine/tape_to_cloud_reports.py:generic-api-key:258" in ignore
 
 
 def test_ruff_passes_on_replacement_paths() -> None:
@@ -87,8 +114,13 @@ def test_ruff_passes_on_replacement_paths() -> None:
     paths = [
         "tape_to_cloud/",
         "engine/monetization_strategy.py",
+        "engine/tape_to_cloud_hub.py",
+        "engine/tape_to_cloud_reports.py",
         "tests/test_monetization_strategy.py",
         "tests/test_tape_to_cloud_monetize.py",
+        "tests/test_tape_to_cloud_hub.py",
+        "tests/test_tape_to_cloud_reports.py",
+        "tests/test_tape_to_cloud_pipeline.py",
         "tests/test_bugbot_replacement.py",
     ]
     subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
