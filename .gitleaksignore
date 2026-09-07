@@ -1,0 +1,3 @@
+# Known SAMPLE finding: demo KMIP UUID in the first reports commit (not a live secret).
+# Fingerprint format: commit:path:rule:line
+bb00f4049343f5e9b7636fb1f841a88af26daa1f:engine/tape_to_cloud_reports.py:generic-api-key:258

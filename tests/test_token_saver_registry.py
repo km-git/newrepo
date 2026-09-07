@@ -13,7 +13,7 @@ from engine.token_saver_registry import (
 def test_registry_has_core_libraries():
   names = {lib.name for lib in TOKEN_SAVER_LIBRARIES}
   assert "tiktoken" in names
-  assert "diskcache" in names
+  assert "msgpack" in names
   assert "llm-token-optimizer" in names
   assert "tokenpruner" in names
 

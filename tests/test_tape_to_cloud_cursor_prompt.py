@@ -9,7 +9,11 @@ MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-build.mdc"
 LOOP_MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-improvement-loop.mdc"
 PROMPT = ROOT / "discovery" / "tape-to-cloud" / "cursor-prompt.md"
 LOOP_PROMPT = ROOT / "discovery" / "tape-to-cloud" / "continuous-improvement-loop-prompt.md"
+INVENTORY = ROOT / "discovery" / "tape-to-cloud" / "free-tool-inventory.md"
+INVENTORY_MDC = ROOT / ".cursor" / "rules" / "tape-to-cloud-free-tool-inventory.mdc"
+PYPROJECT_DEPS = ROOT / "discovery" / "tape-to-cloud" / "pyproject-dependencies.toml"
 USER_RULE = ROOT / "discovery" / "tape-to-cloud" / "user-rule.txt"
+COMPLETENESS = ROOT / "discovery" / "tape-to-cloud" / "feature-completeness.md"
 
 MODULES = (
   "audit",
@@ -42,6 +46,15 @@ NEVER_ESCALATE = (
   "disk-ingest",
   "tape-vault",
   "monetize",
+)
+
+CROSS_CUTTING = (
+  "integrity",
+  "ediscovery",
+  "kms-kmip",
+  "worm",
+  "format-readers",
+  "media-rescue",
 )
 
 STOP_CONDITIONS = (
@@ -80,6 +93,12 @@ def test_project_rule_maps_all_sixteen_modules():
   for name in MODULES:
     assert f"`{name}`" in text, f"missing module {name}"
   assert text.count("| `") >= 16
+  for name in CROSS_CUTTING:
+    assert f"`{name}`" in text, f"missing cross-cutting layer {name}"
+  assert "SeaweedFS" in text
+  assert "LTO-10" in text
+  assert "KMIP" in text
+  assert "feature-completeness.md" in text
 
 
 def test_project_rule_never_escalate_and_stop_conditions():
@@ -115,9 +134,10 @@ def test_prompt_has_numbered_sections_and_ten_references():
     (6, "The 30-Day Audit Loop"),
     (7, "Why This Works for This Specific Project"),
     (8, "One-Sentence Takeaway"),
+    (9, "Feature Completeness Matrix"),
   ):
     assert f"## {n}. {title}" in text, f"missing heading {n}"
-  for n in range(1, 11):
+  for n in range(1, 21):
     assert f"[{n}]" in text, f"missing citation [{n}]"
   urls = [
     "https://cursor.com/docs/rules",
@@ -129,6 +149,10 @@ def test_prompt_has_numbered_sections_and_ten_references():
     "https://www.gamsgo.com/blog/cursor-pricing",
     "https://www.finout.io/blog/what-happened-to-cursor-pricing-2026-guide-5-cost-cutting-tips",
     "https://developertoolkit.ai/en/cursor-ide/quick-start/essential-configuration/",
+    "https://www.ironmountain.com/services/data-restoration-and-migration",
+    "https://www.tapeark.com/",
+    "https://www.lto.org/lto-10/",
+    "https://www.tapeark.com/data-formats/",
   ]
   for url in urls:
     assert url in text, f"missing URL {url}"
@@ -137,6 +161,34 @@ def test_prompt_has_numbered_sections_and_ten_references():
   assert "tape-to-cloud-build.mdc" in text
   assert MDC.read_text(encoding="utf-8") in text
   assert USER_RULE.read_text(encoding="utf-8").strip() in text
+
+
+def test_feature_completeness_matrix_covers_vendor_gaps():
+  text = COMPLETENESS.read_text(encoding="utf-8")
+  assert COMPLETENESS.is_file()
+  for name in MODULES:
+    assert f"`{name}`" in text, f"completeness missing module {name}"
+  for name in CROSS_CUTTING:
+    assert f"`{name}`" in text, f"completeness missing layer {name}"
+  for phrase in (
+    "RFID",
+    "SeaweedFS",
+    "LTO-10",
+    "3480",
+    "T10000",
+    "KMIP",
+    "eDiscovery",
+    "ITAD",
+    "Cohesity",
+    "Arctera",
+    "Stiction",
+    "https://www.ironmountain.com/services/data-restoration-and-migration",
+    "https://www.tapeark.com/data-formats/",
+    "https://www.lto.org/lto-10/",
+  ):
+    assert phrase in text, f"completeness missing {phrase}"
+  # 16 menu modules, not a 17th brochure SKU.
+  assert "Do not invent a 22-module product" in text or "Do not add a 17th brochure module" in PROMPT.read_text(encoding="utf-8")
 
 
 def test_improvement_loop_rule_frontmatter_and_free_tier_stack():
@@ -160,3 +212,43 @@ def test_improvement_loop_prompt_covers_modules_and_bugbot_replacement():
   assert "uv run prek run --all-files" in text
   assert "Monday 9 AM AEST review checklist" in text
   text.encode("utf-8")
+
+
+def test_free_tool_inventory_catalog_structure():
+  text = INVENTORY.read_text(encoding="utf-8")
+  assert text.startswith("# Expanding the Free-Tool Inventory")
+  for n, title in (
+    (1, "Two Asks"),
+    (2, "MinIO Archival and SeaweedFS Replacement"),
+    (7, "Single `pyproject.toml` Install Matrix"),
+    (11, "Inventory Summary"),
+    (12, "References"),
+  ):
+    assert f"## {n}. {title}" in text, f"missing section {n}"
+  for tool in ("SeaweedFS", "libratom", "DuckDB", "Temporal", "PaddleOCR", "gitleaks", "mhvtl"):
+    assert tool in text
+  assert "April 25, 2026" in text
+  assert "MinIO Community Edition is archived" in text or "MinIO CE" in text
+  for n in range(1, 19):
+    assert f"[{n}]" in text, f"missing citation [{n}]"
+  text.encode("utf-8")
+
+
+def test_free_tool_inventory_rule_and_deps_matrix():
+  meta, body = _frontmatter_and_body(INVENTORY_MDC.read_text(encoding="utf-8"))
+  assert meta["alwaysApply"] == "false"
+  assert "SeaweedFS" in body
+  assert "MinIO" in body
+  assert "free-tool-inventory.md" in body
+  deps = PYPROJECT_DEPS.read_text(encoding="utf-8")
+  assert "[project]" in deps
+  assert "duckdb>=" in deps
+  assert "temporalio>=" in deps
+  assert "libratom>=" in deps
+
+
+def test_build_rule_recommends_seaweedfs_not_minio():
+  text = MDC.read_text(encoding="utf-8")
+  assert "SeaweedFS" in text
+  assert "April 25, 2026" in text
+  assert "MinIO, Ceph" not in text
