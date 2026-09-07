@@ -8,8 +8,22 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
+_SECRET_KEYS = frozenset({"password", "secret", "token", "api_key", "client_secret", "authorization"})
+
+
+def _redact(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {
+            key: "[redacted]" if str(key).lower() in _SECRET_KEYS else _redact(value)
+            for key, value in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_redact(item) for item in obj]
+    return obj
+
 
 def emit(data: Any, human: bool = False, title: str = "DSPM") -> None:
+    data = _redact(data)
     if human:
         _print_human(data, title)
     else:

@@ -59,7 +59,7 @@ class SmbConnector(BaseConnector):
             if objects:
                 return objects
         except Exception:
-            pass
+            pass  # live SMB unavailable; fall back to fixtures
         return self._fixture_objects(uri, max_objects)
 
     def _fixture_objects(self, uri: str, limit: int) -> list[DataObject]:
@@ -95,7 +95,7 @@ class SmbConnector(BaseConnector):
             text = raw.decode("utf-8", errors="replace")
             return ObjectPreview(uri=uri, path=path, content_type="text", preview_text=text, truncated=True)
         except Exception:
-            pass
+            pass  # live SMB preview unavailable; try fixtures
         if FIXTURES.exists():
             data = json.loads(FIXTURES.read_text(encoding="utf-8"))
             for item in data.get("files", []):

@@ -3,14 +3,24 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 import httpx
 
 GITHUB_API = "https://api.github.com"
+_GH_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _safe_name(value: str, kind: str) -> str:
+    if not _GH_NAME.fullmatch(value or ""):
+        raise ValueError(f"invalid GitHub {kind}")
+    return value
 
 
 def scan_repo(owner: str, repo: str, token: str | None = None) -> dict[str, Any]:
+    owner = _safe_name(owner, "owner")
+    repo = _safe_name(repo, "repo")
     token = token or os.environ.get("GITHUB_TOKEN", "")
     headers = {"Accept": "application/vnd.github+json"}
     if token:
@@ -56,6 +66,7 @@ def scan_repo(owner: str, repo: str, token: str | None = None) -> dict[str, Any]
 
 
 def list_org_repos(org: str, token: str | None = None, limit: int = 10) -> list[dict]:
+    org = _safe_name(org, "org")
     token = token or os.environ.get("GITHUB_TOKEN", "")
     headers = {"Accept": "application/vnd.github+json"}
     if token:

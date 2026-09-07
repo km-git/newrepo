@@ -40,7 +40,8 @@ def search_events(query: str, limit: int = 50) -> list[dict]:
     events = fetch_all("siem_events", limit=500)
     if not query or query == "*":
         return events[:limit]
-    pattern = re.compile(query, re.IGNORECASE)
+    needle = re.escape(query)
+    pattern = re.compile(needle, re.IGNORECASE)
     matched = [
         e
         for e in events

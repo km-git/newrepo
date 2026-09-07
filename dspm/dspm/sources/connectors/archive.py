@@ -95,7 +95,7 @@ class ArchiveConnector(BaseConnector):
                             )
                         )
         except (OSError, zipfile.BadZipFile, tarfile.TarError):
-            pass
+            pass  # unreadable archive; skip member listing
         return members[:limit]
 
     def preview(self, uri: str, path: str = "", max_bytes: int = 8192) -> ObjectPreview:

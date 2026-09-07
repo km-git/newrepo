@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dspm.classification.service import classify_text
 from dspm.sources.models import SourceScanResult
-from dspm.sources.registry import discover, preview
 
 
 def scan_source(uri: str, max_objects: int = 200, classify_limit: int = 50) -> SourceScanResult:
+    from dspm.sources.registry import discover, preview
     objects = discover(uri, max_objects=max_objects)
     scheme = uri.split("://")[0] if "://" in uri else "file"
     findings: list[dict] = []

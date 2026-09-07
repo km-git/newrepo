@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import feedparser
 import yaml
@@ -91,14 +92,15 @@ def run_watch(mode: str = "all") -> dict:
     sources = load_sources()
     new_items: list[dict] = []
     for src in sources:
-        if mode == "vendor" and "reddit" in src.get("url", ""):
+        host = (urlparse(src.get("url", "")).hostname or "").lower()
+        if mode == "vendor" and (host == "reddit.com" or host.endswith(".reddit.com")):
             continue
-        if mode == "community" and "github.com" in src.get("url", ""):
+        if mode == "community" and (host == "github.com" or host.endswith(".github.com")):
             continue
         try:
             items = fetch_feed(src["url"], src.get("max_items", 15))
         except Exception:
-            continue
+            continue  # skip feeds that fail to parse; watcher must not abort the loop
         for item in items:
             h = url_hash(item["url"])
             if h in seen:
