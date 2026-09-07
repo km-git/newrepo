@@ -68,6 +68,8 @@ def test_dspm_ci_pip_audit_skips_unpublished_local_package() -> None:
     assert "--skip-editable" in text
     assert "continue-on-error: true" in text
     assert "pip-audit -r requirements.txt" not in text
+    lint = (ROOT / ".github" / "workflows" / "lint-security.yml").read_text(encoding="utf-8")
+    assert "--ignore-vuln PYSEC-2026-2447" in lint
 
 
 def test_workflows_exist_and_sha_pin_actions() -> None:
