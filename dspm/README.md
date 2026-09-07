@@ -19,9 +19,30 @@ python -m dspm web serve --port 8766
 # or: dspm-web serve
 ```
 
-Dashboard pages: Findings, Risk, Exposure, Catalog & Lineage, Governance, SIEM, SQL Warehouse, Remediation.
+Dashboard pages: Findings, Risk, Exposure, **Data Sources**, Catalog & Lineage, Governance, SIEM, SQL Warehouse, Remediation.
 
 API docs: http://127.0.0.1:8766/api/docs
+
+## Unified Data Sources
+
+Read, discover, preview, and classify unstructured data from:
+
+| Source | URI | Credentials |
+|--------|-----|-------------|
+| Local / NFS mount | `file://`, `nfs://` | — |
+| Backup archives | `backup://` | tar, zip, .bak |
+| S3 / MinIO | `s3://bucket/prefix` | `AWS_*`, `DSPM_S3_ENDPOINT` |
+| SMB/CIFS | `smb://server/share` | `SMB_USER`, `SMB_PASSWORD` |
+| M365 | `m365://sharepoint`, `m365://exchange` | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` |
+| SaaS | `saas://gdrive`, `saas://dropbox` | `SAAS_API_TOKEN` |
+
+```bash
+dspm sources scan backup://examples/archives
+dspm sources scan s3://my-bucket/backups/
+dspm sources scan m365://exchange
+```
+
+Without credentials, fixture mode provides realistic demo data. Optional: `pip install -e ".[sources]"` for boto3 + smbprotocol.
 
 ## Platform modules (enterprise-inspired)
 
