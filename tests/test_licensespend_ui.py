@@ -71,6 +71,8 @@ def test_explorer_portfolio_and_client_switcher() -> None:
     assert 'data-client="acme"' in html
     assert 'data-client="northwind"' in html
     assert "A$408.00" in html
+    assert "searchParams.set" in html
+    assert '.get("client")' in html
     assert not contains_raw_email(html)
     assert "@contoso.example" not in html
     assert "@northwind.example" not in html

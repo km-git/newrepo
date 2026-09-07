@@ -192,9 +192,16 @@
     }
     document.getElementById("client-switch").addEventListener("click", (ev) => {
       const btn = ev.target.closest("button[data-client]");
-      if (btn) render(btn.getAttribute("data-client"));
+      if (btn) {
+        const id = btn.getAttribute("data-client");
+        const url = new URL(window.location.href);
+        url.searchParams.set("client", id);
+        history.replaceState(null, "", url);
+        render(id);
+      }
     });
-    render({{ default_client|tojson }});
+    const requested = new URLSearchParams(window.location.search).get("client");
+    render((requested && STATE.clients[requested]) ? requested : {{ default_client|tojson }});
   </script>
 </body>
 </html>
