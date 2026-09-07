@@ -6,12 +6,21 @@ import os
 import shutil
 from pathlib import Path
 
-from tape_to_cloud.integrity import sha256_file
+from tape_to_cloud.integrity import sha256_file, sha256_hex
 from tape_to_cloud.worm import assert_unlocked
+
+_DEFAULT_STORE = Path("output/tape_to_cloud/store")
+
+
+def default_store() -> Path:
+    return Path(os.environ.get("EW_TAPE_STORE", str(_DEFAULT_STORE)))
 
 
 def object_path(store: Path, digest: str) -> Path:
-    return store / "objects" / digest[:2] / digest
+    digest = sha256_hex(digest)
+    dest = (store.resolve() / "objects" / digest[:2] / digest).resolve()
+    dest.relative_to((store.resolve() / "objects").resolve())
+    return dest
 
 
 def put_file(store: Path, source: Path, *, expected_sha256: str | None = None) -> tuple[str, Path]:
@@ -48,4 +57,4 @@ def delete_object(store: Path, digest: str, job_dir: Path) -> None:
         os.unlink(path)
 
 
-__all__ = ["delete_object", "get_file", "object_path", "put_file"]
+__all__ = ["default_store", "delete_object", "get_file", "object_path", "put_file"]

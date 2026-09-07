@@ -28,6 +28,13 @@ def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def sha256_hex(digest: str) -> str:
+    value = (digest or "").strip().lower()
+    if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+        raise ValueError(f"invalid sha256 digest: {digest!r}")
+    return value
+
+
 def canonical_sha256(payload: Mapping[str, Any]) -> str:
     body = {k: v for k, v in payload.items() if k != "canonical_sha256"}
     blob = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)

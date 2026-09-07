@@ -7,7 +7,6 @@ It does not drive LTO hardware. `.enc` files without `--unwrap-key` are refused 
 from __future__ import annotations
 
 import json
-import os
 import tarfile
 import uuid
 from datetime import UTC, datetime
@@ -16,15 +15,10 @@ from typing import Any
 
 from tape_to_cloud.coc import append_event, load_events
 from tape_to_cloud.email_extract import extract_email_tree
+from tape_to_cloud.ids import resolved_job_dir
 from tape_to_cloud.integrity import HASH_ALG, REFUSED, canonical_sha256, sha256_file
-from tape_to_cloud.store import get_file, put_file
+from tape_to_cloud.store import default_store, delete_object, get_file, object_path, put_file
 from tape_to_cloud.worm import apply_lock, load_lock
-
-DEFAULT_STORE = Path(os.environ.get("EW_TAPE_STORE", "output/tape_to_cloud/store"))
-
-
-def default_store() -> Path:
-    return Path(os.environ.get("EW_TAPE_STORE", str(DEFAULT_STORE)))
 
 
 def _job_id() -> str:
@@ -149,7 +143,7 @@ def _safe_relpath(raw: str) -> Path:
 
 def restore_job(job_id: str, dest: Path, *, store: Path | None = None) -> dict[str, Any]:
     store = (store or default_store()).resolve()
-    job_dir = store / "jobs" / job_id
+    job_dir = resolved_job_dir(store, job_id)
     report_path = job_dir / "report.json"
     if not report_path.is_file():
         raise FileNotFoundError(job_id)
@@ -167,11 +161,15 @@ def restore_job(job_id: str, dest: Path, *, store: Path | None = None) -> dict[s
 
 def verify_job(job_id: str, *, store: Path | None = None) -> dict[str, Any]:
     store = (store or default_store()).resolve()
-    job_dir = store / "jobs" / job_id
+    job_dir = resolved_job_dir(store, job_id)
     report = json.loads((job_dir / "report.json").read_text(encoding="utf-8"))
     mismatches = []
     for obj in report.get("objects") or []:
-        path = store / "objects" / obj["sha256"][:2] / obj["sha256"]
+        try:
+            path = object_path(store, obj["sha256"])
+        except ValueError:
+            mismatches.append(obj["sha256"])
+            continue
         if not path.is_file() or sha256_file(path) != obj["sha256"]:
             mismatches.append(obj["sha256"])
     recomputed = canonical_sha256(report)
@@ -185,10 +183,8 @@ def verify_job(job_id: str, *, store: Path | None = None) -> dict[str, Any]:
 
 
 def try_delete_job_object(job_id: str, digest: str, *, store: Path | None = None) -> None:
-    from tape_to_cloud.store import delete_object
-
     store = (store or default_store()).resolve()
-    delete_object(store, digest, store / "jobs" / job_id)
+    delete_object(store, digest, resolved_job_dir(store, job_id))
 
 
 __all__ = [
