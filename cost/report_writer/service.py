@@ -16,13 +16,13 @@ DISCLAIMER_PATH = Path(__file__).resolve().parents[2] / "disclaimers" / "disclai
 TEMPLATE = Template(
     """# Cloud Cost & Configuration Review
 
-**Provider:** {{ provider }}  
-**Period:** {{ since }}  
+**Provider:** {{ provider }}
+**Period:** {{ since }}
 **Generated:** {{ generated_at }}
 
 ## Cost summary
 
-Total cost rows: {{ cost_count }}  
+Total cost rows: {{ cost_count }}
 Top drivers:
 {% for row in top_costs %}
 - {{ row.service }} ({{ row.region }}): {{ row.amount }}
@@ -30,7 +30,7 @@ Top drivers:
 
 ## Rightsizing opportunities
 
-Count: {{ rightsizing_count }}  
+Count: {{ rightsizing_count }}
 Review with the engineering team before applying.
 
 ## Untagged inventory
@@ -43,7 +43,7 @@ Count: {{ drift_count }}
 
 ## Framework references
 
-Mapped controls: {{ compliance_count }}  
+Mapped controls: {{ compliance_count }}
 This section provides **framework reference** mappings only — not attestation.
 
 ---

@@ -71,8 +71,6 @@ def explore(
         "provider": provider,
         "since": since,
         "rollup_rows": count,
-        "top_services": [
-            {"service": r[1], "region": r[2], "total": float(r[3])} for r in rollup[:5]
-        ],
+        "top_services": [{"service": r[1], "region": r[2], "total": float(r[3])} for r in rollup[:5]],
         "honest_gap": lag_note,
     }

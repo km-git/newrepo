@@ -23,9 +23,27 @@ ALLOWED_REPORT_PHRASES = (
 )
 
 OSS_INVENTORY: list[dict[str, str]] = [
-    {"tool": "Steampipe", "package": "steampipe", "license": "AGPL-3.0", "version": "2.4.4", "usage": "cli-subprocess-only"},
-    {"tool": "Prowler", "package": "prowler", "license": "Apache-2.0", "version": "5.41.0", "usage": "cli-subprocess-only"},
-    {"tool": "Cloud Custodian", "package": "c7n", "license": "Apache-2.0", "version": "0.9.45", "usage": "dryrun-default"},
+    {
+        "tool": "Steampipe",
+        "package": "steampipe",
+        "license": "AGPL-3.0",
+        "version": "2.4.4",
+        "usage": "cli-subprocess-only",
+    },
+    {
+        "tool": "Prowler",
+        "package": "prowler",
+        "license": "Apache-2.0",
+        "version": "5.41.0",
+        "usage": "cli-subprocess-only",
+    },
+    {
+        "tool": "Cloud Custodian",
+        "package": "c7n",
+        "license": "Apache-2.0",
+        "version": "0.9.45",
+        "usage": "dryrun-default",
+    },
     {"tool": "c7n-org", "package": "c7n-org", "license": "Apache-2.0", "version": "0.9.45", "usage": "multi-account"},
     {"tool": "DuckDB", "package": "duckdb", "license": "MIT", "version": "1.5.5", "usage": "analytics"},
     {"tool": "Presidio", "package": "presidio-analyzer", "license": "MIT", "version": "2.2.360", "usage": "pii-scrub"},

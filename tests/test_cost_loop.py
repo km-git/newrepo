@@ -10,7 +10,13 @@ def test_url_digest_stable():
 
 
 def test_classify_finops():
-    result = classify_item({"title": "FinOps rightsizing with Steampipe", "summary": "", "module_hint": "cost/rightsizing"})
+    result = classify_item(
+        {
+            "title": "FinOps rightsizing with Steampipe",
+            "summary": "",
+            "module_hint": "cost/rightsizing",
+        }
+    )
     assert result["verdict"] in {"discover", "watch"}
 
 

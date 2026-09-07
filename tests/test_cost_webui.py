@@ -2,7 +2,6 @@
 
 import json
 from http.server import ThreadingHTTPServer
-from pathlib import Path
 from threading import Thread
 
 from cost.webui.service import CostHandler, build_state, run_static

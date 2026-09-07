@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -50,9 +49,9 @@ def audit_inventory(human: bool = typer.Option(False, "--human")) -> None:
 
 @inventory_app.command("aws")
 def inventory_aws(
-    profile: Optional[str] = typer.Option(None, "--profile"),
-    regions: Optional[str] = typer.Option("ap-southeast-2", "--regions"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    profile: str | None = typer.Option(None, "--profile"),
+    regions: str | None = typer.Option("ap-southeast-2", "--regions"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.aws_inventory.service import scan_aws
@@ -63,10 +62,10 @@ def inventory_aws(
 
 @inventory_app.command("azure")
 def inventory_azure(
-    subscription_id: Optional[str] = typer.Option(None, "--subscription-id"),
-    tenant_id: Optional[str] = typer.Option(None, "--tenant-id"),
-    client_id: Optional[str] = typer.Option(None, "--client-id"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    subscription_id: str | None = typer.Option(None, "--subscription-id"),
+    tenant_id: str | None = typer.Option(None, "--tenant-id"),
+    client_id: str | None = typer.Option(None, "--client-id"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.azure_inventory.service import scan_azure
@@ -84,9 +83,9 @@ def inventory_azure(
 
 @inventory_app.command("gcp")
 def inventory_gcp(
-    project_id: Optional[str] = typer.Option(None, "--project-id"),
-    service_account: Optional[str] = typer.Option(None, "--service-account"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    project_id: str | None = typer.Option(None, "--project-id"),
+    service_account: str | None = typer.Option(None, "--service-account"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.gcp_inventory.service import scan_gcp
@@ -98,7 +97,7 @@ def inventory_gcp(
 def cost_explorer(
     provider: str = typer.Option("aws", "--provider"),
     since: str = typer.Option("30d", "--since"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.cost_explorer.service import explore
@@ -109,7 +108,7 @@ def cost_explorer(
 @rightsizing_app.command("scan")
 def rightsizing_scan(
     provider: str = typer.Option("aws", "--provider"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.rightsizing.service import scan
@@ -119,8 +118,8 @@ def rightsizing_scan(
 
 @untagged_app.command("scan")
 def untagged_scan(
-    policy: Optional[Path] = typer.Option(None, "--tagging-policy"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    policy: Path | None = typer.Option(None, "--tagging-policy"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.untagged.service import scan
@@ -131,8 +130,8 @@ def untagged_scan(
 @drift_app.command("diff")
 def drift_diff(
     provider: str = typer.Option("aws", "--provider"),
-    baseline: Optional[Path] = typer.Option(None, "--baseline"),
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    baseline: Path | None = typer.Option(None, "--baseline"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.config_drift.service import diff
@@ -154,7 +153,7 @@ def compliance_map(
 def report_generate(
     provider: str = typer.Option("aws", "--provider"),
     since: str = typer.Option("30d", "--since"),
-    output: Optional[Path] = typer.Option(None, "--output"),
+    output: Path | None = typer.Option(None, "--output"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.report_writer.service import generate
@@ -165,7 +164,7 @@ def report_generate(
 
 @app.command("multi-account")
 def multi_account_run(
-    fixture: Optional[Path] = typer.Option(None, "--fixture"),
+    fixture: Path | None = typer.Option(None, "--fixture"),
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     from cost.multi_account.service import run_accounts
@@ -196,7 +195,7 @@ def webui_serve(
     port: int = typer.Option(8766, "--port"),
     static: bool = typer.Option(False, "--static"),
 ) -> None:
-    from cost.webui.service import run_static, run_server
+    from cost.webui.service import run_server, run_static
 
     if static:
         path = run_static()
@@ -207,3 +206,18 @@ def webui_serve(
 
 if __name__ == "__main__":
     app()
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Argparse-compatible entry for cost.loop delegation."""
+    try:
+        if argv is None:
+            app()
+        else:
+            app(args=argv, prog_name="cost")
+    except SystemExit as exc:
+        code = exc.code
+        if code is None:
+            return 0
+        return int(code) if isinstance(code, int) else 1
+    return 0

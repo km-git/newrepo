@@ -32,9 +32,16 @@ def classify_item(item: dict[str, Any], *, cost_context: str = "") -> dict[str, 
             score += weight
             hits.append(word)
     hint = str(item.get("module_hint") or "").lower()
-    if "cost" in hint or any(m in hint for m in (
-        "aws_inventory", "cost_explorer", "rightsizing", "untagged", "config_drift",
-    )):
+    if "cost" in hint or any(
+        m in hint
+        for m in (
+            "aws_inventory",
+            "cost_explorer",
+            "rightsizing",
+            "untagged",
+            "config_drift",
+        )
+    ):
         score += 2
     engine = "gemini-2.5-flash" if os.environ.get("GEMINI_API_KEY") else "heuristic"
     if score >= 7:

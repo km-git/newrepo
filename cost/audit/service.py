@@ -22,9 +22,18 @@ def inventory(*, init_db: bool = True, write_json: bool = True) -> dict[str, Any
     tools = []
     for item in OSS_INVENTORY:
         record: dict[str, Any] = dict(item)
-        binary = item["package"] if item["package"] in {
-            "steampipe", "prowler", "trivy", "c7n", "c7n-org",
-        } else None
+        binary = (
+            item["package"]
+            if item["package"]
+            in {
+                "steampipe",
+                "prowler",
+                "trivy",
+                "c7n",
+                "c7n-org",
+            }
+            else None
+        )
         record["on_path"] = bool(binary and which(binary))
         tools.append(record)
     payload = {
