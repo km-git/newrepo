@@ -86,6 +86,14 @@ trading-analysis tool. There is no web/GUI service — everything is terminal-dr
   Scripts: `python3 scripts/run_v6_scanner.py`, `bash scripts/run_v6_scanner_daemon.sh` (24/7).
   Best trades: `output/v6_scanner/best_trades_latest.json`. Env: `EW_V6_SETUP=1`, `EW_SCANNER_PAIRS=1000`, `EW_SCANNER_CHUNK=50`.
 - **Universe scanner (main, PR #13):** Overlapping 24/7 chunked scanner via `engine/universe_scanner.py`.
-  CLI: `python3 scripts/run_universe_247.py`, `bash scripts/run_universe_daemon.sh`.
-  Timeframes: `engine/timeframes.py` (`UNIVERSE_TFS`). Best trades: `output/latest_universe_best_trades.csv`.
-  Note: v6_scanner and universe_scanner coexist post-merge — consolidate in a follow-up (see PR #12).
+ CLI: `python3 scripts/run_universe_247.py`, `bash scripts/run_universe_daemon.sh`.
+ Timeframes: `engine/timeframes.py` (`UNIVERSE_TFS`). Best trades: `output/latest_universe_best_trades.csv`.
+ Note: v6_scanner and universe_scanner coexist post-merge — consolidate in a follow-up (see PR #12).
+- **Monetize (signal licensing + royalty desk, bet):** `engine/monetize.py` — deterministic, LLM-free.
+ Filters/redacts best-trade signals per tier (Free = 1d+1w with entry/SL/TP hidden + 24h delay;
+ Pro = all TFs realtime; Enterprise = plus paper-fill + custom risk + royalty on realised R),
+ attaches SHA-256 tamper-evident watermark + license block, and produces per-tier revenue +
+ R-based royalty reports from `output/autodream/tracked_setups.json` closed outcomes.
+ CLI: `python3 ew_tool.py --monetize-report [--tier free|pro|enterprise] [--monetize-months N]`.
+ Outputs: `output/monetize/latest_report.json` + `reports/MONETIZATION_STRATEGY.md`.
+ Env: `EW_MONETIZE_JSON`, `EW_MONETIZE_MD` (path overrides for tests).
