@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dspm.classification.service import classify_text, findings_to_dict
+from dspm.classification.service import classify_text
 from dspm.sources.models import SourceScanResult
 from dspm.sources.registry import discover, preview
 
@@ -37,7 +37,15 @@ def scan_source(uri: str, max_objects: int = 200, classify_limit: int = 50) -> S
 
 
 def _is_classifiable(obj) -> bool:
-    text_types = {"file", "object", "archive_member", "sharepoint_file", "onedrive_file", "mailbox_message", "unstructured"}
+    text_types = {
+        "file",
+        "object",
+        "archive_member",
+        "sharepoint_file",
+        "onedrive_file",
+        "mailbox_message",
+        "unstructured",
+    }
     text_ext = {".csv", ".txt", ".json", ".xml", ".html", ".log", ".eml", ".md"}
     if obj.store_type in text_types:
         return True

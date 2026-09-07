@@ -7,7 +7,6 @@ from pathlib import Path
 import yaml
 
 from dspm.classification.service import classify_csv
-from dspm.models import Finding
 
 CONTROLS_PATH = Path(__file__).resolve().parent / "controls.yaml"
 

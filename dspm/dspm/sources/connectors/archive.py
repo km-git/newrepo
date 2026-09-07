@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import tarfile
 import zipfile
 from datetime import datetime, timezone

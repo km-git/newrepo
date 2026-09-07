@@ -77,7 +77,7 @@ class M365Connector(BaseConnector):
                             if "file" in item:
                                 objects.append(
                                     DataObject(
-                                        uri=f"m365://sharepoint",
+                                        uri="m365://sharepoint",
                                         path=item.get("webUrl", item["name"]),
                                         name=item["name"],
                                         provider="m365",

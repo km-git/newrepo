@@ -9,9 +9,9 @@ import typer
 from dspm._output import emit
 from dspm.classification.service import classify_csv, findings_to_dict
 from dspm.exposure.service import scan_exposure
+from dspm.models import Finding
 from dspm.observability.service import dashboard_summary, evaluate_alerts, record_metric, seed_alert_rules
 from dspm.risk.service import risks_to_dict, score_findings
-from dspm.models import Finding
 
 app = typer.Typer(help="Metrics and alerting (Datadog inspired)")
 

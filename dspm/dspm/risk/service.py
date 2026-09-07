@@ -29,7 +29,9 @@ def score_findings(
     conn = duckdb.connect(":memory:")
     rows = [(i + 1, f.type, f.confidence, f.verdict, f.source, f.location) for i, f in enumerate(findings)]
     conn.execute(
-        "CREATE TABLE findings (id INTEGER, type VARCHAR, confidence DOUBLE, verdict VARCHAR, source VARCHAR, location VARCHAR)"
+        "CREATE TABLE findings ("
+        "id INTEGER, type VARCHAR, confidence DOUBLE, "
+        "verdict VARCHAR, source VARCHAR, location VARCHAR)"
     )
     if rows:
         conn.executemany("INSERT INTO findings VALUES (?, ?, ?, ?, ?, ?)", rows)

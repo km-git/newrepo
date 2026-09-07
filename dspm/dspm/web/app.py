@@ -22,8 +22,8 @@ from dspm.observability.service import dashboard_summary, evaluate_alerts, seed_
 from dspm.remediation.service import build_plan
 from dspm.risk.service import risks_to_dict, score_findings
 from dspm.siem.service import correlate_findings, search_events
-from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview, scan_and_classify
 from dspm.sources.persist import save_source_scan
+from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview, scan_and_classify
 from dspm.store.db import fetch_all, init_db, persist_scan_results
 from dspm.warehouse.service import execute_sql, query_history
 

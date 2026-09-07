@@ -1,8 +1,7 @@
 name: dspm-keepalive
 on:
   schedule:
-    - cron: '0 0 * * 0'
-      timezone: 'UTC'
+    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -12,5 +11,7 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: gautamkrishnar/keepalive-workflow@v2

@@ -64,6 +64,8 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]
+# Typer/Click defaults are function calls by design.
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"

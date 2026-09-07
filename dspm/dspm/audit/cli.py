@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 
 from dspm._output import emit
-from dspm.audit.service import build_inventory, ensure_schema, write_inventory_json
+from dspm.audit.service import ensure_schema, write_inventory_json
 
 app = typer.Typer(help="Workspace and OSS tool inventory")
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 
 from dspm._output import emit
-from dspm.remediation.service import build_plan, list_policies, write_plan
+from dspm.remediation.service import list_policies, write_plan
 
 app = typer.Typer(help="Cloud Custodian remediation")
 

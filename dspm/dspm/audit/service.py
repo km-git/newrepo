@@ -81,7 +81,7 @@ def build_inventory() -> dict:
         "apache-polaris": "apache-polaris",
         "fastapi": "fastapi",
     }
-    for i, (name, license_, module) in enumerate(PRIMARY_OSS_TOOLS):
+    for i, (name, _license, _module) in enumerate(PRIMARY_OSS_TOOLS):
         pip_name = pip_map.get(name, name)
         tools[i]["version"] = _pkg_version(pip_name)
         if tools[i]["version"] == "not-installed":

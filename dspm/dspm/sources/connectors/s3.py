@@ -99,7 +99,12 @@ class S3Connector(BaseConnector):
             raw = resp["Body"].read()
             text = raw.decode("utf-8", errors="replace")
             return ObjectPreview(
-                uri=uri, path=key, content_type="text", preview_text=text, truncated=True, size_bytes=resp.get("ContentLength")
+                uri=uri,
+                path=key,
+                content_type="text",
+                preview_text=text,
+                truncated=True,
+                size_bytes=resp.get("ContentLength"),
             )
         except Exception:
             pass

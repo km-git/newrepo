@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any
 
 from dspm.store.db import fetch_all, init_db, insert_row
 
@@ -72,7 +71,7 @@ def apply_mask(value: str, data_type: str, role: str = "DATA_USER") -> str:
                 return value
             mask = defn.get("mask", "hash")
             if mask == "hash":
-                return f"***masked***"
+                return "***masked***"
             if mask == "partial_last4" and len(value) >= 4:
                 return "*" * (len(value) - 4) + value[-4:]
     return value

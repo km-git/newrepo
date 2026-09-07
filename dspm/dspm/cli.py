@@ -4,25 +4,25 @@ from __future__ import annotations
 
 import typer
 
-from dspm.audit.cli import app as audit_app
 from dspm.access.cli import app as access_app
 from dspm.ai_security.cli import app as ai_security_app
+from dspm.audit.cli import app as audit_app
+from dspm.catalog.cli import app as catalog_app
 from dspm.classification.cli import app as classification_app
 from dspm.compliance.cli import app as compliance_app
 from dspm.custom_types.cli import app as custom_types_app
 from dspm.discovery.cli import app as discovery_app
 from dspm.encryption_check.cli import app as encryption_app
 from dspm.exposure.cli import app as exposure_app
+from dspm.governance.cli import app as governance_app
+from dspm.integrations.cli import app as integrations_app
+from dspm.observability.cli import app as observability_app
 from dspm.remediation.cli import app as remediation_app
 from dspm.risk.cli import app as risk_app
 from dspm.shadow.cli import app as shadow_app
-from dspm.catalog.cli import app as catalog_app
-from dspm.governance.cli import app as governance_app
 from dspm.siem.cli import app as siem_app
-from dspm.observability.cli import app as observability_app
-from dspm.warehouse.cli import app as warehouse_app
-from dspm.integrations.cli import app as integrations_app
 from dspm.sources.cli import app as sources_app
+from dspm.warehouse.cli import app as warehouse_app
 from dspm.web.cli import app as web_app
 
 app = typer.Typer(name="dspm", help="Cyera-like DSPM from OSS components")

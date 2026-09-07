@@ -37,7 +37,7 @@ def execute_sql(sql: str, user: str = "analyst", read_only: bool = True) -> dict
         columns = [d[0] for d in result.description]
         raw_rows = result.fetchall()
         duration_ms = (time.perf_counter() - start) * 1000
-        rows = [dict(zip(columns, row)) for row in raw_rows]
+        rows = [dict(zip(columns, row, strict=False)) for row in raw_rows]
         insert_row(
             "query_history",
             {
