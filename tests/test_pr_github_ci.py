@@ -20,6 +20,7 @@ def test_pip_audit_and_bugbot_are_optional() -> None:
             _check("executive-consensus", conclusion="failure"),
             _check("pr-agent (AI review)", conclusion="skipped"),
             _check("approve (zero-key scanners)", conclusion="failure"),
+            _check("resolve-conflicts", conclusion="failure"),
         ]
     )
     assert summary["fail"] is False
@@ -94,6 +95,29 @@ def test_draft_executive_does_not_reject_auto_approve_failure() -> None:
             "changed_files": 4,
             "ci": ci,
             "files": [{"path": "tests/test_sspm_architecture.py"}],
+            "labels": [],
+        }
+    )
+    assert ex["verdict"] != "REJECT"
+    assert "CI checks failed" not in ex["structural_gaps"]
+    ci = summarize_ci_checks(
+        [
+            _check("test"),
+            _check("resolve-conflicts", conclusion="failure"),
+            _check("Cursor Bugbot", conclusion="neutral"),
+        ]
+    )
+    ex = pr_draft_executive(
+        {
+            "number": 78,
+            "title": "DMARC",
+            "body": "deliverability",
+            "draft": False,
+            "additions": 80,
+            "deletions": 10,
+            "changed_files": 4,
+            "ci": ci,
+            "files": [{"path": "tests/test_bugbot_replacement.py"}],
             "labels": [],
         }
     )

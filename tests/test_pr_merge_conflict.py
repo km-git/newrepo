@@ -84,6 +84,12 @@ def test_do_not_skip_dirty_merge_conflicts():
   assert should_skip_conflict_resolution({"mergeable": False, "mergeable_state": "dirty"}) is None
 
 
+def test_skip_conflict_resolution_when_blocked_or_unstable():
+  assert should_skip_conflict_resolution({"mergeable": False, "mergeable_state": "blocked"}) == "not_conflicting"
+  assert should_skip_conflict_resolution({"mergeable": False, "mergeable_state": "unstable"}) == "not_conflicting"
+  assert should_skip_conflict_resolution({"mergeable": False, "mergeable_state": "behind"}) == "not_conflicting"
+
+
 def test_resolve_file_conflicts_same_line_conflict_needs_ai_or_fails():
   content = """\
 <<<<<<< HEAD
