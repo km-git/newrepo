@@ -200,6 +200,28 @@ def merge_pr(pr_number: int, repo: str = "", method: str = "") -> Dict[str, Any]
   return {"action": "merge", "method": merge_method, "output": out}
 
 
+def close_pr(
+  pr_number: int,
+  repo: str = "",
+  *,
+  comment: str = "",
+  delete_branch: bool = False,
+) -> Dict[str, Any]:
+  """Close an open PR. Comment is optional (skipped when empty)."""
+  slug = repo or _repo_slug()
+  args = ["pr", "close", str(pr_number), "--repo", slug]
+  if delete_branch:
+    args.append("--delete-branch")
+  out = _gh_run(args)
+  result: Dict[str, Any] = {"action": "close", "output": out}
+  if comment:
+    try:
+      result["comment"] = comment_pr(pr_number, slug, comment)
+    except RuntimeError as exc:
+      result["comment_error"] = str(exc)
+  return result
+
+
 def list_open_prs(repo: str = "", limit: int = 20) -> List[Dict[str, Any]]:
   slug = repo or _repo_slug()
   raw = _gh_json(
@@ -213,7 +235,7 @@ def list_open_prs(repo: str = "", limit: int = 20) -> List[Dict[str, Any]]:
       "--limit",
       str(limit),
       "--json",
-      "number,title,isDraft,headRefName,url",
+      "number,title,isDraft,headRefName,url,mergeable",
     ]
   )
   if not isinstance(raw, list):
@@ -225,6 +247,7 @@ def list_open_prs(repo: str = "", limit: int = 20) -> List[Dict[str, Any]]:
       "draft": bool(pr.get("isDraft")),
       "headRefName": pr.get("headRefName"),
       "url": pr.get("url"),
+      "mergeable": pr.get("mergeable"),
     }
     for pr in raw
   ]
