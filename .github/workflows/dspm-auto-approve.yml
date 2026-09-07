@@ -1,7 +1,7 @@
 name: dspm-auto-approve
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -12,9 +12,12 @@ jobs:
   auto-approve:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # PR author (not last-push actor) — last-push actor is spoofable on synchronize.
+    # Same-repo only; never auto-approve fork PRs.
     if: >
-      github.actor == 'dependabot[bot]' ||
-      github.actor == 'github-actions[bot]'
+      github.repository == github.event.pull_request.head.repo.full_name &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+       github.event.pull_request.user.login == 'github-actions[bot]')
     steps:
       - name: Block auto-merge of remediation policies
         env:

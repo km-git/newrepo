@@ -125,6 +125,14 @@ def test_presidio_source_is_data_privacy_stack() -> None:
     assert "microsoft/presidio" not in blob or "not microsoft/presidio" in blob
 
 
+def test_auto_approve_workflow_avoids_zizmor_high_findings() -> None:
+    text = (ROOT / ".github" / "workflows" / "dspm-auto-approve.yml").read_text(encoding="utf-8")
+    assert "pull_request_target" not in text
+    assert "github.actor ==" not in text
+    assert "github.event.pull_request.user.login" in text
+    assert "head.repo.full_name" in text
+
+
 def test_auto_approve_skips_humans_and_remediation_policies() -> None:
     from dspm.loop.auto_approve import should_auto_approve
 
