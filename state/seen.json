@@ -1,9 +1,3 @@
 {
-  "items": {
-    "71425e9b65a72ca0ded985dd68e826dc701f555c236bfb03a3bffe472606b541": {
-      "title": "Presidio 2.2.360 released (data-privacy-stack)",
-      "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.360",
-      "verdict": "skip"
-    }
-  }
+  "items": {}
 }

@@ -23,8 +23,9 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          ruff check --output-format=github --config ruff.toml tape_to_cloud/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py cost/ tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py
-          ruff format --check tape_to_cloud/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py cost/ tests/test_cost_architecture.py tests/test_cost_core.py tests/test_cost_loop.py tests/test_cost_webui.py
+          RUFF_PATHS="tape_to_cloud/ dspm/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_report_html.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_layers.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py"
+          ruff check --output-format=github --config ruff.toml $RUFF_PATHS
+          ruff format --check $RUFF_PATHS
 
   dependency-audit:
     name: pip-audit (requirements.txt)
@@ -112,3 +113,54 @@ jobs:
 
       - name: Audit GitHub Actions workflows
         run: zizmor --config zizmor.yml --persona=regular --min-severity high .github/workflows
+
+  trufflehog:
+    name: trufflehog (verified secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # SHA-pinned TruffleHog. Do not add uses: reviewdog/action-setup (CVE-2025-30154).
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c # v3.97.4
+        with:
+          extra_args: --only-verified --results=verified
+
+  ruff-sarif:
+    name: ruff SARIF (GitHub code scanning)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install "ruff>=0.9.0"
+
+      - name: Ruff SARIF
+        run: |
+          ruff check --config ruff.toml --output-format sarif \
+            tape_to_cloud/ dspm/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py \
+            engine/tape_to_cloud_report_html.py engine/tape_to_cloud_reports.py \
+            > ruff.sarif || true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: ruff.sarif
+          category: ruff

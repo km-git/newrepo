@@ -1,0 +1,12 @@
+policies:
+  - name: c7n-revoke-public-s3
+    resource: aws.s3
+    risk_level: critical
+    comments: Revoke public ACLs / public-access blocks on buckets. Operator review required.
+    mode:
+      type: pull
+    filters:
+      - type: global-grants
+        allow-website: false
+    actions:
+      - type: delete-global-grants
