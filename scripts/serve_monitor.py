@@ -50,7 +50,7 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       return
     if serve_tape_to_cloud_http(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
-    if serve_sspm_http(self, "GET", parsed.path, parse_qs(parsed.query)):
+    if serve_sspm_http(self, "GET", parsed.path, parse_qs(parsed.query), b""):
       return
     if serve_monetize_http(
       self,
@@ -66,6 +66,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     parsed = urlparse(self.path)
     length = int(self.headers.get("Content-Length") or 0)
     body = self.rfile.read(length) if length else b""
+    if serve_sspm_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
+      return
     if serve_monetize_http(
       self,
       "POST",

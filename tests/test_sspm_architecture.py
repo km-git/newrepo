@@ -60,6 +60,7 @@ def test_workflows_exist() -> None:
     ci = (wf / "sspm-ci.yml").read_text(encoding="utf-8")
     assert "merge_group" in ci
     assert "pip-audit --strict" in ci
+    assert "sspm/requirements-ci.txt" in ci
     approve = (wf / "sspm-auto-approve.yml").read_text(encoding="utf-8")
     assert "pull_request_target" in approve
     assert "dependabot[bot]" in approve

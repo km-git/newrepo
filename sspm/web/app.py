@@ -69,6 +69,8 @@ header small { color:var(--muted); }
 nav { border-right:1px solid var(--line); padding:1rem; }
 nav button { display:block; width:100%; text-align:left; background:transparent; color:var(--text); border:0; padding:.6rem .8rem; border-radius:8px; cursor:pointer; }
 nav button.active, nav button:hover { background:var(--card); }
+#scan { background:var(--accent); color:#0b1220; border:0; padding:.55rem 1rem; border-radius:8px; cursor:pointer; font-weight:600; margin-right:.75rem; }
+#scan:disabled { opacity:.6; cursor:wait; }
 main { padding:1.5rem 2rem; }
 .cards { display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:1rem; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1rem; }
@@ -96,7 +98,7 @@ a { color:var(--accent); }
         for r in state["control_refs_m365"]
     )
     report_links = "".join(
-        f"<li>{kind}: <a href='/sspm/report/{kind}'>open</a> · SHA in JSON sidecar</li>" for kind in state["reports"]
+        f"<li>{kind}: <a href='/sspm/report/{kind}'>open HTML</a></li>" for kind in state["reports"]
     )
     module_list = "".join(f"<li><code>sspm/{m}</code></li>" for m in state["modules"])
     disclaimer = state["disclaimer"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -131,7 +133,11 @@ a { color:var(--accent); }
         <div class="card"><div class="muted">High-scope grants</div><div class="n">{state["oauth_high"]}</div></div>
         <div class="card"><div class="muted">M365 drift rows</div><div class="n">{len(state["drift_m365"])}</div></div>
       </div>
-      <p class="muted" style="margin-top:1.2rem">{state["honest_gap"]}</p>
+      <p style="margin-top:1.2rem">
+        <button id="scan" type="button">Run fixture scan</button>
+        <span class="muted" id="scan-status">Read-only fixtures unless SSPM_LIVE=1</span>
+      </p>
+      <p class="muted">{state["honest_gap"]}</p>
       <h3>12 modules</h3>
       <ul>{module_list}</ul>
     </section>
@@ -172,6 +178,22 @@ document.querySelectorAll('nav button').forEach(btn => {{
     document.getElementById(btn.dataset.panel).classList.add('active');
   }});
 }});
+const scanBtn = document.getElementById('scan');
+if (scanBtn) {{
+  scanBtn.addEventListener('click', async () => {{
+    scanBtn.disabled = true;
+    scanBtn.textContent = 'Scanning…';
+    try {{
+      const r = await fetch('/api/sspm/scan', {{method: 'POST'}});
+      if (!r.ok) throw new Error(String(r.status));
+      location.reload();
+    }} catch (err) {{
+      scanBtn.disabled = false;
+      scanBtn.textContent = 'Run fixture scan';
+      document.getElementById('scan-status').textContent = 'Scan failed: ' + err;
+    }}
+  }});
+}}
 </script>
 </body></html>
 """
@@ -219,22 +241,8 @@ class SspmHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
-        if path in ("/", "/sspm", "/sspm/"):
+        if path == "/":
             self._html(render_html())
-            return
-        if path == "/api/sspm":
-            self._json(dashboard_state())
-            return
-        if path == "/api/sspm/health":
-            self._json({"status": "ok", "service": "sspm-web", "version": __version__})
-            return
-        if path.startswith("/sspm/report/"):
-            tenant = path.rsplit("/", 1)[-1]
-            report = Path("output/sspm") / f"{tenant}_report.html"
-            if report.exists():
-                self._html(report.read_text(encoding="utf-8"))
-                return
-            self.send_error(404, "report not generated")
             return
         if serve_sspm_http(self, "GET", path, parse_qs(parsed.query)):
             return
@@ -242,36 +250,69 @@ class SspmHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path == "/api/sspm/scan":
-            from sspm.cli import main as sspm_main
-
-            sspm_main(["--persist", "demo"])
-            self._json(dashboard_state())
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else b""
+        if serve_sspm_http(self, "POST", parsed.path, parse_qs(parsed.query), body):
             return
         self.send_error(404, "Not found")
 
 
-def serve_sspm_http(handler: Any, method: str, path: str, _query: dict) -> bool:
-    if method == "GET" and path in ("/sspm", "/sspm/", "/api/sspm", "/api/sspm/health"):
-        if path.startswith("/api/"):
-            payload = (
-                {"status": "ok", "service": "sspm-web", "version": __version__}
-                if path.endswith("health")
-                else dashboard_state()
-            )
-            body = json.dumps(payload, indent=2, default=str).encode()
-            handler.send_response(200)
-            handler.send_header("Content-Type", "application/json")
-            handler.send_header("Content-Length", str(len(body)))
-            handler.end_headers()
-            handler.wfile.write(body)
+def _send_json(handler: Any, payload: object, code: int = 200) -> None:
+    body = json.dumps(payload, indent=2, default=str).encode()
+    handler.send_response(code)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Cache-Control", "no-store")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def _send_html(handler: Any, html: str, code: int = 200) -> None:
+    body = html.encode()
+    handler.send_response(code)
+    handler.send_header("Content-Type", "text/html; charset=utf-8")
+    handler.send_header("Cache-Control", "no-store")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def serve_sspm_http(handler: Any, method: str, path: str, _query: dict, _body: bytes = b"") -> bool:
+    """Shared routes for `sspm web` and `--monitor`."""
+    from sspm import TENANT_TYPES
+
+    if method == "POST" and path == "/api/sspm/scan":
+        from sspm.cli import main as sspm_main
+
+        sspm_main(["--persist", "demo"])
+        _send_json(handler, dashboard_state())
+        return True
+    if method != "GET":
+        return False
+    if path in ("/sspm", "/sspm/"):
+        _send_html(handler, render_html())
+        return True
+    if path == "/api/sspm":
+        _send_json(handler, dashboard_state())
+        return True
+    if path == "/api/sspm/health":
+        _send_json(handler, {"status": "ok", "service": "sspm-web", "version": __version__})
+        return True
+    if path.startswith("/sspm/report/"):
+        tenant = path.rsplit("/", 1)[-1]
+        if tenant not in TENANT_TYPES:
+            handler.send_error(404, "unknown tenant")
             return True
-        html = render_html().encode()
-        handler.send_response(200)
-        handler.send_header("Content-Type", "text/html; charset=utf-8")
-        handler.send_header("Content-Length", str(len(html)))
-        handler.end_headers()
-        handler.wfile.write(html)
+        report = Path("output/sspm") / f"{tenant}_report.html"
+        if report.exists():
+            _send_html(handler, report.read_text(encoding="utf-8"))
+            return True
+        generate(tenant=tenant, output=Path("output/sspm") / f"{tenant}_report.md")
+        report = Path("output/sspm") / f"{tenant}_report.html"
+        if report.exists():
+            _send_html(handler, report.read_text(encoding="utf-8"))
+            return True
+        handler.send_error(404, "report not generated")
         return True
     return False
 

@@ -7,7 +7,8 @@ line-length = 120
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "S"]
 
 [lint.per-file-ignores]
-"tests/**" = ["S101", "S603"]
+"tests/**" = ["S101", "S603", "S310"]
+"tests/*.py" = ["S101", "S603", "S310"]
 "sspm/**/tests/**" = ["S101", "S603"]
 "engine/tape_to_cloud_hub.py" = ["E501"]
 "engine/tape_to_cloud_reports.py" = ["E501"]

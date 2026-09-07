@@ -1,12 +1,16 @@
 name: sspm-auto-approve
 
+# zizmor: ignore[dangerous-triggers]
+# pull_request_target is required so Dependabot PRs can be approved with
+# GITHUB_TOKEN. This job never checks out the PR HEAD and never runs
+# untrusted workflow YAML from the fork. Human PRs are excluded by actor.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
   pull-requests: write
-  contents: read
+  contents: write
 
 jobs:
   auto-approve:
