@@ -62,6 +62,14 @@ class MonitorHandler(SimpleHTTPRequestHandler):
     parsed = urlparse(self.path)
     length = int(self.headers.get("Content-Length") or 0)
     body = self.rfile.read(length) if length else b""
+    if serve_tape_to_cloud_http(
+      self,
+      "POST",
+      parsed.path,
+      parse_qs(parsed.query),
+      body,
+    ):
+      return
     if serve_monetize_http(
       self,
       "POST",
@@ -114,8 +122,14 @@ def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir
   for url in explorer_launch_urls(host, port, "/tape-to-cloud"):
     print(url)
     print()
+  print("[monitor] Tape-to-Cloud Platform:")
+  print()
+  for url in explorer_launch_urls(host, port, "/tape-to-cloud/platform"):
+    print(url)
+    print()
   print(f"[monitor] Dashboard API: http://127.0.0.1:{port}/api/dashboard")
   print(f"[monitor] Tape-to-Cloud API: http://127.0.0.1:{port}/api/tape-to-cloud/status")
+  print(f"[monitor] Tape-to-Cloud Jobs API: http://127.0.0.1:{port}/api/tape-to-cloud/jobs")
   print(f"[monitor] Bound to {host}:{port}")
   try:
     server.serve_forever()

@@ -91,10 +91,19 @@ def build_hub_state() -> dict[str, Any]:
     fw = _forum_watcher_root()
     sources_path = fw / "sources.yaml"
 
+    platform: dict[str, Any] = {}
+    try:
+        from tape_to_cloud.web.api import platform_status
+
+        platform = platform_status()
+    except Exception:
+        platform = {"error": "platform not loaded"}
+
     return {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "modules": list(MODULES),
         "module_count": len(MODULES),
+        "platform": platform,
         "discovery_docs": [
             {
                 "file": name,
@@ -129,9 +138,12 @@ def build_hub_state() -> dict[str, Any]:
         },
         "web_routes": {
             "hub": "/tape-to-cloud",
+            "platform": "/tape-to-cloud/platform",
+            "jobs": "/tape-to-cloud/jobs",
             "monitor": "/monitor",
             "monetize": "/monetize",
             "api": "/api/tape-to-cloud/status",
+            "jobs_api": "/api/tape-to-cloud/jobs",
         },
     }
 
@@ -182,6 +194,7 @@ def render_hub_html() -> str:
     <nav class="nav">
       <a href="/monitor">Monitor</a>
       <a href="/monetize">Monetize</a>
+      <a href="/tape-to-cloud/platform">Platform</a>
       <a href="/tape-to-cloud">Tape-to-Cloud</a>
     </nav>
   </header>
@@ -193,6 +206,8 @@ def render_hub_html() -> str:
       {latest_line}
       <p class="ok">Packages: tape_to_cloud.monetize={'yes' if state['packages']['tape_to_cloud_monetize'] else 'no'},
         forum-watcher={'yes' if state['packages']['forum_watcher'] else 'no'}</p>
+      <p>Platform jobs: <strong>{state.get('platform', {}).get('jobs', {}).get('total', 0)}</strong>
+        · Vault objects: <strong>{state.get('platform', {}).get('vault_objects', 0)}</strong></p>
     </section>
     <section>
       <h2>16 modules</h2>
@@ -222,9 +237,18 @@ def dispatch_tape_to_cloud(
     method: str,
     path: str,
     query: Optional[Mapping[str, Sequence[str]]] = None,
+    body: bytes = b"",
 ) -> Optional[tuple[int, dict[str, str], bytes]]:
+    from tape_to_cloud.web.api import dispatch_platform
+
+    platform = dispatch_platform(method, path, query or {}, body)
+    if platform is not None:
+        return platform
+
     path = path.rstrip("/") or "/"
     method = (method or "GET").upper()
+    if method != "GET" and path in ("/tape-to-cloud", "/tape-to-cloud/", "/api/tape-to-cloud/status"):
+        return None
     if method != "GET":
         return None
     if path in ("/tape-to-cloud", "/tape-to-cloud/"):
@@ -236,8 +260,14 @@ def dispatch_tape_to_cloud(
     return None
 
 
-def serve_tape_to_cloud_http(handler: Any, method: str, path: str, query: Mapping[str, Sequence[str]]) -> bool:
-    result = dispatch_tape_to_cloud(method, path, query)
+def serve_tape_to_cloud_http(
+    handler: Any,
+    method: str,
+    path: str,
+    query: Mapping[str, Sequence[str]],
+    body: bytes = b"",
+) -> bool:
+    result = dispatch_tape_to_cloud(method, path, query, body)
     if result is None:
         return False
     status, headers, payload = result
