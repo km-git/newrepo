@@ -5,8 +5,3 @@ rules:
     config:
       policies:
         "*": ref-pin
-  # Dependabot auto-approve must use pull_request_target so GITHUB_TOKEN
-  # secrets work. The workflow never checkouts untrusted HEAD.
-  dangerous-triggers:
-    ignore:
-      - dmarc-auto-approve.yml

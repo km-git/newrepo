@@ -1,10 +1,9 @@
 name: dmarc-auto-approve
 
-# pull_request_target is required so Dependabot PRs can use repo secrets
-# (prompt hard rule). This workflow never checkouts PR HEAD; it only calls
-# the GitHub API + hmarr/auto-approve-action, and only for bot actors.
+# Dependabot PRs are same-repo, so pull_request is enough (zizmor dangerous-triggers).
+# Check the PR author, not github.actor (zizmor bot-conditions).
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, labeled]
   merge_group:
 
@@ -15,39 +14,31 @@ permissions:
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
-    if: |
+    timeout-minutes: 10
+    if: >
       github.event_name == 'merge_group' || (
-        contains(fromJSON('["dependabot[bot]","github-actions[bot]"]'), github.actor) &&
-        contains(github.event.pull_request.body, '[auto-approved]')
+        github.event.pull_request.user.login == 'dependabot[bot]' &&
+        github.repository == github.event.pull_request.head.repo.full_name
       )
     steps:
       - name: Merge-queue status
         if: github.event_name == 'merge_group'
         run: echo "dmarc-auto-approve merge_group check reported"
 
-      - name: Skip template-sensitive paths
+      - name: Block auto-approve of operator-owned paths
         if: github.event_name != 'merge_group'
-        id: gate
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const files = await github.paginate(github.rest.pulls.listFiles, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-            });
-            const blocked = files.some(f =>
-              f.filename.startsWith('dmarc/templates/') || f.filename === 'dmarc/parsedmarc.ini'
-            );
-            if (blocked) {
-              core.setOutput('skip', 'true');
-              core.info('Manual review required for templates/parsedmarc.ini');
-            } else {
-              core.setOutput('skip', 'false');
-            }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
+          if echo "$files" | grep -Eq 'dmarc/templates/|dmarc/parsedmarc.ini'; then
+            echo "DMARC templates require manual review"
+            exit 1
+          fi
 
       - name: Approve bot PR
-        if: github.event_name != 'merge_group' && steps.gate.outputs.skip != 'true'
-        uses: hmarr/auto-approve-action@v4
+        if: github.event_name != 'merge_group'
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
