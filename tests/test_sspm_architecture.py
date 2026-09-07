@@ -70,3 +70,7 @@ def test_workflows_exist() -> None:
     assert "hmarr/auto-approve-action" in approve
     watch = (wf / "sspm-watch.yml").read_text(encoding="utf-8")
     assert "Australia/Sydney" in watch
+    rebase = (wf / "sspm-rebase.yml").read_text(encoding="utf-8")
+    assert "actions/checkout" not in rebase
+    assert "gh pr checkout" not in rebase
+    assert "update-branch" in rebase

@@ -12,34 +12,27 @@ jobs:
   rebase:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Same-repo bot PRs (or operator-tagged [auto-rebase]). Default checkout is
-    # github.sha — never pass pull_request.head.sha/ref into actions/checkout
-    # (CodeQL actions/untrusted-checkout/medium).
+    # Same-repo bot PRs (or operator-tagged [auto-rebase]).
+    # Do not check out PR HEAD (CodeQL actions/untrusted-checkout/medium).
     if: >
-      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.repository == github.event.pull_request.head.repo.full_name &&
       (
         github.event.pull_request.user.login == 'dependabot[bot]' ||
         github.event.pull_request.user.login == 'github-actions[bot]' ||
         contains(github.event.pull_request.body, '[auto-rebase]')
       )
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Rebase on main
+      - name: Update PR branch from main via GitHub API
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          git config user.name "sspm-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          gh pr checkout "$PR"
-          git fetch origin main
-          if ! git rebase origin/main; then
-            git rebase --abort || true
-            gh pr comment "$PR" --body "@operator merge conflict on this PR — please resolve manually"
+          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR}/update-branch" --input - <<'EOF'
+          {}
+          EOF
+          then
+            echo "PR branch updated from base (GitHub update-branch)."
+          else
+            gh pr comment "$PR" --body "@operator could not update this branch onto main — please rebase manually"
             exit 1
           fi
-          git push --force-with-lease
