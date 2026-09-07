@@ -1,32 +1,24 @@
-"""Tape-to-cloud operations hub — local Web UI for discovery docs and forum-watcher status."""
+"""Tape-to-cloud public hub — 16 modules, six layers, sample reports."""
 
 from __future__ import annotations
 
+import html
 import json
-from datetime import datetime, timezone
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any
+
+from tape_to_cloud.catalog import (
+    LAYER_CATALOG,
+    LAYERS,
+    MODULE_CATALOG,
+    MODULES,
+    catalog_snapshot,
+)
+from tape_to_cloud.sample_reports import get_report, list_reports, report_id_for
 
 ROOT = Path(__file__).resolve().parent.parent
-
-MODULES = (
-    "audit",
-    "analytics",
-    "vtl-cloud",
-    "restore",
-    "disk-ingest",
-    "email-extract",
-    "email-migrate",
-    "tape-duplicate",
-    "media-ingest",
-    "tape-ops",
-    "tape-saas",
-    "tape-vault",
-    "destroy",
-    "llm-corpus",
-    "ml-enrich",
-    "monetize",
-)
 
 DISCOVERY_DOCS = (
     ("free-tool-inventory.md", "Free-tool inventory catalog"),
@@ -44,6 +36,8 @@ CURSOR_RULES = (
     "tape-to-cloud-free-tool-inventory.mdc",
 )
 
+_ALLOWED_DOCS = {name for name, _ in DISCOVERY_DOCS}
+
 
 def _repo_root() -> Path:
     return ROOT
@@ -57,7 +51,7 @@ def _forum_watcher_root() -> Path:
     return _repo_root() / "forum-watcher"
 
 
-def _latest_discovery_markdown() -> Optional[dict[str, str]]:
+def _latest_discovery_markdown() -> dict[str, Any] | None:
     discoveries = _forum_watcher_root() / "discoveries"
     if not discoveries.is_dir():
         return None
@@ -68,7 +62,7 @@ def _latest_discovery_markdown() -> Optional[dict[str, str]]:
     return {
         "path": str(latest.relative_to(_repo_root())),
         "name": latest.name,
-        "modified_utc": datetime.fromtimestamp(latest.stat().st_mtime, tz=timezone.utc).isoformat(),
+        "modified_utc": datetime.fromtimestamp(latest.stat().st_mtime, tz=UTC).isoformat(),
         "size_bytes": latest.stat().st_size,
     }
 
@@ -90,16 +84,23 @@ def build_hub_state() -> dict[str, Any]:
     discovery = _discovery_dir()
     fw = _forum_watcher_root()
     sources_path = fw / "sources.yaml"
-
+    catalog = catalog_snapshot()
     return {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
+        "product": "tape-to-cloud",
+        "focus": "tape-to-cloud-only",
         "modules": list(MODULES),
         "module_count": len(MODULES),
+        "layers": list(LAYERS),
+        "layer_count": len(LAYERS),
+        "catalog": catalog,
+        "sample_reports": list_reports(),
         "discovery_docs": [
             {
                 "file": name,
                 "label": label,
                 "path": str((discovery / name).relative_to(root)),
+                "href": f"/tape-to-cloud/docs/{name}",
                 "exists": (discovery / name).is_file(),
             }
             for name, label in DISCOVERY_DOCS
@@ -123,117 +124,359 @@ def build_hub_state() -> dict[str, Any]:
             "workflow": ".github/workflows/forum-watcher.yml",
         },
         "cli": {
-            "monetize_strategy": "python3 ew_tool.py --monetize",
             "tape_monetize_cli": "python -m tape_to_cloud.monetize",
             "forum_watcher": "cd forum-watcher && python scripts/watch.py",
+            "hub": "python3 ew_tool.py --monitor",
         },
         "web_routes": {
+            "home": "/",
             "hub": "/tape-to-cloud",
-            "monitor": "/monitor",
-            "monetize": "/monetize",
+            "modules": "/tape-to-cloud/modules",
+            "layers": "/tape-to-cloud/layers",
+            "reports": "/tape-to-cloud/reports",
+            "job_pack": "/tape-to-cloud/reports/job-pack",
             "api": "/api/tape-to-cloud/status",
+            "api_reports": "/api/tape-to-cloud/reports",
         },
     }
 
 
-def render_hub_html() -> str:
-    state = build_hub_state()
-    payload = json.dumps(state, indent=2)
-    modules_html = "\n".join(f"<li><code>{m}</code></li>" for m in MODULES)
-    docs_rows = "\n".join(
-        f"<tr><td>{d['label']}</td><td><code>{d['path']}</code></td>"
-        f"<td>{'yes' if d['exists'] else 'missing'}</td></tr>"
-        for d in state["discovery_docs"]
-    )
-    latest = state["forum_watcher"]["latest_discovery"]
-    latest_line = (
-        f"<p>Latest: <code>{latest['path']}</code> ({latest['modified_utc']})</p>"
-        if latest
-        else "<p>No discoveries markdown yet — run forum-watcher or wait for Monday cron.</p>"
-    )
+def _css() -> str:
+    return """
+    :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e;
+            --accent:#58a6ff; --green:#3fb950; --amber:#d29922; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;
+             padding:1rem 1.25rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    h1 { margin:0; font-size:1.25rem; }
+    .nav a { color:var(--accent); margin-left:0.85rem; text-decoration:none; font-size:0.9rem; }
+    .nav a:hover { text-decoration:underline; }
+    main { padding:1.25rem; max-width:1180px; margin:0 auto; }
+    section { background:var(--card); border:1px solid var(--border); border-radius:8px;
+              padding:1rem 1.1rem; margin-bottom:1rem; }
+    h2 { margin:0 0 0.75rem; font-size:1.05rem; }
+    h3 { margin:0.2rem 0 0.4rem; font-size:0.95rem; }
+    table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+    th, td { text-align:left; padding:0.45rem 0.5rem; border-bottom:1px solid var(--border); vertical-align:top; }
+    .muted { color:var(--muted); font-size:0.85rem; }
+    .ok { color:var(--green); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:0.75rem; }
+    .card { display:block; background:var(--bg); border:1px solid var(--border); border-radius:8px;
+            padding:0.85rem; color:inherit; text-decoration:none; min-height:8.5rem; }
+    .card:hover { border-color:var(--accent); }
+    .card p { display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+    .card code { color:var(--accent); font-size:0.78rem; }
+    .pill { display:inline-block; font-size:0.72rem; color:var(--amber); border:1px solid var(--amber);
+            border-radius:999px; padding:0.05rem 0.45rem; margin-bottom:0.35rem; }
+    pre { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0.75rem;
+          overflow:auto; font-size:0.75rem; max-height:32rem; }
+    a { color:var(--accent); }
+    """
 
+
+def _shell(title: str, body: str) -> str:
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tape-to-Cloud Hub</title>
-  <style>
-    :root {{ --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; }}
-    * {{ box-sizing: border-box; }}
-    body {{ margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--text); }}
-    header {{ display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-bottom:1px solid var(--border); }}
-    h1 {{ margin:0; font-size:1.25rem; }}
-    .nav a {{ color:var(--accent); margin-left:1rem; text-decoration:none; }}
-    main {{ padding:1.25rem; max-width:1100px; margin:0 auto; }}
-    section {{ background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.1rem; margin-bottom:1rem; }}
-    h2 {{ margin:0 0 0.75rem; font-size:1rem; }}
-    table {{ width:100%; border-collapse:collapse; font-size:0.9rem; }}
-    th, td {{ text-align:left; padding:0.45rem 0.5rem; border-bottom:1px solid var(--border); }}
-    .muted {{ color:var(--muted); font-size:0.85rem; }}
-    .modules {{ columns:3; font-size:0.85rem; }}
-    pre {{ background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0.75rem; overflow:auto; font-size:0.75rem; }}
-    .ok {{ color:var(--green); }}
-  </style>
+  <title>{html.escape(title)}</title>
+  <style>{_css()}</style>
 </head>
 <body>
   <header>
-    <div><h1>Tape-to-Cloud Hub</h1><div class="muted">Discovery · inventory · forum-watcher · 16 modules</div></div>
+    <div>
+      <h1>Tape-to-Cloud</h1>
+      <div class="muted">Source-agnostic · target-agnostic · 16 modules · 6 layers · sample reports</div>
+    </div>
     <nav class="nav">
-      <a href="/monitor">Monitor</a>
-      <a href="/monetize">Monetize</a>
-      <a href="/tape-to-cloud">Tape-to-Cloud</a>
+      <a href="/tape-to-cloud">Home</a>
+      <a href="/tape-to-cloud/modules">Modules</a>
+      <a href="/tape-to-cloud/layers">Layers</a>
+      <a href="/tape-to-cloud/reports">Reports</a>
+      <a href="/tape-to-cloud/reports/job-pack">Job pack</a>
+      <a href="/api/tape-to-cloud/status">API</a>
     </nav>
   </header>
-  <main>
+  <main>{body}</main>
+</body>
+</html>"""
+
+
+def render_hub_html() -> str:
+    state = build_hub_state()
+    cards = "\n".join(
+        f'<a class="card" href="/tape-to-cloud/modules/{html.escape(m["id"])}">'
+        f'<div class="pill">sample ready</div>'
+        f"<h3>{html.escape(m['menu'])}</h3>"
+        f"<code>{html.escape(m['id'])}</code>"
+        f'<p class="muted">{html.escape(m["deliverable"])}</p></a>'
+        for m in state["catalog"]["modules"]
+    )
+    layer_cards = "\n".join(
+        f'<a class="card" href="/tape-to-cloud/layers#{html.escape(layer["id"])}">'
+        f"<h3>{html.escape(layer['title'])}</h3>"
+        f"<code>{html.escape(layer['id'])}</code>"
+        f'<p class="muted">{html.escape(layer["deliverable"])}</p></a>'
+        for layer in state["catalog"]["layers"]
+    )
+    docs_rows = "\n".join(
+        "<tr>"
+        f"<td>{html.escape(d['label'])}</td>"
+        f'<td><a href="{html.escape(d["href"])}"><code>{html.escape(d["file"])}</code></a></td>'
+        f"<td>{'yes' if d['exists'] else 'missing'}</td></tr>"
+        for d in state["discovery_docs"]
+    )
+    report_rows = "\n".join(
+        "<tr>"
+        f"<td><code>{html.escape(r['report_id'])}</code></td>"
+        f"<td>{html.escape(r['menu'])}</td>"
+        f'<td><a href="{html.escape(r["href"])}">HTML</a> · '
+        f'<a href="{html.escape(r["json"])}">JSON</a></td></tr>'
+        for r in state["sample_reports"]
+    )
+    targets = ", ".join(html.escape(t) for t in state["catalog"]["targets"])
+    latest = state["forum_watcher"]["latest_discovery"]
+    latest_line = (
+        f'<p class="muted">Latest forum discovery: <code>{html.escape(latest["path"])}</code></p>'
+        if latest
+        else '<p class="muted">No forum-watcher discoveries yet.</p>'
+    )
+    body = f"""
     <section>
-      <h2>Status</h2>
-      <p class="muted">Live JSON: <code>/api/tape-to-cloud/status</code></p>
-      <p>Forum watcher seen URLs: <strong>{state['forum_watcher']['seen_url_count']}</strong></p>
+      <h2>Public demo</h2>
+      <p>Vendor-agnostic tape-to-cloud migration: LTO-1 through LTO-10, mainframe 3592/T10000,
+         backup-app formats (TSM / NetBackup / Backup Exec / …), any S3-compatible target
+         (SeaweedFS on-prem default). Every module calls the six cross-cutting layers.</p>
+      <p class="ok">Sample job <code>{html.escape(state["catalog"]["sample_job_id"])}</code>
+         for {html.escape(state["catalog"]["sample_customer"])} — 16 module reports + combined job pack.</p>
       {latest_line}
-      <p class="ok">Packages: tape_to_cloud.monetize={'yes' if state['packages']['tape_to_cloud_monetize'] else 'no'},
-        forum-watcher={'yes' if state['packages']['forum_watcher'] else 'no'}</p>
+      <p class="muted">Targets: {targets}</p>
     </section>
     <section>
       <h2>16 modules</h2>
-      <ul class="modules">{modules_html}</ul>
+      <div class="grid">{cards}</div>
+    </section>
+    <section>
+      <h2>Six cross-cutting layers</h2>
+      <div class="grid">{layer_cards}</div>
+    </section>
+    <section>
+      <h2>Sample reports</h2>
+      <table><thead><tr><th>Report ID</th><th>Menu</th><th>Open</th></tr></thead>
+      <tbody>{report_rows}</tbody></table>
     </section>
     <section>
       <h2>Discovery docs</h2>
-      <table><thead><tr><th>Doc</th><th>Path</th><th>On disk</th></tr></thead><tbody>{docs_rows}</tbody></table>
+      <table><thead><tr><th>Doc</th><th>Public path</th><th>On disk</th></tr></thead>
+      <tbody>{docs_rows}</tbody></table>
+    </section>
+    """
+    return _shell("Tape-to-Cloud Hub", body)
+
+
+def render_modules_index_html() -> str:
+    rows = "\n".join(
+        "<tr>"
+        f'<td><a href="/tape-to-cloud/modules/{html.escape(mid)}"><code>{html.escape(mid)}</code></a></td>'
+        f"<td>{html.escape(spec['menu'])}</td>"
+        f"<td>{html.escape(spec['deliverable'])}</td>"
+        f'<td><a href="/tape-to-cloud/reports/{html.escape(mid)}">report</a></td></tr>'
+        for mid, spec in MODULE_CATALOG.items()
+    )
+    body = f"""
+    <section>
+      <h2>All modules</h2>
+      <table><thead><tr><th>ID</th><th>Menu</th><th>Deliverable</th><th>Sample</th></tr></thead>
+      <tbody>{rows}</tbody></table>
+    </section>
+    """
+    return _shell("Tape-to-Cloud modules", body)
+
+
+def render_module_html(module_id: str) -> str:
+    spec = MODULE_CATALOG[module_id]
+    report = get_report(module_id)
+    payload = html.escape(json.dumps(report, indent=2))
+    layers = "".join(f"<li><code>{html.escape(lid)}</code></li>" for lid in LAYERS)
+    body = f"""
+    <section>
+      <p class="pill">module</p>
+      <h2>{html.escape(spec["menu"])}</h2>
+      <p><code>{html.escape(module_id)}</code></p>
+      <p>{html.escape(spec["deliverable"])}</p>
+      <p class="muted">Sources: {html.escape(spec["sources"])}</p>
+      <p>Sample report:
+         <a href="/tape-to-cloud/reports/{html.escape(module_id)}">{html.escape(report_id_for(module_id))}</a>
+         · <a href="/api/tape-to-cloud/reports/{html.escape(module_id)}">JSON</a></p>
+      <h3>Layers called</h3>
+      <ul>{layers}</ul>
     </section>
     <section>
-      <h2>CLI quick start</h2>
-      <pre>python3 ew_tool.py --monitor          # this Web UI (port 8765)
-python3 ew_tool.py --monetize         # strategy report
-python -m tape_to_cloud.monetize      # license / royalty CLI
-cd forum-watcher && python scripts/watch.py</pre>
+      <h2>Sample report</h2>
+      <pre>{payload}</pre>
+    </section>
+    """
+    return _shell(f"{spec['menu']} · tape-to-cloud", body)
+
+
+def render_layers_html() -> str:
+    blocks = []
+    for lid in LAYERS:
+        spec = LAYER_CATALOG[lid]
+        blocks.append(
+            f'<section id="{html.escape(lid)}"><h2>{html.escape(spec["title"])}</h2>'
+            f"<p><code>{html.escape(lid)}</code></p>"
+            f"<p>{html.escape(spec['deliverable'])}</p>"
+            f'<p class="muted">Required on every module — not an extra brochure item.</p></section>'
+        )
+    return _shell("Tape-to-Cloud layers", "\n".join(blocks))
+
+
+def render_reports_index_html() -> str:
+    rows = "\n".join(
+        "<tr>"
+        f"<td><code>{html.escape(r['report_id'])}</code></td>"
+        f"<td>{html.escape(r['module'])}</td>"
+        f"<td>{html.escape(r['menu'])}</td>"
+        f'<td><a href="{html.escape(r["href"])}">HTML</a> · '
+        f'<a href="{html.escape(r["json"])}">JSON</a></td></tr>'
+        for r in list_reports()
+    )
+    body = f"""
+    <section>
+      <h2>Sample reports</h2>
+      <p class="muted">Synthetic demo job <code>JOB-DEMO-ACME-LTO</code>. Not a customer record.</p>
+      <p><a href="/tape-to-cloud/reports/job-pack">Open combined job pack</a></p>
+      <table><thead><tr><th>Report ID</th><th>Module</th><th>Menu</th><th>Open</th></tr></thead>
+      <tbody>{rows}</tbody></table>
+    </section>
+    """
+    return _shell("Tape-to-Cloud sample reports", body)
+
+
+def render_report_html(report_key: str) -> str:
+    report = get_report(report_key)
+    title = f"{report['report_id']} · sample report"
+    payload = html.escape(json.dumps(report, indent=2))
+    menu = html.escape(str(report.get("menu") or report.get("kind") or report_key))
+    body = f"""
+    <section>
+      <p class="pill">sample report</p>
+      <h2>{menu}</h2>
+      <p><code>{html.escape(str(report["report_id"]))}</code></p>
+      <p class="muted">{html.escape(str(report.get("disclaimer", "")))}</p>
+      <p><a href="/api/tape-to-cloud/reports/{html.escape(report_key)}">Raw JSON</a></p>
     </section>
     <section>
-      <h2>API payload</h2>
-      <pre id="json">{payload}</pre>
+      <pre>{payload}</pre>
     </section>
-  </main>
-</body>
-</html>"""
+    """
+    return _shell(title, body)
+
+
+def render_doc_text(name: str) -> tuple[int, dict[str, str], bytes] | None:
+    if name not in _ALLOWED_DOCS:
+        return None
+    path = _discovery_dir() / name
+    if not path.is_file():
+        body = f"missing: {name}\n".encode()
+        return 404, {"Content-Type": "text/plain; charset=utf-8"}, body
+    text = path.read_text(encoding="utf-8")
+    escaped = html.escape(text)
+    page = _shell(
+        name,
+        f"<section><h2>{html.escape(name)}</h2><pre>{escaped}</pre></section>",
+    )
+    return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, page.encode("utf-8")
+
+
+def _json_bytes(payload: Any) -> tuple[int, dict[str, str], bytes]:
+    body = json.dumps(payload, indent=2, default=str).encode("utf-8")
+    return 200, {"Content-Type": "application/json", "Cache-Control": "no-store"}, body
+
+
+def _html_bytes(page: str) -> tuple[int, dict[str, str], bytes]:
+    return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, page.encode("utf-8")
+
+
+def _not_found(msg: str) -> tuple[int, dict[str, str], bytes]:
+    return 404, {"Content-Type": "text/plain; charset=utf-8"}, msg.encode("utf-8")
 
 
 def dispatch_tape_to_cloud(
     method: str,
     path: str,
-    query: Optional[Mapping[str, Sequence[str]]] = None,
-) -> Optional[tuple[int, dict[str, str], bytes]]:
-    path = path.rstrip("/") or "/"
+    query: Mapping[str, Sequence[str]] | None = None,
+) -> tuple[int, dict[str, str], bytes] | None:
+    del query
+    raw = path or "/"
+    path = raw.rstrip("/") or "/"
     method = (method or "GET").upper()
     if method != "GET":
         return None
-    if path in ("/tape-to-cloud", "/tape-to-cloud/"):
-        body = render_hub_html().encode("utf-8")
-        return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, body
-    if path == "/api/tape-to-cloud/status":
-        body = json.dumps(build_hub_state(), indent=2, default=str).encode("utf-8")
-        return 200, {"Content-Type": "application/json", "Cache-Control": "no-store"}, body
-    return None
+
+    parts = [p for p in path.split("/") if p]
+    if parts[:1] == ["tape-to-cloud"]:
+        rest = parts[1:]
+    elif path == "/":
+        rest = []
+    elif parts[:2] == ["api", "tape-to-cloud"]:
+        rest = ["api", *parts[2:]]
+    else:
+        return None
+
+    if rest[:1] == ["api"]:
+        api_rest = rest[1:]
+        if api_rest == [] or api_rest == ["status"]:
+            return _json_bytes(build_hub_state())
+        if api_rest == ["modules"]:
+            return _json_bytes(catalog_snapshot()["modules"])
+        if len(api_rest) == 2 and api_rest[0] == "modules":
+            mid = api_rest[1]
+            if mid not in MODULE_CATALOG:
+                return _not_found(f"unknown module: {mid}\n")
+            return _json_bytes({"module": mid, **MODULE_CATALOG[mid], "report": get_report(mid)})
+        if api_rest == ["layers"]:
+            return _json_bytes(catalog_snapshot()["layers"])
+        if api_rest == ["reports"]:
+            return _json_bytes(list_reports())
+        if len(api_rest) == 2 and api_rest[0] == "reports":
+            try:
+                return _json_bytes(get_report(api_rest[1]))
+            except KeyError:
+                return _not_found(f"unknown report: {api_rest[1]}\n")
+        return _not_found("unknown tape-to-cloud API path\n")
+
+    if rest == []:
+        return _html_bytes(render_hub_html())
+    if rest == ["modules"]:
+        return _html_bytes(render_modules_index_html())
+    if len(rest) == 2 and rest[0] == "modules":
+        mid = rest[1]
+        if mid not in MODULE_CATALOG:
+            return _not_found(f"unknown module: {mid}\n")
+        return _html_bytes(render_module_html(mid))
+    if rest == ["layers"]:
+        return _html_bytes(render_layers_html())
+    if rest == ["reports"]:
+        return _html_bytes(render_reports_index_html())
+    if len(rest) == 2 and rest[0] == "reports":
+        key = rest[1]
+        if key.endswith(".json"):
+            key = key[: -len(".json")]
+            try:
+                return _json_bytes(get_report(key))
+            except KeyError:
+                return _not_found(f"unknown report: {key}\n")
+        try:
+            return _html_bytes(render_report_html(key))
+        except KeyError:
+            return _not_found(f"unknown report: {key}\n")
+    if len(rest) == 2 and rest[0] == "docs":
+        return render_doc_text(rest[1])
+    return _not_found("unknown tape-to-cloud path\n")
 
 
 def serve_tape_to_cloud_http(handler: Any, method: str, path: str, query: Mapping[str, Sequence[str]]) -> bool:
