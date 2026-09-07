@@ -261,18 +261,54 @@ t2c-forum-watcher/
     └── accept-reject.jsonl
 ```
 
-This repository keeps the nested kit plus a root workflow:
+This repository keeps the nested kit plus root workflows:
 
 ```
 forum-watcher/          # copy-paste kit
+  scripts/watch.py
+  scripts/validate.py
+  scripts/monthly.py
+  sources.yaml
+  free-test-tools.yaml
+  discoveries/
+  monthly/
+  state/seen.json
+  state/accept-reject.jsonl
 .github/workflows/forum-watcher.yml
-forum_monitoring.md     # this document
+.github/workflows/mhvtl-validate.yml
+.github/workflows/monthly-rollup.yml
+forum_monitoring.md
+vendor_forum_watcher_prompt.md
 tests/test_forum_watcher.py
+tests/test_mhvtl_validate.py
+tests/test_monthly_rollup.py
 ```
 
 ---
 
-## 15. Out of Scope
+## 15. Vendor-forum + mhvtl layer
+
+This layer sits on the community watcher. It does not replace cron, SHA-256 dedupe, `create-pull-request@v8`, or keepalive.
+
+**`--mode community|vendor|all`.** `sources.yaml` tags every row `group: community` or `group: vendor`. Weekly cron still runs `--mode all`. Manual dispatch can split the two so a Reddit 429 does not block GitHub release atoms.
+
+**30 curl-verified vendor sources.** Telligent/Salesforce community RSS for Veritas, Cohesity, Rubrik, Veeam, and Commvault is 403/404/HTML as of 2026-09-07. Those URLs are not wired. Each vendor has a Reddit fallback (`r/netbackup`, `r/cohesity`, `r/rubrik`, `r/commvault`, `r/acronis`, `r/backupexec`, `r/dell`; `r/Veeam` already lives in the community list). Working extras: Veeam + Cohesity blogs, vendor GitHub `releases.atom`, ServerFault tags, SO tags `veeam`/`backupexec`/`emc`, two HN Algolia vendor queries, borg/velero/seaweedfs Discussions. Full DROP/KEEP table: `vendor_forum_watcher_prompt.md`.
+
+**Vendor classifier block.** Vendor-tagged items append BEX / DD / CDM / CommCell / Helios / RCDM / IDPA / VONE / VBR so Flash-Lite does not treat jargon as off-topic. Community items do not get that block.
+
+**mhvtl validation (Evaluate only).** `forum-watcher/scripts/validate.py` runs five tests: mhvtl `mtx` discovery, LTO-7 tar write-read + SHA-256, LTFS `mkltfs`, BorgBackup restore, SeaweedFS S3 round-trip. Each missing binary **skips**. Tape tests **never** run on GitHub-hosted runners (`sg` is absent; a silent fail would look like a pass). Workflow: `.github/workflows/mhvtl-validate.yml`, label `mhvtl-runner`, `runs-on: [self-hosted, linux, mhvtl]`. Docker Hub `adrianj/mhvtl` does not exist; mhvtl is a host kernel module (`markh794/mhvtl`).
+
+**18 free tools.** `forum-watcher/free-test-tools.yaml` — mhvtl, mtx, mt-st, ltfs, Borg, Restic, Kopia, Duplicati, Duplicacy, SeaweedFS, Rclone, Velero, proxmox-backup-client, Wal-G, pgBackRest, etcdctl, VeeamZIP (windows-only), Cohesity-SDK-python.
+
+**Monthly rollup.** First Monday 09:00 `Australia/Sydney` via `0 9 1-7 * 1` (GitHub has no `1#1`). `.github/workflows/monthly-rollup.yml` writes `forum-watcher/monthly/YYYY-MM.md` (top 10 sources, accept/reject ratio, community-shift flips, vendor major-version crossings, new tools) and opens a separate PR.
+
+**Cost.** Same $0/month ceiling. Classification stays on Flash-Lite (not Flash's 250 RPD, not Sonnet/Opus). mhvtl has no LLM calls. Monthly rollup is local stats.
+
+**Operator Monday path.** Weekly PR now has Community discover/watch and Vendor discover/watch. Check tape-ops / vtl-cloud / tape-duplicate boxes, merge, add label `mhvtl-runner` or `workflow_dispatch` mhvtl-validate on the self-hosted box. First Monday: separate monthly PR.
+
+---
+
+## 16. Out of Scope
 
 **Real-time Slack/Discord/Teams.** Delivery is one weekly GitHub PR so attention stays in the Monday review. A `repository_dispatch` webhook is a later add.
 
@@ -280,7 +316,7 @@ tests/test_forum_watcher.py
 
 ---
 
-## 16. References
+## 17. References
 
 [1] GitHub Changelog, "GitHub Actions: Late March 2026 updates," timezone support for scheduled workflows, 19 March 2026. https://github.blog/changelog/2026-03-19-github-actions-late-march-2026-updates/
 
