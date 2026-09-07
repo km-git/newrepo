@@ -306,12 +306,15 @@ def render_hub_html() -> str:
     live_rows = (
         "\n".join(
             "<tr>"
-            f'<td><a href="{html.escape(j["href"])}"><code>{html.escape(j["id"])}</code></a></td>'
-            f"<td>{j['object_count']}</td><td>{j['bytes']}</td>"
-            f"<td>{html.escape(str(j['status']))}</td></tr>"
+            f'<td><a href="{html.escape(str(j["href"]), quote=True)}">'
+            f"<code>{html.escape(str(j['id']))}</code></a></td>"
+            f"<td>{html.escape(str(j['object_count']))}</td>"
+            f"<td>{html.escape(str(j['bytes']))}</td>"
+            f"<td>{html.escape(str(j['status']))}</td>"
+            f"<td><code>{html.escape((j.get('canonical_sha256') or '')[:16])}…</code></td></tr>"
             for j in live
         )
-        or "<tr><td colspan='4'>No live jobs yet. Run <code>python -m tape_to_cloud ingest PATH</code></td></tr>"
+        or "<tr><td colspan='5'>No live jobs yet. Run <code>python -m tape_to_cloud ingest PATH</code></td></tr>"
     )
     body = f"""
     <section>
@@ -335,7 +338,7 @@ def render_hub_html() -> str:
     <section>
       <h2>Live ingest jobs (real bytes)</h2>
       <p class="muted">SHA-256 of actual file contents. CLI: <code>python -m tape_to_cloud ingest PATH --matter MATTER</code></p>
-      <table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th></tr></thead>
+      <table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th><th>SHA-256</th></tr></thead>
       <tbody>{live_rows}</tbody></table>
     </section>
     <section>
@@ -513,38 +516,41 @@ def _dispatch_live_jobs(path: str) -> tuple[int, dict[str, str], bytes] | None:
         rows = list_jobs()
         body_rows = (
             "\n".join(
-                f"<tr><td><a href='{html.escape(j['href'])}'><code>{html.escape(j['id'])}</code></a></td>"
-                f"<td>{j['object_count']}</td><td>{j['bytes']}</td>"
+                f"<tr><td><a href='{html.escape(str(j['href']), quote=True)}'><code>"
+                f"{html.escape(str(j['id']))}</code></a></td>"
+                f"<td>{html.escape(str(j['object_count']))}</td>"
+                f"<td>{html.escape(str(j['bytes']))}</td>"
                 f"<td>{html.escape(str(j['status']))}</td></tr>"
                 for j in rows
             )
             or "<tr><td colspan='4'>No live jobs. Run python -m tape_to_cloud ingest PATH</td></tr>"
         )
-        page = _shell(
+        listing_page = _shell(
             "Live ingest jobs",
             "<section><h2>Live ingest jobs</h2>"
-            f"<table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th></tr></thead>"
+            "<table><thead><tr><th>Job</th><th>Objects</th><th>Bytes</th><th>Status</th></tr></thead>"
             f"<tbody>{body_rows}</tbody></table></section>",
         )
-        return 200, html_hdr, page.encode("utf-8")
+        return 200, html_hdr, listing_page.encode("utf-8")
     if path.startswith("/tape-to-cloud/jobs/"):
         job_id = path.rsplit("/", 1)[-1]
         job = load_job(job_id)
         if job is None:
             return 404, html_hdr, b"<html><body>unknown job</body></html>"
-        payload = json.dumps(job, indent=2, default=str)
-        sample = job.get("sample")
-        page = (
+        safe_id = html.escape(job_id)
+        payload = html.escape(json.dumps(job, indent=2, default=str))
+        html_page = (
             "<!DOCTYPE html><html><head><meta charset='utf-8'><title>"
-            f"{html.escape(job_id)}</title></head>"
+            f"{safe_id}</title></head>"
             "<body style='font-family:sans-serif;background:#0d1117;color:#e6edf3'>"
             "<p><a href='/tape-to-cloud/jobs'>All live jobs</a></p>"
-            f"<h1>Live job {html.escape(job_id)}</h1>"
-            f"<p>sample={sample} (must be false) · objects={job.get('object_count')} · "
+            f"<h1>Live job {safe_id}</h1>"
+            f"<p>sample={html.escape(str(job.get('sample')))} (must be false) · "
+            f"objects={html.escape(str(job.get('object_count')))} · "
             f"SHA-256 {html.escape(str(job.get('canonical_sha256')))}</p>"
-            f"<pre>{html.escape(payload)}</pre></body></html>"
+            f"<pre>{payload}</pre></body></html>"
         )
-        return 200, html_hdr, page.encode("utf-8")
+        return 200, html_hdr, html_page.encode("utf-8")
     if path == "/api/tape-to-cloud/jobs":
         rows = list_jobs()
         return 200, json_hdr, json.dumps({"jobs": rows, "count": len(rows)}, indent=2).encode("utf-8")
