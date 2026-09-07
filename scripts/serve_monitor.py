@@ -14,10 +14,6 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
 
-from engine.monitor_dashboard import build_dashboard_state, publish_monitor
-from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
-from sspm.web.app import serve_sspm_http
-from sspm.web.app import write_static as write_sspm_static
 from engine.monetize_ui import (
   DEFAULT_BIND_HOST,
   DEFAULT_BIND_PORT,
@@ -25,6 +21,10 @@ from engine.monetize_ui import (
   publish_monetize,
   serve_monetize_http,
 )
+from engine.monitor_dashboard import build_dashboard_state, publish_monitor
+from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
+from sspm.web.app import serve_sspm_http
+from sspm.web.app import write_static as write_sspm_static
 
 
 class MonitorHandler(SimpleHTTPRequestHandler):
@@ -96,7 +96,12 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       self.wfile.write(err)
 
 
-def run(host: str = DEFAULT_BIND_HOST, port: int = DEFAULT_BIND_PORT, output_dir: str = "output", publish: bool = True) -> None:
+def run(
+  host: str = DEFAULT_BIND_HOST,
+  port: int = DEFAULT_BIND_PORT,
+  output_dir: str = "output",
+  publish: bool = True,
+) -> None:
   if publish:
     paths = publish_monitor(output_dir)
     mpaths = publish_monetize(output_dir)
