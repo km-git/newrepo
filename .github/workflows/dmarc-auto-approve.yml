@@ -1,6 +1,9 @@
 name: dmarc-auto-approve
+
+# Dependabot PRs are same-repo, so pull_request is enough (zizmor dangerous-triggers).
+# Check the PR author, not github.actor (zizmor bot-conditions).
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -10,19 +13,30 @@ permissions:
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
-    if: |
-      github.actor == 'dependabot[bot]' ||
-      github.actor == 'github-actions[bot]' ||
-      contains(github.event.pull_request.body, '[auto-approved]')
+    timeout-minutes: 10
+    if: >
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.repository == github.event.pull_request.head.repo.full_name
     steps:
+      - name: Block auto-approve of operator-owned paths
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
+          if echo "$files" | grep -Eq 'dmarc/templates/|dmarc/parsedmarc.ini'; then
+            echo "DMARC templates require manual review"
+            exit 1
+          fi
+
       - name: Approve the PR
-        uses: hmarr/auto-approve-action@v4
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge (squash)
-        if: github.event.pull_request.user.login == 'dependabot[bot]'
-        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash "$PR_URL" || echo "auto-merge not enabled (HTTP 422 if required checks missing)"

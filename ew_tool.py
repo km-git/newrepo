@@ -523,7 +523,6 @@ def main() -> None:
       return
     if args.dmarc_ui:
       import subprocess
-      import sys
 
       subprocess.run(
         [sys.executable, "-m", "dmarc", "web", "serve", "--host", args.monitor_host, "--port", str(args.dmarc_ui_port)],
