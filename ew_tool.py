@@ -289,6 +289,23 @@ def main() -> None:
     action="store_true",
     help="Audit missing free data, TV OSS, GitHub tools, Python libs — challenge gaps",
   )
+  parser.add_argument(
+    "--monetize-report",
+    action="store_true",
+    help="Signal licensing + royalty desk report (writes output/monetize/latest_report.json + reports/MONETIZATION_STRATEGY.md)",
+  )
+  parser.add_argument(
+    "--tier",
+    choices=("free", "pro", "enterprise"),
+    default=None,
+    help="With --monetize-report: restrict to one tier (default: all three)",
+  )
+  parser.add_argument(
+    "--monetize-months",
+    type=int,
+    default=1,
+    help="With --monetize-report: billing period length in months (default 1)",
+  )
   parser.add_argument("--repomix", action="store_true", help="Export RepoMix-style code pack and exit")
   parser.add_argument("--repomix-out", default="output/repomix_pack.xml", help="RepoMix output path")
   parser.add_argument(
@@ -411,6 +428,13 @@ def main() -> None:
     report = run_effectiveness_validation()
     print(json.dumps(report.to_dict(), indent=2, default=str))
     sys.exit(0 if report.ok else 1)
+
+  if args.monetize_report:
+    from engine.monetize import run_monetize_report
+
+    result = run_monetize_report(tier=args.tier, months=args.monetize_months)
+    print(json.dumps(result, indent=2, default=str))
+    return
 
   if args.data_intel:
     from gateway.data_hub import live_market_state
