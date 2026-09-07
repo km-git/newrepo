@@ -27,11 +27,16 @@ use `python3 ew_tool.py --monetize-ui --static` and open
 ### Running / testing
 
 - Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root).
-- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks in `.github/workflows/lint-security.yml`; PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. Zero-key alternative: CodeRabbit Marketplace (~4 PRs/hr).
+- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks / zizmor / OSV / pip-audit in `.github/workflows/lint-security.yml`; **zero-key GitHub scanners** in `.github/workflows/bugbot-free.yml` (CodeQL + Semgrep CE + reviewdog PR comments). PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. CodeRabbit Marketplace is optional (~4 PRs/hr) and is not required.
 - Single symbol (live data fetch): `.venv/bin/python ew_tool.py --symbol BTC/USDT --crypto`
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
 - Monetize Explorer (server): `.venv/bin/python ew_tool.py --monetize-ui` binds `0.0.0.0:8765` and prints `http://127.0.0.1:8765/monetize` on its own line
+- Tape-to-Cloud live ingest (real file bytes, not sample reports):
+  `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
+  `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.
+  Hub live jobs: `http://127.0.0.1:8765/tape-to-cloud/jobs` while `--monitor` is running.
+  This does not drive LTO hardware.
 - The CLI and `pytest` work from the repo root without `PYTHONPATH`, but the helper
   scripts under `scripts/` (e.g. `scripts/run_top50_batch.py`, `scripts/show_latest_analysis.py`)
   require `PYTHONPATH=/workspace`.

@@ -219,7 +219,7 @@ def dispatch_platform(
     api = handle_api(method, path, query, body)
     if api is not None:
         return api
-    if method == "GET" and path in ("/tape-to-cloud/platform", "/tape-to-cloud/jobs"):
+    if method == "GET" and path == "/tape-to-cloud/platform":
         html = render_platform_html().encode("utf-8")
         return 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}, html
     return None
