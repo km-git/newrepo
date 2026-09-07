@@ -13,27 +13,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: >
-      github.event.pull_request.user.login == 'dependabot[bot]' ||
-      github.event.pull_request.user.login == 'github-actions[bot]' ||
-      contains(github.event.pull_request.body, '[auto-rebase]')
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        github.event.pull_request.user.login == 'dependabot[bot]' ||
+        github.event.pull_request.user.login == 'github-actions[bot]' ||
+        contains(github.event.pull_request.body, '[auto-rebase]')
+      )
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Rebase on main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           git config user.name "sspm-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
+          git checkout -B "$BRANCH"
           if ! git rebase origin/main; then
             git rebase --abort || true
             gh pr comment "$PR" --body "@operator merge conflict on this PR — please resolve manually"
             exit 1
           fi
-          git push --force-with-lease
+          git push --force-with-lease origin "HEAD:$BRANCH"
