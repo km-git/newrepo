@@ -1,0 +1,4 @@
+[
+  {"CheckID": "s3_bucket_public_access", "Status": "FAIL", "Severity": "critical", "CheckTitle": "S3 bucket is public", "public": true},
+  {"CheckID": "rds_instance_storage_encrypted", "Status": "FAIL", "Severity": "high", "CheckTitle": "RDS storage is not encrypted"}
+]
