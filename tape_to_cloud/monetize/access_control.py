@@ -11,9 +11,10 @@ license expiry.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from ._audit import append_audit, canonical_json, sha256_hex, utc_now, utc_now_iso
 from .licensing import LicenseTag, _parse_utc
@@ -43,13 +44,10 @@ def generate_access_policy(
         raise AccessPolicyError("consumer_id is required")
     if not kms_key_id or not str(kms_key_id).strip():
         raise AccessPolicyError(
-            "kms_key_id is required: access policies must require the "
-            "customer's own KMS key (blueprint section 9)"
+            "kms_key_id is required: access policies must require the customer's own KMS key (blueprint section 9)"
         )
     if tag.is_expired():
-        raise AccessPolicyError(
-            f"license {tag.license_id} for asset {tag.asset_id} expired at {tag.expires_at}"
-        )
+        raise AccessPolicyError(f"license {tag.license_id} for asset {tag.asset_id} expired at {tag.expires_at}")
     prefixes = [str(p) for p in (asset_prefixes or [f"assets/{tag.asset_id}/"])]
     if not prefixes or any(not p.strip() for p in prefixes):
         raise AccessPolicyError("asset_prefixes must be non-empty strings")
@@ -93,9 +91,7 @@ def render_aws_s3_policy(policy: dict[str, Any], bucket: str) -> dict[str, Any]:
         "Effect": "Allow",
         "Principal": {"AWS": policy["consumer"]["customer_id"]},
         "Action": ["s3:GetObject", "s3:GetObjectVersion"],
-        "Resource": [
-            f"arn:aws:s3:::{bucket}/{prefix}*" for prefix in policy["asset_prefixes"]
-        ],
+        "Resource": [f"arn:aws:s3:::{bucket}/{prefix}*" for prefix in policy["asset_prefixes"]],
         "Condition": {
             "StringEquals": {
                 "s3:x-amz-server-side-encryption": "aws:kms",
@@ -115,10 +111,7 @@ def is_policy_active(policy: dict[str, Any], now: datetime | None = None) -> boo
     if policy.get("status") != "active":
         return False
     expires_at = policy.get("conditions", {}).get("expires_at")
-    if expires_at is not None:
-        if _parse_utc(expires_at, "expires_at") <= (now or utc_now()):
-            return False
-    return True
+    return not (expires_at is not None and _parse_utc(expires_at, "expires_at") <= (now or utc_now()))
 
 
 class PolicyStore:
@@ -132,9 +125,7 @@ class PolicyStore:
     def load_policies(self) -> list[dict[str, Any]]:
         if not self.policies_path.exists():
             return []
-        return json.loads(self.policies_path.read_text(encoding="utf-8")).get(
-            "policies", []
-        )
+        return json.loads(self.policies_path.read_text(encoding="utf-8")).get("policies", [])
 
     def _write(self, policies: list[dict[str, Any]]) -> None:
         ordered = sorted(policies, key=lambda p: (p["issued_at"], p["policy_id"]))
@@ -174,9 +165,7 @@ class PolicyStore:
                 return policy
         return None
 
-    def revoke(
-        self, policy_id: str, reason: str = "explicit", actor: str | None = None
-    ) -> dict[str, Any]:
+    def revoke(self, policy_id: str, reason: str = "explicit", actor: str | None = None) -> dict[str, Any]:
         policies = self.load_policies()
         for policy in policies:
             if policy["policy_id"] == policy_id:

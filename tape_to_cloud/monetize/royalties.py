@@ -9,10 +9,11 @@ uses ``Decimal`` for determinism.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from ._audit import append_audit, utc_now_iso
 from .licensing import LicenseStore, _parse_utc
@@ -36,7 +37,7 @@ class RateCard:
     rate: Decimal
     currency: str = "USD"
 
-    def validate(self) -> "RateCard":
+    def validate(self) -> RateCard:
         if not self.license_id or not str(self.license_id).strip():
             raise RoyaltyError("rate card license_id is required")
         if self.model not in RATE_MODELS:
@@ -150,12 +151,8 @@ def compute_royalty_report(
         if currency is None:
             currency = card.currency
         elif currency != card.currency:
-            raise RoyaltyError(
-                f"mixed currencies in one report: {currency} vs {card.currency}"
-            )
-        licensor = licensors.setdefault(
-            tag.licensor_id, {"licenses": {}, "total_amount": Decimal("0")}
-        )
+            raise RoyaltyError(f"mixed currencies in one report: {currency} vs {card.currency}")
+        licensor = licensors.setdefault(tag.licensor_id, {"licenses": {}, "total_amount": Decimal(0)})
         bucket = licensor["licenses"].setdefault(
             tag.license_id,
             {
@@ -164,14 +161,14 @@ def compute_royalty_report(
                 "events": 0,
                 "bytes": 0,
                 "requests": 0,
-                "amount": Decimal("0"),
+                "amount": Decimal(0),
             },
         )
         bucket["events"] += 1
         bucket["bytes"] += event["bytes"]
         bucket["requests"] += event["requests"]
 
-    total = Decimal("0")
+    total = Decimal(0)
     for licensor in licensors.values():
         for license_id, bucket in licensor["licenses"].items():
             card = cards[license_id]
