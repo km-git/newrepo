@@ -21,9 +21,14 @@ PR_AGENT_SHA = "f3b385ea2927247ddcff2fe252472380b9c8f5fc"
 GITLEAKS_SHA = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
 CODEQL_SHA = "cdf488f595d80d6e07e03d4674febd5ab45fa938"
 REVIEWDOG_SHA = "d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f"
+SCORECARD_SHA = "2d1146689b8cda280b9bc96326124645441f03bc"
+DEP_REVIEW_SHA = "3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 USES_RE = re.compile(r"^\s*uses:\s+(\S+)", re.MULTILINE)
 BUGBOT_FREE = ROOT / ".github" / "workflows" / "bugbot-free.yml"
+SCORECARD = ROOT / ".github" / "workflows" / "scorecard.yml"
+DEP_REVIEW = ROOT / ".github" / "workflows" / "dependency-review.yml"
+RENOVATE = ROOT / "renovate.json"
 
 
 def test_guide_describes_the_five_minute_stack() -> None:
@@ -156,3 +161,29 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
             continue
         ref = uses.split("@", 1)[1].split("#", 1)[0]
         assert SHA_RE.fullmatch(ref), uses
+
+
+def test_mend_socket_aikido_standins_are_free_and_sha_pinned() -> None:
+    """Paid Mend/Socket/Aikido/Sourcery SaaS are not required; GitHub stand-ins are."""
+    renovate = RENOVATE.read_text(encoding="utf-8")
+    assert "config:best-practices" in renovate
+    assert "github-actions" in renovate
+    score = SCORECARD.read_text(encoding="utf-8")
+    assert f"ossf/scorecard-action@{SCORECARD_SHA}" in score
+    assert "v2.4.4" in score
+    assert "pull_request_target" not in score
+    dep = DEP_REVIEW.read_text(encoding="utf-8")
+    assert f"actions/dependency-review-action@{DEP_REVIEW_SHA}" in dep
+    assert "fail-on-severity: high" in dep
+    combined = score + "\n" + dep
+    for uses in USES_RE.findall(combined):
+        if uses.startswith("actions/checkout") or uses.startswith("actions/setup-"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref), uses
+    workflows = ROOT / ".github" / "workflows"
+    blob = "\n".join(p.read_text(encoding="utf-8") for p in workflows.glob("*.yml"))
+    for paid in ("socket.dev", "aikido.dev", "sourcery.ai", "greptile.com", "codeant.ai"):
+        assert paid not in blob
+    assert "SENTRY_DSN" not in blob
+    assert "LINEAR_API" not in blob

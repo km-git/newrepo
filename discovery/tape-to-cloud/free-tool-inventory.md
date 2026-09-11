@@ -96,6 +96,18 @@ The pattern: instrument one module (start with `tape-ops` since it has the most 
 
 `audit` mode logs violations without breaking the build; `block` mode enforces. For the `email-migrate` and `monetize` modules that touch Graph API + Stripe, this is the cheapest defense against a compromised Action exfiltrating customer data.
 
+### 3.8 Paid AI / security / PM / observability SaaS — what we actually use
+
+Those vendors (CodeRabbit, Sourcery, CodeAnt AI, Bito, Greptile, Macroscope, Git AutoReview, Qodo; Mend, Socket, Aikido; Height, Shortcut, Linear; Honeycomb, Sentry) are typically $0 for a tiny team or a 14-day trial, then $12–$60/user/month. This repo stays on the free GitHub-native slot for each:
+
+| Slot | Skip (paid after trial) | Use (free, in-repo or GitHub App) |
+|---|---|---|
+| AI PR review | Sourcery, CodeAnt, Bito, Greptile, Macroscope, Qodo SaaS | Ruff + CodeQL + Semgrep + reviewdog; PR-Agent when `OPENAI_KEY` is set. CodeRabbit Marketplace is optional (~4 PRs/hr), not required. |
+| Supply-chain / SCA | Mend SCA, Socket, Aikido | Dependabot + **Renovate** (`renovate.json`, Mend's free GitHub App) + **dependency-review** Action + pip-audit + OSV |
+| Repo posture | Aikido dashboard | **OpenSSF Scorecard** SARIF (`scorecard.yml`) + zizmor + actionlint + gitleaks + TruffleHog |
+| PM | Height, Shortcut, Linear | GitHub Issues + existing `dspm-issue-fix` / Dependabot labels |
+| Observability | Honeycomb, Sentry cloud | Phase 2: GlitchTip (Sentry-SDK DSN swap) or SigNoz self-host — not a cloud contract |
+
 ---
 
 ## 4. Feature-Coverage Library Catalog
