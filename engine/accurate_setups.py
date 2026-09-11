@@ -7,13 +7,19 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from core.risk import MAX_STOP_PCT
+from core.risk import TF_STOP_PCT
 
 STYLE_TF = {
   "scalp": "15m",
   "day_trade": "1h",
   "swing": "1d",
   "long_term": "1w",
+}
+
+# Style max stop % — derived from TF caps on main branch
+MAX_STOP_PCT = {
+  style: TF_STOP_PCT.get(tf, (1.0, 6.0))[1]
+  for style, tf in STYLE_TF.items()
 }
 
 MIN_OOS_TRADES = 3

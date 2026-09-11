@@ -4,15 +4,25 @@ The **trade setups table** is generated when you run a batch or the autodream da
 
 ## View here (in the repo)
 
-Open **[TRADE_SETUPS.md](./TRADE_SETUPS.md)** — markdown table with all scalp / day / swing / long-term setups.
+| File | Description |
+|------|-------------|
+| **[TRADE_SETUPS.md](./TRADE_SETUPS.md)** | Style setups (scalp / day / swing / long) |
+| **[COMPLETE_TRADING_ANALYSIS.md](./COMPLETE_TRADING_ANALYSIS.md)** | Full pair×TF book with dollar legs @ equity |
+| **[trade_setups_matrix.html](./trade_setups_matrix.html)** | Shaded 50×5 grid — open in browser |
+| **[monetize_explorer.html](./monetize_explorer.html)** | Monetize Explorer — Free / Pro / Enterprise matrix (no server) |
+| **[HISTORICAL_PERFORMANCE.md](./HISTORICAL_PERFORMANCE.md)** | Tracked TP/SL outcomes and win rates (feeds next run) |
+| **[PAPER_PNL.md](./PAPER_PNL.md)** | OHLC paper execution P&L (limit fills, fees, max 3 positions) |
+| **[latest_executable_pair_tf.csv](./latest_executable_pair_tf.csv)** | 61 executable rows only (Excel/Sheets) |
 
 ## Full interactive table (local, after batch)
 
 | File | Description |
 |------|-------------|
+| `output/latest_trade_setups_matrix.html` | **Shaded 50×5 pair×TF grid** (FULL / PROBE / monitor / watch) |
 | `output/latest_analysis.html` | Full confluences + 4 setups per pair (browser) |
+| `output/latest_setups.html` | All style setups, row color-coded |
 | `output/latest_setups.csv` | One row per pair × style (Excel/Sheets) |
-| `output/latest_analysis.csv` | One wide row per pair (149 columns) |
+| `output/COMPLETE_TRADING_ANALYSIS.md` | Full markdown book with dollar-sized legs |
 
 ## Elliott Wave — always on
 
@@ -30,6 +40,12 @@ PYTHONPATH=/workspace python3 scripts/run_top50_batch.py -n 50
 
 # Scheduled refresh (monitor + batch every hour)
 ./scripts/run_autodream_daemon.sh
+
+# Regenerate from saved batch JSON (limit orders + matrix + markdown)
+PYTHONPATH=/workspace python3 scripts/generate_complete_analysis.py --equity 50000 --usdt-d 8.2
+
+# Paper simulate executable rows on OHLC (limit fills + fees, max 3 positions)
+PYTHONPATH=/workspace python3 scripts/run_paper_simulation.py --equity 50000
 
 # Show paths
 PYTHONPATH=/workspace python3 scripts/show_latest_analysis.py

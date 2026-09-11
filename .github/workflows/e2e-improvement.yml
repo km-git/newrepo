@@ -1,0 +1,37 @@
+name: E2E Improvement Cycle
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  improvement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest tests/ -q --tb=line -x
+
+      - name: Learning phase (offline metrics)
+        run: .venv/bin/python -c "from engine.improvement_cycle import run_improvement_cycle; print(run_improvement_cycle())"
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci
+          EW_WEB_INTEL: "0"
+          EW_WS_ENABLED: "0"
+
+      - name: System health
+        run: .venv/bin/python scripts/e2e_trading_cycle.py --health
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-ci
+          EW_HEALTH_REQUIRE_ARTIFACTS: "0"

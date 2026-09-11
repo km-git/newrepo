@@ -7,10 +7,12 @@ CLI tool for Elliott Wave impulse validation (strict R1/R2/R3), ABC correction d
 - **Multi-timeframe pipeline** (1w → 15m): HTF bias, adaptive MonoWaves, kill zone clustering, harmonic overlay, execution validation
 - **Strict rule enforcement**: R1/R2/R3 are hard gates; no rule relaxation for standard impulses
 - **Token-saving infrastructure** for Cursor agents:
-  - **Compressed disk cache** (`zstd` + `msgpack` + `diskcache`) for OHLCV, monowaves, harmonics, Monte Carlo
+  - **Compressed disk cache** (`zstd` + `msgpack` + sqlite index) for OHLCV, monowaves, harmonics, Monte Carlo
+  - **Semantic gateway cache** (Cloudflare AI Gateway pattern) for repetitive OKX OHLCV queries
+  - **RepoMix export** (`--repomix`) minifies code structures for LLM agent context
   - **Deduplication** of harmonic patterns, monowaves, and tool-call logs
   - **Result hashing** in `tool_calls_log` — full payloads stored by hash, not inlined in JSON
-- **Exchange fallback**: okx → bybit → kraken → binance (avoids Binance HTTP 451)
+- **Exchange**: OKX only for live crypto OHLCV (avoids Bybit/Binance geo-blocks)
 - **Pydantic v2** validated JSON output
 
 ## Quick Start
@@ -24,8 +26,261 @@ git clone --depth 1 https://github.com/drstevendev/ElliottWaveAnalyzer.git libs/
 git clone --depth 1 https://github.com/DrEdwardPCB/python-taew.git libs/python-taew
 pip install -e libs/python-taew libs/pyharmonics
 
-# Single symbol (crypto)
-python3 ew_tool.py --symbol BTC/USDT --crypto --cache-stats
+# Single symbol (crypto) — OKX live data + semantic gateway cache
+python3 ew_tool.py --symbol BTC/USDT --crypto --gateway-stats
+
+# Critical decision: multi-model advisory via Cursor Pro (recommended)
+export CURSOR_API_KEY=...   # cursor.com/dashboard → API Keys
+python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
+
+# Legacy: direct OpenAI/Anthropic API keys
+# export EW_LLM_BACKEND=direct
+# export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+
+## Smart task routing (save tokens)
+
+**GPT is allowed — each model has its own 10k cap.** Default `EW_LLM_MAX_TOKENS_PER_MODEL=10000` limits each model independently (gpt-5-mini, claude-opus-4-8, etc. each get 10k). All saving mechanisms stack: GitHub EW bypass (0 tokens), zstd disk cache, structure fingerprint, tiktoken, llm-token-optimizer, tokenpruner, dedup, TokenStore.
+
+| Task | Tier | Max output | When | Cursor models (default) |
+|---|---|---:|---|---|
+| **workhorse** | cheap | 120 | `single` mode, batch caps | `composer-2.5` |
+| **screen** | cheap | 150 | Ensemble phase 1 (parallel) | `cursor-grok-4.5-high` + `gpt-5-mini` |
+| **tiebreaker** | standard/premium | 180 | Mild → Grok High; hard → Sol/Opus | `cursor-grok-4.5-high` / `gpt-5.6-sol` / `claude-opus-4-8` |
+| **planning** | standard/premium | 240 | CONDITIONAL_GO → Luna; GO → Sol | `gpt-5.6-luna` / `gpt-5.6-sol` |
+| **executive** | premium | 220 | GO + high conviction + hard disagree | `claude-opus-4-8` |
+| **architect** | premium | 400 | RepoMix / pipeline design | `claude-fable-5` |
+| **synthesis** | premium | 320 | Post-batch summary | `gpt-5.6-sol` |
+
+```bash
+python3 ew_tool.py --llm-savers              # playbook + per-model budgets
+python3 ew_tool.py --install-token-savers    # pip install missing saver libs
+```
+
+### Token-saving env vars
+
+```bash
+EW_LLM_MAX_TOKENS_PER_MODEL=10000    # each model capped independently (default)
+EW_LLM_EW_BYPASS=1                     # GitHub EW consensus skips LLM (0 tokens)
+EW_LLM_EW_BYPASS_MIN_AGREEMENT=75
+EW_LLM_EW_BYPASS_MIN_ENGINES=2
+EW_LLM_CACHE_TTL=14400               # 4h structure-keyed zstd disk cache
+EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefer Composer
+EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
+```
+
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `msgpack` · `zstandard` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
+
+## Cursor Pro backend (default)
+
+When `CURSOR_API_KEY` is set, `--llm-advisory` uses **Cursor's Cloud Agents API** and bills against your **Pro plan pools** — no separate OpenAI/Anthropic keys required.
+
+```bash
+export CURSOR_API_KEY=crsr_...          # cursor.com/dashboard → API Keys
+export EW_LLM_BACKEND=cursor            # default when CURSOR_API_KEY is set
+export EW_LLM_INTELLIGENCE=ensemble     # Grok High + gpt-5-mini screen, premium tiebreaker
+python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
+```
+
+| Role | Cheap (workhorse) | Mid (mild escalation) | Crucial (hard escalation) | Pool |
+|---|---|---|---|---|
+| Screen | `cursor-grok-4.5-high` + `gpt-5-mini` | — | — | First-party + API |
+| Tiebreaker | — | `cursor-grok-4.5-high` (mild) | `gpt-5.6-sol` / `claude-opus-4-8` | Mixed |
+| Planning | — | `gpt-5.6-luna` (CONDITIONAL_GO) | `gpt-5.6-sol` | API |
+| Executive | — | — | `claude-opus-4-8` | API |
+| Architect | — | — | `claude-fable-5` | API |
+| Synthesis | — | — | `gpt-5.6-sol` | API |
+
+Optional: `EW_MINIMIZE_GPT=1` swaps GPT slots for Composer/Grok (preference, not block). `EW_LLM_SCREEN_DIVERSE=1` swaps slot A for `grok-4.5`.
+
+Override: `EW_MODEL_*` or legacy `EW_CURSOR_OPUS`, `EW_CURSOR_FABLE`, `EW_CURSOR_SOL`.
+
+Direct API fallback: `export EW_LLM_BACKEND=direct` + `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
+
+## Multi-model intelligence panel (`--llm-advisory`)
+
+When `--llm-advisory` is enabled, **ensemble mode is default** — dual cheap screen + tiebreaker on disagreement. Session budget (10k tokens/day) limits total spend; GPT is not blocked.
+
+| Phase | Models | When |
+|---|---|---|
+| **0. EW bypass** | GitHub EW consensus (0 tokens) | Agreement ≥75%, ≥2 engines |
+| **1. Cheap screen** | Grok High + gpt-5-mini in parallel | When bypass does not apply |
+| **2. Smart escalation** | Grok High (mild) · Luna (light) · Sol (hard) · Opus (executive GO) | Disagreement severity + verdict |
+| **3. Confidence apply** | Panel adjustment on `trade_setup.confidence` | Always (audit trail preserved) |
+
+With `--llm-advisory`, the **final executive verdict** is set by multi-model AI consensus (default on):
+
+| Panel stance | Effect on draft verdict |
+|---|---|
+| **agree** | Endorse draft (CONDITIONAL→GO if premium tiebreaker agrees) |
+| **caution** | Downgrade one tier, halve position size |
+| **reject** | Downgrade two tiers, probe size only |
+
+Disable: `EW_LLM_EXECUTIVE_CONSENSUS=0` (confidence-only mode).
+
+## PR auto-approve (multi-model executive consensus)
+
+Auto-approve and merge pull requests using the same multi-model panel as trading executive decisions:
+
+```bash
+# Dry-run — see verdict without GitHub actions
+python3 ew_tool.py --pr-approve 5 --pr-dry-run
+
+# Review all open PRs
+python3 ew_tool.py --pr-approve-all --pr-dry-run
+
+# Live — approve + merge when 5/7 models agree
+python3 scripts/pr_executive_consensus.py 5
+
+# GitHub Action runs on every PR (non-draft): .github/workflows/pr-executive-consensus.yml
+```
+
+| PR verdict | Panel stance | Action |
+|---|---|---|
+| `APPROVE_MERGE` | agree | Approve + merge (if `EW_PR_AUTO_MERGE=1`) |
+| `CONDITIONAL_MERGE` | agree/caution | Approve with comment |
+| `REQUEST_CHANGES` | reject/caution | Request changes |
+| `REJECT` | any | Request changes (CI fail, etc.) |
+
+```bash
+EW_PR_AUTO_APPROVE=1           # default — post GitHub review
+EW_PR_AUTO_MERGE=1             # merge on APPROVE_MERGE + agree
+EW_PR_EXECUTIVE_CONSENSUS=1    # AI panel shapes final verdict
+EW_PR_LLM_ADVISORY=1           # run multi-model panel
+EW_PR_EXPANDED_PANEL=1         # 7-model specialist panel (default)
+EW_PR_MIN_APPROVALS=5          # approve when 5/7 agree
+EW_PR_PANEL_SIZE=7
+EW_PR_REQUIRE_CI=1             # reject if CI failed
+```
+
+Set `EW_LLM_INTELLIGENCE=single` for token-minimal single-model mode, or `dual` for cheap dual screen without tiebreaker.
+
+### Cost comparison (typical critical advisory)
+
+Assumes ~450 input tokens + ~180 output tokens per call (compact advisory JSON). Run live numbers:
+
+```bash
+python3 ew_tool.py --llm-cost
+```
+
+| Scenario | Models | Calls | Est. cost | When to use |
+|---|---|---:|---:|---|
+| **Single cheap** | `gpt-4o-mini` | 1 | ~$0.0002 | High-volume batch, `--llm-advisory-max` caps |
+| **Ensemble agree** | mini + haiku | 2 | ~$0.0013 | Default — dual cheap screen, unanimous |
+| **Ensemble disagree** | mini + haiku + Sol/Opus | 3 | ~$0.004+ | Hard decisions — crucial model only |
+| **Ensemble blended** (~30% disagree) | conditional | 2–3 | ~$0.0021 | Expected real-world cost |
+| **Dual premium** ❌ | `gpt-4o` + sonnet | 2 | ~$0.0070 | Avoid — ~3× ensemble cost |
+| **Cache hit** | — | 0 | $0 | Same symbol/structure within 4h |
+| **EW bypass** | GitHub EW consensus | 0 | $0 | Agreement ≥75%, ≥2 engines |
+
+**Task → model tier** (cheap wherever possible):
+
+| Task | Tier | Models |
+|---|---|---|
+| Advisory screen | cheap | `composer-2.5`, `gpt-5-mini` |
+| Tiebreaker / planning / synthesis | crucial | `gpt-5.6-sol` |
+| Executive decision | crucial | `claude-opus-4-8` |
+| Architect / RepoMix | crucial | `claude-fable-5` |
+
+Ensemble saves **~70%** vs dual premium while still using two cheap models + conditional premium.
+
+## Cursor Pro vs direct API keys
+
+With **`EW_LLM_BACKEND=cursor`** (default when `CURSOR_API_KEY` is set), advisory runs entirely on Cursor Pro — ensemble panel included.
+
+| Where | Backend | Credentials |
+|---|---|---|
+| **`ew_tool --llm-advisory`** | Cursor Cloud Agents API | `CURSOR_API_KEY` |
+| **This Cloud Agent session** | Cursor IDE/agent runtime | Pro subscription |
+| **Direct API (legacy)** | OpenAI + Anthropic HTTP | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` |
+
+### What Cursor Pro includes ([docs](https://cursor.com/docs/models-and-pricing))
+
+Pro ($20/mo) gives **two usage pools** that reset monthly:
+
+| Pool | Models | Good for |
+|---|---|---|
+| **First-party** (generous) | Auto, **Composer 2.5**, **Grok 4.5** | Cheap/high-volume — screen tasks, code, routine review |
+| **API** ($20/mo included) | Claude, GPT, Gemini, etc. (frontier) | Tiebreakers, architect review, complex synthesis |
+
+You can pick most frontier models in the IDE/agent UI. That access does **not** automatically flow into `ew_tool` Python scripts — those still need direct API keys unless we add a **Cursor SDK** backend (`CURSOR_API_KEY`).
+
+### Recommended split (cheap vs premium)
+
+| Task | Best runtime | Model tier |
+|---|---|---|
+| Run analysis pipeline (OKX fetch, EW, harmonics) | `ew_tool.py` | No LLM — deterministic |
+| Advisory screen on GO setups | Cursor agent **or** `ew_tool --llm-advisory` | **Cheap** — Composer 2.5 / mini / haiku |
+| Tiebreaker when models disagree | Cursor agent **or** ensemble tiebreaker | **Premium** — Sonnet / GPT-4o |
+| Architect / RepoMix / multi-file design | **Cursor Cloud Agent** (here) | **Premium** — uses Pro pools |
+| Top-50 batch + review top 5 GO setups | Cursor agent on batch JSON | **Premium** — one session, Pro pool |
+
+### Cost mental model on Pro
+
+For a typical advisory (~450 in / ~180 out tokens):
+
+| Backend | Example model | Est. per call | Pool |
+|---|---|---:|---|
+| Cursor first-party | Composer 2.5 | ~$0.0007 | First-party (generous) |
+| Direct API (current `ew_tool`) | gpt-4o-mini | ~$0.0002 | Your OpenAI bill |
+| Cursor API pool | Claude Sonnet | ~$0.003 | Pro $20 API allowance |
+| This Cloud Agent session | Multi-model panel | Included in Pro | IDE/agent usage |
+
+**Practical takeaway:** Set `CURSOR_API_KEY` once — batch and single-symbol advisory use the same multi-model ensemble on your Pro plan. Use `EW_LLM_BACKEND=direct` only if you need standalone API keys (CI without Cursor).
+
+```bash
+# Cursor Pro (default)
+export CURSOR_API_KEY=crsr_...
+python3 ew_tool.py --llm-cost              # direct-API estimates
+python3 ew_tool.py --symbol BTC/USDT --crypto --llm-advisory
+
+# Direct API legacy
+# export EW_LLM_BACKEND=direct
+# export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+```
+
+## Token-efficient LLM advisory
+
+LLM calls are gated to **critical decisions only** and use these token-saving mechanisms:
+
+| Mechanism | What it does |
+|---|---|
+| **Critical-only gate** | Skips LLM for monitor/STANDBY setups (~90% of batch pairs) |
+| **Ensemble default** | `EW_LLM_INTELLIGENCE=ensemble` — dual cheap screen, premium only on disagreement |
+| **Single provider fallback** | Falls back to one model when only one API key is set |
+| **Cheap tier default** | Screen uses mini/haiku — premium only for tiebreaker |
+| **Compact prompts** | Short JSON keys (`sym`, `v`, `dir`) — ~60% fewer input tokens |
+| **Output cap** | `EW_LLM_MAX_OUTPUT=280` (default) — advisory JSON is small |
+| **Anthropic prompt cache** | System prompt uses `cache_control: ephemeral` on repeat calls |
+| **Disk cache (1h)** | Same symbol/verdict/price → zero API tokens |
+| **Batch cap** | `--llm-advisory-max 5` limits consultations per batch run |
+| **Pipeline token store** | `tool_calls_log` stores hashes, not full payloads (`cache/TokenStore`) |
+| **Semantic OHLCV cache** | OKX data reused across pairs/runs — no redundant market fetches |
+| **RepoMix export** | `--repomix` minifies codebase for agent context |
+
+```bash
+# Default: Cursor Pro backend when CURSOR_API_KEY is set
+export CURSOR_API_KEY=crsr_...
+export EW_LLM_INTELLIGENCE=ensemble   # ensemble | single | dual
+
+# Direct API (optional legacy)
+# export EW_LLM_BACKEND=direct
+# export OPENAI_API_KEY=... ANTHROPIC_API_KEY=...
+
+# Token-minimal: one cheap model
+export EW_LLM_INTELLIGENCE=single
+export EW_LLM_PROVIDER=auto          # auto | openai | anthropic | dual
+export EW_LLM_TIER=cheap             # cheap | standard
+export EW_LLM_MAX_OUTPUT=280
+
+# Legacy dual without tiebreaker
+export EW_LLM_INTELLIGENCE=dual
+```
+
+# Batch with up to 5 LLM consultations on GO / CONDITIONAL_GO pairs
+python3 scripts/run_top50_batch.py -n 50 --llm-advisory --llm-advisory-max 5
+
+# RepoMix-style code pack for agent context
+python3 ew_tool.py --repomix --repomix-out output/repomix_pack.xml
 
 # Batch mode
 python3 ew_tool.py --batch samples/batch_symbols.csv --crypto --save out.json
@@ -33,6 +288,84 @@ python3 ew_tool.py --batch samples/batch_symbols.csv --crypto --save out.json
 # Run tests
 python3 -m pytest tests/ -v
 ```
+
+## Browser monitor
+
+Live dashboard for batch results, monitor queue, win rates, and the trade matrix.
+
+```bash
+# After a batch (or anytime output/ has data):
+python3 scripts/serve_monitor.py
+# or
+python3 ew_tool.py --monitor
+
+# Open http://127.0.0.1:8765/
+```
+
+The page auto-refreshes every 30s and polls `/api/dashboard` for:
+
+- Executive verdict breakdown (GO, CONDITIONAL_GO, STANDBY, STAGED)
+- Autodream win rates (overall, by direction, by timeframe)
+- Pair summary table with symbol filter
+- Executable monitor queue
+- Embedded trade setups matrix iframe
+
+Artifacts: `output/monitor.html`, `output/autodream/dashboard_state.json` (regenerated on batch + server start). Header link opens the Monetize Explorer at `/monetize`.
+
+## Monetize Explorer
+
+Offline-safe license explorer. Open the committed HTML on your machine — no server required:
+
+```bash
+# Regenerate the self-contained page (prints a file:// path)
+python3 ew_tool.py --monetize-ui --static
+```
+
+Then open **[reports/monetize_explorer.html](reports/monetize_explorer.html)** (or the printed `file://` path) in a browser. Free / Pro / Enterprise switching is client-side from the embedded access matrix.
+
+Optional local server (binds `0.0.0.0`, prints clickable URLs on their own lines):
+
+```bash
+python3 ew_tool.py --monetize-ui
+# or
+python3 scripts/serve_monetize.py
+```
+
+```
+http://127.0.0.1:8765/monetize
+```
+
+A localhost URL on a remote Cloud Agent VM is not reachable from your laptop — use the static file there. The page shows the current `EW_LICENSE_TIER`, an interactive Free / Pro / Enterprise matrix, the royalty report (`output/system/royalty_report.json`), and gated-action probes that call `AccessController.require()` only (no live trading). APIs: `/api/monetize/status`, `/api/monetize/tier`, `/api/monetize/require`.
+
+## Tape-to-Cloud (working disk ingest + hub)
+
+`--monitor` serves the tape-to-cloud product at `/` (16 modules, six layers, sample reports). EW monitor remains at `/monitor`; Monetize Explorer remains at `/monetize`. This is **not** an LTO library controller.
+
+The live path copies **real file bytes** from disk, writes pre/post SHA-256, an append-only chain-of-custody log, optional WORM lock, stdlib `.eml`/`.mbox` extract, then restore/verify. Sample ACME module reports and SHA-256 intactness fixtures are labeled `sample: true`. Live jobs are `sample: false`.
+
+```bash
+python -m tape_to_cloud ingest ./my-export --matter HOLD-4412 --worm-until 2033-12-31T00:00:00+00:00 --keyword HOLD-4412
+python -m tape_to_cloud verify JOB_ID
+python -m tape_to_cloud restore JOB_ID ./restored
+python -m tape_to_cloud status
+python -m tape_to_cloud report audit
+python3 ew_tool.py --tape-ingest ./my-export --tape-matter HOLD-4412
+python3 ew_tool.py --tape-status
+python3 ew_tool.py --monitor
+```
+
+```
+http://127.0.0.1:8765/
+http://127.0.0.1:8765/tape-to-cloud
+http://127.0.0.1:8765/tape-to-cloud/jobs
+http://127.0.0.1:8765/tape-to-cloud/reports
+http://127.0.0.1:8765/tape-to-cloud/reports/job-pack
+http://127.0.0.1:8765/tape-to-cloud/validation
+```
+
+Each module has an HTML sample report plus JSON at `/api/tape-to-cloud/reports/<module>`. Six vendor-shaped intactness packages (`rpt-audit-cma-2026-q1`, …) share the same prefix. Discovery docs are at `/tape-to-cloud/docs/<file>`. Status API: `/api/tape-to-cloud/status`. Live jobs: `/api/tape-to-cloud/jobs`. Intactness: `/api/tape-to-cloud/validation`.
+
+Store root: `EW_TAPE_STORE` or `output/tape_to_cloud/store`. `.enc` files without `--unwrap-key` are refused (`STOP_AND_ASK`). Not in this MVP: LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network.
 
 ## Architecture
 
@@ -75,3 +408,22 @@ Every output includes `executive_decision` with verdict, conviction, playbook, c
 ## Cache Environment
 
 Set `EW_CACHE_DIR` to override default `.cache/ew_tool`.
+
+## SSPM Configuration & Inventory Explorer
+
+Sibling product under `sspm/`: read-only SaaS posture reports (M365, Google Workspace, GitHub, Slack, Okta). Not an attestation.
+
+```bash
+python3 -m sspm demo
+python3 ew_tool.py --sspm-ui --static   # reports/sspm_explorer.html
+make sspm-all
+```
+
+## DSPM (data posture)
+
+Sibling product under `dspm/`. Open-source Cyera-like inventory/classify/risk path. See `dspm/README.md`.
+
+```bash
+python3 -m dspm audit inventory
+make dspm-all
+```

@@ -80,6 +80,9 @@ class ExecutiveDecision(BaseModel):
   scale_legs: Optional[List[Dict[str, Any]]] = None
   alternative_path: Optional[Dict[str, Any]] = None
   consensus_summary: Optional[Dict[str, Any]] = None
+  draft_verdict: Optional[str] = None
+  verdict_source: Optional[str] = None
+  llm_consensus: Optional[Dict[str, Any]] = None
 
 
 class EngineVote(BaseModel):
@@ -137,3 +140,5 @@ class ElliottWaveOutput(BaseModel):
   reasoning_trace: str
   monte_carlo: Optional[Dict[str, Any]] = None
   cache_stats: Optional[Dict[str, Any]] = None
+  gateway_stats: Optional[Dict[str, Any]] = None
+  llm_advisory: Optional[Dict[str, Any]] = None

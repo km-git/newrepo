@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -13,6 +15,7 @@ from engine.report import save_detailed_csv, save_detailed_markdown
 from engine.outcome_report import save_outcomes_csv
 from engine.full_report import export_all_reports
 from engine.autodream import build_monitor_queue, save_monitor_queue
+from engine.limit_orders_export import export_limit_orders
 from engine.paper_trading import (
   append_paper_ledger,
   apply_honesty_adjustments,
@@ -31,7 +34,40 @@ from engine.indicator_calibration import (
 from engine.system_audit import run_system_audit, apply_audit_demotions
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
-DEFAULT_TFS = ["1w", "1d", "4h", "1h", "15m"]
+from engine.timeframes import DEFAULT_TFS  # re-export for CLI scripts
+
+_REPORTS_DIR = Path("reports")
+_EXECUTABLE_FIELDS = [
+  "symbol", "timeframe", "direction", "honest_execution_tier", "wae",
+  "risk_budget_usd", "position_notional_usd", "leg1_usd", "leg2_usd", "leg3_usd", "leg4_usd",
+  "stop_loss", "tp1", "tp2", "tp3", "dca_profile",
+]
+
+
+def _sync_reports_from_export(output_dir: Path, limit_meta: dict) -> None:
+  """Copy key artifacts from gitignored output/ into tracked reports/."""
+  import shutil
+
+  _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+  pairs = [
+    (output_dir / "COMPLETE_TRADING_ANALYSIS.md", _REPORTS_DIR / "COMPLETE_TRADING_ANALYSIS.md"),
+    (output_dir / "latest_trade_setups_matrix.html", _REPORTS_DIR / "trade_setups_matrix.html"),
+    (Path("reports/HISTORICAL_PERFORMANCE.md"), _REPORTS_DIR / "HISTORICAL_PERFORMANCE.md"),
+    (Path("reports/PAPER_PNL.md"), _REPORTS_DIR / "PAPER_PNL.md"),
+  ]
+  for src, dst in pairs:
+    if src.exists() and src.resolve() != dst.resolve():
+      shutil.copy2(src, dst)
+
+  csv_src = Path(limit_meta.get("latest_csv", output_dir / "latest_limit_orders_all_tf.csv"))
+  if csv_src.exists():
+    rows = list(csv.DictReader(csv_src.open()))
+    exec_rows = [r for r in rows if r.get("row_type") == "primary" and r.get("gtc_tier") == "executable"]
+    dst_csv = _REPORTS_DIR / "latest_executable_pair_tf.csv"
+    with dst_csv.open("w", newline="") as f:
+      w = csv.DictWriter(f, fieldnames=_EXECUTABLE_FIELDS, extrasaction="ignore")
+      w.writeheader()
+      w.writerows(sorted(exec_rows, key=lambda x: (x["symbol"], x["timeframe"])))
 
 
 def _extract_row(result: dict) -> dict:
@@ -80,6 +116,8 @@ def run_top_crypto_batch(
   tfs: List[str] | None = None,
   output_dir: str = "output",
   quote: str = "USDT",
+  llm_advisory: bool = False,
+  llm_advisory_max: int = 5,
 ) -> Dict[str, Any]:
   """Fetch top N pairs and run full EW pipeline on all timeframes."""
   tfs = tfs or DEFAULT_TFS
@@ -120,7 +158,11 @@ def run_top_crypto_batch(
   else:
     print(f"  Calibration skipped: {calibration.get('reason', 'unknown')}")
 
-  results = run_batch(str(pairs_csv), tfs, is_crypto=True)
+  results = run_batch(
+    str(pairs_csv), tfs, is_crypto=True,
+    llm_advisory=llm_advisory,
+    llm_advisory_max=llm_advisory_max,
+  )
   save_batch_json(results, str(json_path))
   save_batch_summary_csv(results, str(summary_path))
   save_detailed_csv(results, str(detailed_path))
@@ -221,6 +263,45 @@ def run_top_crypto_batch(
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
+  stable_summary = out / "latest_summary.csv"
+  shutil.copy2(summary_path, stable_summary)
+
+  from engine.executive_board import apply_board_to_results, build_executive_board, save_executive_board
+
+  executive_board = build_executive_board(results, picks_per_tf=8, max_total=60)
+  results = apply_board_to_results(results, executive_board)
+  board_paths = save_executive_board(executive_board)
+
+  limit_meta = export_limit_orders(
+    results,
+    output_dir=out,
+    account_equity=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
+    usdt_d_pct=float(os.environ["USDT_D_PCT"]) if os.environ.get("USDT_D_PCT") else None,
+    board=executive_board,
+  )
+  _sync_reports_from_export(out, limit_meta)
+
+  paper_summary: Dict[str, Any] = {}
+  if os.environ.get("EW_PAPER_AFTER_BATCH", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.paper_simulator import run_paper_simulation
+
+      paper_summary = run_paper_simulation(
+        csv_path=limit_meta.get("latest_csv", str(out / "latest_limit_orders_all_tf.csv")),
+        equity_usd=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
+        fetch_ohlc=True,
+      )
+      pnl_src = Path("reports/PAPER_PNL.md")
+      if pnl_src.exists():
+        shutil.copy2(pnl_src, _REPORTS_DIR / "PAPER_PNL.md")
+      print(
+        f"  Paper P&L: ${paper_summary.get('realized_pnl_usd', 0):,.2f} "
+        f"({paper_summary.get('simulated', 0)} trades)"
+      )
+    except Exception as exc:
+      print(f"  Paper sim skipped: {exc}")
+      paper_summary = {"ok": False, "error": str(exc)}
+
   by_status: Dict[str, int] = {}
   by_verdict: Dict[str, int] = {}
   for r in results:
@@ -264,14 +345,35 @@ def run_top_crypto_batch(
     "accurate_setups": accurate_summary["by_tier"],
     "research_setups_csv": str(research_csv),
     "research_setups": research_summary["by_research_tier"],
-    "executive_board_csv": board_paths["csv"],
+    "limit_orders_csv": limit_meta["latest_csv"],
+    "limit_orders_matrix_html": limit_meta.get("matrix_html"),
+    "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
+    "executive_board_csv": board_paths.get("csv"),
     "executive_board": executive_board.get("by_action"),
     "executive_board_picks": executive_board.get("board_picks"),
+    "sqs_ranked_csv": limit_meta.get("sqs_ranked_csv"),
+    "sqs": limit_meta.get("sqs"),
+    "paper_pnl": paper_summary,
     "pairs_csv": str(pairs_csv),
+    "summary_csv": str(stable_summary),
   }
   meta_path = out / f"top{n}_meta_{ts}.json"
   with open(meta_path, "w") as f:
     json.dump(meta, f, indent=2)
+
+  from engine.monitor_dashboard import publish_monitor
+
+  mon = publish_monitor(str(out))
+  meta["monitor_html"] = mon["monitor_html"]
+  meta["dashboard_state"] = mon["dashboard_state"]
+
+  if os.environ.get("EW_IMPROVEMENT_CYCLE", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.improvement_cycle import run_improvement_cycle
+      rows = list(csv.DictReader(Path(limit_meta["latest_csv"]).open())) if Path(limit_meta["latest_csv"]).exists() else []
+      meta["improvement"] = run_improvement_cycle(is_crypto=True, record_rows=rows)
+    except Exception as exc:
+      meta["improvement_error"] = str(exc)
 
   print(f"\n[batch] DONE — {len(results)} instruments")
   print(f"  JSON:    {json_path}")
@@ -291,6 +393,11 @@ def run_top_crypto_batch(
   if learning.get("available"):
     print(f"  Learning: {learning.get('losses_analyzed')} losses → {len(learning.get('lessons', []))} lessons")
     print(f"  Lessons:  {out / 'autodream' / 'loss_lessons.json'}")
+  print(f"  Limits:   {limit_meta['latest_csv']} ({limit_meta['row_count']} rows, tiers {limit_meta['tier_counts']})")
+  if limit_meta.get("matrix_html"):
+    print(f"  Matrix:   {limit_meta['matrix_html']}")
+  if meta.get("monitor_html"):
+    print(f"  Monitor:  {meta['monitor_html']}  (python3 scripts/serve_monitor.py)")
   print(f"  Status:  {by_status}")
   print(f"  Verdict: {by_verdict}")
   return meta

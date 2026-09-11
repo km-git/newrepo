@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -145,13 +146,20 @@ def _first_usable_df(data: dict, prefer: List[str]):
   return None
 
 
-def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
+def adaptive_pipeline(
+  symbol: str,
+  tfs: List[str],
+  is_crypto: bool,
+  exchange_preference: str | None = None,
+  llm_advisory: bool = False,
+) -> dict:
   stages: List[tuple[str, dict, Any]] = []
   tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
 
   # Fetch — always attempt all timeframes (partial OK)
-  data = fetch(symbol, tfs, is_crypto)
-  stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto},
+  data = fetch(symbol, tfs, is_crypto, exchange_preference=exchange_preference)
+  stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto,
+                            "exchange": exchange_preference},
                  {"bars": {tf: len(data[tf]) for tf in tfs if tf in data}}))
 
   htf_df = _first_usable_df(data, ["1d", "4h", "1h"])
@@ -273,16 +281,53 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "phase": cycle_confluence.get("primary_phase"),
   }))
 
-  # STEP 9 (early): Supplementary market tools for sentinel stack
+  # STEP 6c: Market tools + free data (TV OSS, WS, web intel) — before executive
   btc_1d = None
   if is_crypto and not symbol.upper().startswith("BTC"):
     try:
       btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
     except Exception:
       pass
-  market_tools = build_market_confluence(symbol, data, tfs, btc_1d=btc_1d)
+  exchange = None
+  if is_crypto and os.environ.get("EW_ORDERBOOK_ENABLED", "1").lower() not in ("0", "false", "no"):
+    try:
+      from fetchers.pairs import _make_exchange
+
+      ex_id = (exchange_preference or os.environ.get("EW_OHLCV_CHAIN", "okx")).split(",")[0].strip()
+      exchange = _make_exchange(ex_id)
+    except Exception:
+      exchange = None
+  market_tools = build_market_confluence(
+    symbol, data, tfs, btc_1d=btc_1d, exchange=exchange, direction=exec_direction,
+  )
+  try:
+    from gateway.data_hub import enrich_market_tools
+
+    market_tools = enrich_market_tools(symbol, data, market_tools)
+  except Exception:
+    pass
+  try:
+    from engine.deep_research import load_deep_research
+
+    dr = load_deep_research()
+    if dr:
+      market_tools["deep_research"] = {
+        "fg": ((dr.get("intel") or {}).get("macro") or {}).get("fear_greed", {}).get("value"),
+        "ai_stance": (dr.get("ai_synthesis") or {}).get("stance"),
+        "tv_oss_stance": (dr.get("tv_oss") or {}).get("consensus_stance"),
+      }
+  except Exception:
+    pass
+  try:
+    from engine.executive_tv_oss import ensure_tv_oss_consensus
+
+    ensure_tv_oss_consensus(use_llm=False)
+  except Exception:
+    pass
   stages.append(("market_confluence", {"symbol": symbol},
-                 {"boost": market_tools.get("confluence_boost"), "signals": market_tools.get("confluence_signals", [])[:3]}))
+                 {"boost": market_tools.get("confluence_boost"),
+                  "tv_score": (market_tools.get("tv_confluence") or {}).get("score"),
+                  "signals": market_tools.get("confluence_signals", [])[:3]}))
 
   # STEP 6d: Sentinel Trader fusion (structure + momentum + Ehlers cycle + VWAP)
   sentinel_analysis = build_sentinel_analysis(
@@ -293,7 +338,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "confidence": sentinel_analysis.get("confidence"),
   }))
 
-  # STEP 6c: Expert EW direction — sentinel + Hurst + EW stack (always BULL/BEAR)
+  # STEP 6e: Expert EW direction — sentinel + Hurst + EW stack (always BULL/BEAR)
   expert_direction = resolve_expert_direction(
     wave_structure=wave_structure,
     adaptive=adaptive,
@@ -312,7 +357,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "method": expert_direction["method"],
   }))
 
-  # STEP 7: Executive decision — expert trader always finds a path
+  # STEP 7: Executive decision — expert trader + market intel (AI panel when enabled)
   decision = executive_decide(
     symbol=symbol,
     data=data,
@@ -331,14 +376,77 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     consensus=consensus,
     expert_direction=expert_direction,
     cycle_confluence=cycle_confluence,
+    market_tools=market_tools,
   )
+  try:
+    from engine.portfolio_risk import augment_analysis_with_portfolio_risk
+
+    btc_corr = None
+    if is_crypto and not symbol.upper().startswith("BTC"):
+      try:
+        from core.market_tools import btc_correlation
+        btc_corr = btc_correlation(data.get("1d"))
+      except Exception:
+        pass
+    decision = augment_analysis_with_portfolio_risk(
+      decision,
+      symbol=symbol,
+      consensus=consensus,
+      in_zone=in_zone,
+      execution_passes=execution_passes,
+      btc_correlation=btc_corr,
+    )
+  except Exception:
+    pass
   status = decision["status"]
   trade = decision["trade_setup"]
   executive = decision["executive_decision"]
-  print(f"[step7] executive verdict={executive['verdict']} status={status} action={trade['action']}")
-  stages.append(("executive_decide", {"verdict": executive["verdict"]}, compact_summary(executive)))
+  print(f"[step7] draft verdict={executive['verdict']} status={status} action={trade['action']}")
+  stages.append(("executive_decide", {"verdict": executive["verdict"], "draft": True}, compact_summary(executive)))
 
-  # STEP 8: Outcome-driven setups (scalp / day / swing / long-term)
+  # STEP 7b: Multi-model AI consensus → final executive decision
+  llm_advisory_result = None
+  brain_lessons: List[str] = []
+  if llm_advisory:
+    from engine.brain_self_improve import recall_lessons
+    from engine.llm_advisor import maybe_advise_critical
+    from engine.llm_executive import apply_ai_consensus_to_decision, executive_consensus_enabled
+
+    brain_lessons = recall_lessons(symbol)
+
+    llm_advisory_result = maybe_advise_critical(
+      symbol=symbol,
+      executive=executive,
+      trade_setup=trade,
+      wave_structure=wave_structure,
+      consensus=consensus,
+      outcomes=None,
+      market_tools=market_tools,
+      enabled=True,
+      brain_lessons=brain_lessons or None,
+    )
+    if llm_advisory_result and llm_advisory_result.get("consensus_stance"):
+      if executive_consensus_enabled():
+        decision = apply_ai_consensus_to_decision(decision, llm_advisory_result)
+        executive = decision["executive_decision"]
+        trade = decision["trade_setup"]
+        status = decision["status"]
+        print(
+          f"[step7b] AI consensus final={executive['verdict']} "
+          f"(draft={executive.get('draft_verdict')}, stance={llm_advisory_result['consensus_stance']})"
+        )
+        stages.append((
+          "llm_executive_consensus",
+          {"stance": llm_advisory_result["consensus_stance"], "final": executive["verdict"]},
+          compact_summary(executive.get("llm_consensus") or {}),
+        ))
+      else:
+        from engine.llm_panel import apply_panel_to_trade
+        trade = apply_panel_to_trade(trade, llm_advisory_result)
+        decision["trade_setup"] = trade
+      stages.append(("llm_advisory", {"symbol": symbol}, compact_summary(llm_advisory_result)))
+
+  # STEP 8: Outcome-driven setups — uses final executive verdict
   outcomes = build_outcomes(
     symbol=symbol,
     data=data,
@@ -374,10 +482,22 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))} | "
     f"Outcomes: {hs['truth']}"
   )
+  if llm_advisory_result and llm_advisory_result.get("consensus_stance"):
+    panel = llm_advisory_result.get("intelligence_panel") or {}
+    escalated = panel.get("escalated_to_premium", False)
+    draft = executive.get("draft_verdict", executive.get("verdict"))
+    reasoning += (
+      f" | AI executive: {draft}→{executive['verdict']} "
+      f"stance={llm_advisory_result['consensus_stance']}"
+      f" (mode={llm_advisory_result.get('intelligence_mode', panel.get('intelligence_mode', 'ensemble'))}"
+      f"{', premium tiebreaker' if escalated else ''})"
+    )
+    if trade.get("panel_confidence_adjustment") is not None:
+      reasoning += f", conf_adj={trade['panel_confidence_adjustment']:+.3f}"
 
   tool_log = dedup_tool_calls(build_tool_calls_log(stages))
 
-  return {
+  result = {
     "symbol": symbol,
     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     "status": status,
@@ -428,6 +548,7 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
       "confidence_cap": 0.85,
       "no_rule_relaxation": True,
       "executive_mode": True,
+      "ai_executive_consensus": llm_advisory_result is not None and executive.get("verdict_source") == "ai_consensus",
       "always_actionable": True,
       "structural_gaps_disclosed": executive.get("structural_gaps", []),
       "computational_provenance": "core/consensus.py, engine/executive.py, github EW tools",
@@ -436,4 +557,31 @@ def adaptive_pipeline(symbol: str, tfs: List[str], is_crypto: bool) -> dict:
     "reasoning_trace": reasoning,
     "monte_carlo": mc_result,
     "cache_stats": get_cache().stats(),
+    "llm_advisory": llm_advisory_result,
   }
+  if is_crypto:
+    try:
+      from gateway.market_gateway import get_gateway
+
+      result["gateway_stats"] = get_gateway().stats()
+    except Exception:
+      pass
+
+  try:
+    from engine.brain_self_improve import persist_trading_cycle, self_improve_enabled
+
+    if self_improve_enabled():
+      result["okf_brain"] = persist_trading_cycle(
+        symbol=symbol,
+        executive=executive,
+        outcomes=outcomes,
+        honesty_audit=result["honesty_audit"],
+        panel=llm_advisory_result,
+        pipeline_status=status,
+      )
+      if brain_lessons:
+        result["okf_brain"]["recalled_lessons"] = brain_lessons
+  except Exception as exc:
+    result["okf_brain"] = {"persisted": False, "error": str(exc)}
+
+  return result

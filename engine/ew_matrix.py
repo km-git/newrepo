@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from engine.wave_detail import analyze_timeframe
 
-DEFAULT_EW_TFS = ["1w", "1d", "4h", "1h", "15m"]
+DEFAULT_EW_TFS = ["1w", "1d", "12h", "4h", "1h", "15m"]
 
 
 def _empty_tf(tf: str, reason: str) -> dict:

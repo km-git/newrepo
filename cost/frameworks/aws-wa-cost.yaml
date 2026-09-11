@@ -1,0 +1,18 @@
+pillar: Cost Optimization
+controls:
+  - id: AWS-WA-COST-01
+    name: Implement cloud financial management
+    maps_to: ["findings_costs"]
+  - id: AWS-WA-COST-02
+    name: Expenditure and usage awareness
+    maps_to: ["findings_untagged", "findings_costs"]
+  - id: AWS-WA-COST-03
+    name: Cost-effective resources
+    maps_to: ["findings_rightsizing"]
+  - id: AWS-WA-COST-04
+    name: Manage demand and supply resources
+    maps_to: ["findings_rightsizing"]
+  - id: AWS-WA-COST-05
+    name: Optimize over time
+    maps_to: ["findings_drift"]
+attribution: "AWS Well-Architected Cost Optimization pillar. Mapping only."

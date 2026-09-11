@@ -37,11 +37,13 @@ def main() -> None:
   stable_csv = out / "latest_analysis.csv"
   stable_setups = out / "latest_setups_complete.csv"
   stable_setups_html = out / "latest_setups.html"
+  stable_matrix_html = out / "latest_trade_setups_matrix.html"
   paths_doc = _from_latest_paths(out)
 
   full = stable_csv if stable_csv.exists() else (_latest("top*_full_*.csv", out) or _latest("*_full_*.csv", out))
   setups = stable_setups if stable_setups.exists() else (_latest("top*_setups_*.csv", out) or _latest("*_setups_*.csv", out))
   setups_html = stable_setups_html if stable_setups_html.exists() else (_latest("latest_setups.html", out) or _latest("top*_setups_*.html", out))
+  matrix_html = stable_matrix_html if stable_matrix_html.exists() else _latest("latest_trade_setups_matrix.html", out)
   html = stable_html if stable_html.exists() else (_latest("top*_full_*.html", out) or _latest("*_full_*.html", out))
   detailed = _latest("top*_detailed_*.csv", out)
   outcomes = _latest("top*_outcomes_*.csv", out)
@@ -57,6 +59,8 @@ def main() -> None:
   if paths_doc:
     print(f"  Scheduler updated: {paths_doc.get('updated', 'n/a')}")
   print("\n  ALL setups (executable + monitor + not_actionable):")
+  if matrix_html:
+    print(f"  PAIR×TF MATRIX (shaded):               {matrix_html.resolve()}")
   if setups_html:
     print(f"  SETUPS HTML (color-coded):             {setups_html.resolve()}")
   if setups:
@@ -73,7 +77,9 @@ def main() -> None:
   if outcomes:
     print(f"  Outcomes (styles only):                {outcomes.resolve()}")
 
-  if args.open_html and setups_html:
+  if args.open_html and matrix_html:
+    print(f"\nOpen shaded matrix: file://{matrix_html.resolve()}")
+  elif args.open_html and setups_html:
     print(f"\nOpen setups table: file://{setups_html.resolve()}")
   elif args.open_html and html:
     print(f"\nOpen in browser: file://{html.resolve()}")

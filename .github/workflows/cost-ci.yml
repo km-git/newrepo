@@ -1,0 +1,66 @@
+name: cost-ci
+
+on:
+  push:
+    paths:
+      - "cost/**"
+      - "tests/test_cost_*.py"
+      - ".github/workflows/cost-*.yml"
+      - "disclaimers/**"
+      - "Makefile"
+  pull_request:
+    paths:
+      - "cost/**"
+      - "tests/test_cost_*.py"
+      - ".github/workflows/cost-*.yml"
+      - "disclaimers/**"
+      - "Makefile"
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install test deps
+        run: pip install pydantic pyyaml pytest
+
+      - name: Cost unit tests
+        run: python -m pytest tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py -q --tb=short
+
+      - name: End-to-end sandbox
+        run: python -m cost scan-all --sandbox
+
+      - name: Ruff
+        run: |
+          pip install "ruff>=0.9.0"
+          ruff check --config ruff.toml cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py
+
+  trivy-iac:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Trivy IaC (pinned v0.71.2, never v0.69.4)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 action; binary pin below
+        with:
+          scan-type: "config"
+          scan-ref: "cost/"
+          format: "table"
+          exit-code: "0"
+          version: "v0.71.2"

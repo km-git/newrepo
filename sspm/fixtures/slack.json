@@ -1,0 +1,18 @@
+{
+  "external_id": "TDEMO123",
+  "display_name": "Demo Slack Workspace",
+  "tenant_type": "slack",
+  "scanner": "fixture",
+  "honest_gap": "Only admin-configurable settings; channel-level history and message content are not scanned.",
+  "apps": [
+    {"name": "Google Drive", "publisher": "Google"},
+    {"name": "Jira Cloud", "publisher": "Atlassian"}
+  ],
+  "settings": [
+    {"name": "team.two_factor_required", "value": "false", "source": "slack.admin", "control_hint": "identity"},
+    {"name": "team.invites_only_admins", "value": "false", "source": "slack.admin", "control_hint": "sharing"},
+    {"name": "file_sharing.public_file_urls", "value": "true", "source": "slack.admin", "control_hint": "sharing"},
+    {"name": "app_dir.approved_apps_only", "value": "false", "source": "slack.admin", "control_hint": "oauth"},
+    {"name": "session.duration_hours", "value": "720", "source": "slack.admin", "control_hint": "identity"}
+  ]
+}

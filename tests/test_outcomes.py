@@ -11,20 +11,35 @@ from engine.autodream import _get_df, enrich_outcomes_with_autodream
 def test_dca_splits_10_20_30_40():
   legs = build_dca_ladder("LONG", 100.0, 2.0, 95.0, 105.0)
   assert [l["size_pct"] for l in legs] == [10, 20, 30, 40]
-  assert legs[0]["price"] == 100.0
-  assert legs[3]["price"] <= 95.0
+  assert legs[0]["price"] == 100.0  # anchor inside zone = L1 first probe
+  assert legs[3]["price"] <= legs[2]["price"] <= legs[1]["price"]
 
 
 def test_dynamic_stop_long():
-  s = dynamic_stop("LONG", 100.0, 2.0, 96.0, 110.0, atr_mult=1.0)
-  assert s["price"] < 96.0
+  s = dynamic_stop(
+    "LONG", 100.0, 2.0, 96.0, 110.0, atr_mult=1.0,
+    zone_low=95.0, zone_high=105.0, timeframe="1h",
+  )
+  assert s["price"] < 100.0
+  assert s["distance_pct"] >= 1.15
 
 
 def test_dynamic_targets_three_tiers():
-  t = dynamic_targets("LONG", 100.0, 2.0)
+  stop = dynamic_stop(
+    "LONG", 100.0, 2.0, 96.0, 110.0, atr_mult=1.0,
+    zone_low=95.0, zone_high=105.0, timeframe="1h",
+  )
+  t = dynamic_targets(
+    "LONG", 100.0, 2.0,
+    stop_price=stop["price"],
+    zone_low=95.0, zone_high=105.0,
+    timeframe="1h",
+  )
   assert len(t) == 3
-  assert t[0]["exit_pct"] == 40
+  assert t[0]["exit_pct"] == 50
+  assert sum(x["exit_pct"] for x in t) == 100
   assert t[0]["price"] > 100.0
+  assert t[0].get("architecture") == "smart_dynamic_tp"
 
 
 def test_get_df_avoids_dataframe_truthiness():
@@ -51,3 +66,6 @@ def test_enrich_outcomes_with_autodream():
   enriched = enrich_outcomes_with_autodream(outcomes, "TEST/USDT", {"1d": df, "15m": df})
   assert "autodream" in enriched
   assert enriched["autodream"]["by_style"]["scalp"]["available"] is True
+  setup = enriched["setups"]["scalp"]
+  assert "oos_gate" in setup
+  assert "oos_trades" in setup

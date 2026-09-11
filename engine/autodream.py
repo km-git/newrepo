@@ -62,6 +62,41 @@ def record_outcome(symbol: str, outcomes: dict, price: float, pipeline_status: s
     f.write(json.dumps(entry, default=str) + "\n")
 
 
+def _simulate_leg(entry: float, stop: float, tp: float, direction: str, highs: List[float], lows: List[float]) -> str:
+  """Walk forward bars: hit tp, stop, or open."""
+  for h, l in zip(highs, lows):
+    if direction == "LONG":
+      if l <= stop:
+        return "loss"
+      if h >= tp:
+        return "win"
+    else:
+      if h >= stop:
+        return "loss"
+      if l <= tp:
+        return "win"
+  return "open"
+
+
+def _oos_gate_from_backtest(win_rate: Optional[float], trades: int) -> str:
+  """Map bar-sim backtest stats to executive/accurate gate labels."""
+  from engine.accurate_setups import MIN_OOS_ACCURATE, MIN_OOS_TRADES
+
+  if trades < MIN_OOS_TRADES:
+    return "insufficient_oos"
+  if win_rate is not None and float(win_rate) >= MIN_OOS_ACCURATE:
+    return "passed"
+  return "below_threshold"
+
+
+def _autodream_verdict_from_backtest(win_rate: Optional[float], trades: int) -> Optional[str]:
+  from engine.accurate_setups import MIN_OOS_ACCURATE, MIN_OOS_TRADES
+
+  if trades < MIN_OOS_TRADES or win_rate is None:
+    return None
+  return "validated" if float(win_rate) >= MIN_OOS_ACCURATE else "caution"
+
+
 def analyze_historical(
   symbol: str,
   style: str,
@@ -227,24 +262,48 @@ def enrich_outcomes_with_autodream(
     setup = setups.get(style, {})
     autodream_styles[style] = analyze_historical(symbol, style, df, setup=setup)
 
+  # Apply confidence adjustment to executable setups (tracked outcomes first, then bar sim)
+  from engine.outcome_tracker import load_metrics, lookup_win_rate
+  tracked = load_metrics()
+
   for style, ad in autodream_styles.items():
     setup = setups.get(style, {})
     if not setup or setup.get("status") == "not_actionable":
+      continue
+
+    wr = ad.get("win_rate")
+    n = int(ad.get("simulated_trades") or 0)
+    setup["oos_win_rate"] = wr
+    setup["oos_trades"] = n
+    setup["oos_gate"] = _oos_gate_from_backtest(wr, n)
+    verdict = _autodream_verdict_from_backtest(wr, n)
+    if verdict and not setup.get("autodream_verdict"):
+      setup["autodream_verdict"] = verdict
+
+    tf = {"scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w"}.get(style, "1d")
+    wr, n = lookup_win_rate(tracked, symbol, tf, setup.get("direction", ""))
+    if wr is not None and n >= 3:
+      adj = round((wr - 0.5) * 0.2, 3)
+      setup["historical_edge"] = wr
+      setup["confidence_note"] = f"tracked win_rate={wr:.0%} n={n} adj {adj:+.2f}"
+      if setup.get("readiness_score") is not None:
+        setup["readiness_score"] = max(0, min(100, int(setup["readiness_score"]) + round(adj * 100)))
       continue
     adj = ad.get("confidence_adjustment", 0) or 0
     setup["historical_edge"] = ad.get("win_rate")
     setup["hist_trades"] = ad.get("simulated_trades")
     setup["hist_avg_pnl_r"] = ad.get("avg_pnl_r")
-    setup["oos_win_rate"] = ad.get("oos_win_rate")
-    setup["oos_trades"] = ad.get("oos_trades")
     setup["wf_degradation"] = ad.get("wf_degradation")
     setup["stress_win_rate"] = ad.get("stress_win_rate")
     setup["mc_win_rate_p5"] = ad.get("mc_win_rate_p5")
     setup["validation_summary"] = ad.get("validation_summary")
-    setup["confidence_note"] = (
-      f"autodream adj {adj:+.2f} · IS={ad.get('win_rate')} · "
-      f"OOS={ad.get('oos_win_rate')} · {ad.get('validation_summary', ad.get('method', ''))}"
-    )
+    if setup.get("risk"):
+      setup["confidence_note"] = (
+        f"autodream adj {adj:+.2f} · IS={ad.get('win_rate')} · "
+        f"OOS={ad.get('oos_win_rate')} · {ad.get('validation_summary', ad.get('method', ''))}"
+      )
+    else:
+      setup["confidence_note"] = f"bar-sim adj {adj:+.2f} from win_rate={ad.get('win_rate')}"
 
   outcomes["autodream"] = {
     "by_style": autodream_styles,
@@ -252,7 +311,7 @@ def enrich_outcomes_with_autodream(
     "history_path": str(HISTORY_PATH),
     "paper_metrics_path": str(PAPER_METRICS_PATH),
     "improvement_loop": (
-      "Walk-forward OOS + holdout + MC + stress → paper batch → honesty → monitor"
+      "Walk-forward OOS + holdout + MC + stress → tracked TP/SL → paper batch → honesty → monitor"
     ),
   }
   outcomes = apply_honesty_adjustments(outcomes)

@@ -8,7 +8,15 @@ import pandas as pd
 
 from core.atr import compute_atr14
 from core.indicators import score_indicator_confluence
-from core.risk import MAX_STOP_PCT, build_dca_ladder, dynamic_stop, dynamic_targets, risk_package
+from core.risk import (
+  DCA_PROFILE_PYRAMID,
+  build_dca_ladder,
+  compute_wae,
+  dynamic_stop,
+  dynamic_targets,
+  risk_package,
+  sensible_entry_anchor,
+)
 from engine.indicator_calibration import load_calibration, score_indicator_confluence_calibrated
 from engine.readiness import resolve_execution_status
 
@@ -76,6 +84,9 @@ def build_style_setup(
   market_tools: Optional[dict] = None,
   expert_direction: Optional[dict] = None,
   cycle_confluence: Optional[dict] = None,
+  *,
+  symbol: str = "",
+  historical_metrics: Optional[dict] = None,
 ) -> dict:
   cfg = STYLE_CONFIG[style]
   tf = cfg["primary_tf"]
@@ -97,21 +108,34 @@ def build_style_setup(
     harm_tf = [h for h in harmonic_overlaps if h.get("near_price")][:1]
   prz = (harm_tf[0]["prz_low"], harm_tf[0]["prz_high"]) if harm_tf else None
 
-  entry_anchor = current if in_zone else (kz_low + kz_high) / 2
+  entry_anchor = sensible_entry_anchor(direction, current, kz_low, kz_high, atr)
   fibs = [kz_low, kz_high] if kz_low < kz_high else []
 
-  dca = build_dca_ladder(direction, entry_anchor, atr, kz_low, kz_high, fibs)
-  max_sl = MAX_STOP_PCT.get(style, 8.0)
+  dca = build_dca_ladder(
+    direction, entry_anchor, atr, kz_low, kz_high, fibs,
+    harmonic_prz=prz, gtc=True, profile=DCA_PROFILE_PYRAMID, current=current,
+  )
+  wae = compute_wae(dca)
   stop = dynamic_stop(
-    direction, entry_anchor, atr, s_low, s_high, cfg["atr_mult_sl"], max_stop_pct=max_sl
+    direction, wae, atr, s_low, s_high, cfg["atr_mult_sl"],
+    zone_low=kz_low, zone_high=kz_high,
+    max_stop_atr={"15m": 3.0, "1h": 4.0, "4h": 4.5, "1d": 5.0, "1w": 6.0}.get(tf, 5.0),
+    timeframe=tf,
+    ladder_legs=dca,
   )
   targets = dynamic_targets(
     direction,
-    entry_anchor,
+    wae,
     atr,
     prz,
     c_targets.get("c_target_100"),
     c_targets.get("c_target_161"),
+    stop_price=stop["price"],
+    zone_low=kz_low,
+    zone_high=kz_high,
+    timeframe=tf,
+    structure_low=s_low,
+    structure_high=s_high,
   )
   if stop.get("capped"):
     risk_unit = abs(entry_anchor - stop["price"])
@@ -128,6 +152,19 @@ def build_style_setup(
   else:
     indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
   indicators["stop_dist_pct"] = stop.get("distance_pct")
+  # TV OSS confluence layer (Supertrend / BB / ADX + microstructure)
+  if df is not None and len(df) >= 30:
+    from core.tv_indicators import score_tv_confluence
+
+    ob = (market_tools or {}).get("orderbook")
+    tv = score_tv_confluence(df, direction, orderbook=ob if ob and ob.get("available") else None)
+    indicators["tv_score"] = tv.get("score", 0)
+    indicators["tv_aligned"] = tv.get("aligned", False)
+    tv_boost = min(15, max(-10, (tv.get("score", 0) - 50) // 3))
+    indicators["score"] = max(0, min(100, indicators["score"] + tv_boost))
+    indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
+    if tv.get("signals"):
+      indicators["signals"] = list(indicators.get("signals", [])) + tv["signals"][:2]
   mkt = market_tools or {}
   # Calibrated scoring uses ledger-validated tokens only — no expert/cycle inflation
   boost = 0 if indicators.get("calibrated") else mkt.get("confluence_boost", 0)
@@ -145,6 +182,16 @@ def build_style_setup(
     indicators["signals"] = list(indicators.get("signals", [])) + mkt.get("confluence_signals", [])[:2]
   if not indicators.get("calibrated") and expert_direction and expert_direction.get("confluence_signals"):
     indicators["signals"] = list(indicators.get("signals", [])) + expert_direction["confluence_signals"][:2]
+  if symbol and historical_metrics:
+    from engine.outcome_tracker import readiness_adjustment, lookup_win_rate
+    delta = readiness_adjustment(symbol, tf, direction, historical_metrics)
+    if delta:
+      indicators["score"] = max(0, min(100, indicators["score"] + delta))
+      wr, n = lookup_win_rate(historical_metrics, symbol, tf, direction)
+      wr_s = f"{wr:.0%}" if wr is not None else "?"
+      indicators["signals"] = list(indicators.get("signals", [])) + [
+        f"tracked hist {wr_s} n={n} → readiness {delta:+d}"
+      ]
   status, execution_tier, reason = resolve_execution_status(
     style=style,
     direction=direction,
@@ -171,7 +218,39 @@ def build_style_setup(
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
-  risk = risk_package(entry_anchor, stop["price"], cfg["account_risk_pct"] * probe_size_pct / 100)
+  base_risk = cfg["account_risk_pct"] * probe_size_pct / 100
+  risk_ctx: dict = {}
+  try:
+    from engine.smart_risk_policy import apply_account_risk_pct, compute_dynamic_risk_context
+
+    tv_score = None
+    if df is not None and len(df) >= 30:
+      from core.tv_indicators import score_tv_confluence
+      ob = (market_tools or {}).get("orderbook")
+      tv = score_tv_confluence(df, direction, orderbook=ob if ob and ob.get("available") else None)
+      tv_score = int(tv.get("score", 0))
+    hist_wr, hist_n = None, 0
+    if symbol and historical_metrics:
+      from engine.outcome_tracker import lookup_win_rate
+      hist_wr, hist_n = lookup_win_rate(historical_metrics, symbol, tf, direction)
+    risk_ctx = compute_dynamic_risk_context(
+      symbol=symbol,
+      timeframe=tf,
+      direction=direction,
+      df=df,
+      tv_score=tv_score,
+      readiness_score=indicators.get("score"),
+      hist_win_rate=hist_wr,
+      hist_n=hist_n,
+      gtc_tier="executable" if status == "executable" else "monitor",
+      honest_tier=execution_tier,
+      wave_structure=str(wave.get("structure") or ""),
+    )
+    acct_risk = apply_account_risk_pct(base_risk, risk_ctx)
+  except Exception:
+    acct_risk = base_risk
+
+  risk = risk_package(wae, stop["price"], acct_risk)
 
   return {
     "style": style,
@@ -250,6 +329,8 @@ def build_outcomes(
 ) -> dict:
   mkt = market_tools or {}
   boost = mkt.get("confluence_boost", 0)
+  from engine.outcome_tracker import load_metrics
+  historical_metrics = load_metrics()
   setups = {}
   for style in STYLE_CONFIG:
     setups[style] = build_style_setup(
@@ -258,6 +339,8 @@ def build_outcomes(
       market_tools=mkt,
       expert_direction=expert_direction,
       cycle_confluence=cycle_confluence,
+      symbol=symbol,
+      historical_metrics=historical_metrics,
     )
 
   executable = [s for s in setups.values() if s.get("status") == "executable"]

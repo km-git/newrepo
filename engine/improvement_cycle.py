@@ -1,0 +1,229 @@
+"""Continuous improvement cycle — learning, OKF, health, feedback loop."""
+
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from engine.outcome_tracker import load_metrics, run_learning_phase
+
+
+CYCLE_LOG = Path(os.environ.get("EW_IMPROVEMENT_LOG", "output/system/improvement_cycles.jsonl"))
+
+
+def improvement_enabled() -> bool:
+  return os.environ.get("EW_IMPROVEMENT_CYCLE", "1").lower() not in ("0", "false", "no")
+
+
+def run_improvement_cycle(
+  *,
+  is_crypto: bool = True,
+  record_rows: Optional[List[dict]] = None,
+  persist_okf: bool = True,
+  use_llm: Optional[bool] = None,
+  board: Optional[dict] = None,
+  paper: Optional[dict] = None,
+) -> Dict[str, Any]:
+  """
+  Close the feedback loop:
+  1. Resolve tracked setups → metrics
+  2. Performance report
+  3. OKF lesson extraction from metrics
+  4. System health snapshot
+  """
+  if not improvement_enabled():
+    return {"skipped": True, "reason": "EW_IMPROVEMENT_CYCLE disabled"}
+
+  llm_on = use_llm
+  if llm_on is None:
+    try:
+      from engine.ai_improvement import improvement_llm_enabled
+      llm_on = improvement_llm_enabled()
+    except ImportError:
+      llm_on = False
+
+  metrics = run_learning_phase(is_crypto=is_crypto, record_rows=record_rows)
+  okf = {}
+  if persist_okf:
+    okf = _persist_metrics_lessons(metrics)
+
+  impact_report = {}
+  if os.environ.get("EW_IMPACT_DISCOVERY", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.impact_discovery import run_impact_discovery
+
+      impact_report = run_impact_discovery()
+    except Exception as exc:
+      impact_report = {"error": str(exc)}
+
+  social_validation = {}
+  if os.environ.get("EW_SOCIAL_VALIDATION", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.social_strategy_validation import run_social_strategy_validation
+
+      social_validation = run_social_strategy_validation(
+        use_llm=llm_on and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      )
+    except Exception as exc:
+      social_validation = {"error": str(exc)}
+
+  tv_oss = {}
+  if os.environ.get("EW_TV_OSS_CONSENSUS", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.tv_oss_consensus import run_tv_oss_consensus
+
+      tv_oss = run_tv_oss_consensus(
+        use_llm=llm_on and os.environ.get("EW_ROUTINE_LLM", "0").lower() in ("1", "true")
+      )
+    except Exception as exc:
+      tv_oss = {"error": str(exc)}
+
+  from engine.system_health import run_health_checks, save_health
+  health = run_health_checks()
+  save_health(health)
+
+  gap_audit: Dict[str, Any] = {}
+  gap_summary: Dict[str, Any] = {}
+  if os.environ.get("EW_GAP_AUDIT", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.resource_gap_audit import gap_audit_summary, run_resource_gap_audit
+
+      gap_audit = run_resource_gap_audit(persist=True, persist_okf=True)
+      gap_summary = gap_audit_summary()
+    except Exception as exc:
+      gap_audit = {"error": str(exc)}
+
+  cycle = {
+    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    "resolved": metrics.get("last_resolved", 0),
+    "open_count": metrics.get("open_count", 0),
+    "overall_win_rate": (metrics.get("overall") or {}).get("win_rate"),
+    "newly_recorded": metrics.get("newly_recorded", 0),
+    "okf": okf,
+    "impact": {
+      "recommendations": impact_report.get("recommendations", []) if impact_report else [],
+      "top_boosts": (impact_report.get("discovery") or {}).get("top_boosts", [])[:3] if impact_report else [],
+    },
+    "social_validation": {
+      "stance": social_validation.get("consensus_stance") if social_validation else None,
+      "validated": social_validation.get("validated_strategies", [])[:3] if social_validation else [],
+      "rejected": social_validation.get("rejected_strategies", [])[:3] if social_validation else [],
+    },
+    "tv_oss": {
+      "stance": tv_oss.get("consensus_stance") if tv_oss else None,
+      "active": tv_oss.get("active_indicators", [])[:5] if tv_oss else [],
+      "layer_weights": tv_oss.get("layer_weights") if tv_oss else {},
+    },
+    "health": {"passed": health.get("passed"), "total": health.get("total"), "healthy": health.get("healthy")},
+    "gap_audit": gap_summary if gap_summary else gap_audit,
+  }
+
+  try:
+    from engine.risk_consensus import run_risk_consensus
+
+    risk_consensus = run_risk_consensus(metrics, use_llm=llm_on)
+    cycle["risk_consensus"] = risk_consensus
+  except Exception as exc:
+    cycle["risk_consensus_error"] = str(exc)
+    risk_consensus = {"error": str(exc)}
+
+  ai_review: Dict[str, Any] = {}
+  if llm_on:
+    try:
+      from engine.ai_improvement import run_multi_model_improvement_review
+
+      ai_review = run_multi_model_improvement_review(
+        metrics=metrics,
+        board=board,
+        paper=paper,
+      )
+      cycle["ai_improvement"] = {
+        "stance": ai_review.get("consensus_stance"),
+        "summary": (ai_review.get("blended_summary") or "")[:500],
+        "models_consulted": len(ai_review.get("models_consulted") or []),
+        "escalated": ai_review.get("escalated_to_premium"),
+        "cursor_hosted": ai_review.get("cursor_hosted_models"),
+      }
+    except Exception as exc:
+      cycle["ai_improvement_error"] = str(exc)
+
+  _append_cycle_log(cycle)
+  return {
+    "metrics": metrics,
+    "okf": okf,
+    "health": health,
+    "cycle": cycle,
+    "risk_consensus": cycle.get("risk_consensus"),
+    "impact": impact_report,
+    "social_validation": social_validation,
+    "tv_oss": tv_oss,
+    "ai_improvement": ai_review,
+    "gap_audit": gap_audit,
+  }
+
+
+def _persist_metrics_lessons(metrics: dict) -> Dict[str, Any]:
+  """Write teachable moments from metrics into OKF brain."""
+  try:
+    from engine.brain_self_improve import persist_lesson, self_improve_enabled
+    if not self_improve_enabled():
+      return {"persisted": False}
+    paths = []
+    overall = metrics.get("overall") or {}
+    wr = overall.get("win_rate")
+    if wr is not None:
+      r = persist_lesson(
+        "GLOBAL",
+        f"tracked win_rate={wr:.0%} decided={overall.get('decided', 0)}",
+        source="metrics",
+      )
+      if r.get("persisted"):
+        paths.append(r.get("path"))
+    for key, block in list((metrics.get("by_pair_tf") or {}).items())[:5]:
+      bwr = block.get("win_rate")
+      if bwr is not None and block.get("decided", 0) >= 3:
+        if bwr < 0.4:
+          lesson = f"{key}: poor win_rate {bwr:.0%} — downgrade sizing"
+        elif bwr > 0.55:
+          lesson = f"{key}: strong win_rate {bwr:.0%} — boost sizing"
+        else:
+          continue
+        r = persist_lesson(key.split("|")[0] if "|" in key else "PAIR", lesson, source="metrics")
+        if r.get("persisted"):
+          paths.append(r.get("path"))
+    return {"persisted": True, "paths": paths}
+  except Exception as exc:
+    return {"persisted": False, "error": str(exc)}
+
+
+def _append_cycle_log(cycle: dict) -> None:
+  CYCLE_LOG.parent.mkdir(parents=True, exist_ok=True)
+  with CYCLE_LOG.open("a") as f:
+    f.write(json.dumps(cycle, default=str) + "\n")
+
+
+def recent_cycles(limit: int = 10) -> List[dict]:
+  if not CYCLE_LOG.exists():
+    return []
+  rows = []
+  for line in CYCLE_LOG.read_text(encoding="utf-8").splitlines():
+    if line.strip():
+      try:
+        rows.append(json.loads(line))
+      except json.JSONDecodeError:
+        continue
+  return rows[-limit:]
+
+
+def improvement_report() -> Dict[str, Any]:
+  metrics = load_metrics()
+  return {
+    "enabled": improvement_enabled(),
+    "metrics_updated": metrics.get("updated"),
+    "overall": metrics.get("overall"),
+    "open_count": metrics.get("open_count", 0),
+    "recent_cycles": recent_cycles(5),
+  }

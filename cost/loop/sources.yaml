@@ -1,0 +1,36 @@
+# Cost-specific Discover sources (Monday 09:00 AEST). Deduped by SHA-256 of canonical URL.
+- name: prowler releases
+  url: https://github.com/prowler-cloud/prowler/releases.atom
+  kind: rss
+  module_hint: config_drift, cost
+  max_items: 5
+- name: steampipe releases
+  url: https://github.com/turbot/steampipe/releases.atom
+  kind: rss
+  module_hint: aws_inventory, cost
+  max_items: 5
+- name: cloud-custodian releases
+  url: https://github.com/cloud-custodian/cloud-custodian/releases.atom
+  kind: rss
+  module_hint: rightsizing, untagged, cost
+  max_items: 5
+- name: trivy releases
+  url: https://github.com/aquasecurity/trivy/releases.atom
+  kind: rss
+  module_hint: audit, cost
+  max_items: 5
+- name: r/FinOps
+  url: https://www.reddit.com/r/FinOps/.rss
+  kind: rss
+  module_hint: cost_explorer, cost
+  max_items: 15
+- name: FinOps Foundation blog
+  url: https://www.finops.org/feed/
+  kind: rss
+  module_hint: compliance_map, cost
+  max_items: 10
+- name: AWS Cloud Financial Management blog
+  url: https://aws.amazon.com/blogs/aws-cloud-financial-management/feed/
+  kind: rss
+  module_hint: cost_explorer, rightsizing, cost
+  max_items: 10

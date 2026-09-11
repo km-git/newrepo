@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from engine.autodream_monitor import DEFAULT_QUEUE_PATH, run_monitor_cycle
-from engine.top50_batch import DEFAULT_TFS, run_top_crypto_batch
+from engine.top50_batch import run_top_crypto_batch
+from engine.timeframes import DEFAULT_TFS
 
 STATE_PATH = Path("output/autodream/scheduler_state.json")
 LATEST_PATHS = Path("output/autodream/latest_paths.json")
@@ -120,11 +122,19 @@ def publish_latest(meta: dict, output_dir: str = "output") -> dict:
     "json": meta.get("json"),
     "monitor_queue": meta.get("monitor_queue"),
     "by_verdict": meta.get("by_verdict"),
+    "by_status": meta.get("by_status"),
+    "summary_csv": str(Path(output_dir) / "latest_summary.csv"),
+    "monitor_html": str(Path(output_dir) / "monitor.html"),
+    "dashboard_state": str(Path(output_dir) / "autodream" / "dashboard_state.json"),
   }
 
   latest_file = _latest_paths_file(output_dir)
   latest_file.parent.mkdir(parents=True, exist_ok=True)
   latest_file.write_text(json.dumps(paths_doc, indent=2))
+
+  from engine.monitor_dashboard import publish_monitor
+
+  publish_monitor(output_dir)
   return paths_doc
 
 
@@ -133,9 +143,12 @@ def run_batch_refresh(
   output_dir: str = "output",
   quote: str = "USDT",
   tfs: Optional[list] = None,
+  llm_advisory: bool = False,
 ) -> dict:
   """Run full top-N batch and publish stable latest_* paths."""
-  meta = run_top_crypto_batch(n=n, tfs=tfs or DEFAULT_TFS, output_dir=output_dir, quote=quote)
+  meta = run_top_crypto_batch(
+    n=n, tfs=tfs or DEFAULT_TFS, output_dir=output_dir, quote=quote, llm_advisory=llm_advisory,
+  )
   latest = publish_latest(meta, output_dir=output_dir)
   meta["latest"] = latest
   return meta
@@ -151,6 +164,7 @@ def run_scheduler_cycle(
   is_crypto: bool = True,
   force_batch: bool = False,
   skip_monitor: bool = False,
+  llm_advisory: bool = False,
 ) -> dict:
   """
   One scheduler tick:
@@ -171,7 +185,7 @@ def run_scheduler_cycle(
   )
   if run_batch:
     print(f"[scheduler] running top-{batch_n} batch refresh")
-    meta = run_batch_refresh(n=batch_n, output_dir=output_dir, quote=quote)
+    meta = run_batch_refresh(n=batch_n, output_dir=output_dir, quote=quote, llm_advisory=llm_advisory)
     state["last_batch_utc"] = _iso(_utcnow())
     state["latest"] = meta.get("latest")
     state["last_batch_meta"] = {
@@ -193,6 +207,31 @@ def run_scheduler_cycle(
       "queue_size": monitor.get("queue_size"),
     }
     result["monitor"] = monitor
+
+  if os.environ.get("EW_E2E_AFTER_MONITOR", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.improvement_cycle import run_improvement_cycle
+      result["improvement"] = run_improvement_cycle(is_crypto=is_crypto)
+    except Exception as exc:
+      result["improvement_error"] = str(exc)
+
+  if os.environ.get("EW_PAPER_AFTER_BATCH", "1").lower() not in ("0", "false", "no"):
+    try:
+      from engine.paper_simulator import run_paper_simulation
+
+      paper = run_paper_simulation(
+        equity_usd=float(os.environ["ACCOUNT_EQUITY"]) if os.environ.get("ACCOUNT_EQUITY") else None,
+        fetch_ohlc=True,
+      )
+      result["paper_pnl"] = paper
+      state["last_paper_pnl"] = {
+        "realized_pnl_usd": paper.get("realized_pnl_usd"),
+        "simulated": paper.get("simulated"),
+        "ending_equity_usd": paper.get("ending_equity_usd"),
+        "run_at": paper.get("run_at"),
+      }
+    except Exception as exc:
+      result["paper_pnl"] = {"ok": False, "error": str(exc)}
 
   save_state(state)
   return result

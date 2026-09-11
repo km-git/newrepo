@@ -1,0 +1,59 @@
+name: PR Executive Consensus
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to review
+        required: true
+        type: number
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  executive-consensus:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Git identity for conflict auto-resolve
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Verify gh CLI auth
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth status
+
+      - name: PR executive consensus agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          EW_PR_AUTO_APPROVE: "1"
+          EW_PR_AUTO_MERGE: "0"
+          EW_PR_EXECUTIVE_CONSENSUS: "1"
+          EW_PR_LLM_ADVISORY: "1"
+          EW_PR_EXPANDED_PANEL: "1"
+          EW_PR_MIN_APPROVALS: "5"
+          EW_PR_PANEL_SIZE: "7"
+          EW_LLM_BACKEND: cursor
+          EW_LLM_INTELLIGENCE: ensemble
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          .venv/bin/python scripts/pr_executive_consensus.py "$PR_NUM" --repo "$GITHUB_REPOSITORY"

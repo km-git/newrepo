@@ -1,0 +1,66 @@
+name: PR Close Superseded
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_numbers:
+        description: Comma-separated PR numbers (empty = auto-detect monetize dupes)
+        required: false
+        default: ""
+      dry_run:
+        description: Detect only, do not close
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # After autonomous daily (04:00 UTC)
+    - cron: "30 4 * * *"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  close-superseded:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      EW_LICENSE_TIER: enterprise
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Close superseded PRs
+        env:
+          PR_NUMBERS: ${{ github.event.inputs.pr_numbers }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          ARGS=()
+          if [[ -n "$PR_NUMBERS" ]]; then
+            read -ra NUMS <<< "$(echo "$PR_NUMBERS" | tr ',' ' ')"
+            ARGS+=("${NUMS[@]}")
+          fi
+          if [[ "$DRY_RUN" == "true" ]]; then
+            ARGS+=(--dry-run)
+          fi
+          .venv/bin/python scripts/pr_close_superseded.py "${ARGS[@]}"
+
+      - name: Upload close report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-close-superseded
+          path: |
+            output/pr_reviews/
+          if-no-files-found: ignore

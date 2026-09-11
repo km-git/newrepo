@@ -1,0 +1,32 @@
+# Consolidated — merged from main + GPT-5.6 Sol High discovery branch
+# See MERGE-CONSOLIDATION.md for sources
+
+## Two-Pillar Foundation
+
+### Workhorse (60-70% execution)
+Haiku 4.5, Gemini Flash, Grok, Composer — Cmd+K edits, boilerplate, implementation.
+Never GPT-5.6 for inline edits.
+
+### Decision / Advise / Architect (<10K tokens per model)
+GPT-5.6 Sol for decision-making, advice, architect planning — budgeted via `llm_gpt_policy`.
+Opus 4.8 / Fable 5 for compliance-heavy architect. Sonnet 5 for verify.
+
+## Token Stack (from main)
+- `engine/llm_token_saver.py` — tiktoken, zstd cache, EW bypass
+- `engine/llm_gpt_policy.py` — 10K cap per model, GPT allowed
+- `engine/token_saver_registry.py` — llm-token-optimizer, tokenpruner, cachetic
+- `engine/architect_budget.py` — SaaS architect/decision prompts
+- `tools/github_context.py` — cached GitHub summaries
+
+## Install token savers
+```bash
+.venv/bin/python scripts/install_token_savers.py
+.venv/bin/python scripts/architect_budget_check.py --task architect
+```
+
+## Discovery
+Full 56-idea portfolio: `discovery-output.md` (from cursor/micro-saas-discovery-65ba)
+Model routing rules: `.cursor/rules/model-routing.mdc`
+
+## Portfolio Rules
+50-55 bets | 7-day cut rule | Friday review | BUILD not just plan

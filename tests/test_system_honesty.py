@@ -14,9 +14,14 @@ def test_cap_stop_price():
 
 
 def test_dynamic_stop_capped():
-  r = dynamic_stop("LONG", 100.0, 2.0, -50.0, 200.0, 1.8, max_stop_pct=8.0)
-  assert r["capped"] is True
-  assert r["distance_pct"] <= 8.01
+  r = dynamic_stop(
+    "LONG", 100.0, 2.0, -50.0, 200.0, 1.8,
+    zone_low=95.0, zone_high=105.0,
+    timeframe="1d",
+    ladder_legs=[{"price": 100.0, "size_pct": 100}],
+  )
+  assert r["distance_pct"] <= MAX_STOP_PCT["swing"] + 0.05
+  assert r["price"] < 100.0
 
 
 def test_probe_blocked_on_invalid_impulse():

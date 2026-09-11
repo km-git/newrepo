@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,13 +20,19 @@ from engine.accurate_setups import (
 BOARD_PATH = Path("output/autodream/executive_board.json")
 BOARD_CSV_PATH = Path("output/latest_executive_board.csv")
 
+# Actions that may proceed to export filter, paper sim, and broker submission
+TRADABLE_EXECUTIVE_ACTIONS = frozenset({
+  "EXECUTE_NOW",
+  "EXECUTE_CAUTION",
+  "STANDBY_LIMIT",
+  "SCALE_IN",
+})
+
 # Minimum executive score to appear on the board (geometry must pass)
 MIN_BOARD_SCORE = 15
 DEFAULT_PICKS_PER_TF = 5
 DEFAULT_PICKS_TOTAL = 30
-BOARD_TIMEFRAMES = ("15m", "1h", "4h", "1d", "1w")
-# 4h is context-only in outcomes — anchor entries from day_trade or swing
-CONTEXT_TF_ANCHOR_STYLE = ("day_trade", "swing")
+from engine.timeframes import BOARD_TIMEFRAMES, CONTEXT_TIMEFRAMES
 
 
 def _baseline_score(setup: dict, style: str) -> int:
@@ -54,11 +61,24 @@ def _baseline_score(setup: dict, style: str) -> int:
 def _oos_score(setup: dict) -> Tuple[float, str]:
   oos = setup.get("oos_win_rate")
   n = int(setup.get("oos_trades") or 0)
+  partial = float(os.environ.get("EW_TP1_EXIT_PCT", "50")) / 100.0
+  tp1_r = None
+  targets = setup.get("targets") or []
+  if targets and isinstance(targets[0], dict):
+    try:
+      tp1_r = float(targets[0].get("rr") or targets[0].get("r_multiple") or 0)
+    except (TypeError, ValueError):
+      tp1_r = None
   if n >= 3 and oos is not None:
     wr = float(oos)
+    expectancy = None
+    if tp1_r and tp1_r > 0:
+      expectancy = wr * tp1_r * partial - (1.0 - wr)
+    if expectancy is not None and expectancy < 0:
+      return 2, f"OOS {wr:.0%} -EV ({expectancy:.2f}R)"
     if wr >= 0.65:
       return 25, f"OOS {wr:.0%} ({n})"
-    if wr >= 0.55:
+    if wr >= 0.58:
       return 18, f"OOS {wr:.0%} ({n})"
     if wr >= 0.50:
       return 10, f"OOS {wr:.0%} ({n})"
@@ -110,6 +130,10 @@ def executive_setup_score(
   setup: dict,
   style: str,
   symbol_bonus: int = 0,
+  *,
+  symbol: str = "",
+  market_tools: Optional[dict] = None,
+  global_intel: Optional[dict] = None,
 ) -> Tuple[int, List[str]]:
   """Composite executive score 0–100."""
   if not setup or not _stop_ok(setup, style):
@@ -146,9 +170,85 @@ def executive_setup_score(
   elif ex_verdict == "STAGED_GO":
     score += 3
 
+  tv_score = int(setup.get("_tv_composite_score") or setup.get("_tv_score") or 0)
+  if tv_score >= 70:
+    score += 8
+    tags.append(f"tv_oss+{tv_score}")
+  elif tv_score >= 58:
+    score += 4
+    tags.append(f"tv_oss_{tv_score}")
+  elif 0 < tv_score < 42:
+    score -= 6
+    tags.append(f"tv_oss_opposes_{tv_score}")
+
   if symbol_bonus:
     score += symbol_bonus
     tags.append(f"multi_tf+{symbol_bonus}")
+
+  # Historical TF reliability — penalize weak regimes (e.g. 1d at 39.8% WR)
+  tf = STYLE_TF.get(style, setup.get("timeframe", ""))
+  if tf:
+    try:
+      from engine.outcome_tracker import load_metrics
+
+      tf_bucket = (load_metrics().get("by_timeframe") or {}).get(tf) or {}
+      tf_wr = tf_bucket.get("win_rate")
+      tf_n = int(tf_bucket.get("decided") or 0)
+      if tf_n >= 30 and tf_wr is not None:
+        if tf_wr >= 0.60:
+          score += 10
+          tags.append(f"tf_strong_{tf}_{tf_wr:.0%}")
+        elif tf_wr >= 0.55:
+          score += 5
+          tags.append(f"tf_good_{tf}")
+        elif tf_wr < 0.40:
+          score -= 12
+          tags.append(f"tf_weak_{tf}_{tf_wr:.0%}")
+        elif tf_wr < 0.45:
+          score -= 6
+          tags.append(f"tf_caution_{tf}")
+    except Exception:
+      pass
+
+  # Historical direction reliability — block weak LONG (~46% WR) via execution gates
+  try:
+    from engine.outcome_tracker import load_metrics
+
+    direction = str(setup.get("direction") or "").upper()
+    dir_bucket = (load_metrics().get("by_direction") or {}).get(direction) or {}
+    dir_wr = dir_bucket.get("win_rate")
+    dir_n = int(dir_bucket.get("decided") or 0)
+    if dir_n >= 30 and dir_wr is not None:
+      if dir_wr >= 0.60:
+        score += 8
+        tags.append(f"dir_strong_{direction}_{dir_wr:.0%}")
+      elif dir_wr >= 0.55:
+        score += 4
+        tags.append(f"dir_good_{direction}")
+      elif dir_wr < 0.45:
+        score -= 10
+        tags.append(f"dir_weak_{direction}_{dir_wr:.0%}")
+      elif dir_wr < 0.48:
+        score -= 5
+        tags.append(f"dir_caution_{direction}")
+  except Exception:
+    pass
+
+  # TV OSS + free data + global risk (Fear&Greed, WS, social, impact)
+  try:
+    from engine.executive_intel import setup_intel_boost
+
+    intel_delta, intel_tags = setup_intel_boost(
+      setup=setup,
+      symbol=symbol or setup.get("_symbol", ""),
+      direction=str(setup.get("direction") or ""),
+      market_tools=market_tools or setup.get("_market_tools"),
+      intel=global_intel,
+    )
+    score += intel_delta
+    tags.extend(intel_tags)
+  except Exception:
+    pass
 
   blocker = _primary_blocker(setup, style)
   if blocker == "oos_below_floor":
@@ -157,45 +257,70 @@ def executive_setup_score(
     score -= 5
 
   floor = _baseline_score(setup, style)
+
+  try:
+    from engine.executive_intel import executive_intel_enabled, setup_intel_boost
+
+    if executive_intel_enabled():
+      boost, intel_tags = setup_intel_boost(
+        setup=setup,
+        symbol=str(setup.get("symbol") or ""),
+        direction=str(setup.get("direction") or ""),
+        market_tools=setup.get("_market_tools"),
+      )
+      score += boost
+      tags.extend(intel_tags)
+  except ImportError:
+    pass
+
   return min(100, max(floor, score)), tags
 
 
-def _score_4h_wave(wave: dict) -> Tuple[int, List[str]]:
-  """Score 4h Elliott context for executive routing (no native 4h style setup)."""
+def _score_context_wave(tf: str, wave: dict) -> Tuple[int, List[str]]:
+  """Score mid-TF Elliott context for executive routing (no native style setup)."""
   if not wave or wave.get("status") != "ok":
-    return 0, ["no_4h_data"]
+    return 0, [f"no_{tf}_data"]
   tags: List[str] = []
   score = 10
   struct = str(wave.get("structure") or "")
   if wave.get("impulse_valid"):
     score += 28
-    tags.append("4h_impulse_valid")
+    tags.append(f"{tf}_impulse_valid")
   elif wave.get("impulse_partial"):
     score += 16
-    tags.append("4h_impulse_partial")
+    tags.append(f"{tf}_impulse_partial")
   elif "impulse_5" in struct:
     score += 18
-    tags.append("4h_impulse_label")
+    tags.append(f"{tf}_impulse_label")
   elif struct == "abc_correction":
     score += 12
-    tags.append("4h_abc")
+    tags.append(f"{tf}_abc")
   elif struct == "ending_diagonal":
     score += 14
-    tags.append("4h_diagonal")
+    tags.append(f"{tf}_diagonal")
   elif "invalid_impulse" in struct:
     score += 4
-    tags.append("4h_invalid_impulse")
+    tags.append(f"{tf}_invalid_impulse")
   else:
     score += 6
-    tags.append(struct[:24] or "4h_unclassified")
+    tags.append(struct[:24] or f"{tf}_unclassified")
 
   if wave.get("direction") in ("BULL", "BEAR"):
     score += 5
   return min(55, score), tags
 
 
-def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict]:
-  """Synthesize ranked 4h context picks anchored to nearest executable style."""
+def _score_4h_wave(wave: dict) -> Tuple[int, List[str]]:
+  return _score_context_wave("4h", wave)
+
+
+def _build_context_tf_rows(
+  tf: str,
+  anchor_styles: tuple[str, ...],
+  results: List[dict],
+  scored: List[dict],
+) -> List[dict]:
+  """Synthesize ranked context picks for TFs without native style setups."""
   best_by_sym: Dict[str, dict] = {}
   for row in scored:
     sym = row["symbol"]
@@ -206,15 +331,15 @@ def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict
     if r.get("status") == "incomplete":
       continue
     sym = r["symbol"]
-    wave = (r.get("step2_wave_structure") or {}).get("4h")
-    ctx_score, ctx_tags = _score_4h_wave(wave or {})
+    wave = (r.get("step2_wave_structure") or {}).get(tf)
+    ctx_score, ctx_tags = _score_context_wave(tf, wave or {})
     if ctx_score < 8:
       continue
 
     anchor = None
     anchor_style = None
     setups = (r.get("step8_outcomes") or {}).get("setups") or {}
-    for style in CONTEXT_TF_ANCHOR_STYLE:
+    for style in anchor_styles:
       s = setups.get(style)
       if s and _stop_ok(s, style):
         anchor = s
@@ -238,7 +363,7 @@ def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict
     row = {
       "symbol": sym,
       "style": anchor_style,
-      "timeframe": "4h",
+      "timeframe": tf,
       "direction": direction,
       "executive_score": exec_score,
       "accuracy_tier": base.get("accuracy_tier", "C") if base else "C",
@@ -258,14 +383,16 @@ def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict
       "tp2": targets[1]["price"] if len(targets) > 1 else None,
       "rr_tp2": targets[1]["rr"] if len(targets) > 1 else None,
       "primary_blocker": _primary_blocker(anchor, anchor_style),
-      "tags": ", ".join(ctx_tags + (["4h_context"])),
+      "tags": ", ".join(ctx_tags + ([f"{tf}_context"])),
       "executive_verdict": (r.get("executive_decision") or {}).get("verdict"),
       "consensus": (r.get("step6_wave_consensus") or {}).get("consensus_direction"),
       "agreement_pct": (r.get("step6_wave_consensus") or {}).get("agreement_pct"),
-      "honest_reason": f"4h context: {wave.get('structure', '')}"[:160],
+      "honest_reason": f"{tf} context: {wave.get('structure', '')}"[:160],
       "autodream_verdict": anchor.get("autodream_verdict"),
       "paper_outcome": anchor.get("paper_outcome"),
-      "is_4h_context": True,
+      "is_context_tf": True,
+      "context_tf": tf,
+      "is_4h_context": tf == "4h",
     }
     setup_match = dict(anchor)
     setup_match["_executive_verdict"] = row["executive_verdict"]
@@ -273,7 +400,7 @@ def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict
       setup_match, exec_score, row["primary_blocker"]
     )
     if action == "WATCH_ONLY" and exec_score >= 40:
-      action, size, playbook = "WATCH_ALERT", 15, "4h context — alert on structure break + zone"
+      action, size, playbook = "WATCH_ALERT", 15, f"{tf} context — alert on structure break + zone"
     row["executive_action"] = action
     row["position_size_pct"] = size
     row["playbook"] = playbook
@@ -281,6 +408,10 @@ def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict
 
   rows.sort(key=lambda x: (-x["executive_score"], x["symbol"]))
   return rows
+
+
+def _build_4h_context_rows(results: List[dict], scored: List[dict]) -> List[dict]:
+  return _build_context_tf_rows("4h", CONTEXT_TIMEFRAMES["4h"], results, scored)
 
 
 def resolve_accurate_pairs_timeframes(
@@ -318,11 +449,16 @@ def _flatten_setups(results: List[dict]) -> List[dict]:
     sym = r["symbol"]
     ex = r.get("executive_decision") or {}
     cons = r.get("step6_wave_consensus") or {}
+    mkt = r.get("step9_market_confluence") or {}
+    tv_oss = ex.get("tv_oss") or {}
+    tv_score = tv_oss.get("composite_score") or (mkt.get("tv_confluence") or {}).get("score") or 0
     for style, setup in (r.get("step8_outcomes") or {}).get("setups", {}).items():
       if not setup:
         continue
       setup = dict(setup)
       setup["_executive_verdict"] = ex.get("verdict", "")
+      setup["_tv_composite_score"] = tv_score
+      setup["_tv_score"] = tv_oss.get("tv_score") or (mkt.get("tv_confluence") or {}).get("score")
       setup["_symbol"] = sym
       setup["_style"] = style
       setup["_consensus"] = cons.get("consensus_direction")
@@ -341,6 +477,14 @@ def build_executive_board(
   Executive solution board — always returns ranked picks per timeframe.
   Like a desk PM: never empty-handed; routes every top idea to a plan.
   """
+  try:
+    from engine.executive_intel import load_global_intel
+
+    global_intel = load_global_intel()
+  except Exception:
+    global_intel = None
+
+  result_by_sym = {r["symbol"]: r for r in results if r.get("symbol")}
   flat = _flatten_setups(results)
   by_symbol: Dict[str, List[dict]] = defaultdict(list)
 
@@ -348,6 +492,8 @@ def build_executive_board(
   for setup in flat:
     sym = setup["_symbol"]
     style = setup["_style"]
+    mkt = (result_by_sym.get(sym) or {}).get("step9_market_confluence")
+    setup["_market_tools"] = mkt
     if not _stop_ok(setup, style):
       continue
     entry = (setup.get("entry") or {}).get("anchor")
@@ -358,7 +504,12 @@ def build_executive_board(
       except (TypeError, ValueError):
         pass
 
-    score, tags = executive_setup_score(setup, style, 0)
+    score, tags = executive_setup_score(
+      setup, style, 0,
+      symbol=sym,
+      market_tools=mkt,
+      global_intel=global_intel,
+    )
     if score < min_score and _baseline_score(setup, style) < min_score:
       continue
 
@@ -414,7 +565,11 @@ def build_executive_board(
       row["executive_score"] = min(100, row["executive_score"] + bonus)
       row["tags"] = row["tags"] + f", multi_tf+{bonus}"
 
-  ctx_4h = _build_4h_context_rows(results, scored)
+  ctx_by_tf: Dict[str, List[dict]] = {
+    tf: _build_context_tf_rows(tf, anchors, results, scored)
+    for tf, anchors in CONTEXT_TIMEFRAMES.items()
+  }
+  ctx_4h = ctx_by_tf.get("4h", [])
 
   scored.sort(key=lambda x: (-x["executive_score"], x["symbol"], x["style"]))
 
@@ -437,12 +592,20 @@ def build_executive_board(
   for row in scored:
     by_tf[row["timeframe"]].append(row)
 
-  by_tf["4h"] = ctx_4h
+  for tf, ctx_rows in ctx_by_tf.items():
+    by_tf[tf] = ctx_rows
+
+  def _pick_key(row: dict, tf: str) -> tuple[str, str]:
+    if row.get("is_context_tf") and row.get("context_tf") == tf:
+      return (row["symbol"], tf)
+    if tf in CONTEXT_TIMEFRAMES:
+      return (row["symbol"], tf)
+    return (row["symbol"], row["style"])
 
   for tf in BOARD_TIMEFRAMES:
     pool = by_tf.get(tf, [])
     for row in pool[:picks_per_tf]:
-      key = (row["symbol"], row["style"] if tf != "4h" else "4h")
+      key = _pick_key(row, tf)
       if key in picked_keys:
         continue
       row = dict(row)
@@ -451,15 +614,21 @@ def build_executive_board(
       picks.append(row)
       picked_keys.add(key)
 
-  # Fill to max_total with highest remaining scores (incl. 4h context)
+  # Fill to max_total with highest remaining scores (incl. context TFs)
+  overflow_pool = list(scored)
+  for tf, ctx_rows in ctx_by_tf.items():
+    overflow_pool.extend(
+      r for r in ctx_rows if _pick_key(r, tf) not in picked_keys
+    )
   overflow = sorted(
-    scored + [r for r in ctx_4h if (r["symbol"], "4h") not in picked_keys],
+    overflow_pool,
     key=lambda x: (-x["executive_score"], x["symbol"]),
   )
   for row in overflow:
     if len(picks) >= max_total:
       break
-    key = (row["symbol"], "4h" if row.get("is_4h_context") else row["style"])
+    tf = row.get("context_tf") if row.get("is_context_tf") else row["timeframe"]
+    key = _pick_key(row, tf)
     if key in picked_keys:
       continue
     row = dict(row)
@@ -472,7 +641,7 @@ def build_executive_board(
   for tf in BOARD_TIMEFRAMES:
     if any(p["timeframe"] == tf for p in picks):
       continue
-    pool = ctx_4h if tf == "4h" else [r for r in scored if r["timeframe"] == tf]
+    pool = by_tf.get(tf, [])
     fallback = sorted(pool, key=lambda x: -x["executive_score"])
     if fallback:
       row = dict(fallback[0])
@@ -481,7 +650,7 @@ def build_executive_board(
       row["executive_action"] = "WATCH_ONLY"
       row["playbook"] = f"Fallback {tf} — weakest TF coverage; paper only"
       picks.append(row)
-      picked_keys.add((row["symbol"], row["style"] if tf != "4h" else "4h"))
+      picked_keys.add(_pick_key(row, tf))
 
   picks.sort(key=lambda x: (
     {"EXECUTE_NOW": 0, "EXECUTE_CAUTION": 1, "SCALE_IN": 2, "STANDBY_LIMIT": 3,
@@ -517,6 +686,43 @@ def save_executive_board(board: dict, json_path: Path = BOARD_PATH, csv_path: Pa
       w.writeheader()
       w.writerows(picks)
   return {"json": str(json_path), "csv": str(csv_path)}
+
+
+def executive_pick_map(board: dict) -> Dict[tuple, dict]:
+  """Map (symbol, timeframe) → board pick row."""
+  out: Dict[tuple, dict] = {}
+  for pick in board.get("picks", []):
+    sym = pick.get("symbol", "")
+    tf = pick.get("timeframe") or STYLE_TF.get(pick.get("style", ""), "")
+    if sym and tf:
+      out[(sym, tf)] = pick
+  return out
+
+
+def stamp_executive_on_export_rows(rows: List[dict], board: dict) -> List[dict]:
+  """Attach executive_action/score/size from board picks onto limit-order export rows."""
+  picks = executive_pick_map(board)
+  for row in rows:
+    key = (row.get("symbol", ""), row.get("timeframe", ""))
+    pick = picks.get(key)
+    if pick:
+      row["executive_action"] = pick.get("executive_action", "WATCH_ONLY")
+      row["executive_score"] = pick.get("executive_score")
+      row["position_size_pct"] = pick.get("position_size_pct")
+      row["executive_playbook"] = pick.get("playbook", "")
+    elif not row.get("executive_action"):
+      row["executive_action"] = "WATCH_ONLY"
+  return rows
+
+
+def filter_rows_by_executive_action(
+  rows: List[dict],
+  *,
+  allowed: Optional[frozenset] = None,
+) -> List[dict]:
+  """Keep only rows whose executive_action is in the tradable set."""
+  allowed = allowed or TRADABLE_EXECUTIVE_ACTIONS
+  return [r for r in rows if r.get("executive_action") in allowed]
 
 
 def apply_board_to_results(results: List[dict], board: dict) -> List[dict]:

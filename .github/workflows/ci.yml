@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Run pytest
+        run: .venv/bin/python -m pytest tests/ -q --tb=short
+
+      - name: E2E health (offline)
+        run: |
+          EW_WEB_INTEL=0 EW_WS_ENABLED=0 EW_HEALTH_REQUIRE_ARTIFACTS=0 .venv/bin/python scripts/e2e_trading_cycle.py --health
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-test
+          EW_PAPER_LEDGER: /tmp/ew-paper-test.json
+
+      - name: Effectiveness validation (fast)
+        run: |
+          mkdir -p output/autodream
+          cp tests/fixtures/tracked_setups_ci.json output/autodream/tracked_setups.json
+          cp tests/fixtures/metrics_ci.json output/autodream/metrics.json
+          PYTHONPATH=$PWD EW_WEB_INTEL=0 EW_WS_ENABLED=0 EW_HEALTH_REQUIRE_ARTIFACTS=0 .venv/bin/python scripts/run_effectiveness_validation.py --fast --no-tests
+        env:
+          EW_OKF_BRAIN_DIR: /tmp/ew-okf-test
+          EW_PORTFOLIO_STATE: /tmp/ew-portfolio-test.json

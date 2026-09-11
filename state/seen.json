@@ -1,0 +1,14 @@
+{
+  "items": {
+    "6e479d7653f7d33aa6079da4641e5427b9bb998bbdb95399735868f2ff8ca2fb": {
+      "source": "sspm",
+      "title": "Mondoo cnspec 13.37.0 SSPM policy pack for Microsoft 365 and Google Workspace",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v13.37.0"
+    },
+    "71425e9b65a72ca0ded985dd68e826dc701f555c236bfb03a3bffe472606b541": {
+      "title": "Presidio 2.2.360 released (data-privacy-stack)",
+      "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.360",
+      "verdict": "discover"
+    }
+  }
+}

@@ -1,0 +1,215 @@
+"""Tests for pair×TF limit order export (250 rows, honest tier gates)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from core.risk import DCA_SPLITS
+from engine.limit_orders_export import (
+  ALL_TIMEFRAMES,
+  build_all_limit_orders,
+  build_limit_order_row,
+  export_limit_orders,
+)
+
+
+def _sample_result(symbol: str = "BTC/USDT") -> dict:
+  return {
+    "symbol": symbol,
+    "status": "staged_entry",
+    "step1_htf_bias": {"wave_C_current": 100.0},
+    "step2_adaptive_pivots": {"1h": {"atr_14": 2.0}, "15m": {"atr_14": 1.0}},
+    "step2_wave_structure": {
+      "1h": {"structure": "impulse_up", "current_price": 100.0, "impulse_valid": True},
+      "4h": {"structure": "impulse_up", "current_price": 100.0, "impulse_partial": True},
+      "15m": {"structure": "abc", "current_price": 100.0},
+    },
+    "step3_kill_zone": {
+      "price_low": 98.0,
+      "price_high": 102.0,
+      "constituent_fibs": {"fib_0.618": 99.0, "fib_0.786": 98.5},
+    },
+    "step3_c_targets": {"c_target_100": 110.0, "c_target_161": 115.0},
+    "step4_harmonic_overlap": [{"tf": "4h", "prz_low": 97.5, "prz_high": 99.5}],
+    "step5_execution_validation": {"in_zone": True},
+    "step6_wave_consensus": {"consensus_direction": "BULL", "agreement_pct": 70},
+    "executive_decision": {"verdict": "STAGED_GO", "direction": "BULL"},
+    "step8_outcomes": {
+      "honest_summary": {"primary_direction": "LONG"},
+      "setups": {
+        "scalp": {
+          "status": "executable",
+          "execution_tier": "probe",
+          "direction": "LONG",
+          "timeframe": "15m",
+          "entry": {"anchor": 100.0, "zone": [99.0, 101.0], "order_type": "limit"},
+          "stop_loss": {"price": 95.0, "rule": "structure"},
+          "targets": [
+            {"price": 105.0, "exit_pct": 40, "rr": 1.5},
+            {"price": 110.0, "exit_pct": 30, "rr": 2.0},
+            {"price": 115.0, "exit_pct": 30, "rr": 3.0},
+          ],
+          "readiness_score": 0.8,
+          "indicator_signals": ["rsi_oversold"],
+        },
+        "day_trade": {
+          "status": "monitor",
+          "execution_tier": "none",
+          "direction": "LONG",
+          "timeframe": "1h",
+          "entry": {"anchor": 100.0, "zone": [98.0, 102.0], "order_type": "limit"},
+          "stop_loss": {"price": 94.0},
+          "targets": [
+            {"price": 108.0, "exit_pct": 40, "rr": 1.5},
+            {"price": 112.0, "exit_pct": 30, "rr": 2.0},
+            {"price": 116.0, "exit_pct": 30, "rr": 2.5},
+          ],
+        },
+        "swing": {"status": "not_actionable", "direction": "LONG", "timeframe": "1d", "entry": {"anchor": 100.0}},
+        "long_term": {
+          "status": "monitor",
+          "direction": "LONG",
+          "timeframe": "1w",
+          "entry": {"anchor": 100.0, "zone": [95.0, 105.0]},
+          "stop_loss": {"price": 90.0},
+          "targets": [
+            {"price": 120.0, "exit_pct": 40, "rr": 2.0},
+            {"price": 125.0, "exit_pct": 30, "rr": 2.5},
+            {"price": 130.0, "exit_pct": 30, "rr": 3.0},
+          ],
+        },
+      },
+    },
+  }
+
+
+def test_dca_splits():
+  assert DCA_SPLITS == [10, 20, 30, 40]
+
+
+def test_build_limit_order_row_executable_and_monitor_tiers():
+  result = _sample_result()
+  scalp = build_limit_order_row(result, "15m")
+  day = build_limit_order_row(result, "1h")
+  ctx4h = build_limit_order_row(result, "4h")
+
+  assert scalp["gtc_tier"] == "executable"
+  assert scalp["honest_execution_tier"] == "probe"
+  assert day["gtc_tier"] == "monitor"
+  assert ctx4h["gtc_tier"] in ("monitor", "watch")
+  assert scalp["order_type"] == "limit"
+  assert scalp["time_in_force"] == "GTC"
+  assert scalp["entry_zone_low"] == pytest.approx(99.0)
+  assert scalp["entry_zone_high"] == pytest.approx(101.0)
+
+
+def test_build_limit_order_row_has_dca_stop_metrics():
+  row = build_limit_order_row(_sample_result(), "15m")
+  for key in (
+    "stop_distance_pct",
+    "l1_stop_distance_pct",
+    "dca_stop_reduction_pct",
+    "dca_sl_wide_threshold_pct",
+    "dca_sl_target_pct",
+    "dca_staging_legs",
+    "dca_sl_resolvable",
+    "dca_staging_note",
+  ):
+    assert key in row, key
+  assert row.get("stop_distance_pct") is not None
+  assert row.get("l1_stop_distance_pct") is not None
+  assert row.get("dca_stop_reduction_pct") is not None
+
+  assert row["dca_sl_resolvable"] in ("Y", "N")
+  assert row["l1_stop_distance_pct"] >= row["stop_distance_pct"]
+  assert row["dca_stop_reduction_pct"] == pytest.approx(
+    max(0.0, row["l1_stop_distance_pct"] - row["stop_distance_pct"]), abs=0.01
+  )
+  assert 1 <= int(row["dca_staging_legs"]) <= 4
+  assert row["geometry_valid"] == "Y"
+  assert row["geometry_errors"] == ""
+  assert row["stop_loss"] > 0
+  assert row["tp1"] > 0
+  assert row["tp2"] > 0
+  assert row["tp3"] > 0
+  assert row["stop_distance_pct"] <= 3.5 * 1.05
+  assert row["rr_tp2"] <= 5.0
+
+
+def test_non_positive_price_is_geometry_invalid():
+  result = _sample_result()
+  result["step2_wave_structure"]["15m"]["current_price"] = -0.02
+  result["step1_htf_bias"]["wave_C_current"] = -0.02
+  row = build_limit_order_row(result, "15m")
+  assert row["geometry_valid"] == "N"
+  assert "non_positive_market_price" in row["geometry_errors"]
+
+
+def test_build_limit_order_row_has_dca_legs():
+  row = build_limit_order_row(_sample_result(), "15m")
+  assert len(row["dca_legs"]) == 4
+  assert sum(leg["size_pct"] for leg in row["dca_legs"]) == 100
+  assert all(leg["order_type"] == "limit" for leg in row["dca_legs"])
+  assert all(leg["time_in_force"] == "GTC" for leg in row["dca_legs"])
+  assert row.get("wae")
+  assert row.get("dca_profile") == "pyramid_4"
+  assert row.get("stop_architecture") == "smart_dynamic_sl"
+  assert row.get("target_architecture") == "smart_dynamic_tp"
+
+
+def test_build_limit_order_row_includes_notional_sizing():
+  row = build_limit_order_row(_sample_result(), "15m")
+  assert float(row.get("position_notional_usd") or 0) > 0
+  assert float(row.get("risk_budget_usd") or 0) > 0
+  assert float(row.get("leg1_usd") or 0) > 0
+  assert float(row.get("account_equity") or 0) == 10_000.0
+
+
+def test_build_all_limit_orders_row_count():
+  results = [_sample_result("BTC/USDT"), _sample_result("ETH/USDT")]
+  rows = build_all_limit_orders(results)
+  primaries = [r for r in rows if r.get("row_type", "primary") == "primary"]
+  assert len(primaries) == 2 * len(ALL_TIMEFRAMES)
+
+
+def test_export_limit_orders_writes_csv(tmp_path: Path):
+  results = [_sample_result("BTC/USDT"), _sample_result("ETH/USDT")]
+  meta = export_limit_orders(results, output_dir=tmp_path, write_json=True)
+  assert meta["row_count"] >= 2 * len(ALL_TIMEFRAMES)
+  assert meta["expected_rows"] == 50 * len(ALL_TIMEFRAMES)
+  assert meta["account_equity"] == 10_000.0
+  assert Path(meta["csv"]).exists()
+  assert Path(meta["latest_csv"]).exists()
+  assert Path(meta["matrix_html"]).exists()
+  assert Path(meta["json"]).exists()
+  assert sum(meta["tier_counts"].values()) == meta["row_count"]
+
+  import csv
+  rows = list(csv.DictReader(Path(meta["latest_csv"]).open()))
+  exec_row = next(r for r in rows if r.get("gtc_tier") == "executable" and r.get("row_type") == "primary")
+  assert float(exec_row.get("position_notional_usd") or 0) > 0
+  assert float(exec_row.get("leg1_usd") or 0) > 0
+  assert "sqs_score" in exec_row
+  assert exec_row.get("sqs_tier") in ("EXECUTE", "STANDBY", "WATCH", "SKIP")
+  assert Path(meta.get("sqs_ranked_csv", "")).exists() or (tmp_path / "latest_sqs_ranked_setups.csv").exists()
+
+
+@pytest.mark.skipif(
+  not list(Path("output").glob("top50_analysis_*.json")),
+  reason="no batch output on disk",
+)
+def test_export_real_batch_250_rows(tmp_path: Path):
+  latest = sorted(
+    Path("output").glob("top50_analysis_*.json"),
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+  )[0]
+  results = json.loads(latest.read_text(encoding="utf-8"))
+  meta = export_limit_orders(results, output_dir=tmp_path)
+  assert meta["row_count"] >= len(results) * len(ALL_TIMEFRAMES)
+  if len(results) == 50:
+    assert meta["row_count"] >= 250
+    assert meta.get("contingent_rows", 0) >= 4

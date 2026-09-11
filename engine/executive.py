@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from core.atr import compute_atr14
+from core.risk import DCA_SPLITS, build_dca_ladder, sensible_entry_anchor
 
 
 def _bias_to_direction(bias: str, bull_count: int, bear_count: int) -> str:
@@ -98,20 +99,32 @@ def _staged_legs(
   fib_high: float,
   atr: float,
 ) -> List[dict]:
-  """Three-leg scale plan: probe → fib → kill zone."""
-  if direction == "BULL":
-    legs = [
-      {"leg": 1, "label": "probe", "zone": [round(current - atr * 0.3, 2), round(current + atr * 0.1, 2)], "size_pct": 25},
-      {"leg": 2, "label": "fib_support", "zone": [round(fib_low, 2), round(fib_high, 2)], "size_pct": 35},
-      {"leg": 3, "label": "kill_zone", "zone": [round(kz_low, 2), round(kz_high, 2)], "size_pct": 40},
-    ]
-  else:
-    legs = [
-      {"leg": 1, "label": "probe", "zone": [round(current - atr * 0.1, 2), round(current + atr * 0.3, 2)], "size_pct": 25},
-      {"leg": 2, "label": "fib_resistance", "zone": [round(fib_low, 2), round(fib_high, 2)], "size_pct": 35},
-      {"leg": 3, "label": "kill_zone", "zone": [round(kz_low, 2), round(kz_high, 2)], "size_pct": 40},
-    ]
-  return legs
+  """Four-leg asymmetric pyramid: 10% / 20% / 30% / 40% inside kill zone."""
+  dir_norm = "LONG" if direction == "BULL" else "SHORT"
+  lo = min(kz_low, kz_high, fib_low, fib_high)
+  hi = max(kz_low, kz_high, fib_low, fib_high)
+  if hi <= lo:
+    pad = max(atr * 0.5, abs(current) * 0.005)
+    lo, hi = current - pad, current + pad
+
+  ladder = build_dca_ladder(
+    dir_norm, sensible_entry_anchor(dir_norm, current, lo, hi, atr),
+    atr, lo, hi, gtc=True, current=current,
+  )
+  staged: List[dict] = []
+  for leg in ladder:
+    px = float(leg["price"])
+    band = max(atr * 0.12, abs(px) * 0.0008)
+    staged.append({
+      "leg": leg["leg"],
+      "label": str(leg.get("layer", f"L{leg['leg']}")).lower(),
+      "zone": [round(px - band, 2), round(px + band, 2)],
+      "price": round(px, 2),
+      "size_pct": leg["size_pct"],
+      "rationale": leg.get("rationale", ""),
+      "dca_splits_pct": DCA_SPLITS,
+    })
+  return staged
 
 
 def _apply_consensus(
@@ -149,6 +162,30 @@ def _apply_consensus(
   return direction, confidence, "; ".join(note_parts)
 
 
+def _finalize_tv_oss(
+  decision: dict,
+  data: Dict[str, pd.DataFrame],
+  direction: str,
+  market_tools: Optional[dict],
+) -> dict:
+  """Apply TV OSS + free-data executive layer when market_tools provided."""
+  if not market_tools:
+    return decision
+  try:
+    from engine.executive_tv_oss import (
+      apply_tv_oss_to_decision,
+      build_tv_executive_context,
+      tv_oss_executive_enabled,
+    )
+
+    if not tv_oss_executive_enabled():
+      return decision
+    ctx = build_tv_executive_context(direction, data, market_tools)
+    return apply_tv_oss_to_decision(decision, ctx)
+  except Exception:
+    return decision
+
+
 def executive_decide(
   symbol: str,
   data: Dict[str, pd.DataFrame],
@@ -167,6 +204,7 @@ def executive_decide(
   consensus: Optional[dict] = None,
   expert_direction: Optional[dict] = None,
   cycle_confluence: Optional[dict] = None,
+  market_tools: Optional[dict] = None,
 ) -> dict:
   """
   Expert trader decision maker. Never returns no_trade — always a playbook.
@@ -231,7 +269,7 @@ def executive_decide(
     levels = _build_levels(direction, kz_low, kz_high, atr_15m, current)
     action = f"execute_{levels['action_base']}"
     conviction = "high" if exec_consensus.get("conviction") in ("high", "medium") else "high"
-    return {
+    return _finalize_tv_oss({
       "status": "execute",
       "trade_setup": {
         "action": action,
@@ -260,7 +298,7 @@ def executive_decide(
           {"if": "TP1 hit", "then": "move stop to breakeven, trail remainder"},
         ],
       },
-    }
+    }, data, direction, market_tools)
 
   # --- Tier 2: In zone but impulse not validated — conditional execute ---
   if in_zone and not execution_passes:
@@ -269,7 +307,7 @@ def executive_decide(
       direction, confidence, consensus, execution_passes, structural_gaps
     )
     levels = _build_levels(direction, kz_low, kz_high, atr_15m, current)
-    return {
+    return _finalize_tv_oss({
       "status": "conditional_execute",
       "trade_setup": {
         "action": f"conditional_{levels['action_base']}",
@@ -299,7 +337,7 @@ def executive_decide(
           {"if": "harmonic PRZ forms in zone", "then": "upgrade to full execute"},
         ],
       },
-    }
+    }, data, direction, market_tools)
 
   # --- Tier 3: Harmonics present, price not in zone — active monitor with entry orders ---
   if harmonic_overlaps and not in_zone:
@@ -310,7 +348,7 @@ def executive_decide(
       direction, confidence, consensus, execution_passes, structural_gaps
     )
     h_levels = _build_levels(direction, prz[0], prz[1], atr_15m, current)
-    return {
+    return _finalize_tv_oss({
       "status": "active_monitor",
       "trade_setup": {
         "action": f"prepare_{h_levels['action_base']}",
@@ -339,7 +377,7 @@ def executive_decide(
           {"if": "price blows through PRZ without reaction", "then": "cancel limits, switch to staged fib plan"},
         ],
       },
-    }
+    }, data, direction, market_tools)
 
   # --- Tier 4: No ideal setup — staged entry using fib + kill zone pathway ---
   staged = _staged_legs(direction, current, kz_low, kz_high, fib_low, fib_high, atr_15m)
@@ -350,7 +388,7 @@ def executive_decide(
   primary = _build_levels(direction, fib_low, fib_high, atr_15m, current)
   staged = _staged_legs(direction, current, kz_low, kz_high, fib_low, fib_high, atr_15m)
 
-  return {
+  return _finalize_tv_oss({
     "status": "staged_entry",
     "trade_setup": {
       "action": f"scale_{primary['action_base']}",
@@ -363,7 +401,7 @@ def executive_decide(
       "reason": (
         f"HTF {htf_class['state']} → {direction} via {fib_source}. "
         f"EW consensus {exec_consensus.get('agreement_pct', 0)}% ({consensus_note}). "
-        f"Scale {len(staged)} legs toward [{kz_low:.0f}-{kz_high:.0f}]"
+        f"Scale {len(staged)} legs (10/20/30/40%) toward [{kz_low:.0f}-{kz_high:.0f}]"
       ),
       "trigger_zone": [round(kz_low, 2), round(kz_high, 2)],
       "instruction": (
@@ -385,7 +423,7 @@ def executive_decide(
       "structural_gaps": structural_gaps,
       "consensus_summary": exec_consensus,
       "contingencies": [
-        {"if": "leg 1 fills and price reverses 1 ATR against", "then": "pause legs 2-3, reassess"},
+        {"if": "leg 1 fills and price reverses 1 ATR against", "then": "pause legs 2-4, reassess"},
         {"if": "harmonic pattern emerges", "then": "consolidate entries into PRZ"},
         {"if": "15m impulse validates", "then": "accelerate to full size at market"},
         {"if": f"HTF bias flips from {htf_class['bias']}", "then": "flatten all legs"},
@@ -399,4 +437,4 @@ def executive_decide(
         },
       },
     },
-  }
+  }, data, direction, market_tools)
