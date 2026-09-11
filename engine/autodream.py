@@ -279,12 +279,16 @@ def enrich_outcomes_with_autodream(
     if not setup or setup.get("status") == "not_actionable":
       continue
 
-    wr = ad.get("win_rate")
-    n = int(ad.get("simulated_trades") or 0)
-    setup["oos_win_rate"] = wr
-    setup["oos_trades"] = n
-    setup["oos_gate"] = _oos_gate_from_backtest(wr, n)
-    verdict = _autodream_verdict_from_backtest(wr, n)
+    is_wr = ad.get("win_rate")
+    is_n = int(ad.get("simulated_trades") or 0)
+    oos_wr = ad.get("oos_win_rate")
+    oos_n = int(ad.get("oos_trades") or 0)
+    setup["is_win_rate"] = is_wr
+    setup["is_trades"] = is_n
+    setup["oos_win_rate"] = oos_wr if oos_n >= 3 else None
+    setup["oos_trades"] = oos_n
+    setup["oos_gate"] = _oos_gate_from_backtest(oos_wr, oos_n)
+    verdict = _autodream_verdict_from_backtest(oos_wr, oos_n)
     if verdict and not setup.get("autodream_verdict"):
       setup["autodream_verdict"] = verdict
 
@@ -298,8 +302,8 @@ def enrich_outcomes_with_autodream(
         setup["readiness_score"] = max(0, min(100, int(setup["readiness_score"]) + round(adj * 100)))
       continue
     adj = ad.get("confidence_adjustment", 0) or 0
-    setup["historical_edge"] = ad.get("win_rate")
-    setup["hist_trades"] = ad.get("simulated_trades")
+    setup["historical_edge"] = oos_wr if oos_n >= 3 else is_wr
+    setup["hist_trades"] = oos_n if oos_n >= 3 else is_n
     setup["hist_avg_pnl_r"] = ad.get("avg_pnl_r")
     setup["wf_degradation"] = ad.get("wf_degradation")
     setup["stress_win_rate"] = ad.get("stress_win_rate")

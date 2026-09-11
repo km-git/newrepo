@@ -252,7 +252,7 @@ def run_top_crypto_batch(
   research_summary = summarize_research(research_rows)
 
   from engine.executive_board import apply_board_to_results, build_executive_board, save_executive_board
-  executive_board = build_executive_board(results, picks_per_tf=5, max_total=30)
+  executive_board = build_executive_board(results, picks_per_tf=5, max_total=0)
   results = apply_board_to_results(results, executive_board)
   board_paths = save_executive_board(executive_board)
   save_batch_json(results, str(json_path))

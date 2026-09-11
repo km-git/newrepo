@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from core.market_clock import data_as_of_from_frames, last_candle_ts_utc
+from core.stats import MIN_HEADLINE_N, rate_display, wilson_ci
+from engine.honesty_gate import is_honesty_executable, setup_geometry_ok
 from fetchers import fetch
 
 
@@ -121,8 +123,20 @@ def main() -> int:
         "harmonic": harm,
         "consensus_pct": cons.get("agreement_pct"),
         "in_kz": setup.get("indicators", {}).get("zone_dist_pct", 99) < 2 if setup.get("indicators") else False,
+        "is_wr": setup.get("is_win_rate"),
+        "is_n": setup.get("is_trades"),
         "oos_wr": setup.get("oos_win_rate"),
         "oos_n": setup.get("oos_trades"),
+        "oos_display": rate_display(
+          setup.get("oos_win_rate"),
+          int(setup.get("oos_trades") or 0),
+          wins=int(round(float(setup.get("oos_win_rate") or 0) * int(setup.get("oos_trades") or 0)))
+          if setup.get("oos_win_rate") is not None and int(setup.get("oos_trades") or 0) > 0 else None,
+        ),
+        "is_display": rate_display(
+          setup.get("is_win_rate"),
+          int(setup.get("is_trades") or 0),
+        ),
         "oos_gate": setup.get("oos_gate"),
         "geom_ok": geom_ok,
         "geom_note": geom_note,
@@ -141,8 +155,11 @@ def main() -> int:
           "data_as_of_utc": wf.get("data_as_of_utc") or as_of,
         })
 
-      if st == "executable" and geom_ok:
+      if is_honesty_executable(setup, style):
         executable_rows.append(rec)
+      elif st == "executable" and geom_ok:
+        rec["reason"] = f"honesty_fail:{setup.get('oos_gate')}"
+        monitor_rows.append(rec)
       elif st in ("monitor", "executable") and not geom_ok:
         rec["reason"] = f"geom_fail:{geom_note}"
         monitor_rows.append(rec)
@@ -151,6 +168,7 @@ def main() -> int:
 
   exec_csv = [r for r in limits if r.get("gtc_tier") == "executable" and r.get("row_type") == "primary"]
   board_exec = [p for p in board.get("picks", []) if p.get("executive_action") == "EXECUTE_NOW"]
+  honesty_count = len(executable_rows)
 
   # Tool audit from log
   tools = {
@@ -171,7 +189,9 @@ def main() -> int:
     "executable_honest": executable_rows,
     "monitor": sorted(monitor_rows, key=lambda x: (-(x.get("readiness") or 0), x["symbol"]))[:20],
     "exec_csv_count": len(exec_csv),
+    "honesty_executable_count": honesty_count,
     "board_execute_now": len(board_exec),
+    "execute_now_matches_honesty": len(board_exec) == honesty_count,
     "board_by_action": board.get("by_action"),
     "wf_stats": wf_stats,
     "tools": tools,

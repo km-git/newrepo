@@ -153,12 +153,16 @@ def adaptive_pipeline(
   is_crypto: bool,
   exchange_preference: str | None = None,
   llm_advisory: bool = False,
+  *,
+  data_override: Optional[Dict[str, pd.DataFrame]] = None,
 ) -> dict:
   stages: List[tuple[str, dict, Any]] = []
   tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
 
   # Fetch — always attempt all timeframes (partial OK)
-  data = fetch(symbol, tfs, is_crypto, exchange_preference=exchange_preference)
+  data = data_override if data_override is not None else fetch(
+    symbol, tfs, is_crypto, exchange_preference=exchange_preference,
+  )
   stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto,
                             "exchange": exchange_preference},
                  {"bars": {tf: len(data[tf]) for tf in tfs if tf in data}}))

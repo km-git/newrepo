@@ -26,16 +26,11 @@ def _setup(**kwargs):
   return base
 
 
-def test_board_always_has_picks_per_timeframe():
+def test_board_empty_when_no_honesty_executables():
   results = []
   styles = {"scalp": "15m", "day_trade": "1h", "swing": "1d", "long_term": "1w"}
-  for i, sym in enumerate(["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "DOT/USDT"]):
-    setups = {}
-    for style, tf in styles.items():
-      setups[style] = _setup(
-        oos_win_rate=0.58 + i * 0.02,
-        readiness_score=60 + i * 3,
-      )
+  for sym in ["BTC/USDT", "ETH/USDT"]:
+    setups = {style: _setup(oos_win_rate=0.58, readiness_score=80) for style in styles}
     results.append({
       "symbol": sym,
       "status": "active",
@@ -44,13 +39,35 @@ def test_board_always_has_picks_per_timeframe():
       "step8_outcomes": {"setups": setups},
     })
 
-  board = build_executive_board(results, picks_per_tf=3, max_total=20)
-  assert board["board_picks"] >= 4
-  tfs = {p["timeframe"] for p in board["picks"]}
-  assert "15m" in tfs
-  assert "1h" in tfs
-  assert all(p.get("executive_action") for p in board["picks"])
-  assert all(p.get("position_size_pct", 0) > 0 for p in board["picks"])
+  board = build_executive_board(results)
+  assert board["board_picks"] == 0
+  assert board["by_action"].get("EXECUTE_NOW", 0) == 0
+  assert len(board["all_ranked"]) > 0
+
+
+def test_board_execute_now_matches_honesty_validated():
+  ex = _setup(
+    status="executable",
+    execution_tier="probe",
+    oos_win_rate=0.67,
+    oos_trades=12,
+    oos_gate="passed",
+    direction="SHORT",
+    stop_loss={"price": 108, "distance_pct": 3},
+    entry={"anchor": 100, "order_type": "limit", "zone": [99, 101]},
+    targets=[{"price": 95, "rr": 1}, {"price": 90, "rr": 2}],
+  )
+  results = [{
+    "symbol": "ZEC/USDT",
+    "status": "active",
+    "executive_decision": {"verdict": "GO"},
+    "step6_wave_consensus": {"consensus_direction": "BEAR", "agreement_pct": 80},
+    "step8_outcomes": {"setups": {"scalp": ex}},
+  }]
+  board = build_executive_board(results)
+  exec_now = [p for p in board["picks"] if p["executive_action"] == "EXECUTE_NOW"]
+  assert len(exec_now) == 1
+  assert board["by_action"].get("EXECUTE_NOW") == 1
 
 
 def test_board_includes_4h_context():
