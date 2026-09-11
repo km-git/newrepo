@@ -71,13 +71,16 @@ def _gh_run(args: List[str]) -> str:
 def _optional_ci_patterns() -> tuple:
   raw = os.environ.get(
     "EW_PR_CI_OPTIONAL",
-    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot",
+    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot,auto-approve,pr-agent,zero-key,resolve-conflicts,Semgrep CE,reviewdog",
   )
   return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
 
 
 def _is_required_ci_check(check: dict) -> bool:
   name = (check.get("name") or "").lower()
+  # GitHub code-scanning rollup is named "CodeQL". Workflow jobs are "CodeQL (python)" / "CodeQL (actions)".
+  if name == "codeql":
+    return False
   return not any(pat in name for pat in _optional_ci_patterns())
 
 

@@ -5,14 +5,22 @@ on:
     branches: [main, "cursor/**"]
   pull_request:
     branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
 
 jobs:
   ruff-tape-to-cloud:
     name: ruff (tape-to-cloud + monetization)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v6
         with:
@@ -23,16 +31,21 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          ruff check --config ruff.toml tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py
-          ruff format --check tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py
+          RUFF_PATHS="tape_to_cloud/ engine/monetization_strategy.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_github_tools_favorites.py"
+          ruff check --output-format=github --config ruff.toml $RUFF_PATHS
+          ruff format --check $RUFF_PATHS
 
   dependency-audit:
     name: pip-audit (requirements.txt)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: true
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v6
         with:
@@ -47,25 +60,45 @@ jobs:
     name: actionlint (workflows)
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Lint GitHub Actions workflows
         run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
-          ./actionlint -shellcheck= -color
+          set -euo pipefail
+          url="https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+          ok=0
+          for i in 1 2 3 4; do
+            if curl -fsSL --retry 3 --retry-delay 2 -o /tmp/actionlint.tgz "$url" \
+              && tar -tzf /tmp/actionlint.tgz >/dev/null \
+              && tar -xzf /tmp/actionlint.tgz -C /tmp actionlint; then
+              ok=1
+              break
+            fi
+            echo "actionlint download failed (attempt $i); retrying"
+            sleep $((i * 3))
+          done
+          test "$ok" = 1
+          /tmp/actionlint -shellcheck= -color
 
   gitleaks:
     name: gitleaks (secrets)
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -82,7 +115,7 @@ jobs:
           persist-credentials: false
 
       - name: OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
         with:
           scan-args: |-
             -L
@@ -109,3 +142,55 @@ jobs:
 
       - name: Audit GitHub Actions workflows
         run: zizmor --config zizmor.yml --persona=regular --min-severity high .github/workflows
+
+  trufflehog:
+    name: trufflehog (verified secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # SHA-pinned TruffleHog. Keep reviewdog out of this workflow (CVE-2025-30154).
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c # v3.97.4
+        with:
+          extra_args: --only-verified --results=verified
+
+  ruff-sarif:
+    name: ruff SARIF (GitHub code scanning)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install "ruff>=0.9.0"
+
+      - name: Ruff SARIF
+        run: |
+          ruff check --config ruff.toml --output-format sarif \
+            tape_to_cloud/ engine/monetization_strategy.py \
+            tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py \
+            tests/test_github_tools_favorites.py \
+            > ruff.sarif || true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: ruff.sarif
+          category: ruff

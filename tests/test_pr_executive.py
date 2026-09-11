@@ -109,7 +109,10 @@ def test_pip_audit_is_optional_required_check():
 
   assert _is_required_ci_check({"name": "pip-audit (requirements.txt)"}) is False
   assert _is_required_ci_check({"name": "Cursor Bugbot"}) is False
+  assert _is_required_ci_check({"name": "Semgrep CE + reviewdog"}) is False
+  assert _is_required_ci_check({"name": "CodeQL"}) is False
   assert _is_required_ci_check({"name": "test"}) is True
   assert _is_required_ci_check({"name": "ruff (tape-to-cloud + monetization)"}) is True
   assert _is_required_ci_check({"name": "osv-scanner (requirements)"}) is True
   assert _is_required_ci_check({"name": "zizmor (workflows)"}) is True
+  assert _is_required_ci_check({"name": "CodeQL (python)"}) is True
