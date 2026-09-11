@@ -16,14 +16,33 @@ for commands, **proof scripts** as hooks.
 | `specs/<id>-<name>/` | Feature spec, plan, tasks |
 | `scripts/hooks/` | Shared shell entrypoints for hooks & CI |
 
+## Bootstrap (uv + Spec Kit + git hooks)
+
+```bash
+bash scripts/setup_spec_kit.sh       # uv, specify-cli from github/spec-kit
+bash scripts/install_git_hooks.sh    # core.hooksPath → .githooks
+bash scripts/setup_agent_harness.sh  # + optional ECC plugin instructions
+```
+
 ## Typical feature flow
 
-1. **Constitution** — `/speckit-constitution` if governance changes.
-2. **Specify** — `/speckit-specify` with user story; creates `specs/…/spec.md`.
-3. **Plan** — `/speckit-plan` → `plan.md`.
-4. **Tasks** — `/speckit-tasks` → `tasks.md`.
-5. **Implement** — `/speckit-implement` (runs proof hooks from `extensions.yml`).
-6. **Proof** — `bash scripts/run_continuous_proof_loop.sh`; read verdict in reports.
+1. **Constitution** — `/speckit-constitution` (alias `/speckit.constitution`)
+2. **Specify** — `/speckit-specify` (alias `/specify`) → `specs/…/spec.md`
+3. **Plan** — `/speckit-plan` (alias `/plan`) → `plan.md`
+4. **Tasks** — `/speckit-tasks` (alias `/tasks`) → `tasks.md`
+5. **Implement** — `/speckit-implement` (alias `/spec-to-implementation`); hooks from `extensions.yml`
+6. **Proof** — `/proof-first-trading` or `bash scripts/hooks/run_proof_gate.sh full`
+
+## Hook layers
+
+| Layer | Path |
+|-------|------|
+| Git | `.githooks/pre-commit` → fast proof on staged execution files |
+| Kiro | `.kiro/hooks/*.json` |
+| Spec Kit | `.specify/extensions.yml` |
+| CI | `.github/workflows/proof-gate.yml` |
+
+Skip: `EW_SKIP_PROOF_HOOKS=1`.
 
 ## Branch naming
 

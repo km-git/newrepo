@@ -16,15 +16,36 @@ a Kiro-style spec → implement → verify loop without Kiro IDE.
 | Feature specs | `specs/<id>-<name>/` | spec.md, plan.md, tasks.md |
 | Scoreboard | `reports/CONTINUOUS_PROOF.md`, `reports/PAPER_FORWARD.md` | **Not** dense setup tables |
 
-**Typical flow**: `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` →
-`/proof-first-trading` (or hooks run automatically). Report `PROOF_GO` / `PROOF_NO_GO` / `PROOF_PENDING`
-and cumulative paper P&L only.
+**Typical flow** (see `.cursor/skills/speckit-workflow`):
 
-**Proof scripts**: `bash scripts/run_continuous_proof_loop.sh` (learn → policy → paper-forward),
-`bash scripts/run_paper_proof_daily.sh` (daily tick + effectiveness audit). Both set `EW_IMPROVEMENT_LLM=0`.
+`/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` →
+`/proof-first-trading`
 
-**CI**: `.github/workflows/proof-gate.yml` runs fast pytest on PRs touching paper/execution paths.
-Manual full proof: Actions → Proof gate → Run workflow.
+Aliases: `/speckit.constitution`, `/specify`, `/plan`, `/tasks`, `/spec-to-implementation`.
+
+**One-time bootstrap**:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install specify-cli --from git+https://github.com/github/spec-kit
+bash scripts/setup_spec_kit.sh          # init + verify .specify/
+bash scripts/install_git_hooks.sh       # git config core.hooksPath .githooks
+```
+
+**Optional ECC harness** (278 skills — install locally, not vendored):
+
+```text
+/plugin marketplace add github.com/affaan-m/ecc
+/plugin install ecc@ecc
+cp -R ECC/skills/* ~/.cursor/skills/   # or use Cursor plugin install
+```
+
+Or: `bash scripts/setup_agent_harness.sh` (prints ECC steps + enables git hooks).
+
+**Proof scripts**: `bash scripts/run_continuous_proof_loop.sh`, `bash scripts/run_paper_proof_daily.sh`
+(both `EW_IMPROVEMENT_LLM=0`). Git pre-commit runs `run_proof_gate.sh fast` on staged paper/execution files.
+
+**CI**: `.github/workflows/proof-gate.yml` on PRs; manual dispatch for full proof loop.
 
 ## Cursor Cloud specific instructions
 
