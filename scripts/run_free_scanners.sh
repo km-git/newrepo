@@ -92,6 +92,7 @@ SEMGREP="$(ensure semgrep 'semgrep>=1.100.0')"
   --config p/python \
   --config p/security-audit \
   --metrics off \
+  --error \
   "${SEMGREP_PATHS[@]}"
 
 echo "All free scanners passed."
