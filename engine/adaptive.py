@@ -29,6 +29,7 @@ from core.monowaves import adaptive_skip_for_df, extract_monowaves_cached
 from engine.autodream import enrich_outcomes_with_autodream, record_outcome
 from engine.ew_matrix import DEFAULT_EW_TFS, build_ew_matrix, ew_coverage_summary
 from engine.executive import executive_decide
+from core.market_clock import data_as_of_from_frames, data_as_of_meta
 from engine.outcomes import build_outcomes
 from fetchers import fetch
 
@@ -465,7 +466,10 @@ def adaptive_pipeline(
     cycle_confluence=cycle_confluence,
   )
   outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
-  record_outcome(symbol, outcomes, current_price, status)
+  record_outcome(
+    symbol, outcomes, current_price, status,
+    data_as_of_utc=data_as_of_from_frames(data, prefer_tf="1d"),
+  )
   hs = outcomes["honest_summary"]
   print(f"[step8] outcomes: {hs['truth']}")
 
@@ -499,7 +503,8 @@ def adaptive_pipeline(
 
   result = {
     "symbol": symbol,
-    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    "timestamp_utc": data_as_of_from_frames(data, prefer_tf="1d") or datetime.now(timezone.utc).isoformat(),
+    "data_as_of_meta": data_as_of_meta(data),
     "status": status,
     "step1_htf_bias": htf_class,
     "step1_htf_weekly": htf_weekly,

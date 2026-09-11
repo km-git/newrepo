@@ -181,9 +181,12 @@ def walk_forward_analysis(
   fold_wrs = [f["win_rate"] for f in folds if f.get("win_rate") is not None]
   consistency = round(min(fold_wrs), 3) if fold_wrs else None
 
+  from core.market_clock import last_candle_ts_utc
+  as_of = last_candle_ts_utc(df)
   return {
     "available": True,
     "method": "walk_forward",
+    "data_as_of_utc": as_of.isoformat() if as_of else None,
     "n_folds": n_folds,
     "lookback_bars": lookback_bars,
     "in_sample": is_stats,
@@ -222,9 +225,12 @@ def holdout_analysis(
   is_wr = is_stats.get("win_rate")
   oos_wr = oos_stats.get("win_rate")
 
+  from core.market_clock import last_candle_ts_utc
+  as_of = last_candle_ts_utc(df)
   return {
     "available": True,
     "method": "holdout",
+    "data_as_of_utc": as_of.isoformat() if as_of else None,
     "test_pct": test_pct,
     "split_bar": split,
     "in_sample": is_stats,

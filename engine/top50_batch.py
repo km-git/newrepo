@@ -34,6 +34,7 @@ from engine.indicator_calibration import (
 from engine.system_audit import run_system_audit, apply_audit_demotions
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
+from core.market_clock import data_as_of_from_frames, market_now_utc
 from engine.timeframes import DEFAULT_TFS  # re-export for CLI scripts
 
 _REPORTS_DIR = Path("reports")
@@ -124,7 +125,7 @@ def run_top_crypto_batch(
   out = Path(output_dir)
   out.mkdir(parents=True, exist_ok=True)
 
-  ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+  ts = market_now_utc().strftime("%Y%m%d_%H%M%S")
   pairs_csv = out / f"top{n}_{quote.lower()}_{ts}.csv"
   json_path = out / f"top{n}_analysis_{ts}.json"
   summary_path = out / f"top{n}_summary_{ts}.csv"
@@ -312,7 +313,10 @@ def run_top_crypto_batch(
       by_verdict[v] = by_verdict.get(v, 0) + 1
 
   meta = {
-    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    "timestamp_utc": data_as_of_from_frames(
+      (results[-1].get("_data_frames") or {}) if results else {},
+      prefer_tf="1h",
+    ) or market_now_utc().isoformat(),
     "pairs_count": len(pairs),
     "timeframes": tfs,
     "pairs": pairs,

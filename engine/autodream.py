@@ -34,11 +34,18 @@ def _load_history(limit: int = 5000) -> List[dict]:
   return rows[-limit:]
 
 
-def record_outcome(symbol: str, outcomes: dict, price: float, pipeline_status: str) -> None:
+def record_outcome(
+  symbol: str,
+  outcomes: dict,
+  price: float,
+  pipeline_status: str,
+  *,
+  data_as_of_utc: Optional[str] = None,
+) -> None:
   """Append run to historical log for continuous learning."""
   HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
   entry = {
-    "ts": datetime.now(timezone.utc).isoformat(),
+    "ts": data_as_of_utc or datetime.now(timezone.utc).isoformat(),
     "symbol": symbol,
     "price": price,
     "pipeline_status": pipeline_status,
@@ -138,7 +145,8 @@ def analyze_historical(
     "logged_setups": len(style_hist),
     "confidence_adjustment": round((win_rate - 0.5) * 0.1, 3) if win_rate is not None else 0,
     "lessons": _lessons(win_rate, style_hist, style, total, result.get("avg_pnl_r")),
-    "next_review_utc": datetime.now(timezone.utc).isoformat(),
+    "next_review_utc": (data_df.index[-1].to_pydatetime().astimezone(timezone.utc).isoformat()
+                        if data_df is not None and len(data_df) else datetime.now(timezone.utc).isoformat()),
   }
 
 
