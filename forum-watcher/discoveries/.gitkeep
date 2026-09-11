@@ -1,0 +1,2 @@
+# Copy this workflow to the destination repo's .github/workflows/forum-watcher.yml
+# and flatten paths (working-directory / add-paths) if the kit is the repo root.

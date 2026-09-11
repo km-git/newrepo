@@ -14,9 +14,14 @@ reports/*
 !reports/TRADE_SETUPS.md
 !reports/COMPLETE_TRADING_ANALYSIS.md
 !reports/trade_setups_matrix.html
+!reports/monetize_explorer.html
+!reports/dmarc_explorer.html
+!reports/cost_explorer.html
 !reports/latest_executable_pair_tf.csv
 !reports/HISTORICAL_PERFORMANCE.md
 !reports/PAPER_PNL.md
+!reports/MONETIZATION_STRATEGY.md
+!reports/sspm_explorer.html
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/
@@ -35,3 +40,11 @@ venv/
 !.cursor/skills/**
 !.cursor/rules/
 !.cursor/rules/**
+
+state/accept-reject.jsonl
+state/discover_queue.json
+state/gap_audit.json
+state/candidates.md
+monthly/*.md
+.ruff_cache/
+dspm/**/__pycache__/

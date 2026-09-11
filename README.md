@@ -7,7 +7,7 @@ CLI tool for Elliott Wave impulse validation (strict R1/R2/R3), ABC correction d
 - **Multi-timeframe pipeline** (1w → 15m): HTF bias, adaptive MonoWaves, kill zone clustering, harmonic overlay, execution validation
 - **Strict rule enforcement**: R1/R2/R3 are hard gates; no rule relaxation for standard impulses
 - **Token-saving infrastructure** for Cursor agents:
-  - **Compressed disk cache** (`zstd` + `msgpack` + `diskcache`) for OHLCV, monowaves, harmonics, Monte Carlo
+  - **Compressed disk cache** (`zstd` + `msgpack` + sqlite index) for OHLCV, monowaves, harmonics, Monte Carlo
   - **Semantic gateway cache** (Cloudflare AI Gateway pattern) for repetitive OKX OHLCV queries
   - **RepoMix export** (`--repomix`) minifies code structures for LLM agent context
   - **Deduplication** of harmonic patterns, monowaves, and tool-call logs
@@ -68,7 +68,7 @@ EW_MINIMIZE_GPT=0                      # default — GPT allowed; set 1 to prefe
 EW_LLM_INTELLIGENCE=ensemble         # ensemble | single | dual
 ```
 
-**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `diskcache` · `zstandard` · `cachetic` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
+**Libraries:** `tiktoken` · `llm-token-optimizer` · `tokenpruner` · `msgpack` · `zstandard` · `joblib` · `foldback-ai` · internal `cache/dedup` + `TokenStore` + GitHub EW consensus.
 
 ## Cursor Pro backend (default)
 
@@ -310,7 +310,62 @@ The page auto-refreshes every 30s and polls `/api/dashboard` for:
 - Executable monitor queue
 - Embedded trade setups matrix iframe
 
-Artifacts: `output/monitor.html`, `output/autodream/dashboard_state.json` (regenerated on batch + server start).
+Artifacts: `output/monitor.html`, `output/autodream/dashboard_state.json` (regenerated on batch + server start). Header link opens the Monetize Explorer at `/monetize`.
+
+## Monetize Explorer
+
+Offline-safe license explorer. Open the committed HTML on your machine — no server required:
+
+```bash
+# Regenerate the self-contained page (prints a file:// path)
+python3 ew_tool.py --monetize-ui --static
+```
+
+Then open **[reports/monetize_explorer.html](reports/monetize_explorer.html)** (or the printed `file://` path) in a browser. Free / Pro / Enterprise switching is client-side from the embedded access matrix.
+
+Optional local server (binds `0.0.0.0`, prints clickable URLs on their own lines):
+
+```bash
+python3 ew_tool.py --monetize-ui
+# or
+python3 scripts/serve_monetize.py
+```
+
+```
+http://127.0.0.1:8765/monetize
+```
+
+A localhost URL on a remote Cloud Agent VM is not reachable from your laptop — use the static file there. The page shows the current `EW_LICENSE_TIER`, an interactive Free / Pro / Enterprise matrix, the royalty report (`output/system/royalty_report.json`), and gated-action probes that call `AccessController.require()` only (no live trading). APIs: `/api/monetize/status`, `/api/monetize/tier`, `/api/monetize/require`.
+
+## Tape-to-Cloud (working disk ingest + hub)
+
+`--monitor` serves the tape-to-cloud product at `/` (16 modules, six layers, sample reports). EW monitor remains at `/monitor`; Monetize Explorer remains at `/monetize`. This is **not** an LTO library controller.
+
+The live path copies **real file bytes** from disk, writes pre/post SHA-256, an append-only chain-of-custody log, optional WORM lock, stdlib `.eml`/`.mbox` extract, then restore/verify. Sample ACME module reports and SHA-256 intactness fixtures are labeled `sample: true`. Live jobs are `sample: false`.
+
+```bash
+python -m tape_to_cloud ingest ./my-export --matter HOLD-4412 --worm-until 2033-12-31T00:00:00+00:00 --keyword HOLD-4412
+python -m tape_to_cloud verify JOB_ID
+python -m tape_to_cloud restore JOB_ID ./restored
+python -m tape_to_cloud status
+python -m tape_to_cloud report audit
+python3 ew_tool.py --tape-ingest ./my-export --tape-matter HOLD-4412
+python3 ew_tool.py --tape-status
+python3 ew_tool.py --monitor
+```
+
+```
+http://127.0.0.1:8765/
+http://127.0.0.1:8765/tape-to-cloud
+http://127.0.0.1:8765/tape-to-cloud/jobs
+http://127.0.0.1:8765/tape-to-cloud/reports
+http://127.0.0.1:8765/tape-to-cloud/reports/job-pack
+http://127.0.0.1:8765/tape-to-cloud/validation
+```
+
+Each module has an HTML sample report plus JSON at `/api/tape-to-cloud/reports/<module>`. Six vendor-shaped intactness packages (`rpt-audit-cma-2026-q1`, …) share the same prefix. Discovery docs are at `/tape-to-cloud/docs/<file>`. Status API: `/api/tape-to-cloud/status`. Live jobs: `/api/tape-to-cloud/jobs`. Intactness: `/api/tape-to-cloud/validation`.
+
+Store root: `EW_TAPE_STORE` or `output/tape_to_cloud/store`. `.enc` files without `--unwrap-key` are refused (`STOP_AND_ASK`). Not in this MVP: LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network.
 
 ## Architecture
 
@@ -353,3 +408,22 @@ Every output includes `executive_decision` with verdict, conviction, playbook, c
 ## Cache Environment
 
 Set `EW_CACHE_DIR` to override default `.cache/ew_tool`.
+
+## SSPM Configuration & Inventory Explorer
+
+Sibling product under `sspm/`: read-only SaaS posture reports (M365, Google Workspace, GitHub, Slack, Okta). Not an attestation.
+
+```bash
+python3 -m sspm demo
+python3 ew_tool.py --sspm-ui --static   # reports/sspm_explorer.html
+make sspm-all
+```
+
+## DSPM (data posture)
+
+Sibling product under `dspm/`. Open-source Cyera-like inventory/classify/risk path. See `dspm/README.md`.
+
+```bash
+python3 -m dspm audit inventory
+make dspm-all
+```

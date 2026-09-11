@@ -1,0 +1,55 @@
+# Configuration & Inventory Report
+
+**Customer:** {{ display_name }}
+**Tenant type:** {{ tenant_type }}
+**Generated:** {{ generated_at }}
+**Tool version:** {{ version }}
+**Scanner:** {{ scanner }}
+
+This is a Configuration & Inventory Report. It is not a security assessment and not an audit.
+
+## Honest gap
+
+{{ honest_gap }}
+
+## Tenant inventory
+
+{% for s in settings -%}
+- `{{ s.name }}` = `{{ s.value }}` ({{ s.source }})
+{% endfor %}
+
+## Installed / granted apps (names only)
+
+{% for a in apps -%}
+- {{ a.name }} ({{ a.publisher }})
+{% else -%}
+- none listed
+{% endfor %}
+
+## Drift versus shipped baseline
+
+{% for d in drift -%}
+- `{{ d.setting_name }}`: {{ d.old_value }} → {{ d.new_value }} (source: {{ d.change_source }})
+{% else -%}
+- none observed against the shipped baseline
+{% endfor %}
+
+## OAuth grants (scopes only)
+
+{% for g in oauth -%}
+- {{ g.app_name }} ({{ g.publisher }}) scopes `{{ g.scopes }}` risk={{ g.risk_level }} last_used={{ g.last_used }}
+{% else -%}
+- none
+{% endfor %}
+
+## Control references
+
+The table below is a mapping aid. A "matches-reference" label is not a control status.
+
+{% for r in control_refs -%}
+- {{ r.framework }} {{ r.control_id }}: {{ r.title }} — {{ r.reference_status }}
+{% endfor %}
+
+## Method
+
+Read-only APIs and/or fixtures. Microsoft Graph live path uses `/v1.0/subscribedSkus` (not metered beta cloudLicensing). Slack message bodies and Gmail bodies are not retrieved.

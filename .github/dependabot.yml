@@ -1,0 +1,23 @@
+# Free GitHub-native dependency updates (Dependabot).
+# Complements pip-audit + OSV-Scanner. Weekly, no paid tools.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    ignore:
+      - dependency-name: "torch"
+      - dependency-name: "trivy"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies

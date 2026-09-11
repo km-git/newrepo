@@ -1,0 +1,60 @@
+ROUTING DISCIPLINE (apply to every chat and agent run, especially when
+building the tape-to-cloud migration tool from the blueprint)
+
+Default model: pick a cheap one. Use Grok Code Fast first, then Grok 4.5,
+then Composer 2.5 Standard (not Fast), then GPT-5.6 Luna, then
+Claude Haiku 4.5. Never start a chat on Sonnet, Opus, Fable, or
+Composer Fast unless I asked for it by name.
+
+Escalate to an expensive model (Sonnet 5, Opus 5, Fable 5.1,
+Composer Fast, GPT-5.6 Sol/Terra) only when:
+  - the change is a multi-file refactor with cross-cutting effects
+    across the 16 modules of the tape-to-cloud tool,
+  - the bug is subtle concurrency / security / KMS / KMIP / WORM /
+    Temporal replay / AWS credential scope / eDiscovery hold,
+  - I am making an architecture decision (license vs re-implement
+    MediaGenie Proteus, orchestrator choice, multi-tenant data model,
+    chain-of-custody legal posture, WORM vs GDPR erasure),
+  - the task needs >50K tokens of code at once, or
+  - a cheap model has already failed on the same task in this chat
+    and you can name the specific failure.
+Tell me which trigger fired when you escalate.
+
+The expensive models are NOT for: docstrings, comments, README, ADR
+drafts, renames, lint fixes, scaffolding, test generation for
+already-written code, repo search, code explanation, the SHA-256
+manifest writer, the S3 multipart uploader, the lifecycle policy
+sweep, the Postgres audit schema, the ffmpeg proxy pipeline, the
+tesseract OCR call, the PII scrubber, the tokenization sharder, the
+disk-ingest reader, the tape-vault API integration, or the monetize
+license-tag writer.
+
+Default tech stack for this project:
+- Python 3.12+
+- mt-st, mbuffer, tar, ltfs, stenc for tape I/O
+- boto3 (S3-compatible); SeaweedFS on-prem default (not MinIO CE)
+- Postgres + SQLAlchemy 2.x for the audit DB
+- Temporal (per-tape state machine), Argo (bursts), Airflow (daily refresh)
+- License MediaGenie Proteus for proprietary backup-app formats unless I say otherwise
+- mediainfo, ffmpeg, tesseract, presidio, datatrove for media/AI
+- Feature depth: discovery/tape-to-cloud/feature-completeness.md
+  (integrity, ediscovery, kms-kmip, worm, format-readers, media-rescue)
+
+Keep context small. Use @file / @folder, not @codebase. Point to the
+blueprint section by filename, not by full paste. Start fresh chats
+when context bloats. Ignore node_modules, .venv, dist, build,
+__pycache__, large fixtures, vendor, coverage.
+
+Max Mode is OFF by default. Do not enable it unless I say so.
+
+At the end of multi-step tasks, write one line:
+[model: <name>] [Bucket: A=cheap / B=cheap-flagship / C=expensive / D=frontier]
+[reason if B/C/D: <trigger>] [module: <audit|analytics|vtl-cloud|...>]
+
+Stop and ask me before: adding a per-token SaaS dependency, choosing
+license-vs-reimplement, picking a default cloud vendor, changing the
+manifest schema, changing the WORM policy, resolving WORM/hold vs
+GDPR erasure, defaulting bit-image vs file-extract, or reading
+hardware-encrypted media without a customer KMIP/KMS key.
+
+If I name a model in my request, use that one. Do not silently re-route.

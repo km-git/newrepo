@@ -36,6 +36,15 @@ export EW_RESOLVE_MODE="${EW_RESOLVE_MODE:-skip}"
 export EW_OHLC_PARALLEL="${EW_OHLC_PARALLEL:-1}"
 export EW_OHLC_PARALLEL_WORKERS="${EW_OHLC_PARALLEL_WORKERS:-8}"
 
+POLICY="${ROOT}/config/profit_lab_policy.env"
+if [[ -f "$POLICY" ]] && [[ "${EW_USE_PROFIT_LAB_POLICY:-1}" != "0" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$POLICY"
+  set +a
+  echo "[daily-ops] loaded profit lab policy from $POLICY"
+fi
+
 exec > >(tee -a "$LOG") 2>&1
 echo "[daily-ops] started $(date -u +%Y-%m-%dT%H:%M:%SZ) log=$LOG"
 echo "[daily-ops] resolve_mode=${EW_RESOLVE_MODE} skip_resolve=${EW_PAPER_FORWARD_SKIP_RESOLVE}"

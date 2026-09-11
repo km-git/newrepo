@@ -1,0 +1,6 @@
+# Lightweight deps so `pytest tests/` can run the deliverability toolkit.
+# Heavy extras (parsedmarc, Presidio, DuckDB, psycopg) stay in dmarc/pyproject.toml.
+dnspython>=2.7.0
+jinja2>=3.1.5
+cryptography>=42.0.0
+defusedxml>=0.7.1

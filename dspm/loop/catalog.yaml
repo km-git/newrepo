@@ -1,0 +1,320 @@
+# Curated DSPM improvement catalog.
+# Categories: forum | github_tool | other_tool | python_lib
+# status is resolved at runtime; `integrated_in` is a repo path or null.
+# cost must stay $0 — commercial DSPM/DLP/CSPM entries are anti-patterns (skip).
+
+items:
+  # --- Forums (Discover sources) ---
+  - id: forum_reddit_cybersecurity
+    name: r/cybersecurity
+    category: forum
+    module: dspm/classification
+    license: public
+    url: https://www.reddit.com/r/cybersecurity/.rss
+    integrated_in: dspm/loop/sources.yaml
+    impact: high
+    challenge: "Are DSPM vendor threads converted into module-fit Discover items or only counted?"
+  - id: forum_reddit_netsec
+    name: r/netsec
+    category: forum
+    module: dspm/exposure
+    license: public
+    url: https://www.reddit.com/r/netsec/.rss
+    integrated_in: dspm/loop/sources.yaml
+    impact: high
+    challenge: "Do CVE threads for Trivy/Prowler bump pins the same week?"
+  - id: forum_lobsters_security
+    name: Lobsters tag security
+    category: forum
+    module: dspm/risk
+    license: public
+    url: https://lobste.rs/t/security.rss
+    integrated_in: dspm/loop/sources.yaml
+    impact: medium
+    challenge: "Is Lobsters in the watcher, or Reddit-only?"
+  - id: forum_hn_dspm
+    name: Hacker News dspm/pii
+    category: forum
+    module: dspm/risk
+    license: public
+    url: https://hn.algolia.com/api/v1/search_by_date?query=dspm%20OR%20presidio%20OR%20%22data%20classification%22&tags=story
+    integrated_in: dspm/loop/sources.yaml
+    impact: high
+    challenge: "Are Show HN DSPM tools evaluated against the catalog before skip?"
+  - id: forum_trackawesomelist
+    name: Track Awesome List
+    category: forum
+    module: dspm/audit
+    license: public
+    url: https://www.trackawesomelist.com/rss.xml
+    integrated_in: dspm/loop/sources.yaml
+    impact: high
+    challenge: "Are awesome-security / awesome-privacy diffs queued as GitHub-tool candidates?"
+
+  # --- GitHub tools ---
+  - id: gh_presidio
+    name: data-privacy-stack/presidio
+    category: github_tool
+    module: dspm/classification
+    license: MIT
+    url: https://github.com/data-privacy-stack/presidio
+    integrated_in: dspm/classification/recognizers.py
+    impact: critical
+    challenge: "Is Presidio installed in CI, or only the stdlib PatternRecognizer fallback?"
+  - id: gh_piicatcher
+    name: tokern/piicatcher
+    category: github_tool
+    module: dspm/classification
+    license: Apache-2.0
+    url: https://github.com/tokern/piicatcher
+    integrated_in: dspm/classification/column_heuristics.py
+    impact: high
+    challenge: "Column-name heuristics ported — should we add table-level DB crawling next?"
+  - id: gh_dataprofiler
+    name: capitalone/DataProfiler
+    category: github_tool
+    module: dspm/classification
+    license: Apache-2.0
+    url: https://github.com/capitalone/DataProfiler
+    integrated_in: null
+    impact: high
+    challenge: "DataProfiler stats + PII labels would lift long-tail columns — candidate for Stage 2.5?"
+  - id: gh_cartography
+    name: lyft/cartography
+    category: github_tool
+    module: dspm/access
+    license: Apache-2.0
+    url: https://github.com/lyft/cartography
+    integrated_in: null
+    impact: high
+    challenge: "No asset/identity graph — Steampipe edges are flat. Cartography Neo4j would close the Cyera identity-gap."
+  - id: gh_scoutsuite
+    name: nccgroup/ScoutSuite
+    category: github_tool
+    module: dspm/exposure
+    license: GPL-2.0
+    url: https://github.com/nccgroup/ScoutSuite
+    integrated_in: null
+    impact: medium
+    challenge: "GPL-2.0 — CLI subprocess only, same AGPL discipline as Steampipe?"
+  - id: gh_checkov
+    name: bridgecrewio/checkov
+    category: github_tool
+    module: dspm/encryption_check
+    license: Apache-2.0
+    url: https://github.com/bridgecrewio/checkov
+    integrated_in: null
+    impact: high
+    challenge: "Trivy covers IaC; Checkov CIS policies overlap — parse Checkov JSON as a second exposure feed?"
+  - id: gh_gitleaks
+    name: gitleaks/gitleaks
+    category: github_tool
+    module: dspm/encryption_check
+    license: MIT
+    url: https://github.com/gitleaks/gitleaks
+    integrated_in: null
+    impact: high
+    challenge: "Secret scanning is Trivy-only. Gitleaks CLI would catch git-history secrets Trivy fs misses."
+  - id: gh_cloudsplaining
+    name: salesforce/cloudsplaining
+    category: github_tool
+    module: dspm/access
+    license: BSD-3-Clause
+    url: https://github.com/salesforce/cloudsplaining
+    integrated_in: null
+    impact: high
+    challenge: "Over-privileged IAM scoring is a stub. Cloudsplaining HTML/JSON is the OSS IAM Privilege Escalation map."
+  - id: gh_pmapper
+    name: nccgroup/PMapper
+    category: github_tool
+    module: dspm/access
+    license: MIT
+    url: https://github.com/nccgroup/PMapper
+    integrated_in: null
+    impact: medium
+    challenge: "Principal graph for AWS IAM — complements Steampipe; still CLI-only."
+  - id: gh_osv_scanner
+    name: google/osv-scanner
+    category: github_tool
+    module: dspm/audit
+    license: Apache-2.0
+    url: https://github.com/google/osv-scanner
+    integrated_in: null
+    impact: high
+    challenge: "pip-audit is in dspm-ci; OSV-Scanner SARIF would cover Go CLIs (Trivy, CloudQuery) pip-audit cannot see."
+  - id: gh_syft
+    name: anchore/syft
+    category: github_tool
+    module: dspm/audit
+    license: Apache-2.0
+    url: https://github.com/anchore/syft
+    integrated_in: null
+    impact: medium
+    challenge: "No SBOM of the DSPM image itself — Syft CycloneDX is free and matches the tape-to-cloud loop."
+  - id: gh_postgres_anonymizer
+    name: dalibo/postgresql_anonymizer
+    category: github_tool
+    module: dspm/remediation
+    license: PostgreSQL
+    url: https://gitlab.com/dalibo/postgresql_anonymizer
+    integrated_in: null
+    impact: medium
+    challenge: "Masking is Presidio-anonymizer stub. postgres_anonymizer is the on-prem dump-masking engine AU SMBs actually run."
+  - id: gh_great_expectations
+    name: great-expectations/great_expectations
+    category: github_tool
+    module: dspm/classification
+    license: Apache-2.0
+    url: https://github.com/great-expectations/great_expectations
+    integrated_in: null
+    impact: medium
+    challenge: "Expect suites on classified columns would catch schema drift that Presidio regex misses."
+
+  # --- Other tools (CLI / platforms, still $0) ---
+  - id: tool_osv_dev
+    name: OSV.dev API
+    category: other_tool
+    module: dspm/audit
+    license: public
+    url: https://api.osv.dev/v1/query
+    integrated_in: null
+    impact: high
+    challenge: "Key-less CVE query for Trivy/CloudQuery/Steampipe versions — not yet called from dspm audit."
+  - id: tool_mend_bolt
+    name: Mend Bolt for GitHub
+    category: other_tool
+    module: dspm/audit
+    license: free-app
+    url: https://github.com/marketplace/whitesource-bolt
+    integrated_in: .github/dependabot.yml
+    impact: medium
+    challenge: "Dependabot is wired; Mend Bolt GitHub App still needs operator install (5 scans/day, $0)."
+  - id: tool_renovate
+    name: Renovate
+    category: other_tool
+    module: dspm/loop
+    license: AGPL-3.0
+    url: https://github.com/renovatebot/renovate
+    integrated_in: null
+    impact: medium
+    challenge: "Dependabot only. Renovate groups SHA-pins for Actions — self-host if Mend-hosted concurrency hits the free cap."
+  - id: tool_zizmor
+    name: zizmor
+    category: other_tool
+    module: dspm/loop
+    license: Apache-2.0
+    url: https://github.com/zizmorcore/zizmor
+    integrated_in: null
+    impact: high
+    challenge: "dspm-auto-approve uses pull_request_target. zizmor would fail the workflow until persist-credentials is locked down."
+  - id: tool_actionlint
+    name: actionlint
+    category: other_tool
+    module: dspm/loop
+    license: MIT
+    url: https://github.com/rhysd/actionlint
+    integrated_in: .github/workflows/lint-security.yml
+    impact: medium
+    challenge: "Existing lint-security job covers workflows; confirm new dspm-*.yml stay actionlint-clean."
+
+  # --- Python libraries ---
+  - id: lib_presidio
+    name: presidio-analyzer
+    category: python_lib
+    module: dspm/classification
+    license: MIT
+    url: https://pypi.org/project/presidio-analyzer/
+    pypi: presidio-analyzer
+    integrated_in: dspm/classification/recognizers.py
+    impact: critical
+    challenge: "Optional extra — default path is stdlib recognizers. Should CI install the pii extra on a weekly job?"
+  - id: lib_duckdb
+    name: duckdb
+    category: python_lib
+    module: dspm/risk
+    license: MIT
+    url: https://pypi.org/project/duckdb/
+    pypi: duckdb
+    integrated_in: dspm/risk/service.py
+    impact: high
+    challenge: "SQL formula is in Python; DuckDB path is optional. Install duckdb in dspm-ci to lock parity?"
+  - id: lib_piicatcher
+    name: piicatcher
+    category: python_lib
+    module: dspm/classification
+    license: Apache-2.0
+    url: https://pypi.org/project/piicatcher/
+    pypi: piicatcher
+    integrated_in: dspm/classification/column_heuristics.py
+    impact: high
+    challenge: "Heuristics ported; full piicatcher catalog detector still missing."
+  - id: lib_dataprofiler
+    name: DataProfiler
+    category: python_lib
+    module: dspm/classification
+    license: Apache-2.0
+    url: https://pypi.org/project/DataProfiler/
+    pypi: DataProfiler
+    integrated_in: null
+    impact: high
+    challenge: "Capital One DataProfiler is Apache-2.0 and does column stats + PII — strongest OSS lift vs Cyera long-tail."
+  - id: lib_scrubadub
+    name: scrubadub
+    category: python_lib
+    module: dspm/classification
+    license: MIT
+    url: https://pypi.org/project/scrubadub/
+    pypi: scrubadub
+    integrated_in: null
+    impact: medium
+    challenge: "Filth detectors overlap Presidio. Use as a second voter, not a replacement."
+  - id: lib_detect_secrets
+    name: detect-secrets
+    category: python_lib
+    module: dspm/encryption_check
+    license: Apache-2.0
+    url: https://pypi.org/project/detect-secrets/
+    pypi: detect-secrets
+    integrated_in: null
+    impact: high
+    challenge: "Yelp detect-secrets is Python-native (no Go CLI). Baseline file would catch AKIA in customer dumps."
+  - id: lib_policyuniverse
+    name: policyuniverse
+    category: python_lib
+    module: dspm/access
+    license: Apache-2.0
+    url: https://pypi.org/project/policyuniverse/
+    pypi: policyuniverse
+    integrated_in: null
+    impact: high
+    challenge: "Salesforce PolicyUniverse expands IAM documents to actions — the missing piece of findings_access."
+  - id: lib_sqlglot
+    name: sqlglot
+    category: python_lib
+    module: dspm/discovery
+    license: MIT
+    url: https://pypi.org/project/sqlglot/
+    pypi: sqlglot
+    integrated_in: null
+    impact: medium
+    challenge: "Parse warehouse SQL for CREATE TABLE + PII column names without a live DB."
+  - id: lib_chromadb
+    name: chromadb
+    category: python_lib
+    module: dspm/ai_security
+    license: Apache-2.0
+    url: https://pypi.org/project/chromadb/
+    pypi: chromadb
+    integrated_in: dspm/ai_security/service.py
+    impact: medium
+    challenge: "AI scanner is JSONL-only. chromadb get() export would make scan-vectorstore real."
+  - id: lib_pip_audit
+    name: pip-audit
+    category: python_lib
+    module: dspm/audit
+    license: Apache-2.0
+    url: https://pypi.org/project/pip-audit/
+    pypi: pip-audit
+    integrated_in: .github/workflows/dspm-ci.yml
+    impact: high
+    challenge: "dspm-ci runs pip-audit; does it fail the job on --strict for optional extras we do not install?"

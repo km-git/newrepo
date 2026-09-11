@@ -1,0 +1,147 @@
+# Add or remove freely; the watcher reloads on every run.
+# kind: rss (default) | algolia | se-api
+- name: r/sysadmin
+  url: https://www.reddit.com/r/sysadmin/.rss
+  kind: rss
+  module_hint: tape-ops, restore
+  max_items: 25
+- name: r/DataHoarder
+  url: https://www.reddit.com/r/DataHoarder/.rss
+  kind: rss
+  module_hint: media-ingest, tape-vault
+  max_items: 25
+- name: r/homelab
+  url: https://www.reddit.com/r/homelab/.rss
+  kind: rss
+  module_hint: disk-ingest
+  max_items: 25
+- name: r/selfhosted
+  url: https://www.reddit.com/r/selfhosted/.rss
+  kind: rss
+  module_hint: disk-ingest, tape-vault
+  max_items: 25
+- name: r/BorgBackup
+  url: https://www.reddit.com/r/BorgBackup/.rss
+  kind: rss
+  module_hint: disk-ingest
+  max_items: 25
+- name: r/Veeam
+  url: https://www.reddit.com/r/Veeam/.rss
+  kind: rss
+  module_hint: vtl-cloud, restore
+  max_items: 25
+- name: HN Algolia tape ops
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=tape%20OR%20ltfs%20OR%20lto&tags=story&hitsPerPage=20"
+  kind: algolia
+  module_hint: tape-ops
+  max_items: 20
+- name: HN Algolia vtl
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=vtl%20OR%20veeam%20OR%20commvault&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: vtl-cloud
+  max_items: 15
+- name: SO tag backup
+  url: https://stackoverflow.com/feeds/tag/backup
+  kind: rss
+  module_hint: disk-ingest, restore
+  max_items: 25
+- name: SO API backup
+  url: https://api.stackexchange.com/2.3/questions?order=desc&sort=activity&tagged=backup&site=stackoverflow&pagesize=15
+  kind: se-api
+  module_hint: disk-ingest, restore
+  max_items: 15
+- name: lobsters hardware
+  url: https://lobste.rs/t/hardware.rss
+  kind: rss
+  module_hint: disk-ingest, tape-ops
+  max_items: 15
+- name: lobsters linux
+  url: https://lobste.rs/t/linux.rss
+  kind: rss
+  module_hint: tape-ops, disk-ingest
+  max_items: 15
+- name: borg releases
+  url: https://github.com/borgbackup/borg/releases.atom
+  kind: rss
+  module_hint: disk-ingest
+  max_items: 5
+- name: kopia releases
+  url: https://github.com/kopia/kopia/releases.atom
+  kind: rss
+  module_hint: disk-ingest
+  max_items: 5
+- name: restic releases
+  url: https://github.com/restic/restic/releases.atom
+  kind: rss
+  module_hint: disk-ingest
+  max_items: 5
+- name: velero releases
+  url: https://github.com/velero-io/velero/releases.atom
+  kind: rss
+  module_hint: disk-ingest
+  max_items: 5
+- name: AWS storage blog
+  url: https://aws.amazon.com/blogs/storage/feed/
+  kind: rss
+  module_hint: tape-vault, vtl-cloud
+  max_items: 10
+- name: Tape Ark blog
+  url: https://www.tapeark.com/feed/
+  kind: rss
+  module_hint: monetize
+  max_items: 5
+- name: parsedmarc releases
+  url: https://github.com/domainaware/parsedmarc/releases.atom
+  kind: rss
+  module_hint: dmarc_ingest, aggregate_report
+  max_items: 5
+- name: dnspython releases
+  url: https://github.com/rthalley/dnspython/releases.atom
+  kind: rss
+  module_hint: dns_check, spf_parser, dkim_check
+  max_items: 5
+- name: HN Algolia dmarc
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=dmarc%20OR%20spf%20OR%20dkim&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: dmarc_ingest, report_writer
+  max_items: 15
+- name: SO tag dmarc
+  url: https://stackoverflow.com/feeds/tag/dmarc
+  kind: rss
+  module_hint: dmarc_ingest, dns_check
+  max_items: 15
+- name: cnspec releases
+  url: https://github.com/mondoohq/cnspec/releases.atom
+  kind: rss
+  module_hint: sspm/m365_discovery
+  max_items: 10
+- name: HN SSPM
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=sspm%20OR%20cnspec%20OR%20appomni&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: sspm/audit
+  max_items: 15
+- name: SO microsoft-graph
+  url: https://stackoverflow.com/feeds/tag/microsoft-graph
+  kind: rss
+  module_hint: sspm/m365_discovery
+  max_items: 10
+- name: prowler releases
+  url: https://github.com/prowler-cloud/prowler/releases.atom
+  kind: rss
+  module_hint: cost
+  max_items: 5
+- name: steampipe releases
+  url: https://github.com/turbot/steampipe/releases.atom
+  kind: rss
+  module_hint: cost
+  max_items: 5
+- name: cloud-custodian releases
+  url: https://github.com/cloud-custodian/cloud-custodian/releases.atom
+  kind: rss
+  module_hint: cost
+  max_items: 5
+- name: r/FinOps
+  url: https://www.reddit.com/r/FinOps/.rss
+  kind: rss
+  module_hint: cost
+  max_items: 15

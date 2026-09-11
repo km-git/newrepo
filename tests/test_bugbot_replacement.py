@@ -1,0 +1,251 @@
+"""Integrity checks for the Ruff + PR-Agent Bugbot replacement."""
+
+from __future__ import annotations
+
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+RUFF_TOML = ROOT / "ruff.toml"
+PRECOMMIT = ROOT / ".pre-commit-config.yaml"
+PR_AGENT = ROOT / ".github" / "workflows" / "pr-agent.yml"
+LINT_SECURITY = ROOT / ".github" / "workflows" / "lint-security.yml"
+STATIC_REVIEW = ROOT / ".github" / "workflows" / "static-review.yml"
+GUIDE = ROOT / "mavis-deep-research" / "20260907_bugbot_replacement" / "final_turn_001.md"
+
+RUFF_SELECT = ("E", "F", "W", "I", "UP", "B", "SIM", "RUF", "S")
+PR_AGENT_SHA = "f3b385ea2927247ddcff2fe252472380b9c8f5fc"
+GITLEAKS_SHA = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
+CODEQL_SHA = "cdf488f595d80d6e07e03d4674febd5ab45fa938"
+REVIEWDOG_SHA = "d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f"
+CREATE_PR_SHA = "5f6978faf089d4d20b00c7766989d076bb2fc7f1"
+HMARR_SHA = "05a696a09d381a5a0d142c755f7eacbb19eb6525"
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+USES_RE = re.compile(r"^\s*uses:\s+(\S+)", re.MULTILINE)
+BUGBOT_FREE = ROOT / ".github" / "workflows" / "bugbot-free.yml"
+
+
+def test_guide_describes_the_five_minute_stack() -> None:
+    text = GUIDE.read_text(encoding="utf-8")
+    assert "Ruff" in text
+    assert "PR-Agent" in text
+    assert "CodeRabbit" in text
+    assert "CodeQL" in text
+    assert "Semgrep" in text
+    assert "reviewdog" in text
+
+
+def test_ruff_toml_selects_bugbot_replacement_rules() -> None:
+    text = RUFF_TOML.read_text(encoding="utf-8")
+    for code in RUFF_SELECT:
+        assert f'"{code}"' in text, code
+    assert "S" in text
+
+
+def test_pre_commit_uses_current_ruff_not_guide_pin() -> None:
+    text = PRECOMMIT.read_text(encoding="utf-8")
+    assert "astral-sh/ruff-pre-commit" in text
+    assert "id: ruff" in text
+    assert "id: ruff-format" in text
+    assert re.search(r"^\s+rev:\s+v0\.6\.9\s*$", text, re.MULTILINE) is None
+    assert re.search(r"^\s+rev:\s+v0\.9\.\d+\s*$", text, re.MULTILINE)
+    assert "E,F,W,I,UP,B,SIM,RUF,S" in text
+    assert "--fix" in text
+
+
+def test_pr_agent_workflow_is_sha_pinned_and_skips_without_key() -> None:
+    text = PR_AGENT.read_text(encoding="utf-8")
+    assert PR_AGENT.is_file()
+    assert f"the-pr-agent/pr-agent@{PR_AGENT_SHA}" in text
+    assert "v0.45.0" in text
+    assert "OPENAI_KEY" in text
+    assert "github_action_config.auto_review" in text
+    assert "github_action_config.auto_describe" in text
+    assert "github_action_config.auto_improve" in text
+    assert "gpt-4o-mini" in text
+    assert "present=true" in text
+    assert "CodeRabbit" in text
+    assert "pull_request_target" not in text
+    assert "github.event.issue.pull_request" in text
+    for uses in USES_RE.findall(text):
+        assert not uses.endswith("@main"), uses
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref), uses
+
+
+def test_no_compromised_reviewdog_action_setup_tag() -> None:
+    """CVE-2025-30154 hit the mutable @v1 tag. SHA-pinned action-setup is allowed."""
+    workflows = ROOT / ".github" / "workflows"
+    for path in workflows.glob("*.yml"):
+        text = path.read_text(encoding="utf-8")
+        assert "uses: reviewdog/action-setup@v1" not in text, path.name
+        assert "uses: reviewdog/action-setup@main" not in text, path.name
+        for uses in USES_RE.findall(text):
+            if not uses.startswith("reviewdog/action-setup@"):
+                continue
+            ref = uses.split("@", 1)[1].split("#", 1)[0]
+            assert SHA_RE.fullmatch(ref), uses
+            assert ref == REVIEWDOG_SHA, uses
+
+
+def test_codeql_and_trufflehog_are_sha_pinned() -> None:
+    assert not (ROOT / ".github" / "workflows" / "codeql.yml").exists()
+    bugbot = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in bugbot
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in bugbot
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c" in lint
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in lint
+    for uses in USES_RE.findall(bugbot + "\n" + lint):
+        if uses.startswith("actions/"):
+            continue
+        if uses.startswith("google/osv-scanner-action/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        if "/" not in uses:
+            continue
+        if uses.startswith(
+            ("gitleaks/", "the-pr-agent/", "github/codeql-action/", "trufflesecurity/", "reviewdog/", "hmarr/")
+        ):
+            assert SHA_RE.fullmatch(ref), uses
+    text = LINT_SECURITY.read_text(encoding="utf-8")
+    assert f"gitleaks/gitleaks-action@{GITLEAKS_SHA}" in text
+    assert "gitleaks/gitleaks-action@v2" not in text
+    assert "gitleaks/gitleaks-action@v3" not in text
+    assert "gitleaks/gitleaks-action@main" not in text
+    assert "--ignore-vuln PYSEC-2026-2447" in text
+    assert "--output-format=github" in text
+    assert "sspm" in text
+    assert "dspm/" in text
+    allow = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
+    assert "useDefault = true" in allow
+    ignore = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
+    assert "bb00f4049343f5e9b7636fb1f841a88af26daa1f:engine/tape_to_cloud_reports.py:generic-api-key:258" in ignore
+
+
+def test_ruff_passes_on_replacement_paths() -> None:
+    ruff = ROOT / ".venv" / "bin" / "ruff"
+    binary = str(ruff) if ruff.exists() else shutil.which("ruff")
+    if not binary:
+        pytest.skip("ruff is not installed")
+    paths = [
+        "tape_to_cloud/",
+        "dspm/",
+        "engine/monetization_strategy.py",
+        "engine/tape_to_cloud_hub.py",
+        "engine/tape_to_cloud_report_html.py",
+        "engine/tape_to_cloud_reports.py",
+        "tests/test_monetization_strategy.py",
+        "tests/test_tape_to_cloud_monetize.py",
+        "tests/test_tape_to_cloud_hub.py",
+        "tests/test_tape_to_cloud_layers.py",
+        "tests/test_tape_to_cloud_reports.py",
+        "tests/test_tape_to_cloud_pipeline.py",
+        "tests/test_bugbot_replacement.py",
+        "tests/test_dspm_architecture.py",
+        "tests/test_dspm_core.py",
+        "tests/test_dspm_loop.py",
+        "tests/test_dspm_improve.py",
+        "dmarc",
+        "tests/dmarc",
+        "scripts/serve_dmarc.py",
+        "sspm",
+        "cost/",
+        "tests/test_cost_pipeline.py",
+        "tests/test_cost_webui.py",
+        "tests/test_cost_language.py",
+        "tests/test_cost_workflows.py",
+        "tests/test_sspm_architecture.py",
+        "tests/test_sspm_core.py",
+        "tests/test_sspm_loop.py",
+        "tests/test_sspm_web.py",
+        "tests/test_sspm_report.py",
+        "tests/test_sspm_cli.py",
+    ]
+    subprocess.run([binary, "check", "--config", str(RUFF_TOML), *paths], check=True, cwd=ROOT)
+    subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
+
+
+def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
+    text = BUGBOT_FREE.read_text(encoding="utf-8")
+    assert "secrets.OPENAI_KEY" not in text
+    assert "CURSOR" not in text
+    assert f"github/codeql-action/init@{CODEQL_SHA}" in text
+    assert f"github/codeql-action/analyze@{CODEQL_SHA}" in text
+    assert f"github/codeql-action/upload-sarif@{CODEQL_SHA}" in text
+    assert f"reviewdog/action-setup@{REVIEWDOG_SHA}" in text
+    assert "semgrep" in text
+    assert "p/security-audit" in text
+    assert "sspm/" in text
+    assert "cost/" in text or "tape_to_cloud/ cost/" in text
+    assert "dspm/" in text
+    assert "merge_group" in text
+    assert "pull_request_target" not in text
+    assert "dmarc/" in text
+    assert "dspm/" in text
+    assert "merge_group:" in text
+    for uses in USES_RE.findall(text):
+        if uses.startswith("actions/"):
+            continue
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref), uses
+
+
+def _assert_uses_pinned(text: str) -> None:
+    for uses in USES_RE.findall(text):
+        assert not uses.endswith("@main"), uses
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref) or ref.startswith("v"), uses
+
+
+def test_static_review_workflow_is_zero_key_bugbot_replacement() -> None:
+    text = STATIC_REVIEW.read_text(encoding="utf-8")
+    assert "pull_request_target" not in text
+    assert "merge_group:" in text
+    assert "persist-credentials: false" in text
+    assert "--output-format=github" in text
+    assert "dmarc.loop.static_review" in text
+    assert "Bugbot" in text
+    _assert_uses_pinned(text)
+    for uses in USES_RE.findall(text):
+        ref = uses.split("@", 1)[1].split("#", 1)[0]
+        assert SHA_RE.fullmatch(ref), uses
+
+
+def test_lint_security_has_detect_secrets_and_github_annotations() -> None:
+    text = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "detect-secrets" in text
+    assert "trufflehog" in text
+    assert "ruff-sarif" in text
+    assert "zero-key-approve" in text
+    assert f"hmarr/auto-approve-action@{HMARR_SHA}" in text
+    assert "pull_request_target" not in text
+    assert "--output-format=github" in text
+    assert "dmarc/requirements.txt" in text
+    assert "dspm/" in text
+    assert "merge_group:" in text
+    assert "persist-credentials: false" in text
+    assert "permissions:" in text.split("jobs:")[0]
+    assert text.count("permissions:") >= 8
+    assert "osv-scanner-action@" in text
+    assert "osv-scanner-action@v2.5.1\n" not in text
+
+
+def test_dmarc_third_party_actions_are_sha_pinned() -> None:
+    workflows = ROOT / ".github" / "workflows"
+    for name in ("dmarc-monthly.yml", "dmarc-watch.yml", "dmarc-issue-fix.yml", "forum-watcher.yml"):
+        text = (workflows / name).read_text(encoding="utf-8")
+        assert f"peter-evans/create-pull-request@{CREATE_PR_SHA}" in text, name
+        assert "create-pull-request@v8\n" not in text, name
+    auto = (workflows / "dmarc-auto-approve.yml").read_text(encoding="utf-8")
+    assert f"hmarr/auto-approve-action@{HMARR_SHA}" in auto
+    keep = (workflows / "dmarc-keepalive.yml").read_text(encoding="utf-8")
+    assert "uses:" not in keep or all(
+        not line.strip().startswith("uses:") or "actions/" in line for line in keep.splitlines()
+    )
+    assert "permissions:" in keep
+    assert "actions: write" in keep

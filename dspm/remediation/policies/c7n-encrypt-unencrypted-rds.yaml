@@ -1,0 +1,13 @@
+policies:
+  - name: c7n-encrypt-unencrypted-rds
+    resource: aws.rds
+    risk_level: high
+    comments: Flag unencrypted RDS instances. Apply is operator-gated (snapshot + encrypt).
+    filters:
+      - type: value
+        key: StorageEncrypted
+        value: false
+    actions:
+      - type: mark
+        tag: dspm:encrypt
+        value: required
