@@ -8,6 +8,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import yaml
@@ -94,8 +95,12 @@ def parse_rss(text: str, *, max_items: int) -> list[dict[str, str]]:
 
 
 def fetch_text(url: str, timeout: int = 20) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ValueError(f"refusing non-https fetch ({parsed.scheme or 'missing-scheme'})")
     req = Request(url, headers={"User-Agent": "dspm-watcher/0.1"})
-    with urlopen(req, timeout=timeout) as resp:
+    # Scheme and hostname already restricted to HTTPS (SSRF / local-file).
+    with urlopen(req, timeout=timeout) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected
         return resp.read().decode("utf-8", errors="replace")
 
 
