@@ -104,7 +104,9 @@ Those vendors (CodeRabbit, Sourcery, CodeAnt AI, Bito, Greptile, Macroscope, Git
 |---|---|---|
 | AI PR review | Sourcery, CodeAnt, Bito, Greptile, Macroscope, Qodo SaaS | Ruff + CodeQL + Semgrep + reviewdog; PR-Agent when `OPENAI_KEY` is set. CodeRabbit Marketplace is optional (~4 PRs/hr), not required. |
 | Supply-chain / SCA | Mend SCA, Socket, Aikido | Dependabot + **Renovate** (`renovate.json`, Mend's free GitHub App) + **dependency-review** Action + pip-audit + OSV |
-| Repo posture | Aikido dashboard | **OpenSSF Scorecard** SARIF (`scorecard.yml`) + zizmor + actionlint + gitleaks + TruffleHog |
+| Repo posture | Aikido dashboard | **OpenSSF Scorecard** SARIF (`scorecard.yml`, SHA-pinned checkout) + zizmor + actionlint + gitleaks + TruffleHog + `SECURITY.md` |
+
+Local loop (same scanners as CI, no paid apps): `make scan` or `bash scripts/run_free_scanners.sh`. OSV Action is SHA-pinned to v2.5.1.
 | PM | Height, Shortcut, Linear | GitHub Issues + existing `dspm-issue-fix` / Dependabot labels |
 | Observability | Honeycomb, Sentry cloud | Phase 2: GlitchTip (Sentry-SDK DSN swap) or SigNoz self-host — not a cloud contract |
 

@@ -1,4 +1,4 @@
-.PHONY: dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve dspm-gap-audit dspm-watch dspm-monthly
+.PHONY: dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve dspm-gap-audit dspm-watch dspm-monthly scan
 
 PYTHON ?= python3
 DSPM_DB ?= output/dspm/dspm.sqlite
@@ -43,3 +43,6 @@ dspm-all: dspm-audit-inventory dspm-discover dspm-classify dspm-risk
 
 dspm-test:
 	$(PYTHON) -m pytest tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py -q
+
+scan:
+	bash scripts/run_free_scanners.sh
