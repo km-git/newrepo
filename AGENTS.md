@@ -1,5 +1,31 @@
 # AGENTS.md
 
+## Proof-first Spec Kit workflow (Kiro-like on GitHub)
+
+This repo combines **GitHub Spec Kit**, **Cursor skills**, and **LLM-free proof scripts** as hooks —
+a Kiro-style spec → implement → verify loop without Kiro IDE.
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| Constitution | `.specify/memory/constitution.md` | Proof-before-product governance |
+| Spec Kit skills | `.cursor/skills/speckit-*` | `/speckit-specify`, plan, tasks, implement |
+| Proof skill | `.cursor/skills/proof-first-trading` | Fast pytest + continuous proof verdict |
+| Kiro steering | `.kiro/steering/*.md` | Always-on rules (proof-first, execution contract) |
+| Kiro hooks | `.kiro/hooks/*.json` | PostFileSave → `scripts/hooks/run_proof_gate.sh` |
+| Spec Kit hooks | `.specify/extensions.yml` | before/after `speckit-implement` proof gates |
+| Feature specs | `specs/<id>-<name>/` | spec.md, plan.md, tasks.md |
+| Scoreboard | `reports/CONTINUOUS_PROOF.md`, `reports/PAPER_FORWARD.md` | **Not** dense setup tables |
+
+**Typical flow**: `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` →
+`/proof-first-trading` (or hooks run automatically). Report `PROOF_GO` / `PROOF_NO_GO` / `PROOF_PENDING`
+and cumulative paper P&L only.
+
+**Proof scripts**: `bash scripts/run_continuous_proof_loop.sh` (learn → policy → paper-forward),
+`bash scripts/run_paper_proof_daily.sh` (daily tick + effectiveness audit). Both set `EW_IMPROVEMENT_LLM=0`.
+
+**CI**: `.github/workflows/proof-gate.yml` runs fast pytest on PRs touching paper/execution paths.
+Manual full proof: Actions → Proof gate → Run workflow.
+
 ## Cursor Cloud specific instructions
 
 This repo is a single Python CLI product: `ew_tool.py`, an Elliott Wave + harmonic
