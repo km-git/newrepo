@@ -66,6 +66,8 @@ def _load_seen_count() -> int:
 
 def build_hub_state() -> dict[str, Any]:
     """JSON snapshot for /api/tape-to-cloud/status."""
+    from tape_to_cloud.web.api import platform_status
+
     root = _repo_root()
     discovery = _discovery_dir()
     fw = _forum_watcher_root()
@@ -131,6 +133,7 @@ def build_hub_state() -> dict[str, Any]:
             "reports": "/tape-to-cloud/reports",
             "job_pack": "/tape-to-cloud/reports/job-pack",
             "validation": "/tape-to-cloud/validation",
+            "platform": "/tape-to-cloud/platform",
             "api": "/api/tape-to-cloud/status",
             "api_jobs": "/api/tape-to-cloud/jobs",
             "api_reports": "/api/tape-to-cloud/reports",
@@ -141,6 +144,7 @@ def build_hub_state() -> dict[str, Any]:
             "not_working": "LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network",
         },
         "live_jobs": _live_jobs_snapshot(),
+        "platform": platform_status(),
     }
 
 
@@ -219,6 +223,7 @@ def _shell(title: str, body: str) -> str:
       <a href="/tape-to-cloud/modules">Modules</a>
       <a href="/tape-to-cloud/layers">Layers</a>
       <a href="/tape-to-cloud/jobs">Live jobs</a>
+      <a href="/tape-to-cloud/platform">Platform</a>
       <a href="/tape-to-cloud/reports">Reports</a>
       <a href="/tape-to-cloud/reports/job-pack">Job pack</a>
       <a href="/tape-to-cloud/validation">Validation</a>
@@ -551,17 +556,55 @@ def _module_or_pack(key: str) -> bool:
     return key in MODULES or key == "job-pack"
 
 
+def _try_platform_dispatch(
+    method: str,
+    path: str,
+    query: Mapping[str, Sequence[str]],
+    body: bytes,
+) -> tuple[int, dict[str, str], bytes] | None:
+    try:
+        from tape_to_cloud.web.api import dispatch_platform
+
+        return dispatch_platform(method, path, query, body)
+    except Exception:
+        return None  # overlay is optional; live ingest routes still run
+
+
+def _try_platform_api(
+    method: str,
+    path: str,
+    query: Mapping[str, Sequence[str]],
+    body: bytes,
+) -> tuple[int, dict[str, str], bytes] | None:
+    try:
+        from tape_to_cloud.web.api import handle_api
+
+        return handle_api(method, path, query, body)
+    except Exception:
+        return None  # POST handlers optional when platform package is absent
+
+
 def dispatch_tape_to_cloud(
     method: str,
     path: str,
     query: Mapping[str, Sequence[str]] | None = None,
+    body: bytes = b"",
 ) -> tuple[int, dict[str, str], bytes] | None:
     from engine import tape_to_cloud_reports as intact_mod
 
     raw = path or "/"
     path = raw.rstrip("/") or "/"
     method = (method or "GET").upper()
+    # Live ingest owns GET /tape-to-cloud/jobs and GET /api/tape-to-cloud/jobs.
+    # Platform catalog is /tape-to-cloud/platform (do not steal live jobs).
+    if path in ("/tape-to-cloud/platform", "/api/tape-to-cloud/platform"):
+        plat = _try_platform_dispatch(method, path, query or {}, body)
+        if plat is not None:
+            return plat
     if method != "GET":
+        api = _try_platform_api(method, path, query or {}, body)
+        if api is not None:
+            return api
         return None
 
     job_hit = _dispatch_live_jobs(path)
@@ -660,8 +703,14 @@ def dispatch_tape_to_cloud(
     return _not_found("unknown tape-to-cloud path\n")
 
 
-def serve_tape_to_cloud_http(handler: Any, method: str, path: str, query: Mapping[str, Sequence[str]]) -> bool:
-    result = dispatch_tape_to_cloud(method, path, query)
+def serve_tape_to_cloud_http(
+    handler: Any,
+    method: str,
+    path: str,
+    query: Mapping[str, Sequence[str]],
+    body: bytes = b"",
+) -> bool:
+    result = dispatch_tape_to_cloud(method, path, query, body)
     if result is None:
         return False
     status, headers, payload = result
