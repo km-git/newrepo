@@ -556,6 +556,34 @@ def _module_or_pack(key: str) -> bool:
     return key in MODULES or key == "job-pack"
 
 
+def _try_platform_dispatch(
+    method: str,
+    path: str,
+    query: Mapping[str, Sequence[str]],
+    body: bytes,
+) -> tuple[int, dict[str, str], bytes] | None:
+    try:
+        from tape_to_cloud.web.api import dispatch_platform
+
+        return dispatch_platform(method, path, query, body)
+    except Exception:
+        return None  # overlay is optional; live ingest routes still run
+
+
+def _try_platform_api(
+    method: str,
+    path: str,
+    query: Mapping[str, Sequence[str]],
+    body: bytes,
+) -> tuple[int, dict[str, str], bytes] | None:
+    try:
+        from tape_to_cloud.web.api import handle_api
+
+        return handle_api(method, path, query, body)
+    except Exception:
+        return None  # POST handlers optional when platform package is absent
+
+
 def dispatch_tape_to_cloud(
     method: str,
     path: str,
@@ -570,23 +598,13 @@ def dispatch_tape_to_cloud(
     # Live ingest owns GET /tape-to-cloud/jobs and GET /api/tape-to-cloud/jobs.
     # Platform catalog is /tape-to-cloud/platform (do not steal live jobs).
     if path in ("/tape-to-cloud/platform", "/api/tape-to-cloud/platform"):
-        try:
-            from tape_to_cloud.web.api import dispatch_platform
-
-            plat = dispatch_platform(method, path, query or {}, body)
-            if plat is not None:
-                return plat
-        except Exception:
-            pass  # overlay is optional; live ingest routes still run
+        plat = _try_platform_dispatch(method, path, query or {}, body)
+        if plat is not None:
+            return plat
     if method != "GET":
-        try:
-            from tape_to_cloud.web.api import handle_api
-
-            api = handle_api(method, path, query or {}, body)
-            if api is not None:
-                return api
-        except Exception:
-            pass  # POST handlers optional when platform package is absent
+        api = _try_platform_api(method, path, query or {}, body)
+        if api is not None:
+            return api
         return None
 
     job_hit = _dispatch_live_jobs(path)
