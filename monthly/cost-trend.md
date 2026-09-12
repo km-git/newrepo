@@ -1,6 +1,6 @@
 # Cost trend
 
-Generated 2026-09-07T20:22:14+00:00.
+Generated 2026-09-11T21:44:24+00:00.
 
 | Metric | Value |
 | --- | --- |

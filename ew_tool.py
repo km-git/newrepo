@@ -769,12 +769,20 @@ def main() -> None:
     result = execute_from_csv(dry_run=not args.execute_live)
     submitted = result.get("submitted") or []
     signals = []
-    tickers = [row.get("symbol") or "" for row in export_rows]
+    tickers: list[str] = []
+    seen_tickers: set[str] = set()
+    for row in export_rows:
+      sym = row.get("symbol") or ""
+      if sym and sym not in seen_tickers:
+        seen_tickers.add(sym)
+        tickers.append(sym)
     for item in submitted:
       order = item.get("order") or {}
       symbol = order.get("symbol") or ""
-      if symbol:
+      if symbol and symbol not in seen_tickers:
+        seen_tickers.add(symbol)
         tickers.append(symbol)
+      if symbol:
         signals.append((symbol, order.get("side") or ""))
     _record_usage(signals=signals, tickers=tickers)
     print(json.dumps(result, indent=2, default=str))
