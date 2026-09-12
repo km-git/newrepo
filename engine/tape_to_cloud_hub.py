@@ -66,6 +66,8 @@ def _load_seen_count() -> int:
 
 def build_hub_state() -> dict[str, Any]:
     """JSON snapshot for /api/tape-to-cloud/status."""
+    from tape_to_cloud.web.api import platform_status
+
     root = _repo_root()
     discovery = _discovery_dir()
     fw = _forum_watcher_root()
@@ -142,6 +144,7 @@ def build_hub_state() -> dict[str, Any]:
             "not_working": "LTO robotics, KMIP clusters, NetBackup/TSM, PST/NSF, SeaweedFS over the network",
         },
         "live_jobs": _live_jobs_snapshot(),
+        "platform": platform_status(),
     }
 
 
@@ -574,7 +577,7 @@ def dispatch_tape_to_cloud(
             if plat is not None:
                 return plat
         except Exception:
-            plat = None  # overlay is optional; live ingest routes still run
+            pass  # overlay is optional; live ingest routes still run
     if method != "GET":
         try:
             from tape_to_cloud.web.api import handle_api
@@ -583,7 +586,7 @@ def dispatch_tape_to_cloud(
             if api is not None:
                 return api
         except Exception:
-            api = None  # POST handlers optional when platform package is absent
+            pass  # POST handlers optional when platform package is absent
         return None
 
     job_hit = _dispatch_live_jobs(path)

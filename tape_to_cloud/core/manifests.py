@@ -62,7 +62,7 @@ def build_file_manifest(
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
-    for file_path in sorted(files, key=lambda p: str(p)):
+    for file_path in sorted(files, key=str):
         if not file_path.is_file():
             continue
         rel = str(file_path.relative_to(root)) if root and file_path.is_relative_to(root) else str(file_path)
