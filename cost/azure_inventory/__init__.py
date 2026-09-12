@@ -1,1 +1,1 @@
-"""Cost module."""
+"""cost/azure_inventory module."""

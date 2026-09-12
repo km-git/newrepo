@@ -1,1 +1,1 @@
-"""Cost module."""
+"""cost/rightsizing module."""

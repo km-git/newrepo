@@ -1,5 +1,9 @@
-# untagged
+# cost/untagged
 
-Cloud Cost & Configuration Review module. Read-only cost and configuration observations — not a security assessment.
+Untagged-resource inventory against the customer tagging policy.
 
-Primary OSS: see `cost/constants.py`. Run via `cost` CLI or `make cost-all`.
+CLI: `cost untagged scan --tagging-policy cost/tagging-policy.yaml`
+
+Default required tags: Environment, CostCenter, Owner. Untagged spend is an
+organisational problem; the report recommends review with the account owners.
+Cloud Custodian policy is dry-run only.

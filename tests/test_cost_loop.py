@@ -1,37 +1,21 @@
-"""Loop / watcher tests."""
+"""Loop / watcher tests for the cost improvement loop."""
 
-from cost.loop.classify import classify_item
-from cost.loop.monthly import generate_monthly
-from cost.loop.watch import url_digest, watch
+from pathlib import Path
 
-
-def test_url_digest_stable():
-    assert url_digest("https://example.com/a/") == url_digest("https://example.com/a")
+from cost.loop.service import monthly_rollup, run
 
 
-def test_classify_finops():
-    result = classify_item(
-        {
-            "title": "FinOps rightsizing with Steampipe",
-            "summary": "",
-            "module_hint": "cost/rightsizing",
-        }
-    )
-    assert result["verdict"] in {"discover", "watch"}
+def test_loop_sandbox_runs():
+    result = run(sandbox=True)
+    assert result["ok"] is True
+    assert result["watcher_imported"] is True
 
 
-def test_watch_offline(tmp_path, monkeypatch):
-    seen = tmp_path / "seen.json"
-    monkeypatch.setenv("COST_SEEN", str(seen))
-    log = tmp_path / "accept.jsonl"
-    monkeypatch.setenv("COST_ACCEPT_LOG", str(log))
-    out = watch(fetch=False, seen_path=seen)
-    assert out["new_count"] >= 1
-
-
-def test_monthly_artifacts(tmp_path, monkeypatch):
+def test_monthly_rollup_writes_artifacts(tmp_path, monkeypatch):
+    monkeypatch.setenv("COST_SANDBOX", "1")
+    monkeypatch.setenv("COST_DB", str(tmp_path / "cost.sqlite3"))
     monkeypatch.chdir(tmp_path)
-    paths = generate_monthly(out_dir=tmp_path / "monthly")
-    assert (tmp_path / "monthly").exists()
-    assert "rollup" in paths
-    assert "cost_trend" in paths
+    paths = monthly_rollup()
+    assert paths["ok"] is True
+    assert Path(paths["month"]).exists()
+    assert Path(paths["trend"]).exists()

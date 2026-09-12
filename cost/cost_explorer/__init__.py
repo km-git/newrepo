@@ -1,1 +1,1 @@
-"""Cost module."""
+"""cost/cost_explorer module."""

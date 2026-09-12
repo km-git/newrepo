@@ -16,6 +16,7 @@ from engine.pr_executive import (
 from engine.pr_github import (
   approve_pr,
   comment_pr,
+  dismiss_stale_change_requests,
   ensure_gh_auth,
   fetch_pr_context,
   merge_pr,
@@ -87,6 +88,8 @@ def run_pr_executive_consensus(
 
   slug = pr.get("repo", "")
   try:
+    if not actions.get("request_changes"):
+      result["github_actions"].append(dismiss_stale_change_requests(pr_number, slug))
     if actions.get("request_changes"):
       result["github_actions"].append(request_changes_pr(pr_number, slug, actions["comment_body"]))
     elif actions.get("approve"):
@@ -94,6 +97,13 @@ def run_pr_executive_consensus(
         result["github_actions"].append(approve_pr(pr_number, slug, actions["comment_body"]))
       except RuntimeError as approve_err:
         result["approve_error"] = str(approve_err)
+        result["github_actions"].append(
+          dismiss_stale_change_requests(
+            pr_number,
+            slug,
+            message="Stale change request: CI is green and verdict is merge-eligible.",
+          )
+        )
         if actions.get("merge"):
           print(f"[pr] approve failed ({approve_err}); attempting merge-only")
     elif actions.get("comment_only"):

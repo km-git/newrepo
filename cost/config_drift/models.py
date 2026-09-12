@@ -1,9 +1,17 @@
-"""Pydantic models for config_drift."""
+"""Pydantic models for cost/config_drift."""
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel
 
 
-class ConfigDriftResult(BaseModel):
-    module: str = Field(default="config_drift")
-    ok: bool = True
-    count: int = 0
+class ModuleMeta(BaseModel):
+    module: str = "config_drift"
+    kind: str = "cost-observation"
+
+
+class DriftRow(BaseModel):
+    resource_id: str
+    field: str
+    baseline: str
+    current: str

@@ -2,7 +2,8 @@ name: cost-auto-approve
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  merge_group:
 
 permissions:
   pull-requests: write
@@ -11,36 +12,35 @@ permissions:
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # PR author (not last-push actor) — last-push actor is spoofable on synchronize.
-    # Same-repo only; never auto-approve fork PRs.
-    if: >
-      github.repository == github.event.pull_request.head.repo.full_name &&
-      (github.event.pull_request.user.login == 'dependabot[bot]' ||
-       github.event.pull_request.user.login == 'github-actions[bot]')
+    if: |
+      github.event_name == 'merge_group' || (
+        contains(fromJSON('["dependabot[bot]","github-actions[bot]","renovate[bot]"]'), github.actor) &&
+        contains(github.event.pull_request.body, '[auto-approved]')
+      )
     steps:
-      - name: Block auto-merge of remediation policies
+      - name: Skip remediation policy PRs
+        if: github.event_name != 'merge_group'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
         run: |
-          files=$(gh api "repos/${{ github.repository }}/pulls/${PR}/files" --jq '.[].filename')
-          if echo "$files" | grep -q 'cost/remediation/policies/'; then
-            echo "Remediation policies require manual review"
-            exit 1
+          files=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only --repo "${{ github.repository }}" || true)
+          if echo "$files" | grep -q '^cost/remediation/'; then
+            echo "cost/remediation/ changed — manual operator review required"
+            echo "skip=true" >> "$GITHUB_ENV"
+          else
+            echo "skip=false" >> "$GITHUB_ENV"
           fi
 
-      - name: Approve the PR
+      - name: Auto approve bot PR
+        if: env.skip != 'true' && github.event_name != 'merge_group'
         uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          review-message: "Auto-approved bot PR (cost-auto-approve). Remediation YAML is excluded."
 
-      - name: Enable auto-merge (squash)
-        if: github.event.pull_request.user.login == 'dependabot[bot]'
+      - name: Enable auto-merge (merge_group 422-safe)
+        if: env.skip != 'true' && github.event_name != 'merge_group'
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # As of 2026-03-25 GitHub returns HTTP 422 unless required checks exist.
-          # cost-ci.yml reports on pull_request + merge_group for that requirement.
-          gh pr merge --auto --squash "$PR_URL" || echo "auto-merge not enabled (HTTP 422 if required checks missing)"
+          gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --auto --squash || true

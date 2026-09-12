@@ -2,7 +2,13 @@ name: cost-issue-fix
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to draft a fix for
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -12,50 +18,48 @@ permissions:
 jobs:
   draft-fix:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event.label.name == 'good first issue'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(join(github.event.issue.labels.*.name, ','), 'good first issue')
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install COST
-        run: pip install -e .
-
-      - name: Evaluate issue
-        id: eval
+      - name: Draft issue-fix note
         env:
-          TITLE: ${{ github.event.issue.title }}
-          BODY: ${{ github.event.issue.body }}
+          ISSUE: ${{ github.event.issue.number || inputs.issue_number }}
+          TITLE: ${{ github.event.issue.title || 'manual dispatch' }}
         run: |
+          mkdir -p cost/loop/issue-fixes
           python - <<'PY'
-          import json, os
-          from cost.loop.issue_fix import is_mechanical_issue
-          result = is_mechanical_issue(os.environ["TITLE"], os.environ.get("BODY") or "", ["good first issue"])
-          print(json.dumps(result))
-          Path = __import__("pathlib").Path
-          Path("/tmp/issue-fix.json").write_text(json.dumps(result))
-          if not result.get("eligible"):
-              raise SystemExit(0)
+          import os
+          from pathlib import Path
+          issue = os.environ.get("ISSUE") or "unknown"
+          title = os.environ.get("TITLE") or ""
+          path = Path("cost/loop/issue-fixes") / f"issue-{issue}.md"
+          path.write_text(
+              f"# Draft fix for issue {issue}\n\n"
+              f"Title: {title}\n\n"
+              "This is an automated draft from cost-issue-fix. "
+              "Operator must review before merge. "
+              "Does not change cost/remediation/ policies.\n",
+              encoding="utf-8",
+          )
+          print(path)
           PY
 
-      - name: Comment willing-to-take
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue comment "${{ github.event.issue.number }}" --body "willing-to-take: evaluating a mechanical auto-fix draft."
-          gh issue edit "${{ github.event.issue.number }}" --add-label "auto-fix-attempted" || true
-
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - name: Create draft Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          commit-message: "fix: placeholder auto-fix for issue ${{ github.event.issue.number }}"
-          title: "fix: auto-attempt for issue ${{ github.event.issue.number }}"
-          body: |
-            Draft placeholder for a mechanical `good first issue`. Not auto-merged.
-            Closes #${{ github.event.issue.number }}
-          branch: auto-fix/${{ github.event.issue.number }}
-          delete-branch: true
+          commit-message: "fix: draft for good-first-issue ${{ github.event.issue.number }}"
+          title: "fix: draft for issue ${{ github.event.issue.number || inputs.issue_number }}"
+          body: >
+            Automated draft from cost-issue-fix for a `good first issue`.
+            Operator review required. Does not auto-merge.
+          branch: cost/issue-fix-${{ github.event.issue.number || inputs.issue_number }}
           draft: true
+          add-paths: |
+            cost/loop/issue-fixes/*.md

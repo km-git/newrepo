@@ -1,5 +1,9 @@
-# compliance_map
+# cost/compliance_map
 
-Cloud Cost & Configuration Review module. Read-only cost and configuration observations — not a security assessment.
+Maps cost observations to a customer-selected framework (FinOps Foundation,
+AWS / Azure / GCP Well-Architected cost pillars).
 
-Primary OSS: see `cost/constants.py`. Run via `cost` CLI or `make cost-all`.
+CLI: `cost compliance map --framework finops-foundation`
+
+This is mapping, not attestation. Report language uses "framework reference"
+and "cost observation" — never "compliance", "certified", or "guaranteed".

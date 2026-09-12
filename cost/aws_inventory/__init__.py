@@ -1,1 +1,1 @@
-"""Cost module."""
+"""cost/aws_inventory module."""

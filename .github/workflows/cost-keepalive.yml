@@ -1,30 +1,27 @@
 name: cost-keepalive
 
-# Weekly commit so scheduled workflows are not paused after 60 days of inactivity.
-# gautamkrishnar/keepalive-workflow is disabled on GitHub (403); this is the in-repo equivalent.
 on:
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: "0 3 * * 0"
+      timezone: "Australia/Sydney"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  actions: write
+  contents: read
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Touch keepalive timestamp
+      - name: Re-enable scheduled cost workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p state
-          date -u +%Y-%m-%dT%H:%M:%SZ > state/keepalive.txt
-          git config user.name "cost-keepalive"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state/keepalive.txt
-          git diff --cached --quiet || git commit -m "chore: weekly keepalive to prevent Actions 60-day pause"
-          git push
+          # gautamkrishnar/keepalive-workflow is GitHub-staff-disabled (TOS 403).
+          # First-party equivalent of use_api: true — PUT enable on scheduled workflows
+          # so the public-repo 60-day inactivity rule cannot silently kill crons.
+          repo="${{ github.repository }}"
+          for wf in cost-keepalive.yml cost-watch.yml cost-monthly.yml; do
+            gh api -X PUT "repos/${repo}/actions/workflows/${wf}/enable" --silent || true
+          done

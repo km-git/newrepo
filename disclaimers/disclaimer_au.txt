@@ -1,11 +1,18 @@
-This Cloud Cost & Configuration Review is provided for informational purposes only.
+Cloud Cost & Configuration Review — liability disclaimer (Australia)
 
-It presents read-only cost observations and configuration references derived from
-customer-authorised cloud control plane APIs. It is not a security assessment,
-attestation, or guarantee of any kind.
+This document is a read-only Cloud Cost & Configuration Review. It is produced from
+customer-authorised cloud control-plane APIs and/or sandbox fixtures. It is not a
+security assessment, not an audit opinion, not financial advice, and not professional
+advice under the Corporations Act 2001 (Cth) or the Australian Consumer Law.
 
-Rightsizing and configuration suggestions require review with your engineering team
-before any changes are applied. Cost data may lag 24-48 hours behind real-time usage.
+Figures from AWS Cost Explorer, Azure Cost Management, and GCP Cloud Billing typically
+lag 24–48 hours and may differ from the customer's invoice. Rightsizing rows are
+heuristic observations. Review with the engineering team before applying any change.
+This operator does not change customer production systems.
 
-The operator accepts no liability for decisions made on the basis of this report
-beyond the scope of the engagement letter governing the review.
+No warranty is given, express or implied, including fitness for a particular purpose.
+To the maximum extent permitted by Australian law, the operator's liability for this
+review is limited to the fee paid for the review (often zero). The customer remains
+responsible for their cloud spend, tagging policy, and operational decisions.
+
+Active remediation, if any, is referred to partner MSPs under a separate engagement.

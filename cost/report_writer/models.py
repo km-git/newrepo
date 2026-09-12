@@ -1,9 +1,15 @@
-"""Pydantic models for report_writer."""
+"""Pydantic models for cost/report_writer."""
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel
 
 
-class ReportWriterResult(BaseModel):
-    module: str = Field(default="report_writer")
-    ok: bool = True
-    count: int = 0
+class ModuleMeta(BaseModel):
+    module: str = "report_writer"
+    kind: str = "cost-observation"
+
+
+class ReportMeta(BaseModel):
+    title: str = "Cloud Cost & Configuration Review"
+    provider: str = "all"

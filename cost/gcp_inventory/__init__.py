@@ -1,1 +1,1 @@
-"""Cost module."""
+"""cost/gcp_inventory module."""

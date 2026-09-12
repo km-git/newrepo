@@ -1,74 +1,108 @@
-"""File-backed SQLite store (Postgres optional via COST_DATABASE_URL)."""
+"""SQLite finding store. Postgres is optional when COST_DATABASE_URL is set."""
 
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+from cost.paths import SCHEMA_PATH, db_path, ensure_output
+from cost.settings import database_url
+
+TABLES = (
+    "findings_resources",
+    "findings_costs",
+    "findings_rightsizing",
+    "findings_untagged",
+    "findings_drift",
+    "findings_compliance",
+    "tenants",
+)
 
 
-def default_db_path() -> Path:
-    override = os.environ.get("COST_DB")
-    if override:
-        return Path(override)
-    return Path("output/cost/cost.sqlite")
-
-
-def utcnow() -> str:
+def _utcnow() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
-    db_path = path or default_db_path()
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
+    ensure_output()
+    path = path or db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
-    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
-class FindingsStore:
-    def __init__(self, path: Path | None = None) -> None:
-        self.path = path or default_db_path()
-        self.conn = connect(self.path)
+def init_schema(conn: sqlite3.Connection | None = None) -> sqlite3.Connection:
+    own = conn is None
+    conn = conn or connect()
+    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.commit()
+    if own:
+        return conn
+    return conn
 
-    def insert(self, table: str, row: dict[str, Any]) -> int:
-        payload = {k: _adapt(v) for k, v in row.items()}
-        cols = ", ".join(payload)
-        placeholders = ", ".join("?" for _ in payload)
-        cur = self.conn.execute(
-            f"INSERT INTO {table} ({cols}) VALUES ({placeholders})",
-            tuple(payload.values()),
+
+def upsert_tenant(conn: sqlite3.Connection, tenant_id: str, name: str, provider: str) -> None:
+    conn.execute(
+        """
+        INSERT INTO tenants (id, name, provider, created_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET name = excluded.name, provider = excluded.provider
+        """,
+        (tenant_id, name, provider, _utcnow()),
+    )
+
+
+def replace_rows(conn: sqlite3.Connection, table: str, rows: Iterable[dict[str, Any]]) -> int:
+    if table not in TABLES:
+        raise ValueError(f"unknown table {table}")
+    payload = list(rows)
+    if not payload:
+        return 0
+    columns = list(payload[0].keys())
+    placeholders = ", ".join("?" for _ in columns)
+    colsql = ", ".join(columns)
+    tenant = payload[0].get("tenant_id")
+    providers = {row.get("provider") for row in payload if row.get("provider")}
+    if len(providers) == 1 and "provider" in columns:
+        conn.execute(
+            f"DELETE FROM {table} WHERE tenant_id = ? AND provider = ?",
+            (tenant, payload[0].get("provider")),
         )
-        self.conn.commit()
-        return int(cur.lastrowid or 0)
-
-    def fetchall(
-        self,
-        table: str,
-        where: str = "1=1",
-        params: tuple[Any, ...] = (),
-    ) -> list[dict[str, Any]]:
-        cur = self.conn.execute(f"SELECT * FROM {table} WHERE {where}", params)
-        return [dict(r) for r in cur.fetchall()]
-
-    def count(self, table: str) -> int:
-        cur = self.conn.execute(f"SELECT COUNT(*) AS n FROM {table}")
-        row = cur.fetchone()
-        return int(row["n"]) if row else 0
-
-    def close(self) -> None:
-        self.conn.close()
+    else:
+        conn.execute(
+            f"DELETE FROM {table} WHERE tenant_id = ?",
+            (tenant,),
+        )
+    conn.executemany(
+        f"INSERT INTO {table} ({colsql}) VALUES ({placeholders})",
+        [tuple(row.get(c) for c in columns) for row in payload],
+    )
+    conn.commit()
+    return len(payload)
 
 
-def _adapt(value: Any) -> Any:
-    if isinstance(value, (dict, list)):
-        return json.dumps(value, sort_keys=True)
-    if isinstance(value, bool):
-        return int(value)
-    return value
+def fetch_all(conn: sqlite3.Connection, table: str, tenant_id: str | None = None) -> list[dict[str, Any]]:
+    if table not in TABLES:
+        raise ValueError(f"unknown table {table}")
+    if tenant_id:
+        cur = conn.execute(
+            f"SELECT * FROM {table} WHERE tenant_id = ?",
+            (tenant_id,),
+        )
+    else:
+        cur = conn.execute(f"SELECT * FROM {table}")
+    return [dict(r) for r in cur.fetchall()]
+
+
+def dumps(value: Any) -> str:
+    return json.dumps(value, default=str, sort_keys=True)
+
+
+def using_postgres() -> bool:
+    return database_url().startswith("postgres")

@@ -1,4 +1,4 @@
-"""Executive trade board — always surface ranked actionable pairs × timeframes."""
+"""Executive trade board — rank setups; EXECUTE_NOW only for honesty-validated executables."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from engine.accurate_setups import (
   _stop_ok,
   score_setup_accuracy,
 )
+from engine.honesty_gate import is_honesty_executable
 
 BOARD_PATH = Path("output/autodream/executive_board.json")
 BOARD_CSV_PATH = Path("output/latest_executive_board.csv")
@@ -31,7 +32,7 @@ TRADABLE_EXECUTIVE_ACTIONS = frozenset({
 # Minimum executive score to appear on the board (geometry must pass)
 MIN_BOARD_SCORE = 15
 DEFAULT_PICKS_PER_TF = 5
-DEFAULT_PICKS_TOTAL = 30
+DEFAULT_PICKS_TOTAL = 0  # no floor — empty board allowed on no-trade days
 from engine.timeframes import BOARD_TIMEFRAMES, CONTEXT_TIMEFRAMES
 
 
@@ -88,28 +89,26 @@ def _oos_score(setup: dict) -> Tuple[float, str]:
   return 0, "insufficient OOS"
 
 
-def _executive_action(setup: dict, exec_score: int, blocker: str) -> Tuple[str, int, str]:
+def _executive_action(
+  setup: dict,
+  style: str,
+  exec_score: int,
+  blocker: str,
+) -> Tuple[str, int, str]:
   """
   Returns (action, position_size_pct, playbook_line).
-  Never returns SKIP — executive always routes to a plan.
+  EXECUTE_NOW only for honesty-validated executables — no executive override.
   """
-  status = setup.get("status")
   tier = setup.get("execution_tier", "none")
-  oos = setup.get("oos_win_rate")
-  oos_n = int(setup.get("oos_trades") or 0)
   wave_valid = bool(setup.get("wave_valid"))
   wave_partial = bool(setup.get("wave_partial"))
 
-  if status == "executable" and setup.get("oos_gate") == "passed":
+  if is_honesty_executable(setup, style):
     size = 100 if tier == "full" else 50
-    return "EXECUTE_NOW", size, "All gates passed — execute per setup tier"
+    return "EXECUTE_NOW", size, "Honesty-validated executable — all gates passed"
 
-  if status == "executable":
-    return "EXECUTE_CAUTION", 35, "Executable label but OOS pending — reduced size"
-
-  if exec_score >= 75 and oos_n >= 3 and oos is not None and float(oos) >= 0.55:
-    size = 75 if wave_valid else 40
-    return "EXECUTE_NOW", size, "Executive override: strong OOS + composite score"
+  if setup.get("status") == "executable":
+    return "EXECUTE_CAUTION", 35, "Pipeline executable but failed honesty/OOS gate — do not size live"
 
   if exec_score >= 62 and (wave_valid or wave_partial) and blocker != "broken_geometry":
     return "SCALE_IN", 40, "Scale in 25-40% — partial/valid impulse, await full confirm"
@@ -397,7 +396,7 @@ def _build_context_tf_rows(
     setup_match = dict(anchor)
     setup_match["_executive_verdict"] = row["executive_verdict"]
     action, size, playbook = _executive_action(
-      setup_match, exec_score, row["primary_blocker"]
+      setup_match, anchor_style, exec_score, row["primary_blocker"]
     )
     if action == "WATCH_ONLY" and exec_score >= 40:
       action, size, playbook = "WATCH_ALERT", 15, f"{tf} context — alert on structure break + zone"
@@ -474,8 +473,8 @@ def build_executive_board(
   min_score: int = MIN_BOARD_SCORE,
 ) -> dict:
   """
-  Executive solution board — always returns ranked picks per timeframe.
-  Like a desk PM: never empty-handed; routes every top idea to a plan.
+  Executive solution board — always ranks setups; picks may be empty.
+  EXECUTE_NOW count == honesty-validated executable count (no override floor).
   """
   try:
     from engine.executive_intel import load_global_intel
@@ -579,78 +578,33 @@ def build_executive_board(
       {},
     )
     action, size, playbook = _executive_action(
-      setup_match, row["executive_score"], row["primary_blocker"]
+      setup_match, row["style"], row["executive_score"], row["primary_blocker"]
     )
     row["executive_action"] = action
     row["position_size_pct"] = size
     row["playbook"] = playbook
 
-  # Guaranteed picks per timeframe
+  # Board picks: honesty-validated EXECUTE_NOW only; optional capped watch list
   picks: List[dict] = []
-  picked_keys: set[tuple[str, str]] = set()
-  by_tf: Dict[str, List[dict]] = defaultdict(list)
   for row in scored:
-    by_tf[row["timeframe"]].append(row)
+    if row.get("executive_action") != "EXECUTE_NOW":
+      continue
+    pick = dict(row)
+    pick["board_slot"] = "executable"
+    pick["is_board_pick"] = True
+    picks.append(pick)
 
-  for tf, ctx_rows in ctx_by_tf.items():
-    by_tf[tf] = ctx_rows
-
-  def _pick_key(row: dict, tf: str) -> tuple[str, str]:
-    if row.get("is_context_tf") and row.get("context_tf") == tf:
-      return (row["symbol"], tf)
-    if tf in CONTEXT_TIMEFRAMES:
-      return (row["symbol"], tf)
-    return (row["symbol"], row["style"])
-
-  for tf in BOARD_TIMEFRAMES:
-    pool = by_tf.get(tf, [])
-    for row in pool[:picks_per_tf]:
-      key = _pick_key(row, tf)
-      if key in picked_keys:
+  if max_total > 0 and len(picks) < max_total:
+    for row in scored:
+      if row.get("executive_action") == "EXECUTE_NOW":
         continue
-      row = dict(row)
-      row["board_slot"] = f"{tf}_top"
-      row["is_board_pick"] = True
-      picks.append(row)
-      picked_keys.add(key)
-
-  # Fill to max_total with highest remaining scores (incl. context TFs)
-  overflow_pool = list(scored)
-  for tf, ctx_rows in ctx_by_tf.items():
-    overflow_pool.extend(
-      r for r in ctx_rows if _pick_key(r, tf) not in picked_keys
-    )
-  overflow = sorted(
-    overflow_pool,
-    key=lambda x: (-x["executive_score"], x["symbol"]),
-  )
-  for row in overflow:
-    if len(picks) >= max_total:
-      break
-    tf = row.get("context_tf") if row.get("is_context_tf") else row["timeframe"]
-    key = _pick_key(row, tf)
-    if key in picked_keys:
-      continue
-    row = dict(row)
-    row["board_slot"] = "portfolio"
-    row["is_board_pick"] = True
-    picks.append(row)
-    picked_keys.add(key)
-
-  # If a TF is empty, force best available (lower bar)
-  for tf in BOARD_TIMEFRAMES:
-    if any(p["timeframe"] == tf for p in picks):
-      continue
-    pool = by_tf.get(tf, [])
-    fallback = sorted(pool, key=lambda x: -x["executive_score"])
-    if fallback:
-      row = dict(fallback[0])
-      row["board_slot"] = f"{tf}_fallback"
-      row["is_board_pick"] = True
-      row["executive_action"] = "WATCH_ONLY"
-      row["playbook"] = f"Fallback {tf} — weakest TF coverage; paper only"
-      picks.append(row)
-      picked_keys.add(_pick_key(row, tf))
+      if row.get("executive_action", "").startswith("WATCH"):
+        pick = dict(row)
+        pick["board_slot"] = "watch"
+        pick["is_board_pick"] = True
+        picks.append(pick)
+        if len(picks) >= max_total:
+          break
 
   picks.sort(key=lambda x: (
     {"EXECUTE_NOW": 0, "EXECUTE_CAUTION": 1, "SCALE_IN": 2, "STANDBY_LIMIT": 3,
@@ -658,18 +612,29 @@ def build_executive_board(
     -x["executive_score"],
   ))
 
+  ctx_rows_flat: List[dict] = []
+  for ctx_rows in ctx_by_tf.values():
+    ctx_rows_flat.extend(ctx_rows)
+
+  all_ranked = sorted(
+    scored + ctx_rows_flat,
+    key=lambda x: (-x["executive_score"], x.get("symbol", ""), x.get("style", "")),
+  )[:50]
+
   by_action = Counter(p["executive_action"] for p in picks)
   by_tf_out = Counter(p["timeframe"] for p in picks)
+  honesty_execute_now = len(picks)
 
   return {
     "updated": datetime.now(timezone.utc).isoformat(),
     "total_scored": len(scored),
     "board_picks": len(picks),
+    "honesty_execute_now": honesty_execute_now,
     "picks_per_tf": picks_per_tf,
     "by_action": dict(by_action),
     "by_timeframe": dict(by_tf_out),
     "picks": picks,
-    "all_ranked": scored[:50],
+    "all_ranked": all_ranked,
   }
 
 

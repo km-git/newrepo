@@ -1,5 +1,8 @@
-# azure_inventory
+# cost/azure_inventory
 
-Cloud Cost & Configuration Review module. Read-only cost and configuration observations — not a security assessment.
+Read-only Azure subscription inventory via Resource Manager + Cost Management.
 
-Primary OSS: see `cost/constants.py`. Run via `cost` CLI or `make cost-all`.
+CLI: `cost inventory azure --subscription-id ID --tenant-id ID --client-id ID`
+
+Steampipe Azure plugin as CLI subprocess; `azure-mgmt-resource` for tags when
+installed. Sandbox fixtures when credentials are absent.

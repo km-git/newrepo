@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from cache.disk_cache import get_cache
+from core.market_clock import series_fingerprint
 from core.ewa_adapter import scan_ewa
 from core.impulse import validate_impulse
 from core.taew_adapter import scan_taew_fib
@@ -143,7 +144,7 @@ def build_consensus(
     symbol,
     primary_tf,
     len(data[primary_tf]),
-    round(float(data[primary_tf]["Close"].iloc[-1]), 2),
+    series_fingerprint(data[primary_tf]),
   )
   if ewa_hit:
     print(f"[cache] HIT ewa_consensus {symbol} {primary_tf}")

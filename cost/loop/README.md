@@ -1,14 +1,5 @@
-# dspm/loop
+# cost/loop
 
-5-stage Discover → Evaluate → Integrate → Validate → Compound.
-
-```bash
-dspm loop improve          # forums + GitHub search fixture + PyPI + gap-audit
-dspm loop gap-audit        # catalog self-challenge (github / pypi / other tools)
-dspm loop watch --fetch    # live RSS (optional)
-```
-
-Sources: `sources.yaml` (Reddit, HN, Lobsters, Track Awesome List, GitHub Releases, PyPI RSS).
-Catalog: `catalog.yaml` (forums, GitHub tools, other tools, Python libs) with honest missing/partial status.
-Rubric: 4-axis (module-fit, signal, license, actionability), threshold ≥ 7.
-No paid APIs, no GPU, no Ollama.
+Watcher payload. Imports `forum-watcher/scripts/watch.py`, adds cost-specific
+sources, and uses the same Monday 09:00 AEST cron. Does not duplicate the
+watcher. Monthly rollup writes `monthly/YYYY-MM.md` and `monthly/cost-trend.md`.

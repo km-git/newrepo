@@ -1,9 +1,17 @@
-"""Pydantic models for multi_account."""
+"""Pydantic models for cost/multi_account."""
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel
 
 
-class MultiAccountResult(BaseModel):
-    module: str = Field(default="multi_account")
-    ok: bool = True
-    count: int = 0
+class ModuleMeta(BaseModel):
+    module: str = "multi_account"
+    kind: str = "cost-observation"
+
+
+class AccountSlice(BaseModel):
+    account_id: str
+    provider: str
+    policy: str
+    finding_count: int = 0

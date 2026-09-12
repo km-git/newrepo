@@ -1,9 +1,18 @@
-"""Pydantic models for cost_explorer."""
+"""Pydantic models for cost/cost_explorer."""
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel
 
 
-class CostExplorerResult(BaseModel):
-    module: str = Field(default="cost_explorer")
-    ok: bool = True
-    count: int = 0
+class ModuleMeta(BaseModel):
+    module: str = "cost_explorer"
+    kind: str = "cost-observation"
+
+
+class CostRow(BaseModel):
+    provider: str
+    service: str
+    region: str
+    amount: float
+    period: str

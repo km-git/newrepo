@@ -1,10 +1,11 @@
-# Cost trend — 2026-09
+# Cost trend
 
-Is monthly spend decreasing? Are rightsizing recommendations being reviewed?
-Is the untagged-resource count dropping?
+Generated 2026-09-11T21:44:24+00:00.
 
-- total observed spend (fixture/rollup rows): **3575.60**
-- rightsizing opportunities: **2** (~205.00/mo potential)
-- untagged resources: **2**
+| Metric | Value |
+| --- | --- |
+| Monthly spend observed | 1300.75 |
+| Open rightsizing estimate | 518.13 |
+| Untagged resource count | 9 |
 
-Cost data has a 24-48h lag; compare month-over-month using stored rollups.
+Is monthly spend decreasing? Compare this file across months. Are rightsizing recommendations being applied? Only after engineering review. Is the untagged-resource count dropping? That is an organisational metric.

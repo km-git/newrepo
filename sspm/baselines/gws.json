@@ -1,0 +1,11 @@
+{
+  "tenant_type": "gws",
+  "settings": {
+    "admin.2sv.enforcement": "on",
+    "gmail.imap.enabled": "false",
+    "drive.sharing.external": "restricted",
+    "admin.lessSecureApps": "blocked",
+    "calendar.externalSharing": "none",
+    "admin.superAdminCount": "2"
+  }
+}

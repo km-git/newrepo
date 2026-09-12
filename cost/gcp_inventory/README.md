@@ -1,5 +1,8 @@
-# gcp_inventory
+# cost/gcp_inventory
 
-Cloud Cost & Configuration Review module. Read-only cost and configuration observations — not a security assessment.
+Read-only GCP project inventory via Cloud Asset Inventory + Cloud Billing.
 
-Primary OSS: see `cost/constants.py`. Run via `cost` CLI or `make cost-all`.
+CLI: `cost inventory gcp --project-id ID --service-account PATH`
+
+Steampipe GCP plugin as CLI subprocess; `google-cloud-resource-manager` for
+project metadata when installed. Sandbox fixtures when credentials are absent.

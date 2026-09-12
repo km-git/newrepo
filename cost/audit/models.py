@@ -1,9 +1,18 @@
-"""Pydantic models for audit."""
+"""Pydantic models for cost/audit."""
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel
 
 
-class AuditResult(BaseModel):
-    module: str = Field(default="audit")
-    ok: bool = True
-    count: int = 0
+class ModuleMeta(BaseModel):
+    module: str = "audit"
+    kind: str = "cost-observation"
+
+
+class InventoryItem(BaseModel):
+    name: str
+    version: str
+    license: str
+    last_update: str
+    invocation: str = "cli-subprocess"

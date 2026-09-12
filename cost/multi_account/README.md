@@ -1,5 +1,6 @@
-# multi_account
+# cost/multi_account
 
-Cloud Cost & Configuration Review module. Read-only cost and configuration observations — not a security assessment.
-
-Primary OSS: see `cost/constants.py`. Run via `cost` CLI or `make cost-all`.
+Optional multi-account runner. Uses `c7n-org` (Apache-2.0) as a CLI to apply
+the same dry-run policies across AWS accounts / Azure subscriptions / GCP
+projects. `accounts.yaml` is generated from Organizations when credentials
+exist. The report aggregates the per-account folder tree.

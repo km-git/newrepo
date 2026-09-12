@@ -1,5 +1,9 @@
-# report_writer
+# cost/report_writer
 
-Cloud Cost & Configuration Review module. Read-only cost and configuration observations — not a security assessment.
+Produces `report.md` and `report.json` for a Cloud Cost & Configuration
+Review. Sections: cost summary, top drivers, rightsizing, untagged inventory,
+drift, framework references, liability disclaimer.
 
-Primary OSS: see `cost/constants.py`. Run via `cost` CLI or `make cost-all`.
+CLI: `cost report generate --provider aws --since 30d --output report.md`
+
+Jinja2 (or stdlib fallback) plus `disclaimers/disclaimer_au.txt`.

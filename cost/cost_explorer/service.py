@@ -1,76 +1,105 @@
-"""Cost rollup via DuckDB across provider fixtures."""
+"""cost/cost_explorer — daily/monthly rollup. Cost APIs lag 24-48h."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
-import duckdb
+from cost.db.store import dumps
+from cost.fixtures import costs_for, tenant_id
+from cost.persist import persist_named
+from cost.settings import sandbox_mode
 
-from cost.db.store import FindingsStore, utcnow
-
-FIXTURE = Path(__file__).resolve().parents[2] / "examples" / "cost" / "cost_lines.json"
+LAG_NOTE = "Cost data has a 24-48 hour lag; this review does not promise real-time figures."
 
 
-def explore(
-    *,
-    provider: str = "aws",
-    since: str = "30d",
-    fixture: Path | None = None,
-    store: FindingsStore | None = None,
-) -> dict[str, Any]:
-    fx = fixture or FIXTURE
-    lines = __import__("json").loads(fx.read_text(encoding="utf-8"))
-    days = int(since.rstrip("d") or "30")
-    end = datetime.now(UTC).date()
-    start = end - timedelta(days=days)
-    con = duckdb.connect(":memory:")
-    con.execute(
-        "CREATE TABLE costs(provider VARCHAR, service VARCHAR, region VARCHAR, "
-        "tag_key VARCHAR, tag_value VARCHAR, amount DOUBLE)"
-    )
-    for row in lines:
-        if row.get("provider", provider) != provider:
-            continue
-        con.execute(
-            "INSERT INTO costs VALUES (?, ?, ?, ?, ?, ?)",
-            [
-                row["provider"],
-                row["service"],
-                row.get("region", "global"),
-                row.get("tag_key"),
-                row.get("tag_value"),
-                float(row["amount"]),
-            ],
-        )
-    rollup = con.execute(
-        """
-        SELECT provider, service, region, SUM(amount) AS total
-        FROM costs GROUP BY 1,2,3 ORDER BY total DESC
-        """
-    ).fetchall()
-    db = store or FindingsStore()
-    count = 0
-    for prov, service, region, total in rollup:
-        db.insert(
-            "findings_costs",
+def run(*, sandbox: bool = True, provider: str = "aws", since: str = "30d", **_kwargs: Any) -> dict[str, Any]:
+    rows = costs_for(None if provider == "all" else provider)
+    if not sandbox_mode() and not sandbox:
+        live = _live_costs(provider, since)
+        if live:
+            rows = live
+    stored = []
+    for row in rows:
+        stored.append(
             {
-                "provider": prov,
-                "service": service,
-                "region": region or "global",
-                "amount": float(total),
-                "period_start": start.isoformat(),
-                "period_end": end.isoformat(),
-                "recorded_at": utcnow(),
-            },
+                "tenant_id": tenant_id(),
+                "provider": row["provider"],
+                "account_id": row.get("account_id") or "",
+                "region": row.get("region") or "",
+                "service": row["service"],
+                "period": row.get("period") or since,
+                "amount": float(row.get("amount") or 0),
+                "tag_key": row.get("tag_key") or "",
+                "tag_value": row.get("tag_value") or "",
+            }
         )
-        count += 1
-    lag_note = "Cost data has a 24-48h lag; not real-time."
+    persist_named("findings_costs", stored)
+    total = round(sum(r["amount"] for r in stored), 2)
+    by_service: dict[str, float] = {}
+    for row in stored:
+        by_service[row["service"]] = round(by_service.get(row["service"], 0) + row["amount"], 2)
     return {
         "provider": provider,
         "since": since,
-        "rollup_rows": count,
-        "top_services": [{"service": r[1], "region": r[2], "total": float(r[3])} for r in rollup[:5]],
-        "honest_gap": lag_note,
+        "lag_note": LAG_NOTE,
+        "total": total,
+        "by_service": by_service,
+        "rows": stored,
+        "sandbox": sandbox or sandbox_mode(),
+        "sql_engine": _sql_engine(),
+        "meta": dumps({"since": since}),
     }
+
+
+def _sql_engine() -> str:
+    try:
+        import duckdb  # noqa: F401
+
+        return "duckdb"
+    except ImportError:
+        return "sqlite"
+
+
+def _live_costs(provider: str, since: str) -> list[dict[str, Any]]:
+    if provider == "aws":
+        return _aws_ce(since)
+    return []
+
+
+def _aws_ce(since: str) -> list[dict[str, Any]]:
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        import boto3
+
+        days = int(since.rstrip("d")) if since.endswith("d") else 30
+        end = datetime.now(UTC).date()
+        start = end - timedelta(days=days)
+        client = boto3.client("ce")
+        resp = client.get_cost_and_usage(
+            TimePeriod={"Start": start.isoformat(), "End": end.isoformat()},
+            Granularity="MONTHLY",
+            Metrics=["UnblendedCost"],
+            GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
+        )
+        out = []
+        for result in resp.get("ResultsByTime") or []:
+            period = (result.get("TimePeriod") or {}).get("Start", "")[:7]
+            for group in result.get("Groups") or []:
+                keys = group.get("Keys") or ["unknown"]
+                amount = float((group.get("Metrics") or {}).get("UnblendedCost", {}).get("Amount") or 0)
+                out.append(
+                    {
+                        "provider": "aws",
+                        "account_id": "",
+                        "region": "",
+                        "service": keys[0],
+                        "period": period,
+                        "amount": amount,
+                        "tag_key": "",
+                        "tag_value": "",
+                    }
+                )
+        return out
+    except Exception:
+        return []

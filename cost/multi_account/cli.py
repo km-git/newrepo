@@ -1,7 +1,13 @@
-"""CLI hooks for multi_account."""
+"""CLI for cost/multi_account."""
 
 from __future__ import annotations
 
-import typer
+import argparse
+from typing import Any
 
-app = typer.Typer(help="multi_account module")
+
+def register(sub: argparse._SubParsersAction[Any]) -> None:
+    p = sub.add_parser("multi-account", help="Aggregate c7n-org dry-run output")
+    p.add_argument("--accounts", default="")
+
+    p.set_defaults(_cost_handler="multi_account")

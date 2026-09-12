@@ -1,9 +1,18 @@
-"""Pydantic models for rightsizing."""
+"""Pydantic models for cost/rightsizing."""
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from pydantic import BaseModel
 
 
-class RightsizingResult(BaseModel):
-    module: str = Field(default="rightsizing")
-    ok: bool = True
-    count: int = 0
+class ModuleMeta(BaseModel):
+    module: str = "rightsizing"
+    kind: str = "cost-observation"
+
+
+class RightsizingRow(BaseModel):
+    resource_id: str
+    current_type: str
+    recommended_type: str
+    monthly_savings_estimate: float
+    risk_level: str

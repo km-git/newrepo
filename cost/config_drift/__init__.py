@@ -1,1 +1,1 @@
-"""Cost module."""
+"""cost/config_drift module."""

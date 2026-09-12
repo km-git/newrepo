@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7.0.1
 
       - name: Git identity for conflict auto-resolve
         run: |
@@ -46,7 +46,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           EW_PR_AUTO_APPROVE: "1"
-          EW_PR_AUTO_MERGE: "1"
+          EW_PR_AUTO_MERGE: "0"
           EW_PR_EXECUTIVE_CONSENSUS: "1"
           EW_PR_LLM_ADVISORY: "1"
           EW_PR_EXPANDED_PANEL: "1"
