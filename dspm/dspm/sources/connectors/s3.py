@@ -62,7 +62,8 @@ class S3Connector(BaseConnector):
             if objects:
                 return objects
         except Exception:
-            pass  # live S3 unavailable; fall back to fixtures
+            # Live S3 unavailable without credentials; fixture objects preserve offline demos.
+            pass
         return self._fixture_objects(uri, bucket, prefix, max_objects)
 
     def _fixture_objects(self, uri: str, bucket: str, prefix: str, limit: int) -> list[DataObject]:
@@ -107,7 +108,8 @@ class S3Connector(BaseConnector):
                 size_bytes=resp.get("ContentLength"),
             )
         except Exception:
-            pass  # live S3 preview unavailable; try fixtures
+            # Live S3 preview unavailable without credentials; fixtures provide sample bytes.
+            pass
         if FIXTURES.exists():
             data = json.loads(FIXTURES.read_text(encoding="utf-8"))
             for item in data.get("objects", []):

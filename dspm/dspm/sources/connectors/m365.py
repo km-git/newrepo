@@ -55,7 +55,8 @@ class M365Connector(BaseConnector):
                 if objects:
                     return objects
             except Exception:
-                pass  # Graph unavailable; fall back to fixtures
+                # Graph unavailable in CI/sandbox; fixture objects preserve offline demos.
+                pass
         return self._fixture_objects(uri, service, max_objects)
 
     def _discover_graph(self, token: str, service: str, path: str, limit: int) -> list[DataObject]:

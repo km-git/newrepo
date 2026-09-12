@@ -5,7 +5,8 @@ from __future__ import annotations
 import typer
 
 from dspm._output import emit
-from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview, scan_and_classify
+from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview
+from dspm.sources.scanner import scan_and_classify
 
 app = typer.Typer(help="Unified data sources: backup, NFS, SMB, S3, M365, SaaS")
 

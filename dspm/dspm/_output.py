@@ -75,8 +75,9 @@ def emit(data: Any, human: bool = False, title: str = "DSPM") -> None:
     redacted = _redact(data)
     if human:
         _print_human(redacted, title)
-    else:
-        sys.stdout.write(_safe_json(redacted) + "\n")
+        return
+    # Redacted JSON only — never emit raw secret-bearing payloads to stdout.
+    sys.stdout.write(_safe_json(redacted) + "\n")
 
 
 def _print_human(data: Any, title: str) -> None:

@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview, scan_and_classify
+from dspm.sources.registry import SUPPORTED_SCHEMES, discover, preview
+from dspm.sources.scanner import scan_and_classify
 
 
 def test_supported_schemes():

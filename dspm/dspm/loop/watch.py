@@ -50,6 +50,12 @@ def url_hash(url: str) -> str:
     return hashlib.sha256(url.encode()).hexdigest()
 
 
+def _host_is_or_subdomain(host: str, domain: str) -> bool:
+    host = host.lower().rstrip(".")
+    domain = domain.lower()
+    return host == domain or host.endswith(f".{domain}")
+
+
 def fetch_feed(url: str, max_items: int = 25) -> list[dict[str, Any]]:
     feed = feedparser.parse(url)
     items: list[dict[str, Any]] = []
@@ -93,9 +99,9 @@ def run_watch(mode: str = "all") -> dict:
     new_items: list[dict] = []
     for src in sources:
         host = (urlparse(src.get("url", "")).hostname or "").lower()
-        if mode == "vendor" and (host == "reddit.com" or host.endswith(".reddit.com")):
+        if mode == "vendor" and _host_is_or_subdomain(host, "reddit.com"):
             continue
-        if mode == "community" and (host == "github.com" or host.endswith(".github.com")):
+        if mode == "community" and _host_is_or_subdomain(host, "github.com"):
             continue
         try:
             items = fetch_feed(src["url"], src.get("max_items", 15))

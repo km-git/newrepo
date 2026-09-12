@@ -29,6 +29,7 @@ class SaasConnector(BaseConnector):
             try:
                 return self._discover_gdrive(token, uri, max_objects)
             except Exception:
+                # Google Drive API unavailable without credentials; fixtures preserve offline demos.
                 pass
         return self._fixture_objects(uri, vendor, max_objects)
 

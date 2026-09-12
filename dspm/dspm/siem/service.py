@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -40,14 +39,13 @@ def search_events(query: str, limit: int = 50) -> list[dict]:
     events = fetch_all("siem_events", limit=500)
     if not query or query == "*":
         return events[:limit]
-    needle = re.escape(query)
-    pattern = re.compile(needle, re.IGNORECASE)
+    needle = query.casefold()
     matched = [
         e
         for e in events
-        if pattern.search(e.get("message", ""))
-        or pattern.search(e.get("event_type", ""))
-        or pattern.search(e.get("source", ""))
+        if needle in e.get("message", "").casefold()
+        or needle in e.get("event_type", "").casefold()
+        or needle in e.get("source", "").casefold()
     ]
     return matched[:limit]
 

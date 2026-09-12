@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 from dspm.sources.models import DataObject, ObjectPreview
 
 
 class BaseConnector(ABC):
-    provider: str = "unknown"
+    provider: ClassVar[str] = "unknown"
 
     @abstractmethod
     def discover(self, uri: str, max_objects: int = 500) -> list[DataObject]:

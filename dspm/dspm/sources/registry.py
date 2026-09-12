@@ -8,7 +8,7 @@ from dspm.sources.connectors.m365 import M365Connector
 from dspm.sources.connectors.s3 import S3Connector
 from dspm.sources.connectors.saas import SaasConnector
 from dspm.sources.connectors.smb import SmbConnector
-from dspm.sources.models import DataObject, ObjectPreview, SourceScanResult
+from dspm.sources.models import DataObject, ObjectPreview
 from dspm.sources.uri import parse_uri
 
 _CONNECTORS = {
@@ -38,9 +38,3 @@ def discover(uri: str, max_objects: int = 500) -> list[DataObject]:
 
 def preview(uri: str, path: str = "", max_bytes: int = 8192) -> ObjectPreview:
     return get_connector(uri).preview(uri, path=path, max_bytes=max_bytes)
-
-
-def scan_and_classify(uri: str, max_objects: int = 200, classify_limit: int = 50) -> SourceScanResult:
-    from dspm.sources.scanner import scan_source
-
-    return scan_source(uri, max_objects=max_objects, classify_limit=classify_limit)
