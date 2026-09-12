@@ -117,6 +117,8 @@ def build_consensus(
   adaptive: Dict[str, dict],
   symbol: str,
   timeframes: Optional[List[str]] = None,
+  *,
+  skip_external_votes: bool = False,
 ) -> dict:
   """
   Run all EW engines and compute direction consensus + confidence boost.
@@ -135,20 +137,21 @@ def build_consensus(
   primary_tf = "1d" if "1d" in adaptive else tfs[0]
   primary_mws = adaptive.get(primary_tf, {}).get("monowaves", [])
 
-  def _ewa_compute():
-    return scan_ewa(data[primary_tf], up_to=6, max_configs=120)
+  if not skip_external_votes:
+    def _ewa_compute():
+      return scan_ewa(data[primary_tf], up_to=6, max_configs=120)
 
-  ewa_result, ewa_hit = cache.get_or_compute(
-    "ewa_consensus",
-    _ewa_compute,
-    symbol,
-    primary_tf,
-    len(data[primary_tf]),
-    series_fingerprint(data[primary_tf]),
-  )
-  if ewa_hit:
-    print(f"[cache] HIT ewa_consensus {symbol} {primary_tf}")
-  votes.extend(_ewa_votes(ewa_result))
+    ewa_result, ewa_hit = cache.get_or_compute(
+      "ewa_consensus",
+      _ewa_compute,
+      symbol,
+      primary_tf,
+      len(data[primary_tf]),
+      series_fingerprint(data[primary_tf]),
+    )
+    if ewa_hit:
+      print(f"[cache] HIT ewa_consensus {symbol} {primary_tf}")
+    votes.extend(_ewa_votes(ewa_result))
 
   taew_result = scan_taew_fib(primary_mws)
   votes.append(_taew_vote(taew_result))

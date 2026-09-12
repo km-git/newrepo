@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from cache.disk_cache import get_cache
+from core.market_clock import frames_fingerprint
 from core.ehlers import ehlers_cycle_bias, ehlers_instantaneous_phase
 
 TF_WEIGHTS = {"1w": 2.5, "1d": 2.0, "4h": 1.5, "1h": 1.2, "15m": 1.0}
@@ -227,7 +228,7 @@ def build_cycle_confluence(
     _compute,
     symbol,
     tuple(tfs),
-    *(len(data[tf]) for tf in tfs if tf in data),
+    frames_fingerprint(data, tfs),
   )
   result["cache_hit"] = hit
   return result
