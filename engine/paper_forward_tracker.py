@@ -35,7 +35,8 @@ def _utcnow() -> str:
 
 
 def _utc_date() -> str:
-  return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+  from core.market_clock import market_today_utc_date
+  return market_today_utc_date()
 
 
 def proof_window_days() -> int:
@@ -122,7 +123,8 @@ def record_snapshot(
 def rolling_metrics(window_days: Optional[int] = None) -> Dict[str, Any]:
   """Aggregate ledger over rolling window."""
   window_days = window_days or proof_window_days()
-  cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).strftime("%Y-%m-%d")
+  from core.market_clock import market_now_utc
+  cutoff = (market_now_utc() - timedelta(days=window_days)).strftime("%Y-%m-%d")
   ledger = [e for e in _load_ledger() if (e.get("date") or "") >= cutoff]
 
   if not ledger:
@@ -256,8 +258,9 @@ def write_forward_report(
 
 
 def _date_range(window_days: int) -> List[str]:
-  """UTC dates from (today - window_days + 1) through today inclusive."""
-  today = datetime.now(timezone.utc).date()
+  """UTC dates from (market-as-of - window_days + 1) through market-as-of inclusive."""
+  from core.market_clock import market_now_utc
+  today = market_now_utc().date()
   start = today - timedelta(days=window_days - 1)
   dates: List[str] = []
   cursor = start

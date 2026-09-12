@@ -1,0 +1,11 @@
+policies:
+  - name: cost-rightsizing-recommendation-dryrun
+    resource: aws.ec2
+    description: >
+      Observation-only. Flags running instances as candidates for rightsizing review.
+      Never resize automatically. Review with the engineering team before applying.
+    filters:
+      - State.Name: running
+    actions: []
+    metadata:
+      dryrun: true

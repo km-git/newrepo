@@ -1,0 +1,29 @@
+name: sspm-keepalive
+
+# Weekly commit so scheduled workflows are not paused after 60 days of inactivity.
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Touch keepalive timestamp
+        run: |
+          mkdir -p state
+          date -u +%Y-%m-%dT%H:%M:%SZ > state/keepalive.txt
+          git config user.name "sspm-keepalive"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/keepalive.txt
+          git diff --cached --quiet || git commit -m "chore: weekly keepalive to prevent Actions 60-day pause"
+          git push

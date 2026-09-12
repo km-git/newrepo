@@ -1,0 +1,9 @@
+{
+  "org": "example-org",
+  "display_name": "Example GitHub Org",
+  "members_count": 45,
+  "repos_count": 128,
+  "2fa_required": true,
+  "sso_enabled": true,
+  "installed_apps": ["dependabot", "codecov"]
+}

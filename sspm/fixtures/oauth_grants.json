@@ -1,0 +1,12 @@
+{
+  "m365": [
+    {"tenant_id": "contoso.onmicrosoft.com", "app_name": "Salesforce", "publisher": "Salesforce Inc", "scopes": "User.Read, Mail.Read", "last_used": "2026-08-15T00:00:00Z"},
+    {"tenant_id": "contoso.onmicrosoft.com", "app_name": "Legacy Sync", "publisher": "Unknown", "scopes": "User.ReadWrite.All, Directory.ReadWrite.All", "last_used": "2026-01-01T00:00:00Z"}
+  ],
+  "gws": [
+    {"tenant_id": "example.com", "app_name": "Zoom", "publisher": "Zoom Video", "scopes": "calendar.readonly", "last_used": "2026-09-01T00:00:00Z"}
+  ],
+  "github": [
+    {"tenant_id": "example-org", "app_name": "Codecov", "publisher": "Codecov", "scopes": "repo:read", "last_used": "2026-08-20T00:00:00Z"}
+  ]
+}

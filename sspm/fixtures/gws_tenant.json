@@ -1,0 +1,9 @@
+{
+  "domain": "example.com",
+  "display_name": "Example Workspace",
+  "users_count": 120,
+  "2sv_enforced": true,
+  "external_sharing": "restricted",
+  "admin_accounts": 2,
+  "oauth_apps_count": 15
+}

@@ -15,10 +15,13 @@ reports/*
 !reports/COMPLETE_TRADING_ANALYSIS.md
 !reports/trade_setups_matrix.html
 !reports/monetize_explorer.html
+!reports/dmarc_explorer.html
+!reports/cost_explorer.html
 !reports/latest_executable_pair_tf.csv
 !reports/HISTORICAL_PERFORMANCE.md
 !reports/PAPER_PNL.md
 !reports/MONETIZATION_STRATEGY.md
+!reports/sspm_explorer.html
 libs/pyharmonics/
 libs/ElliottWaveAnalyzer/
 libs/python-taew/
@@ -30,6 +33,14 @@ venv/
 .pytest_cache/
 .mypy_cache/
 *.log
+
+# Cursor — commit team skills/rules; ignore local secrets and caches
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
+!.cursor/rules/
+!.cursor/rules/**
+
 state/accept-reject.jsonl
 state/discover_queue.json
 state/gap_audit.json

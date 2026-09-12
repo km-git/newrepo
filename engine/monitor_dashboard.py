@@ -311,6 +311,10 @@ MONITOR_HTML = """<!DOCTYPE html>
     </div>
     <div class="controls">
       <a href="/monetize" style="color:var(--blue);text-decoration:none;font-size:0.85rem">Monetize</a>
+      <a href="/dmarc" style="color:var(--blue);text-decoration:none;font-size:0.85rem;margin-left:0.75rem">DMARC</a>
+      <a href="/sspm" style="color:var(--blue);text-decoration:none;font-size:0.85rem;margin-left:0.75rem">SSPM</a>
+      <a href="/cost" style="color:var(--blue);text-decoration:none;font-size:0.85rem;margin-left:0.75rem">Cost</a>
+      <a href="/tape-to-cloud" style="color:var(--blue);text-decoration:none;font-size:0.85rem;margin-left:0.75rem">Tape</a>
       <span id="status-dot"></span>
       <select id="refresh-interval">
         <option value="0">Manual</option>

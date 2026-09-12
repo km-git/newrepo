@@ -1,0 +1,11 @@
+{
+  "tenant_id": "contoso.onmicrosoft.com",
+  "display_name": "Contoso Demo Tenant",
+  "licenses": ["Microsoft 365 E3", "Defender for Office 365"],
+  "users_count": 250,
+  "mfa_enforced": true,
+  "legacy_auth_blocked": true,
+  "admin_accounts": 3,
+  "conditional_access_policies": 12,
+  "guest_users": 18
+}

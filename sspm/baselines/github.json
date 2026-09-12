@@ -1,0 +1,11 @@
+{
+  "tenant_type": "github",
+  "settings": {
+    "two_factor_requirement.enabled": "true",
+    "members_can_create_public_repositories": "false",
+    "default_repository_permission": "read",
+    "members_can_create_pages": "false",
+    "web_commit_signoff_required": "true",
+    "advanced_security.enabled_for_new_repos": "true"
+  }
+}

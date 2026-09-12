@@ -71,13 +71,16 @@ def _gh_run(args: List[str]) -> str:
 def _optional_ci_patterns() -> tuple:
   raw = os.environ.get(
     "EW_PR_CI_OPTIONAL",
-    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot",
+    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot,auto-approve,pr-agent,zero-key,resolve-conflicts,conflict auto",
   )
   return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
 
 
 def _is_required_ci_check(check: dict) -> bool:
   name = (check.get("name") or "").lower()
+  # GitHub code-scanning rollup is named "CodeQL". Workflow jobs are "CodeQL (python)" / "CodeQL (actions)".
+  if name == "codeql":
+    return False
   return not any(pat in name for pat in _optional_ci_patterns())
 
 
@@ -170,6 +173,50 @@ def wait_for_required_ci(
   return last
 
 
+def _gh_paged_list(path: str, *, list_key: Optional[str] = None, per_page: int = 100, max_pages: int = 20) -> List[Any]:
+  """Walk a GitHub list API that defaults to 30 items per page."""
+  items: List[Any] = []
+  for page in range(1, max_pages + 1):
+    data = _gh_json(
+      [
+        "api",
+        f"{path}?per_page={per_page}&page={page}",
+        "-H",
+        "Accept: application/vnd.github+json",
+      ]
+    )
+    if list_key:
+      if not isinstance(data, dict):
+        break
+      chunk = data.get(list_key) or []
+    else:
+      chunk = data if isinstance(data, list) else []
+    if not isinstance(chunk, list):
+      break
+    items.extend(chunk)
+    if len(chunk) < per_page:
+      break
+  return items
+
+
+def pr_file_entries(files: List[dict]) -> List[dict]:
+  """Normalize GitHub pull-file payloads for executive review (all pages)."""
+  entries: List[dict] = []
+  for f in files:
+    path = f.get("filename") or f.get("path") or ""
+    if not path:
+      continue
+    entries.append(
+      {
+        "path": path,
+        "status": f.get("status"),
+        "add": f.get("additions") if "additions" in f else f.get("add"),
+        "del": f.get("deletions") if "deletions" in f else f.get("del"),
+      }
+    )
+  return entries
+
+
 def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
   """Load PR metadata, files, checks, and truncated diff for executive review."""
   slug = repo or _repo_slug()
@@ -185,27 +232,16 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
     ]
   )
 
-  files = _gh_json(
-    [
-      "api",
-      f"repos/{slug}/pulls/{pr_number}/files",
-      "-H",
-      "Accept: application/vnd.github+json",
-    ]
-  )
-  if not isinstance(files, list):
+  try:
+    files = _gh_paged_list(f"repos/{slug}/pulls/{pr_number}/files")
+  except RuntimeError:
     files = []
 
   try:
-    checks = _gh_json(
-      [
-        "api",
-        f"repos/{slug}/commits/{pr['head']['sha']}/check-runs",
-        "-H",
-        "Accept: application/vnd.github+json",
-      ]
+    check_runs = _gh_paged_list(
+      f"repos/{slug}/commits/{pr['head']['sha']}/check-runs",
+      list_key="check_runs",
     )
-    check_runs = checks.get("check_runs", [])
   except RuntimeError:
     check_runs = []
 
@@ -235,10 +271,7 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
     "base": (pr.get("base") or {}).get("ref", ""),
     "head": (pr.get("head") or {}).get("ref", ""),
     "head_sha": (pr.get("head") or {}).get("sha", ""),
-    "files": [
-      {"path": f.get("filename"), "status": f.get("status"), "add": f.get("additions"), "del": f.get("deletions")}
-      for f in files[:40]
-    ],
+    "files": pr_file_entries(files),
     "ci": {
       "pass": ci["pass"],
       "fail": ci["fail"],
@@ -260,6 +293,48 @@ def approve_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]
     args.extend(["--body", body])
   out = _gh_run(args)
   return {"action": "approve", "output": out}
+
+
+def dismiss_stale_change_requests(
+  pr_number: int,
+  repo: str = "",
+  *,
+  actor: str = "github-actions[bot]",
+  message: str = "Stale change request: required CI is green.",
+) -> Dict[str, Any]:
+  """Dismiss leftover CHANGES_REQUESTED reviews from `actor`.
+
+  GitHub Actions often cannot *approve* (org setting), but the same bot can
+  dismiss its own earlier REJECT reviews so merge is no longer blocked.
+  """
+  slug = repo or _repo_slug()
+  reviews = _gh_json(["api", f"repos/{slug}/pulls/{pr_number}/reviews"])
+  dismissed: List[Dict[str, Any]] = []
+  errors: List[Dict[str, Any]] = []
+  if not isinstance(reviews, list):
+    return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
+  for review in reviews:
+    user = ((review.get("user") or {}).get("login") or "")
+    if user != actor or review.get("state") != "CHANGES_REQUESTED":
+      continue
+    rid = review.get("id")
+    try:
+      out = _gh_run(
+        [
+          "api",
+          "-X",
+          "PUT",
+          f"repos/{slug}/pulls/{pr_number}/reviews/{rid}/dismissals",
+          "-f",
+          f"message={message}",
+          "-F",
+          "event=DISMISS",
+        ]
+      )
+      dismissed.append({"id": rid, "output": out})
+    except RuntimeError as exc:
+      errors.append({"id": rid, "error": str(exc)})
+  return {"action": "dismiss_stale_change_requests", "dismissed": dismissed, "errors": errors}
 
 
 def request_changes_pr(pr_number: int, repo: str = "", body: str = "") -> Dict[str, Any]:

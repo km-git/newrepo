@@ -1,0 +1,60 @@
+name: dmarc-issue-fix
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to draft a fix for
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(join(github.event.issue.labels.*.name, ','), 'good first issue')
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Draft fix notes
+        env:
+          TITLE: ${{ github.event.issue.title || 'manual' }}
+          NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+          BODY: ${{ github.event.issue.body || '' }}
+        run: |
+          mkdir -p output/dmarc
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from dmarc.loop.issue_fix import draft_issue_fix
+          n = int(os.environ["NUMBER"])
+          dest = Path("dmarc/loop/issue-drafts") / f"issue_{n}.md"
+          draft_issue_fix(os.environ["TITLE"], os.environ.get("BODY") or "", n, dest)
+          PY
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "fix: draft good-first-issue ${{ github.event.issue.number || inputs.issue_number }}"
+          title: "fix: draft for good first issue #${{ github.event.issue.number || inputs.issue_number }}"
+          body: |
+            Drafted by dmarc-issue-fix. Human review required.
+            Does not auto-approve (human-authored path).
+          branch: issue/dmarc-${{ github.event.issue.number || inputs.issue_number }}
+          delete-branch: true
+          add-paths: |
+            dmarc/loop/issue-drafts/*.md
