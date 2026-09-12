@@ -16,4 +16,4 @@ def scan_cmd(
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     """Scan for public buckets, unencrypted DBs, etc."""
-    emit(scan_exposure(provider), human=human, title="Exposure Findings")
+    emit(scan_exposure(provider=provider), human=human, title="Exposure Findings")

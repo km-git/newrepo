@@ -37,5 +37,5 @@ def correlate_cmd(human: bool = typer.Option(False, "--human")) -> None:
     from dspm.exposure.service import scan_exposure
 
     findings = findings_to_dict(classify_csv(Path("examples/sample.csv"), max_rows=20))
-    exposures = scan_exposure("aws")
+    exposures = scan_exposure(provider="aws")
     emit(correlate_findings(findings, exposures), human=human, title="Correlated Alerts")

@@ -22,5 +22,5 @@ def score_cmd(
     """Score classified findings by risk (0-100)."""
     findings = classify_csv(data)
     exposures = [{"type": "public_s3", "resource": "s3://public-bucket"}] if findings else []
-    scores = score_findings(findings, exposures)
+    scores = score_findings(findings, exposures=exposures)
     emit(risks_to_dict(scores), human=human, title=f"Risk Scores (since {since})")

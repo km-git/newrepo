@@ -17,4 +17,4 @@ def map_cmd(
 ) -> None:
     """Map principals that can reach a data store."""
     store_id = int(store.split("=")[-1]) if "=" in store else int(store)
-    emit(map_access(store_id), human=human, title="Access Map")
+    emit(map_access(store_id=str(store_id)), human=human, title="Access Map")

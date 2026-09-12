@@ -9,7 +9,7 @@ def test_custom_type_au_tfn():
 
 
 def test_exposure_scan_fixture():
-    findings = scan_exposure("aws")
+    findings = scan_exposure(provider="aws")
     assert len(findings) >= 1
 
 

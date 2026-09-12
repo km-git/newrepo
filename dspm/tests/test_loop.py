@@ -10,7 +10,7 @@ def test_url_hash_dedupes():
 def test_classify_dspm_keyword_scores_high():
     item = classify_item(
         {"title": "Best DSPM vendors: Cyera vs Presidio", "summary": "data security posture", "url": "http://x"},
-        "dspm/classification",
+        dspm_context="dspm/classification",
     )
     assert item["verdict"] in {"discover", "watch"}
     assert item["score"] >= 5

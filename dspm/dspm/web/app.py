@@ -17,7 +17,6 @@ from dspm.discovery.service import discover_directory, stores_to_dict
 from dspm.exposure.service import scan_exposure
 from dspm.governance.service import apply_mask, list_policies, seed_policies
 from dspm.integrations.github import scan_repo
-from dspm.models import Finding
 from dspm.observability.service import dashboard_summary, evaluate_alerts, seed_alert_rules
 from dspm.remediation.service import build_plan
 from dspm.risk.service import risks_to_dict, score_findings
@@ -57,8 +56,9 @@ class SourceScanRequest(BaseModel):
 def _run_full_scan() -> dict:
     init_db()
     findings = findings_to_dict(classify_csv(EXAMPLES, max_rows=50))
-    exposures = scan_exposure("aws")
-    risks = risks_to_dict(score_findings([Finding(**f) for f in findings[:20]], exposures))
+    exposures = scan_exposure(provider="aws")
+    exposure_rows = [e.model_dump() if hasattr(e, "model_dump") else e for e in exposures]
+    risks = risks_to_dict(score_findings(findings[:20], exposures=exposure_rows))
     persist_scan_results(findings, risks, exposures)
     summary = dashboard_summary(findings, risks, exposures)
     correlate_findings(findings, exposures)

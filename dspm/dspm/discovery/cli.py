@@ -42,5 +42,5 @@ def cloud_cmd(
     human: bool = typer.Option(False, "--human"),
 ) -> None:
     """Enumerate cloud data stores via CloudQuery (or fixture)."""
-    stores = discover_cloud(provider, profile)
+    stores = discover_cloud(provider, profile=profile or "dev")
     emit(stores_to_dict(stores), human=human, title=f"Cloud Stores ({provider})")
