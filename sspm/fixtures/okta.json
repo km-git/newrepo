@@ -1,0 +1,19 @@
+{
+  "external_id": "demo.okta.com",
+  "display_name": "Demo Okta Org",
+  "tenant_type": "okta",
+  "scanner": "fixture",
+  "honest_gap": "cnspec covers MFA, session, and auth policy; deep custom app integrations are reported as count + names.",
+  "apps": [
+    {"name": "Salesforce", "publisher": "Salesforce"},
+    {"name": "Office 365", "publisher": "Microsoft"},
+    {"name": "Custom SAML HR", "publisher": "internal"}
+  ],
+  "settings": [
+    {"name": "policy.mfa.required", "value": "optional", "source": "okta.policies", "control_hint": "NIST IA-2"},
+    {"name": "policy.auth.minLength", "value": "8", "source": "okta.policies", "control_hint": "NIST IA-5"},
+    {"name": "policy.session.maxLifetimeMinutes", "value": "10080", "source": "okta.policies", "control_hint": "NIST AC-12"},
+    {"name": "policy.lockout.maxAttempts", "value": "10", "source": "okta.policies", "control_hint": "NIST AC-7"},
+    {"name": "factor.okta_verify.push", "value": "true", "source": "okta.factors", "control_hint": "NIST IA-2(1)"}
+  ]
+}

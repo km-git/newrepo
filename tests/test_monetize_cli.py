@@ -163,6 +163,8 @@ def test_execute_allowed_on_pro_and_records_royalty(monkeypatch, tmp_path, capsy
     import engine.execution_agent as execution_agent
 
     report_path = tmp_path / "royalty.json"
+    export = tmp_path / "export.csv"
+    export.write_text("symbol,row_type,gtc_tier\nBTC/USDT,primary,watch\n")
     monkeypatch.setattr(
         execution_agent,
         "execute_from_csv",
@@ -174,7 +176,11 @@ def test_execute_allowed_on_pro_and_records_royalty(monkeypatch, tmp_path, capsy
     _run_main(
         monkeypatch,
         ["--execute"],
-        env={"EW_LICENSE_TIER": "pro", "EW_ROYALTY_REPORT_PATH": str(report_path)},
+        env={
+            "EW_LICENSE_TIER": "pro",
+            "EW_ROYALTY_REPORT_PATH": str(report_path),
+            "EW_LIMIT_ORDERS_CSV": str(export),
+        },
     )
     out = json.loads(capsys.readouterr().out)
     assert out["ok"] is True

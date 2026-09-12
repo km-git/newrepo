@@ -8,7 +8,16 @@ import pandas as pd
 
 from core.atr import compute_atr14
 from core.indicators import score_indicator_confluence
-from core.risk import DCA_PROFILE_PYRAMID, build_dca_ladder, compute_wae, dynamic_stop, dynamic_targets, risk_package, sensible_entry_anchor
+from core.risk import (
+  DCA_PROFILE_PYRAMID,
+  build_dca_ladder,
+  compute_wae,
+  dynamic_stop,
+  dynamic_targets,
+  risk_package,
+  sensible_entry_anchor,
+)
+from engine.indicator_calibration import load_calibration, score_indicator_confluence_calibrated
 from engine.readiness import resolve_execution_status
 
 STYLE_CONFIG = {
@@ -73,6 +82,8 @@ def build_style_setup(
   c_targets: dict,
   executive: dict,
   market_tools: Optional[dict] = None,
+  expert_direction: Optional[dict] = None,
+  cycle_confluence: Optional[dict] = None,
   *,
   symbol: str = "",
   historical_metrics: Optional[dict] = None,
@@ -126,9 +137,21 @@ def build_style_setup(
     structure_low=s_low,
     structure_high=s_high,
   )
+  if stop.get("capped"):
+    risk_unit = abs(entry_anchor - stop["price"])
+    if risk_unit > 0:
+      for t in targets:
+        t["rr"] = round(abs(float(t["price"]) - entry_anchor) / risk_unit, 2)
   rr = targets[1]["rr"] if len(targets) > 1 else 0
   harmonic_near = bool(harm_tf)
-  indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
+  calibration = load_calibration()
+  if calibration and calibration.get("available"):
+    indicators = score_indicator_confluence_calibrated(
+      df, direction, kz_low, kz_high, style, calibration
+    )
+  else:
+    indicators = score_indicator_confluence(df, direction, kz_low, kz_high, style)
+  indicators["stop_dist_pct"] = stop.get("distance_pct")
   # TV OSS confluence layer (Supertrend / BB / ADX + microstructure)
   if df is not None and len(df) >= 30:
     from core.tv_indicators import score_tv_confluence
@@ -143,11 +166,22 @@ def build_style_setup(
     if tv.get("signals"):
       indicators["signals"] = list(indicators.get("signals", [])) + tv["signals"][:2]
   mkt = market_tools or {}
-  boost = mkt.get("confluence_boost", 0)
+  # Calibrated scoring uses ledger-validated tokens only — no expert/cycle inflation
+  boost = 0 if indicators.get("calibrated") else mkt.get("confluence_boost", 0)
+  if not indicators.get("calibrated") and expert_direction:
+    boost += min(8, int(expert_direction.get("confidence", 0) * 10))
+  if not indicators.get("calibrated") and cycle_confluence:
+    cy = cycle_confluence.get("cycle_direction", "NEUTRAL")
+    dir_bull = direction == "LONG"
+    cy_bull = cy == "BULL"
+    if (dir_bull and cy_bull) or (not dir_bull and cy == "BEAR"):
+      boost += min(6, cycle_confluence.get("confluence_boost", 0) // 3)
   if boost:
     indicators["score"] = min(100, indicators["score"] + boost)
     indicators["aligned"] = indicators["score"] >= indicators.get("threshold", 58)
     indicators["signals"] = list(indicators.get("signals", [])) + mkt.get("confluence_signals", [])[:2]
+  if not indicators.get("calibrated") and expert_direction and expert_direction.get("confluence_signals"):
+    indicators["signals"] = list(indicators.get("signals", [])) + expert_direction["confluence_signals"][:2]
   if symbol and historical_metrics:
     from engine.outcome_tracker import readiness_adjustment, lookup_win_rate
     delta = readiness_adjustment(symbol, tf, direction, historical_metrics)
@@ -171,6 +205,16 @@ def build_style_setup(
     harmonic_near=harmonic_near,
     indicator=indicators,
     executive_verdict=executive.get("verdict", ""),
+    expert_confidence=expert_direction.get("confidence", 0) if expert_direction else 0,
+    cycle_aligned=(
+      cycle_confluence is not None
+      and cycle_confluence.get("cycle_direction") in (
+        direction, "BULL" if direction == "LONG" else "BEAR"
+      )
+    ),
+    oos_win_rate=None,
+    oos_trades=0,
+    impulse_partial=wave.get("impulse_partial", False),
   )
 
   probe_size_pct = 50 if execution_tier == "probe" else 100
@@ -221,6 +265,7 @@ def build_style_setup(
     "honest_reason": reason,
     "wave_structure": wave.get("structure"),
     "wave_valid": wave.get("impulse_valid", False),
+    "wave_partial": wave.get("impulse_partial", False),
     "violations": wave.get("violations", [])[:2],
     "entry": {
       "anchor": round(entry_anchor, 6),
@@ -242,6 +287,12 @@ def build_style_setup(
       "rsi_stack": mkt.get("multi_tf_rsi", {}).get("bias"),
       "btc_corr": mkt.get("btc_correlation", {}).get("correlation"),
     },
+    "expert_direction": expert_direction,
+    "cycle_confluence": {
+      "direction": (cycle_confluence or {}).get("cycle_direction"),
+      "hurst": (cycle_confluence or {}).get("primary_hurst"),
+      "phase": (cycle_confluence or {}).get("primary_phase"),
+    } if cycle_confluence else None,
     "harmonic": harm_tf[0] if harm_tf else None,
     "monitor": {
       "check_interval": tf,
@@ -273,6 +324,8 @@ def build_outcomes(
   c_targets: dict,
   executive: dict,
   market_tools: Optional[dict] = None,
+  expert_direction: Optional[dict] = None,
+  cycle_confluence: Optional[dict] = None,
 ) -> dict:
   mkt = market_tools or {}
   boost = mkt.get("confluence_boost", 0)
@@ -284,6 +337,8 @@ def build_outcomes(
       style, data, adaptive, wave_structure, direction,
       kz_low, kz_high, harmonic_overlaps, in_zone, consensus, c_targets, executive,
       market_tools=mkt,
+      expert_direction=expert_direction,
+      cycle_confluence=cycle_confluence,
       symbol=symbol,
       historical_metrics=historical_metrics,
     )
@@ -320,6 +375,9 @@ def build_outcomes(
       "monitor_count": len(monitor),
       "not_actionable_count": len(skip),
       "executive_verdict": executive.get("verdict"),
+      "expert_direction": expert_direction.get("direction") if expert_direction else None,
+      "expert_confidence": expert_direction.get("confidence") if expert_direction else None,
+      "cycle_direction": cycle_confluence.get("cycle_direction") if cycle_confluence else None,
       "truth": (
         f"{len(full_exec)} full + {len(probe_exec)} probe executable, "
         f"{len(monitor)} monitor, {len(skip)} skip — primary={primary_key} ({primary_status})"

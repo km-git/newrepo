@@ -52,9 +52,26 @@ def build_outcome_row(result: dict) -> List[dict]:
       "rr_tp2": targets[1]["rr"] if len(targets) > 1 else "",
       "account_risk_pct": s.get("risk", {}).get("account_risk_pct"),
       "harmonic": f"{s['harmonic']['pattern']}@{s['harmonic']['prz_low']:.4g}" if s.get("harmonic") else "",
-      "hist_win_rate": ad.get("win_rate"),
-      "hist_trades": ad.get("simulated_trades"),
-      "autodream_lesson": "; ".join(ad.get("lessons", [])[:1]),
+      "hist_win_rate": s.get("historical_edge") or ad.get("win_rate"),
+      "hist_trades": s.get("hist_trades") or ad.get("simulated_trades"),
+      "hist_avg_pnl_r": s.get("hist_avg_pnl_r") or ad.get("avg_pnl_r"),
+      "oos_win_rate": s.get("oos_win_rate") or ad.get("oos_win_rate"),
+      "oos_trades": s.get("oos_trades") or ad.get("oos_trades"),
+      "wf_degradation": s.get("wf_degradation") or ad.get("wf_degradation"),
+      "stress_win_rate": s.get("stress_win_rate") or ad.get("stress_win_rate"),
+      "mc_win_rate_p5": s.get("mc_win_rate_p5") or ad.get("mc_win_rate_p5"),
+      "validation_summary": s.get("validation_summary") or ad.get("validation_summary"),
+      "paper_outcome": s.get("paper_outcome"),
+      "paper_pnl_r": s.get("paper_pnl_r"),
+      "autodream_verdict": s.get("autodream_verdict"),
+      "autodream_lesson": "; ".join(ad.get("lessons", [])[:1]) or s.get("confidence_note", "")[:80],
+      "loss_lesson": s.get("loss_lesson"),
+      "hedge_plan": (
+        f"{s['hedge_plan']['hedge_size_pct']}% {s['hedge_plan']['hedge_direction']} "
+        f"{s['hedge_plan']['hedge_instrument']}"
+        if s.get("hedge_plan", {}).get("required") else ""
+      ),
+      "adjusted_risk_pct": (s.get("risk") or {}).get("account_risk_pct"),
     })
   return rows
 

@@ -1,0 +1,200 @@
+{
+  "tenant_id": "sandbox-demo",
+  "tenant_name": "AU SMB sandbox (fixtures, not a live bill)",
+  "generated_note": "24-48h lag on real cost APIs; sandbox figures are illustrative.",
+  "resources": [
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "i-0abc1111",
+      "resource_type": "ec2",
+      "name": "web-prod-1",
+      "tags": {"Environment": "prod", "CostCenter": "ENG-200", "Owner": "platform"},
+      "monthly_cost": 121.60,
+      "config": {"instance_type": "t3.large", "state": "running", "cpu_p95": 8}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "i-0abc2222",
+      "resource_type": "ec2",
+      "name": "batch-dev",
+      "tags": {"Environment": "dev"},
+      "monthly_cost": 60.80,
+      "config": {"instance_type": "t3.large", "state": "running", "cpu_p95": 4}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "vol-0ebs9999",
+      "resource_type": "ebs",
+      "name": "orphan-gp3",
+      "tags": {},
+      "monthly_cost": 24.00,
+      "config": {"volume_type": "gp3", "size_gb": 200, "attached": false, "storage_class": "gp3"}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "nat-0aaa1111",
+      "resource_type": "nat",
+      "name": "egress-nat",
+      "tags": {"Environment": "prod", "CostCenter": "ENG-200", "Owner": "platform"},
+      "monthly_cost": 38.50,
+      "config": {"type": "nat-gateway"}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "eipalloc-0dead",
+      "resource_type": "eip",
+      "name": "unassociated-eip",
+      "tags": {},
+      "monthly_cost": 3.65,
+      "config": {"associated": false}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "db-prod-1",
+      "resource_type": "rds",
+      "name": "orders-db",
+      "tags": {"Environment": "prod", "CostCenter": "ENG-200", "Owner": "data"},
+      "monthly_cost": 412.00,
+      "config": {"instance_type": "db.m5.xlarge", "engine": "postgres", "cpu_p95": 18}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "arn:aws:s3:::logs-untagged-bucket",
+      "resource_type": "s3",
+      "name": "logs-untagged-bucket",
+      "tags": {},
+      "monthly_cost": 47.20,
+      "config": {"storage_class": "STANDARD", "baseline_storage_class": "STANDARD_IA"}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "arn:aws:lambda:ap-southeast-2:111122223333:function:ingest",
+      "resource_type": "lambda",
+      "name": "ingest",
+      "tags": {"Environment": "prod", "CostCenter": "ENG-200", "Owner": "platform"},
+      "monthly_cost": 12.40,
+      "config": {"memory_mb": 1024, "runtime": "python3.12"}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "arn:aws:elasticloadbalancing:ap-southeast-2:111122223333:loadbalancer/app/web/abc",
+      "resource_type": "elb",
+      "name": "web-alb",
+      "tags": {"Environment": "prod", "CostCenter": "ENG-200", "Owner": "platform"},
+      "monthly_cost": 22.10,
+      "config": {"type": "application"}
+    },
+    {
+      "provider": "aws",
+      "account_id": "111122223333",
+      "region": "ap-southeast-2",
+      "resource_id": "ri-expiring-2026-10",
+      "resource_type": "reserved-instance",
+      "name": "rds-ri-1yr",
+      "tags": {"Environment": "prod", "CostCenter": "FIN-100", "Owner": "finops"},
+      "monthly_cost": 0,
+      "config": {"expiry": "2026-10-01", "offering": "All Upfront", "baseline_expiry": "2027-10-01"}
+    },
+    {
+      "provider": "azure",
+      "account_id": "sub-aaaa-bbbb",
+      "region": "australiaeast",
+      "resource_id": "/subscriptions/sub-aaaa-bbbb/vm/api-prod",
+      "resource_type": "vm",
+      "name": "api-prod",
+      "tags": {"Environment": "prod", "CostCenter": "ENG-200", "Owner": "platform"},
+      "monthly_cost": 280.00,
+      "config": {"instance_type": "Standard_D8s_v3", "cpu_p95": 11}
+    },
+    {
+      "provider": "azure",
+      "account_id": "sub-aaaa-bbbb",
+      "region": "australiaeast",
+      "resource_id": "/subscriptions/sub-aaaa-bbbb/publicip/orphan",
+      "resource_type": "publicip",
+      "name": "orphan-pip",
+      "tags": {},
+      "monthly_cost": 4.20,
+      "config": {"associated": false}
+    },
+    {
+      "provider": "azure",
+      "account_id": "sub-aaaa-bbbb",
+      "region": "australiaeast",
+      "resource_id": "/subscriptions/sub-aaaa-bbbb/storage/logs",
+      "resource_type": "storage",
+      "name": "logstore",
+      "tags": {"Owner": "data"},
+      "monthly_cost": 61.00,
+      "config": {"storage_class": "Hot", "baseline_storage_class": "Cool"}
+    },
+    {
+      "provider": "gcp",
+      "account_id": "demo-project",
+      "region": "australia-southeast1",
+      "resource_id": "projects/demo-project/instances/ml-train",
+      "resource_type": "gce",
+      "name": "ml-train",
+      "tags": {"environment": "dev"},
+      "monthly_cost": 190.00,
+      "config": {"instance_type": "n2-standard-8", "cpu_p95": 6}
+    },
+    {
+      "provider": "gcp",
+      "account_id": "demo-project",
+      "region": "australia-southeast1",
+      "resource_id": "projects/demo-project/addresses/idle-ip",
+      "resource_type": "address",
+      "name": "idle-ip",
+      "tags": {},
+      "monthly_cost": 7.30,
+      "config": {"status": "RESERVED"}
+    },
+    {
+      "provider": "gcp",
+      "account_id": "demo-project",
+      "region": "australia-southeast1",
+      "resource_id": "projects/demo-project/disks/scratch",
+      "resource_type": "disk",
+      "name": "scratch",
+      "tags": {"owner": "ml"},
+      "monthly_cost": 18.00,
+      "config": {"storage_class": "pd-ssd", "baseline_storage_class": "pd-standard"}
+    }
+  ],
+  "costs": [
+    {"provider": "aws", "account_id": "111122223333", "region": "ap-southeast-2", "service": "AmazonEC2", "period": "2026-08", "amount": 246.55, "tag_key": "Environment", "tag_value": "prod"},
+    {"provider": "aws", "account_id": "111122223333", "region": "ap-southeast-2", "service": "AmazonRDS", "period": "2026-08", "amount": 412.00, "tag_key": "Environment", "tag_value": "prod"},
+    {"provider": "aws", "account_id": "111122223333", "region": "ap-southeast-2", "service": "AmazonS3", "period": "2026-08", "amount": 47.20, "tag_key": "", "tag_value": ""},
+    {"provider": "aws", "account_id": "111122223333", "region": "ap-southeast-2", "service": "AWSLambda", "period": "2026-08", "amount": 12.40, "tag_key": "Environment", "tag_value": "prod"},
+    {"provider": "aws", "account_id": "111122223333", "region": "ap-southeast-2", "service": "AWSELB", "period": "2026-08", "amount": 22.10, "tag_key": "Environment", "tag_value": "prod"},
+    {"provider": "azure", "account_id": "sub-aaaa-bbbb", "region": "australiaeast", "service": "Virtual Machines", "period": "2026-08", "amount": 280.00, "tag_key": "Environment", "tag_value": "prod"},
+    {"provider": "azure", "account_id": "sub-aaaa-bbbb", "region": "australiaeast", "service": "Storage", "period": "2026-08", "amount": 65.20, "tag_key": "", "tag_value": ""},
+    {"provider": "gcp", "account_id": "demo-project", "region": "australia-southeast1", "service": "Compute Engine", "period": "2026-08", "amount": 215.30, "tag_key": "", "tag_value": ""}
+  ],
+  "baseline": [
+    {"resource_id": "i-0abc1111", "field": "instance_type", "baseline": "t3.medium", "kind": "instance_type"},
+    {"resource_id": "arn:aws:s3:::logs-untagged-bucket", "field": "storage_class", "baseline": "STANDARD_IA", "kind": "storage_class"},
+    {"resource_id": "ri-expiring-2026-10", "field": "expiry", "baseline": "2027-10-01", "kind": "reserved_instance_expiry"},
+    {"resource_id": "/subscriptions/sub-aaaa-bbbb/storage/logs", "field": "storage_class", "baseline": "Cool", "kind": "storage_class"},
+    {"resource_id": "projects/demo-project/disks/scratch", "field": "storage_class", "baseline": "pd-standard", "kind": "storage_class"}
+  ]
+}

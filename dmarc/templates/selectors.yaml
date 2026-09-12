@@ -1,0 +1,13 @@
+google:
+  - google
+microsoft:
+  - selector1
+  - selector2
+mailchimp:
+  - k1
+campaign-monitor:
+  - cm
+generic:
+  - default
+  - s1
+  - s2

@@ -15,6 +15,9 @@ from cache.dedup import dedup_tool_calls
 from cache.disk_cache import get_cache
 from core.atr import compute_atr14, median_daily_range
 from core.consensus import build_consensus
+from core.cycle_confluence import build_cycle_confluence
+from core.direction_resolver import resolve_expert_direction
+from core.sentinel_adapter import build_sentinel_analysis
 from core.correction import detect_abc, detect_diagonal
 from core.fib_zone import compute_c_targets, compute_prior_decline_fibs, compute_tight_kill_zone
 from core.harmonic import collect_actionable_harmonics, scan_harmonics
@@ -26,6 +29,7 @@ from core.monowaves import adaptive_skip_for_df, extract_monowaves_cached
 from engine.autodream import enrich_outcomes_with_autodream, record_outcome
 from engine.ew_matrix import DEFAULT_EW_TFS, build_ew_matrix, ew_coverage_summary
 from engine.executive import executive_decide
+from core.market_clock import data_as_of_from_frames, data_as_of_meta
 from engine.outcomes import build_outcomes
 from fetchers import fetch
 
@@ -149,12 +153,16 @@ def adaptive_pipeline(
   is_crypto: bool,
   exchange_preference: str | None = None,
   llm_advisory: bool = False,
+  *,
+  data_override: Optional[Dict[str, pd.DataFrame]] = None,
 ) -> dict:
   stages: List[tuple[str, dict, Any]] = []
   tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
 
   # Fetch — always attempt all timeframes (partial OK)
-  data = fetch(symbol, tfs, is_crypto, exchange_preference=exchange_preference)
+  data = data_override if data_override is not None else fetch(
+    symbol, tfs, is_crypto, exchange_preference=exchange_preference,
+  )
   stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto,
                             "exchange": exchange_preference},
                  {"bars": {tf: len(data[tf]) for tf in tfs if tf in data}}))
@@ -270,7 +278,15 @@ def adaptive_pipeline(
   consensus = build_consensus(data, adaptive, symbol, timeframes=["1d", "4h", "15m"])
   stages.append(("wave_consensus", {"symbol": symbol}, compact_summary(consensus)))
 
-  # STEP 6b: Market tools + free data (TV OSS, WS, web intel) — before executive
+  # STEP 6b: Hurst cycles + dominant-cycle phase
+  cycle_confluence = build_cycle_confluence(symbol, data, tfs)
+  stages.append(("cycle_confluence", {"symbol": symbol}, {
+    "cycle_direction": cycle_confluence.get("cycle_direction"),
+    "hurst": cycle_confluence.get("primary_hurst"),
+    "phase": cycle_confluence.get("primary_phase"),
+  }))
+
+  # STEP 6c: Market tools + free data (TV OSS, WS, web intel) — before executive
   btc_1d = None
   if is_crypto and not symbol.upper().startswith("BTC"):
     try:
@@ -318,7 +334,35 @@ def adaptive_pipeline(
                   "tv_score": (market_tools.get("tv_confluence") or {}).get("score"),
                   "signals": market_tools.get("confluence_signals", [])[:3]}))
 
-  # STEP 7: Executive decision — rule-based draft (refined by AI panel when enabled)
+  # STEP 6d: Sentinel Trader fusion (structure + momentum + Ehlers cycle + VWAP)
+  sentinel_analysis = build_sentinel_analysis(
+    symbol, data, wave_structure, cycle_confluence, market_tools, consensus,
+  )
+  stages.append(("sentinel_analysis", {"symbol": symbol}, {
+    "direction": sentinel_analysis.get("direction"),
+    "confidence": sentinel_analysis.get("confidence"),
+  }))
+
+  # STEP 6e: Expert EW direction — sentinel + Hurst + EW stack (always BULL/BEAR)
+  expert_direction = resolve_expert_direction(
+    wave_structure=wave_structure,
+    adaptive=adaptive,
+    htf_class=htf_class,
+    consensus=consensus,
+    cycle_confluence=cycle_confluence,
+    harmonic_overlaps=harmonic_overlaps,
+    exec_direction=exec_direction,
+    execution_passes=execution_passes,
+    market_tools=market_tools,
+    sentinel_analysis=sentinel_analysis,
+  )
+  stages.append(("expert_direction", {"symbol": symbol}, {
+    "direction": expert_direction["direction"],
+    "confidence": expert_direction["confidence"],
+    "method": expert_direction["method"],
+  }))
+
+  # STEP 7: Executive decision — expert trader + market intel (AI panel when enabled)
   decision = executive_decide(
     symbol=symbol,
     data=data,
@@ -335,6 +379,8 @@ def adaptive_pipeline(
     violations_sample=violations_sample,
     mc_result=mc_result,
     consensus=consensus,
+    expert_direction=expert_direction,
+    cycle_confluence=cycle_confluence,
     market_tools=market_tools,
   )
   try:
@@ -420,9 +466,14 @@ def adaptive_pipeline(
     c_targets=c_targets,
     executive=executive,
     market_tools=market_tools,
+    expert_direction=expert_direction,
+    cycle_confluence=cycle_confluence,
   )
   outcomes = enrich_outcomes_with_autodream(outcomes, symbol, data)
-  record_outcome(symbol, outcomes, current_price, status)
+  record_outcome(
+    symbol, outcomes, current_price, status,
+    data_as_of_utc=data_as_of_from_frames(data, prefer_tf="1d"),
+  )
   hs = outcomes["honest_summary"]
   print(f"[step8] outcomes: {hs['truth']}")
 
@@ -434,6 +485,8 @@ def adaptive_pipeline(
     f"harmonics={len(harmonic_overlaps)}, 15m_valid={execution_passes}. "
     f"EW consensus={consensus['consensus_direction']} ({consensus['agreement_pct']}% agree, "
     f"score={consensus['consensus_score']}). "
+    f"Expert={expert_direction['direction']} ({expert_direction['confidence']:.0%}, "
+    f"Hurst {cycle_confluence.get('primary_regime')}, phase {cycle_confluence.get('primary_phase')}). "
     f"Action: {trade['action']} | {trade.get('instruction', trade.get('reason', ''))} | "
     f"Outcomes: {hs['truth']}"
   )
@@ -454,7 +507,8 @@ def adaptive_pipeline(
 
   result = {
     "symbol": symbol,
-    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    "timestamp_utc": data_as_of_from_frames(data, prefer_tf="1d") or datetime.now(timezone.utc).isoformat(),
+    "data_as_of_meta": data_as_of_meta(data),
     "status": status,
     "step1_htf_bias": htf_class,
     "step1_htf_weekly": htf_weekly,
@@ -491,6 +545,9 @@ def adaptive_pipeline(
       "violations_sample": violations_sample,
     },
     "step6_wave_consensus": consensus,
+    "step6b_cycle_confluence": cycle_confluence,
+    "step6c_expert_direction": expert_direction,
+    "step6d_sentinel_analysis": sentinel_analysis,
     "step9_market_confluence": market_tools,
     "step8_outcomes": outcomes,
     "trade_setup": trade,

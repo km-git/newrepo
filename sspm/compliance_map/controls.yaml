@@ -1,0 +1,71 @@
+frameworks:
+  cis-m365:
+    - control_id: "1.1.1"
+      title: "Security defaults observed"
+      maps_to_settings: ["securityDefaults.enabled"]
+      expected: "true"
+    - control_id: "1.3.1"
+      title: "Auth expiration observed"
+      maps_to_settings: ["authPolicy.expireEnabled"]
+      expected: "false"
+    - control_id: "5.1.5.1"
+      title: "User consent to apps observed"
+      maps_to_settings: ["userConsent.allowed"]
+      expected: "false"
+    - control_id: "5.2.2.5"
+      title: "Admin MFA observed"
+      maps_to_settings: ["conditionalAccess.mfaForAdmins"]
+      expected: "true"
+    - control_id: "8.2.1"
+      title: "Teams external domains observed"
+      maps_to_settings: ["teams.allowExternalDomains"]
+      expected: "false"
+  cis-gws:
+    - control_id: "1.2"
+      title: "2-step verification enforcement observed"
+      maps_to_settings: ["admin.2sv.enforcement"]
+      expected: "on"
+    - control_id: "3.1"
+      title: "Drive external sharing observed"
+      maps_to_settings: ["drive.sharing.external"]
+      expected: "restricted"
+    - control_id: "1.4"
+      title: "Legacy app access observed"
+      maps_to_settings: ["admin.lessSecureApps"]
+      expected: "blocked"
+  iso-27001:
+    - control_id: "A.5.15"
+      title: "Access control — MFA and guest settings observed"
+      maps_to_settings: ["conditionalAccess.mfaForAdmins", "admin.2sv.enforcement", "policy.mfa.required"]
+      expected: "any_hardened"
+    - control_id: "A.8.2"
+      title: "Privileged access — app creation / OAuth consent observed"
+      maps_to_settings: ["authorizationPolicy.defaultUserRolePermissions.allowedToCreateApps", "userConsent.allowed"]
+      expected: "false"
+  nist-800-53:
+    - control_id: "IA-2"
+      title: "Identification and authentication observed"
+      maps_to_settings: ["conditionalAccess.mfaForAdmins", "policy.mfa.required", "two_factor_requirement.enabled", "team.two_factor_required"]
+      expected: "any_hardened"
+    - control_id: "AC-17"
+      title: "External sharing / remote access observed"
+      maps_to_settings: ["sharePoint.sharingCapability", "drive.sharing.external", "file_sharing.public_file_urls"]
+      expected: "any_hardened"
+  au-essential-eight:
+    - control_id: "E8-MFA"
+      title: "Essential Eight MFA coverage observed"
+      maps_to_settings: ["conditionalAccess.mfaForAdmins", "admin.2sv.enforcement", "policy.mfa.required", "two_factor_requirement.enabled"]
+      expected: "any_hardened"
+    - control_id: "E8-PATCH"
+      title: "Application control / third-party app posture observed"
+      maps_to_settings: ["userConsent.allowed", "app_dir.approved_apps_only", "members_can_create_public_repositories"]
+      expected: "any_hardened"
+  apra-cps-234:
+    - control_id: "CPS234-19"
+      title: "Information security control assessment observed"
+      maps_to_settings: ["audit.logRetentionDays", "securityDefaults.enabled"]
+      expected: "any_hardened"
+    - control_id: "CPS234-27"
+      title: "Access security observed"
+      maps_to_settings: ["conditionalAccess.mfaForAdmins", "policy.mfa.required"]
+      expected: "any_hardened"

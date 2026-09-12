@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feedback>
+  <report_metadata>
+    <org_name>proofpoint.com</org_name>
+    <email>dmarc@proofpoint.com</email>
+    <report_id>rua-10-example-com-au</report_id>
+    <date_range><begin>1785542400</begin><end>1785628799</end></date_range>
+  </report_metadata>
+  <policy_published>
+    <domain>example.com.au</domain>
+    <adkim>r</adkim>
+    <aspf>r</aspf>
+    <p>none</p>
+    <sp>none</sp>
+    <pct>100</pct>
+  </policy_published>
+  <record>
+    <row>
+      <source_ip>67.231.144.2</source_ip>
+      <count>4</count>
+      <policy_evaluated>
+        <disposition>quarantine</disposition>
+        <dkim>fail</dkim>
+        <spf>fail</spf>
+      </policy_evaluated>
+    </row>
+    <identifiers>
+      <header_from>example.com.au</header_from>
+    </identifiers>
+    <auth_results>
+      <dkim><domain>example.com.au</domain><result>fail</result><selector>google</selector></dkim>
+      <spf><domain>example.com.au</domain><result>fail</result></spf>
+    </auth_results>
+  </record>
+</feedback>

@@ -408,3 +408,22 @@ Every output includes `executive_decision` with verdict, conviction, playbook, c
 ## Cache Environment
 
 Set `EW_CACHE_DIR` to override default `.cache/ew_tool`.
+
+## SSPM Configuration & Inventory Explorer
+
+Sibling product under `sspm/`: read-only SaaS posture reports (M365, Google Workspace, GitHub, Slack, Okta). Not an attestation.
+
+```bash
+python3 -m sspm demo
+python3 ew_tool.py --sspm-ui --static   # reports/sspm_explorer.html
+make sspm-all
+```
+
+## DSPM (data posture)
+
+Sibling product under `dspm/`. Open-source Cyera-like inventory/classify/risk path. See `dspm/README.md`.
+
+```bash
+python3 -m dspm audit inventory
+make dspm-all
+```

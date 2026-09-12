@@ -11,6 +11,11 @@ FIB_RATIOS = [0.236, 0.382, 0.5, 0.618, 0.786]
 
 
 def compute_prior_decline_fibs(df: pd.DataFrame) -> Dict[str, float]:
+  """
+  Retrace fib levels from the most recent swing leg (temporal order preserved).
+  Decline (high then low): retrace upward from swing low.
+  Rally (low then high): retrace downward from swing high.
+  """
   highs = df["High"].values.astype(float)
   lows = df["Low"].values.astype(float)
   if len(highs) < 10:
@@ -18,9 +23,12 @@ def compute_prior_decline_fibs(df: pd.DataFrame) -> Dict[str, float]:
   hi_idx = int(np.argmax(highs))
   lo_idx = int(np.argmin(lows))
   if hi_idx < lo_idx:
-    swing_high, swing_low = highs[hi_idx], lows[lo_idx]
-  else:
-    swing_high, swing_low = highs[lo_idx], lows[hi_idx]
+    swing_high, swing_low = float(highs[hi_idx]), float(lows[lo_idx])
+    span = swing_high - swing_low
+    if span <= 0:
+      return {}
+    return {f"fib_{r}": swing_low + span * r for r in FIB_RATIOS}
+  swing_low, swing_high = float(lows[lo_idx]), float(highs[hi_idx])
   span = swing_high - swing_low
   if span <= 0:
     return {}
@@ -36,16 +44,18 @@ def compute_c_targets(wave_a: dict, b_end: float, bias: str, state: str) -> dict
   wtype = wave_a.get("type", "Down")
   b = bias.lower()
 
-  if state in ("bullish_impulse",) or "bullish" in b or wtype == "Down":
+  bullish_rev = "bullish_reversal" in b or state == "bullish_impulse"
+  bearish_rev = "bearish_reversal" in b or state == "bearish_impulse"
+
+  if bullish_rev or (not bearish_rev and wtype == "Down"):
     t100 = b_end + mag
     t161 = b_end + mag * 1.618
     direction = "up"
-  elif state in ("bearish_impulse",) or "bearish" in b or wtype == "Up":
+  elif bearish_rev or wtype == "Up":
     t100 = b_end - mag
     t161 = b_end - mag * 1.618
     direction = "down"
   else:
-    # Neutral/choppy: pick target side nearest to typical reversal from last A
     if wtype == "Down":
       t100 = b_end + mag * 0.618
       t161 = b_end + mag
