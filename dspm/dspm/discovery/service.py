@@ -59,10 +59,7 @@ def discover_cloud(provider: str, profile: str | None = None) -> list[StoreFindi
         raw = run_cli(["cloudquery", "sync", "--help"], fixture_path=fixture)
     except Exception:
         raw = json.loads(fixture.read_text(encoding="utf-8")) if fixture.exists() else []
-    if isinstance(raw, dict):
-        items = raw.get("stores", [])
-    else:
-        items = raw if isinstance(raw, list) else []
+    items = raw.get("stores", []) if isinstance(raw, dict) else raw if isinstance(raw, list) else []
     return [
         StoreFinding(
             source=item.get("source", provider),

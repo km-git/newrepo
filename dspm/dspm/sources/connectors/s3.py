@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -52,7 +52,7 @@ class S3Connector(BaseConnector):
                             provider="s3",
                             store_type="object",
                             size_bytes=item.get("Size"),
-                            modified_at=item.get("LastModified", datetime.now(timezone.utc)).isoformat()
+                            modified_at=item.get("LastModified", datetime.now(UTC)).isoformat()
                             if hasattr(item.get("LastModified"), "isoformat")
                             else str(item.get("LastModified", "")),
                             parent_uri=uri,

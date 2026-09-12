@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -83,7 +83,7 @@ def classify_item(item: dict, module_hint: str = "") -> dict:
         "module_hint": module_hint,
         "score": score,
         "verdict": verdict,
-        "classified_at": datetime.now(timezone.utc).isoformat(),
+        "classified_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -108,6 +108,6 @@ def run_watch(mode: str = "all") -> dict:
             classified = classify_item(item, src.get("module_hint", ""))
             if classified["verdict"] != "skip":
                 new_items.append(classified)
-                seen[h] = datetime.now(timezone.utc).isoformat()
+                seen[h] = datetime.now(UTC).isoformat()
     save_seen(seen)
     return {"mode": mode, "new_items": new_items, "count": len(new_items)}

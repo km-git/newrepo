@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from dspm.store.db import fetch_all, init_db, insert_row
@@ -17,7 +17,7 @@ DEFAULT_ALERT_RULES = [
 
 def record_metric(name: str, value: float, labels: dict | None = None) -> dict[str, Any]:
     init_db()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     row = {
         "metric_name": name,
         "value": value,
@@ -32,7 +32,7 @@ def seed_alert_rules() -> list[dict]:
     init_db()
     if fetch_all("alert_rules", limit=1):
         return fetch_all("alert_rules", limit=20)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for rule in DEFAULT_ALERT_RULES:
         insert_row(
             "alert_rules",
@@ -59,7 +59,7 @@ def dashboard_summary(findings: list[dict], risks: list[dict], exposures: list[d
         "health": "healthy" if critical_exp == 0 else "degraded",
     }
     for k, v in metrics.items():
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             record_metric(k, float(v))
     return metrics
 

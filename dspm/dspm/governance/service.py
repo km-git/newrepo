@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dspm.store.db import fetch_all, init_db, insert_row
 
@@ -45,7 +45,7 @@ def seed_policies() -> list[dict]:
     existing = fetch_all("governance_policies", limit=1)
     if existing:
         return fetch_all("governance_policies", limit=50)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     created = []
     for p in DEFAULT_MASKING_POLICIES:
         row = {

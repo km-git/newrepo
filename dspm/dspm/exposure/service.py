@@ -19,10 +19,7 @@ def scan_exposure(provider: str = "aws") -> list[dict]:
         )
     except Exception:
         raw = json.loads(fixture.read_text(encoding="utf-8")) if fixture.exists() else []
-    if isinstance(raw, dict):
-        items = raw.get("findings", raw.get("AssessmentResults", []))
-    else:
-        items = raw
+    items = raw.get("findings", raw.get("AssessmentResults", [])) if isinstance(raw, dict) else raw
     exposures: list[dict] = []
     for item in items:
         exposures.append(

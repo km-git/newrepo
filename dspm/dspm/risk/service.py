@@ -41,14 +41,14 @@ def score_findings(
         id AS finding_id,
         LEAST(100.0,
             CASE type
-                WHEN 'PII' THEN {WEIGHTS['PII']}
-                WHEN 'PHI' THEN {WEIGHTS['PHI']}
-                WHEN 'PCI' THEN {WEIGHTS['PCI']}
-                WHEN 'secret' THEN {WEIGHTS['secret']}
-                WHEN 'IP' THEN {WEIGHTS['IP']}
-                ELSE {WEIGHTS['custom']}
+                WHEN 'PII' THEN {WEIGHTS["PII"]}
+                WHEN 'PHI' THEN {WEIGHTS["PHI"]}
+                WHEN 'PCI' THEN {WEIGHTS["PCI"]}
+                WHEN 'secret' THEN {WEIGHTS["secret"]}
+                WHEN 'IP' THEN {WEIGHTS["IP"]}
+                ELSE {WEIGHTS["custom"]}
             END * confidence
-            + CASE WHEN verdict = 'public' THEN {WEIGHTS['public_exposure']} ELSE 0 END
+            + CASE WHEN verdict = 'public' THEN {WEIGHTS["public_exposure"]} ELSE 0 END
             + {exp_bonus}
             + CASE WHEN type IN ('PII', 'PHI', 'PCI') AND {exp_bonus} > 0 THEN 20 ELSE 0 END
         ) AS score,

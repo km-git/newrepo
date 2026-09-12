@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from dspm.store.db import fetch_all, init_db, insert_row
@@ -30,7 +30,7 @@ def register_asset(
         "owner": owner,
         "tags": json.dumps(tags or []),
         "lineage_parent": lineage_parent or "",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
     insert_row("catalog_assets", row)
     return {"urn": urn, **row}
@@ -39,11 +39,7 @@ def register_asset(
 def build_lineage_graph() -> dict[str, Any]:
     assets = fetch_all("catalog_assets", limit=500)
     nodes = [{"id": a["urn"], "label": a["name"], "type": a["asset_type"]} for a in assets]
-    edges = [
-        {"from": a["lineage_parent"], "to": a["urn"]}
-        for a in assets
-        if a.get("lineage_parent")
-    ]
+    edges = [{"from": a["lineage_parent"], "to": a["urn"]} for a in assets if a.get("lineage_parent")]
     return {"nodes": nodes, "edges": edges, "tag_taxonomy": CLASSIFICATION_TAGS}
 
 

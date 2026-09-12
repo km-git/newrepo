@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import mimetypes
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dspm.sources.connectors.base import BaseConnector
@@ -11,9 +11,24 @@ from dspm.sources.models import DataObject, ObjectPreview
 from dspm.sources.uri import parse_uri
 
 TEXT_EXTENSIONS = {
-    ".csv", ".json", ".txt", ".xml", ".html", ".htm", ".md", ".log",
-    ".eml", ".msg", ".pst", ".mbox",  # mail archives (PST needs special - list only)
-    ".sql", ".yaml", ".yml", ".ini", ".cfg", ".conf",
+    ".csv",
+    ".json",
+    ".txt",
+    ".xml",
+    ".html",
+    ".htm",
+    ".md",
+    ".log",
+    ".eml",
+    ".msg",
+    ".pst",
+    ".mbox",  # mail archives (PST needs special - list only)
+    ".sql",
+    ".yaml",
+    ".yml",
+    ".ini",
+    ".cfg",
+    ".conf",
 }
 ARCHIVE_EXTENSIONS = {".tar", ".gz", ".tgz", ".zip", ".bak", ".backup", ".dump"}
 DATA_EXTENSIONS = TEXT_EXTENSIONS | ARCHIVE_EXTENSIONS | {".parquet", ".avro", ".orc", ".pdf", ".docx", ".xlsx"}
@@ -23,7 +38,7 @@ class LocalConnector(BaseConnector):
     provider = "local"
 
     def _resolve_path(self, uri: str) -> Path:
-        scheme, location = parse_uri(uri)
+        _scheme, location = parse_uri(uri)
         p = Path(location)
         if not p.is_absolute():
             p = Path.cwd() / p
@@ -60,7 +75,7 @@ class LocalConnector(BaseConnector):
             store_type=store_type,
             size_bytes=stat.st_size,
             mime_type=mime,
-            modified_at=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            modified_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
             parent_uri=uri,
         )
 

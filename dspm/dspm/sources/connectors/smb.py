@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 
@@ -49,7 +49,7 @@ class SmbConnector(BaseConnector):
                             provider="smb",
                             store_type="file",
                             size_bytes=stat.st_size,
-                            modified_at=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                            modified_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
                             parent_uri=uri,
                             metadata={"server": server, "share": share},
                         )
@@ -81,7 +81,7 @@ class SmbConnector(BaseConnector):
         ]
 
     def preview(self, uri: str, path: str = "", max_bytes: int = 8192) -> ObjectPreview:
-        server, share, subpath = self._parse(uri)
+        server, share, _subpath = self._parse(uri)
         try:
             import smbclient
 

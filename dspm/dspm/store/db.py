@@ -5,16 +5,17 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 DEFAULT_DB = Path(os.environ.get("DSPM_DB_PATH", "output/dspm/dspm.db"))
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @contextmanager
@@ -167,9 +168,17 @@ def fetch_all(table: str, limit: int = 100, db_path: Path | None = None) -> list
 
 def insert_row(table: str, data: dict[str, Any], db_path: Path | None = None) -> int:
     allowed = {
-        "findings", "risk_scores", "exposures", "catalog_assets",
-        "governance_policies", "siem_events", "observability_metrics",
-        "alert_rules", "query_history", "source_objects", "source_scans",
+        "findings",
+        "risk_scores",
+        "exposures",
+        "catalog_assets",
+        "governance_policies",
+        "siem_events",
+        "observability_metrics",
+        "alert_rules",
+        "query_history",
+        "source_objects",
+        "source_scans",
     }
     if table not in allowed:
         raise ValueError(f"unknown table: {table}")

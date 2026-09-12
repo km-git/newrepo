@@ -146,7 +146,10 @@ class M365Connector(BaseConnector):
                     if item.get("path") == path or item.get("name") == path:
                         text = item.get("preview", item.get("metadata", {}).get("preview", ""))
                         return ObjectPreview(
-                            uri=uri, path=path, content_type="text",
-                            preview_text=str(text)[:max_bytes], truncated=len(str(text)) > max_bytes,
+                            uri=uri,
+                            path=path,
+                            content_type="text",
+                            preview_text=str(text)[:max_bytes],
+                            truncated=len(str(text)) > max_bytes,
                         )
         return ObjectPreview(uri=uri, path=path, content_type="unknown", preview_text="")

@@ -1,5 +1,5 @@
 [
   {"prompt": "Summarize customer record: John Doe, SSN 123-45-6789, email john@example.com", "id": "1"},
   {"prompt": "What is the weather today?", "id": "2"},
-  {"prompt": "API key for testing: EXAMPLE_PLACEHOLDER_NOT_A_SECRET", "id": "3"}
+  {"prompt": "credential_label_for_redaction_test_only (fixture, not a live secret)", "id": "3"}
 ]

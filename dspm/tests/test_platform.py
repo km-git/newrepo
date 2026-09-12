@@ -1,6 +1,5 @@
 """Platform module tests — catalog, governance, siem, observability, warehouse."""
 
-
 from dspm.catalog.service import build_lineage_graph, register_asset
 from dspm.governance.service import apply_mask, seed_policies
 from dspm.observability.service import dashboard_summary, seed_alert_rules

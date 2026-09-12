@@ -18,7 +18,7 @@ def render_human(payload: Any) -> str:
     if isinstance(payload, Mapping):
         rows = [dict(payload)]
         return _table(rows)
-    if isinstance(payload, Sequence) and not isinstance(payload, (str, bytes)):
+    if isinstance(payload, Sequence) and not isinstance(payload, str | bytes):
         rows = [dict(item) if isinstance(item, Mapping) else {"value": item} for item in payload]
         return _table(rows)
     return str(payload)

@@ -9,6 +9,8 @@ from typing import Any
 import httpx
 
 GITHUB_API = "https://api.github.com"
+_GITHUB_API_HOST = "api.github.com"
+_GITHUB_API_BASE = httpx.URL(GITHUB_API)
 _GH_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
@@ -18,18 +20,33 @@ def _safe_name(value: str, kind: str) -> str:
     return value
 
 
+def _github_client(token: str) -> httpx.Client:
+    headers: dict[str, str] = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return httpx.Client(timeout=30, follow_redirects=False, headers=headers)
+
+
+def _github_get(client: httpx.Client, path: str) -> httpx.Response:
+    """Issue a GET against api.github.com only (no redirects, fixed host)."""
+    url = _GITHUB_API_BASE.copy_with(path=f"/{path.lstrip('/')}")
+    if url.host != _GITHUB_API_HOST:
+        raise ValueError("GitHub API host mismatch")
+    response = client.get(str(url))
+    if response.request.url.host != _GITHUB_API_HOST:
+        raise ValueError("unexpected GitHub API redirect host")
+    return response
+
+
 def scan_repo(owner: str, repo: str, token: str | None = None) -> dict[str, Any]:
     owner = _safe_name(owner, "owner")
     repo = _safe_name(repo, "repo")
     token = token or os.environ.get("GITHUB_TOKEN", "")
-    headers = {"Accept": "application/vnd.github+json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
     results: dict[str, Any] = {"owner": owner, "repo": repo, "findings": []}
-    with httpx.Client(timeout=30) as client:
+    with _github_client(token) as client:
         # Dependabot alerts (requires auth)
         if token:
-            r = client.get(f"{GITHUB_API}/repos/{owner}/{repo}/dependabot/alerts", headers=headers)
+            r = _github_get(client, f"repos/{owner}/{repo}/dependabot/alerts")
             if r.status_code == 200:
                 for alert in r.json()[:10]:
                     results["findings"].append(
@@ -41,7 +58,7 @@ def scan_repo(owner: str, repo: str, token: str | None = None) -> dict[str, Any]
                         }
                     )
         # Secret scanning (public repos may 404 without auth)
-        r2 = client.get(f"{GITHUB_API}/repos/{owner}/{repo}/secret-scanning/alerts", headers=headers)
+        r2 = _github_get(client, f"repos/{owner}/{repo}/secret-scanning/alerts")
         if r2.status_code == 200:
             for alert in r2.json()[:10]:
                 results["findings"].append(
@@ -53,7 +70,7 @@ def scan_repo(owner: str, repo: str, token: str | None = None) -> dict[str, Any]
                     }
                 )
         # Repo metadata
-        r3 = client.get(f"{GITHUB_API}/repos/{owner}/{repo}", headers=headers)
+        r3 = _github_get(client, f"repos/{owner}/{repo}")
         if r3.status_code == 200:
             meta = r3.json()
             results["metadata"] = {
@@ -68,11 +85,9 @@ def scan_repo(owner: str, repo: str, token: str | None = None) -> dict[str, Any]
 def list_org_repos(org: str, token: str | None = None, limit: int = 10) -> list[dict]:
     org = _safe_name(org, "org")
     token = token or os.environ.get("GITHUB_TOKEN", "")
-    headers = {"Accept": "application/vnd.github+json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    with httpx.Client(timeout=30) as client:
-        r = client.get(f"{GITHUB_API}/orgs/{org}/repos?per_page={limit}", headers=headers)
+    bounded_limit = max(1, min(int(limit), 100))
+    with _github_client(token) as client:
+        r = _github_get(client, f"orgs/{org}/repos?per_page={bounded_limit}")
         if r.status_code != 200:
             return []
         return [{"name": x["name"], "full_name": x["full_name"], "private": x["private"]} for x in r.json()]

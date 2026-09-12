@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dspm.sources.models import SourceScanResult
 from dspm.store.db import init_db, insert_row, persist_scan_results
@@ -11,7 +11,7 @@ from dspm.store.db import init_db, insert_row, persist_scan_results
 
 def save_source_scan(result: SourceScanResult) -> dict:
     init_db()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     scan_id = insert_row(
         "source_scans",
         {

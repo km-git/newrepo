@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import duckdb
@@ -46,7 +46,7 @@ def execute_sql(sql: str, user: str = "analyst", read_only: bool = True) -> dict
                 "duration_ms": duration_ms,
                 "row_count": len(rows),
                 "user_name": user,
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             },
         )
         return {"columns": columns, "rows": rows, "duration_ms": round(duration_ms, 2)}

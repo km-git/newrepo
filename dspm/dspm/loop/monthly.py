@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 MONTHLY_DIR = Path(__file__).resolve().parents[2] / "monthly"
@@ -11,7 +11,7 @@ STATE_DIR = Path(__file__).resolve().parents[2] / "state"
 
 
 def generate_rollup() -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     month = now.strftime("%Y-%m")
     seen_path = STATE_DIR / "seen.json"
     seen_count = 0

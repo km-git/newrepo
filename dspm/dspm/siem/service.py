@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from dspm.store.db import fetch_all, init_db, insert_row
@@ -23,7 +23,7 @@ def ingest_event(
     raw: dict | None = None,
 ) -> dict[str, Any]:
     init_db()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     row = {
         "event_type": event_type,
         "severity": severity,

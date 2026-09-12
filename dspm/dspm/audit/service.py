@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dspm.models import OssToolInfo
@@ -64,7 +64,7 @@ def build_inventory() -> dict:
                 version=_pkg_version(name.replace("-", "_") if name == "cloud-custodian" else name),
                 license=license_,
                 module=module,
-                last_update=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                last_update=datetime.now(UTC).strftime("%Y-%m-%d"),
             ).model_dump()
         )
     # Override known pip package names
@@ -87,7 +87,7 @@ def build_inventory() -> dict:
         if tools[i]["version"] == "not-installed":
             tools[i]["version"] = "cli-subprocess"
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "modules": MODULES,
         "oss_tools": tools,
         "module_count": len(MODULES),

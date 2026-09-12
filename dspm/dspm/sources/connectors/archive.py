@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tarfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dspm.sources.connectors.base import BaseConnector
@@ -71,7 +71,7 @@ class ArchiveConnector(BaseConnector):
                                 provider="backup",
                                 store_type="archive_member",
                                 size_bytes=info.file_size,
-                                modified_at=datetime(*info.date_time, tzinfo=timezone.utc).isoformat(),
+                                modified_at=datetime(*info.date_time, tzinfo=UTC).isoformat(),
                                 parent_uri=uri,
                                 metadata={"archive": path.name, "compressed_size": info.compress_size},
                             )
@@ -89,7 +89,7 @@ class ArchiveConnector(BaseConnector):
                                 provider="backup",
                                 store_type="archive_member",
                                 size_bytes=member.size,
-                                modified_at=datetime.fromtimestamp(member.mtime, tz=timezone.utc).isoformat(),
+                                modified_at=datetime.fromtimestamp(member.mtime, tz=UTC).isoformat(),
                                 parent_uri=uri,
                                 metadata={"archive": path.name},
                             )
@@ -101,7 +101,7 @@ class ArchiveConnector(BaseConnector):
     def preview(self, uri: str, path: str = "", max_bytes: int = 8192) -> ObjectPreview:
         if "!" in path:
             archive_name, member_path = path.split("!", 1)
-            _, location = parse_uri(uri)
+            _, _location = parse_uri(uri)
             archive_path = self._resolve_path(uri)
             if archive_path.is_dir():
                 archive_path = archive_path / archive_name
