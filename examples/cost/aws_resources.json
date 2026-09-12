@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "instance_id": "i-0abc123",
+      "region": "ap-southeast-2",
+      "resource_type": "ec2",
+      "title": "web-prod-1",
+      "tags": {"Environment": "production", "CostCenter": "CC-100"},
+      "monthly_cost": 245.5
+    },
+    {
+      "instance_id": "i-0def456",
+      "region": "ap-southeast-2",
+      "resource_type": "ec2",
+      "title": "dev-sandbox",
+      "tags": {"Owner": "platform"},
+      "monthly_cost": 42.0
+    },
+    {
+      "arn": "arn:aws:s3:::logs-archive",
+      "region": "ap-southeast-2",
+      "resource_type": "s3",
+      "monthly_cost": 18.2
+    }
+  ]
+}

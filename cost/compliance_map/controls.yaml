@@ -1,0 +1,7 @@
+finops-foundation:
+  - control_id: CFO-01
+    title: Inform — cost allocation tags
+  - control_id: CFO-02
+    title: Optimize — rightsizing review
+  - control_id: CFO-03
+    title: Operate — drift monitoring

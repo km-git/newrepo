@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "id": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm1",
+      "name": "vm1",
+      "location": "australiaeast",
+      "type": "Microsoft.Compute/virtualMachines",
+      "tags": {"Environment": "dev"},
+      "monthly_cost": 120.0
+    }
+  ]
+}

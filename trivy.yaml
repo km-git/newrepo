@@ -3,6 +3,7 @@ misconfiguration:
   skip-files:
     - "examples/**"
     - "dspm/remediation/policies/**"
+    - "cost/remediation/policies/**"
 secret:
   disable-rules:
     - credit-card

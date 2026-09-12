@@ -1,0 +1,5 @@
+{
+  "accounts": [{"id": "111", "name": "sandbox"}, {"id": "222", "name": "prod-readonly"}],
+  "policies": ["c7n-tag-untagged-resources", "c7n-rightsizing-recommendation"],
+  "output_tree": "output/cost/c7n-org/"
+}

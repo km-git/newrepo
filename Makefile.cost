@@ -1,0 +1,46 @@
+.PHONY: cost-audit-inventory cost-inventory-aws cost-cost-explorer cost-all cost-test cost-ui cost-ui-static cost-monthly cost-watch cost-ruff
+
+PYTHON ?= .venv/bin/python
+export COST_DB ?= output/cost/cost.sqlite
+
+cost-audit-inventory:
+	$(PYTHON) -m cost audit inventory
+
+cost-inventory-aws:
+	$(PYTHON) -m cost inventory aws --regions ap-southeast-2
+
+cost-cost-explorer:
+	$(PYTHON) -m cost cost-explorer --provider aws --since 30d
+
+cost-watch:
+	$(PYTHON) -m cost.loop.watch
+
+cost-monthly:
+	$(PYTHON) -m cost monthly
+
+cost-ui:
+	$(PYTHON) -m cost ui --host 0.0.0.0 --port 8765
+
+cost-ui-static:
+	$(PYTHON) -m cost ui --static
+
+cost-all: cost-audit-inventory cost-inventory-aws
+	$(PYTHON) -m cost inventory azure
+	$(PYTHON) -m cost inventory gcp
+	$(PYTHON) -m cost cost-explorer --provider aws --since 30d
+	$(PYTHON) -m cost rightsizing scan --provider aws
+	$(PYTHON) -m cost untagged scan
+	$(PYTHON) -m cost drift diff --provider aws
+	$(PYTHON) -m cost compliance map --framework finops-foundation
+	$(PYTHON) -m cost multi-account
+	$(PYTHON) -m cost report generate --provider aws --since 30d --output output/cost/report.md
+	$(PYTHON) -m cost.loop.watch
+	$(PYTHON) -m cost monthly
+	$(PYTHON) -m cost ui --static
+
+cost-test:
+	$(PYTHON) -m pytest tests/test_cost_architecture.py tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py tests/test_cost_loop.py -q --tb=short
+
+cost-ruff:
+	ruff check --config ruff.toml cost/ tests/test_cost_architecture.py tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py tests/test_cost_loop.py
+	ruff format --check cost/ tests/test_cost_architecture.py tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py tests/test_cost_loop.py

@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cost
+      POSTGRES_PASSWORD: cost
+      POSTGRES_DB: cost
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./cost/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  prowler-runner:
+    image: prowlercloud/prowler:latest
+    profiles: ["prowler"]
+    volumes:
+      - ./cost/prowler-out:/home/prowler/output
+      - /tmp/.aws:/home/prowler/.aws:ro
+
+volumes:
+  postgres-data:

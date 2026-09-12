@@ -1,0 +1,4 @@
+[
+  {"provider": "aws", "resource_id": "i-0def456", "resource_type": "ec2", "tags": {"Owner": "platform"}, "monthly_cost": 42.0},
+  {"provider": "aws", "resource_id": "vol-untagged", "resource_type": "ebs", "tags": {}, "monthly_cost": 15.0}
+]
