@@ -34,6 +34,18 @@ TF_STOP_PCT: Dict[str, Tuple[float, float]] = {
 }
 DEFAULT_STOP_PCT = (1.0, 6.0)
 
+# Style max stop % — backward-compatible alias (max TF cap per trading style).
+_STYLE_TF = {
+  "scalp": "15m",
+  "day_trade": "1h",
+  "swing": "1d",
+  "long_term": "1w",
+}
+MAX_STOP_PCT: Dict[str, float] = {
+  style: TF_STOP_PCT.get(tf, DEFAULT_STOP_PCT)[1]
+  for style, tf in _STYLE_TF.items()
+}
+
 # R-multiples for smart targets (TP1 / TP2 / TP3) by timeframe.
 TF_TARGET_R: Dict[str, Tuple[float, float, float]] = {
   "15m": (1.25, 2.25, 3.75),
@@ -781,6 +793,23 @@ def risk_package(entry: float, stop: float, account_risk_pct: float = 1.0) -> di
     "sizing_rule": f"Risk {account_risk_pct}% account; size = (equity×{account_risk_pct}%) / (WAE−stop)",
     "max_legs_active": 4,
   }
+
+
+def cap_stop_price(
+  direction: str,
+  entry: float,
+  stop: float,
+  max_pct: float,
+) -> tuple[float, bool]:
+  """Clamp stop to max % distance from entry. Returns (stop, was_capped)."""
+  if not entry or max_pct <= 0:
+    return stop, False
+  dist_pct = abs(entry - stop) / entry * 100
+  if dist_pct <= max_pct:
+    return stop, False
+  risk = entry * max_pct / 100
+  capped = entry - risk if direction in ("LONG", "BULL") else entry + risk
+  return _r(capped), True
 
 
 def cap_stop_for_entry(

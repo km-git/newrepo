@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import pandas as pd
 
 from cache.semantic_cache import SemanticOHLCVCache, normalize_symbol
+from core.market_clock import drop_forming_bars
 
 # OKX primary; extend via EW_OHLCV_CHAIN=okx,kraken,binance
 EXCHANGE_CHAIN: Tuple[str, ...] = tuple(
@@ -110,6 +111,7 @@ class MarketDataGateway:
         self._cache.put(sym, tf, bar_count, chain, exchange_used, raw[tf])
         self._log_request(sym, tf, bar_count, chain, "miss", 0.0, source=exchange_used)
 
+    out = drop_forming_bars(out)
     latency_ms = round((time.time() - t0) * 1000, 2)
     return GatewayResponse(
       data=out,

@@ -1,2 +1,6 @@
-See partner_msps.yaml for the operator-maintained list of Australian MSP partners
-who can perform active remediation work referred from SSPM reports.
+Partner MSPs (operator fills this list). Referral only — no warranty.
+
+Default:
+- Name: (operator to add)
+  Region: AU
+  Notes: Identity, M365, Okta change-window work.

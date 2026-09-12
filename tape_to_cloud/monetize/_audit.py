@@ -19,6 +19,7 @@ AUDIT_LOG_FILENAME = "audit_log.jsonl"
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
+    return datetime.now(UTC)
 
 
 def utc_now_iso() -> str:

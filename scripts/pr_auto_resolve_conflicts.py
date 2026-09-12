@@ -30,7 +30,8 @@ def main() -> None:
     result = resolve_pr_conflicts(args.pr_number, args.repo, dry_run=args.dry_run)
 
   print(json.dumps(result, indent=2, default=str))
-  if result.get("error") and not result.get("skipped"):
+  # Complicated files post a comment; do not fail required CI (that REJECT-reviews MERGEABLE PRs).
+  if result.get("error") and not result.get("skipped") and not result.get("complicated_files"):
     sys.exit(1)
 
 

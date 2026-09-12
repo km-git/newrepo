@@ -81,8 +81,9 @@ def extract_monowaves(df: pd.DataFrame, skip: int) -> List[dict]:
 
 
 def extract_monowaves_cached(df: pd.DataFrame, skip: int, cache_tag: str = "") -> List[dict]:
+  from core.market_clock import series_fingerprint
+
   cache = get_cache()
-  last_close = float(df["Close"].iloc[-1])
   last_ts = str(df.index[-1])
   result, hit = cache.get_or_compute(
     "monowaves",
@@ -91,7 +92,7 @@ def extract_monowaves_cached(df: pd.DataFrame, skip: int, cache_tag: str = "") -
     skip,
     len(df),
     last_ts,
-    round(last_close, 2),
+    series_fingerprint(df),
   )
   if hit:
     print(f"[cache] HIT monowaves tag={cache_tag} skip={skip}")

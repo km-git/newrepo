@@ -1,75 +1,143 @@
-"""SSPM build constants and OSS inventory."""
+"""Pinned OSS inventory, licenses, and hard safety gates."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Final
 
-PRESIDIO_SOURCE = "data-privacy-stack/presidio"
+PRESIDIO_SOURCE: Final = "data-privacy-stack/presidio"
+PRESIDIO_ANALYZER_PIN: Final = "2.2.360"
+PRESIDIO_ANONYMIZER_PIN: Final = "2.2.360"
+CNSPEC_PIN: Final = "13.37.0"
+DUCKDB_PIN: Final = "1.5.5"
 
-FORBIDDEN_REPORT_WORDS = frozenset({"compliance", "attestation", "certified", "secure", "guaranteed", "guarantees"})
+# Build #1 (SSPM) does not ship Trivy or Steampipe.
+NO_TRIVY: Final = True
+NO_STEAMPIPE: Final = True
 
-OSS_INVENTORY: list[dict[str, Any]] = [
+DISALLOWED_AUTO_MERGE_PATHS: Final = (
+    "sspm/disclaimers/",
+    "sspm/loop/",
+)
+
+OSS_INVENTORY: Final = (
+    {
+        "name": "Mondoo cnspec",
+        "package": "cnspec",
+        "version": CNSPEC_PIN,
+        "license": "MIT/Apache-2.0",
+        "role": "SaaS configuration scan (ms365, google-workspace, github, slack, okta)",
+        "module": "m365_discovery",
+        "install": "CLI subprocess; brew tap mondoohq/mondoo && brew install cnspec",
+        "last_update": "2026-09",
+    },
     {
         "name": "pip-audit",
         "package": "pip-audit",
         "version": "2.9.0",
         "license": "Apache-2.0",
-        "role": "dependency vulnerability inventory",
+        "role": "Python supply-chain inventory",
+        "module": "audit",
+        "install": "pip pip-audit",
+        "last_update": "2026-09",
     },
     {
-        "name": "mondoo-cnspec",
-        "package": "mondoo-cnspec",
-        "version": "13.37.0",
-        "license": "MIT/Apache-2.0",
-        "role": "SaaS posture scan engine (subprocess)",
+        "name": "Mend Bolt for GitHub",
+        "package": "mend-bolt-for-github",
+        "version": "free-app",
+        "license": "Marketplace (free)",
+        "role": "PR dependency alerts",
+        "module": "audit",
+        "install": "GitHub App",
+        "last_update": "2026-09",
     },
     {
-        "name": "msgraph-sdk",
+        "name": "DuckDB",
+        "package": "duckdb",
+        "version": DUCKDB_PIN,
+        "license": "MIT",
+        "role": "in-process SQL drift diffs",
+        "module": "config_drift",
+        "install": "pip duckdb",
+        "last_update": "2026-09",
+    },
+    {
+        "name": "Microsoft Graph SDK",
         "package": "msgraph-sdk",
         "version": "1.5.0",
         "license": "MIT",
-        "role": "Microsoft 365 Graph API",
+        "role": "M365 tenant + OAuth grant read",
+        "module": "m365_discovery",
+        "install": "pip msgraph-sdk (optional extra)",
+        "last_update": "2026-09",
     },
     {
-        "name": "google-api-python-client",
+        "name": "Google API Python Client",
         "package": "google-api-python-client",
         "version": "2.165.0",
         "license": "Apache-2.0",
-        "role": "Google Workspace Admin SDK",
+        "role": "Workspace Admin SDK + Reports API",
+        "module": "google_workspace_discovery",
+        "install": "pip google-api-python-client (optional extra)",
+        "last_update": "2026-09",
     },
     {
         "name": "PyGithub",
         "package": "PyGithub",
         "version": "2.6.1",
         "license": "LGPL-3.0",
-        "role": "GitHub org discovery",
+        "role": "GitHub org + OAuth app inventory",
+        "module": "github_discovery",
+        "install": "pip PyGithub",
+        "last_update": "2026-09",
     },
     {
         "name": "slack-sdk",
         "package": "slack-sdk",
         "version": "3.36.0",
         "license": "MIT",
-        "role": "Slack workspace discovery",
+        "role": "Slack workspace admin settings (no message bodies)",
+        "module": "slack_discovery",
+        "install": "pip slack-sdk (optional extra)",
+        "last_update": "2026-09",
     },
     {
-        "name": "duckdb",
-        "package": "duckdb",
-        "version": "1.5.5",
-        "license": "MIT",
-        "role": "config drift SQL analytics",
-    },
-    {
-        "name": "presidio-analyzer",
+        "name": "Presidio",
         "package": "presidio-analyzer",
-        "version": "2.2.360",
+        "version": PRESIDIO_ANALYZER_PIN,
         "license": "MIT",
-        "role": "PII scrubbing for report output",
+        "role": "PII scrub of report output",
+        "module": "report_writer",
+        "install": f"pip from {PRESIDIO_SOURCE} (not microsoft/presidio)",
+        "last_update": "2026-09",
     },
     {
-        "name": "jinja2",
+        "name": "Jinja2",
         "package": "jinja2",
         "version": "3.1.5",
         "license": "BSD-3-Clause",
-        "role": "report templates",
+        "role": "Configuration & Inventory Report templates",
+        "module": "report_writer",
+        "install": "pip jinja2",
+        "last_update": "2026-09",
     },
-]
+    {
+        "name": "croniter",
+        "package": "croniter",
+        "version": "6.0.0",
+        "license": "MIT",
+        "role": "per-tenant scan schedule",
+        "module": "multi_tenant",
+        "install": "pip croniter",
+        "last_update": "2026-09",
+    },
+    {
+        "name": "httpx",
+        "package": "httpx",
+        "version": "0.28.1",
+        "license": "BSD-3-Clause",
+        "role": "forum-watcher + optional Graph/Okta REST",
+        "module": "loop",
+        "install": "pip httpx",
+        "last_update": "2026-09",
+    },
+)

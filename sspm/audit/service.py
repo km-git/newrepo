@@ -1,44 +1,29 @@
-"""Workspace + OSS tool inventory."""
+"""Workspace + tool inventory. Output: sspm-inventory.json."""
 
 from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from sspm import MODULES, OSS_PRIMARY_TOOLS, __version__
-from sspm.constants import OSS_INVENTORY, PRESIDIO_SOURCE
+from sspm.constants import DISALLOWED_AUTO_MERGE_PATHS, NO_STEAMPIPE, NO_TRIVY, OSS_INVENTORY, PRESIDIO_SOURCE
 from sspm.db.store import FindingsStore
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def inventory(*, init_db: bool = True) -> dict[str, Any]:
+def inventory(*, init_db: bool = True, write: bool = True) -> dict[str, Any]:
     if init_db:
         FindingsStore()
-    tools: list[dict[str, Any]] = []
+    tools = []
     for item in OSS_INVENTORY:
         record = dict(item)
-        record["on_path"] = bool(shutil.which(item["package"].split("[")[0]))
+        binary = item["package"] if item["package"] in {"cnspec", "pip-audit"} else None
+        record["on_path"] = bool(binary and shutil.which(binary))
         tools.append(record)
-    cnspec = shutil.which("cnspec")
-    pip_audit_ok = False
-    if shutil.which("pip-audit"):
-        try:
-            subprocess.run(
-                ["pip-audit", "--version"],
-                capture_output=True,
-                check=True,
-                timeout=10,
-            )
-            pip_audit_ok = True
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass  # pip-audit missing: inventory still writes
-    out_path = ROOT / "output" / "sspm" / "sspm-inventory.json"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "product": "sspm",
         "version": __version__,
@@ -49,10 +34,19 @@ def inventory(*, init_db: bool = True) -> dict[str, Any]:
         "tools": tools,
         "gates": {
             "presidio_source": PRESIDIO_SOURCE,
-            "cnspec_on_path": bool(cnspec),
-            "pip_audit_available": pip_audit_ok,
-            "auto_merge_skips": ["sspm/disclaimers/", "sspm/loop/"],
+            "no_trivy": NO_TRIVY,
+            "no_steampipe": NO_STEAMPIPE,
+            "auto_merge_skips": list(DISALLOWED_AUTO_MERGE_PATHS),
+            "report_kind": "Configuration & Inventory Report",
+        },
+        "paths": {
+            "schema": str(Path(__file__).resolve().parents[1] / "db" / "schema.sql"),
+            "fixtures": str(Path(__file__).resolve().parents[1] / "fixtures"),
         },
     }
-    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if write:
+        dest = Path("output/sspm/sspm-inventory.json")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        payload["written"] = str(dest)
     return payload

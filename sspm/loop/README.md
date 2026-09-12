@@ -1,1 +1,3 @@
-# SSPM module — see service.py for CLI integration.
+# sspm/loop
+
+5-stage DiscoverâEvaluateâIntegrateâValidateâCompound watcher. Imports forum-watcher scripts when present; adds SSPM sources and context.

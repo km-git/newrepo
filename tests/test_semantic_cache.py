@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import time
-
 import pandas as pd
 import pytest
 
 from cache.disk_cache import CompressedCache
 from cache.semantic_cache import SemanticOHLCVCache, normalize_symbol, semantic_key
+from core.market_clock import market_now_utc
 
 NAMESPACE = "semantic_ohlcv"
 
@@ -69,7 +68,7 @@ def test_miss_when_expired(tmp_path):
   sem = semantic_key("SOL/USDT", "15m", chain)
   disk_key = cache._disk_key(sem, 50)
   blob = disk.get(NAMESPACE, disk_key)
-  blob["fetched_at"] = time.time() - 120
+  blob["fetched_at"] = market_now_utc().timestamp() - 120
   disk.set(NAMESPACE, blob, disk_key)
   cache._index.clear()
 

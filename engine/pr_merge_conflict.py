@@ -212,6 +212,27 @@ def _ensure_git_identity() -> None:
   _run_git(["config", "user.email", email], check=False)
 
 
+_NON_CONFLICT_MERGEABLE_STATES = frozenset({"clean", "unstable", "blocked", "behind", "draft"})
+
+
+def should_skip_conflict_resolution(state: Dict[str, Any]) -> Optional[str]:
+  """Skip when GitHub already mergeable, or mergeability is still computing.
+
+  ``mergeable`` is JSON null with ``mergeable_state=unknown`` until GitHub
+  finishes the merge check. Treating that as a conflict re-posts blocked
+  comments on PRs that are already MERGEABLE. ``dirty`` is the only state
+  that means merge conflicts; ``blocked``/``unstable`` are reviews or CI.
+  """
+  if state.get("mergeable") is True:
+    return "already_mergeable"
+  mergeable_state = str(state.get("mergeable_state") or "").lower()
+  if state.get("mergeable") is None and mergeable_state in ("", "unknown"):
+    return "mergeable_unknown"
+  if mergeable_state in _NON_CONFLICT_MERGEABLE_STATES:
+    return "not_conflicting"
+  return None
+
+
 def fetch_pr_merge_state(pr_number: int, repo: str = "") -> Dict[str, Any]:
   slug = repo or _repo_slug()
   pr = _gh_json(["api", f"repos/{slug}/pulls/{pr_number}", "-H", "Accept: application/vnd.github+json"])
@@ -245,6 +266,10 @@ def _attempt_merge(base_ref: str) -> Tuple[bool, str]:
   if "CONFLICT" in out or _list_conflicted_files():
     return True, out
   raise RuntimeError(out.strip() or "git merge failed")
+
+
+def _merge_in_progress() -> bool:
+  return (Path(".git") / "MERGE_HEAD").exists()
 
 
 def _abort_merge() -> None:
@@ -295,9 +320,10 @@ def resolve_pr_conflicts(
     "pushed": False,
   }
 
-  if state.get("mergeable") is True:
+  skip_reason = should_skip_conflict_resolution(state)
+  if skip_reason:
     result["skipped"] = True
-    result["reason"] = "already_mergeable"
+    result["reason"] = skip_reason
     return result
   if not head:
     result["error"] = "missing head ref"
@@ -307,13 +333,22 @@ def resolve_pr_conflicts(
   _run_git(["fetch", "origin", base, head])
   _run_git(["checkout", head])
   _run_git(["pull", "--ff-only", "origin", head], check=False)
+  state = fetch_pr_merge_state(pr_number, slug)
+  result["mergeable"] = state.get("mergeable")
+  result["mergeable_state"] = state.get("mergeable_state")
+  skip_reason = should_skip_conflict_resolution(state)
+  if skip_reason:
+    result["skipped"] = True
+    result["reason"] = skip_reason
+    return result
 
-  has_conflicts, _merge_out = _attempt_merge(base)
+  has_conflicts, merge_out = _attempt_merge(base)
   if not has_conflicts:
-    if dry_run:
+    in_progress = _merge_in_progress()
+    if dry_run or not in_progress:
       _run_git(["merge", "--abort"], check=False)
       result["skipped"] = True
-      result["reason"] = "clean_merge"
+      result["reason"] = "already_up_to_date" if not in_progress else "clean_merge"
       return result
     commit_msg = f"Merge {base} into {head} (PR #{pr_number})"
     sha = _commit_resolution(commit_msg)
@@ -435,8 +470,9 @@ def resolve_open_pr_conflicts(
     num = int(pr["number"])
     try:
       state = fetch_pr_merge_state(num, repo)
-      if state.get("mergeable") is True:
-        results.append({"pr_number": num, "skipped": True, "reason": "already_mergeable"})
+      skip_reason = should_skip_conflict_resolution(state)
+      if skip_reason:
+        results.append({"pr_number": num, "skipped": True, "reason": skip_reason})
         continue
       results.append(resolve_pr_conflicts(num, repo, dry_run=dry_run))
     except Exception as exc:

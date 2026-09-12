@@ -1,19 +1,27 @@
-"""Liability disclaimer text."""
+"""Liability disclaimer text. Auto-merge of this tree is forbidden."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-DISCLAIMERS_DIR = Path(__file__).resolve().parent
+from sspm.disclaimers.models import Disclaimer
+
+DIR = Path(__file__).resolve().parent
+KNOWN = {
+    "disclaimer_au": DIR / "disclaimer_au.txt",
+    "active_work_referral": DIR / "active_work_referral.txt",
+}
 
 
-def load_disclaimer(name: str = "disclaimer_au") -> str:
-    path = DISCLAIMERS_DIR / f"{name}.txt"
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
+def show(name: str = "disclaimer_au") -> Disclaimer:
+    path = KNOWN.get(name)
+    if path is None or not path.exists():
+        raise KeyError(f"unknown disclaimer {name!r}")
+    return Disclaimer(name=name, text=path.read_text(encoding="utf-8"), path=str(path))
 
 
-def show(name: str = "disclaimer_au") -> dict[str, str]:
-    text = load_disclaimer(name)
-    return {"name": name, "text": text, "length": str(len(text))}
+def append_to(report: str, name: str = "disclaimer_au") -> str:
+    block = show(name).text.strip()
+    if block in report:
+        return report
+    return report.rstrip() + "\n\n---\n\n## Liability disclaimer\n\n" + block + "\n"

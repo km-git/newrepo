@@ -1,4 +1,6 @@
-"""SSPM-as-report: read-only SaaS configuration posture reports."""
+"""SSPM-as-report: read-only SaaS configuration posture for M365, GWS, GitHub, Slack, Okta."""
+
+from __future__ import annotations
 
 __version__ = "0.1.0"
 
@@ -17,14 +19,25 @@ MODULES = (
     "disclaimers",
 )
 
+TENANT_TYPES = ("m365", "gws", "github", "slack", "okta")
+
 OSS_PRIMARY_TOOLS = (
+    "cnspec",
     "pip-audit",
-    "mondoo-cnspec",
+    "duckdb",
+    "presidio",
     "msgraph-sdk",
     "google-api-python-client",
     "PyGithub",
     "slack-sdk",
-    "duckdb",
-    "presidio",
-    "jinja2",
+)
+
+# Reports must never claim these. Mapping tables may use "control reference".
+FORBIDDEN_REPORT_WORDS = (
+    "compliance",
+    "attestation",
+    "certified",
+    "secure",
+    "guaranteed",
+    "guarantees",
 )

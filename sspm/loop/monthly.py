@@ -1,34 +1,37 @@
-"""Monthly rollup for SSPM improvement loop."""
+"""First-Monday Compound slot: monthly rollup (not an attestation)."""
 
 from __future__ import annotations
 
+import json
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-MONTHLY = ROOT / "monthly"
 
+def generate_monthly(*, out_dir: Path | None = None, now: datetime | None = None) -> dict[str, str]:
+    stamp = (now or datetime.now(UTC)).strftime("%Y-%m")
+    dest = out_dir or Path("monthly")
+    dest.mkdir(parents=True, exist_ok=True)
+    queue = Path("state/discover_queue.json")
+    verdicts: Counter[str] = Counter()
+    if queue.exists():
+        for item in json.loads(queue.read_text(encoding="utf-8")):
+            verdicts[str((item.get("classification") or {}).get("verdict") or "unknown")] += 1
+    rollup = dest / f"{stamp}.md"
+    body = f"""# SSPM monthly rollup — {stamp}
 
-def generate_monthly() -> dict[str, str]:
-    MONTHLY.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(UTC).strftime("%Y-%m")
-    path = MONTHLY / f"{stamp}.md"
-    body = f"""# SSPM Monthly Rollup — {stamp}
+Discover verdicts this cycle: {dict(verdicts)}
 
-## Summary
-- Modules: 12 + loop + web UI
-- Report type: Configuration & Inventory Report (read-only)
-- Primary scanner: Mondoo cnspec (subprocess when available)
+## Posture observation trend
 
-## Discoveries
-See `discoveries/sspm/` for weekly forum-watcher output.
+Track: MFA coverage up? guest links down? OAuth grants down?
+This file is a Compound-slot note, not an attestation.
 
-## Next integrations
-- Live cnspec policy packs for CIS-M365 and CIS-GWS
-- Partner MSP registry population
+## Next Monday 09:00 AEST
 
----
-*Auto-generated monthly rollup. Not a security assessment.*
+1. Review `state/discover_queue.json`
+2. Auto-approved bot PRs only
+3. Operator-review `sspm/disclaimers/` and `sspm/loop/`
 """
-    path.write_text(body, encoding="utf-8")
-    return {"path": str(path), "month": stamp}
+    rollup.write_text(body, encoding="utf-8")
+    return {"month": stamp, "path": str(rollup)}

@@ -1,69 +1,123 @@
-"""Config drift detection via DuckDB over settings vs baseline."""
+"""Config drift vs shipped baselines. DuckDB when installed; SQLite otherwise."""
 
 from __future__ import annotations
 
-import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import duckdb
+from sspm.config_drift.models import DriftFinding
+from sspm.db.store import FindingsStore, utcnow
+from sspm.discovery import load_fixture
+from sspm.paths import load_baseline_map
 
-BASELINES = Path(__file__).resolve().parents[1] / "baselines" / "default_baselines.json"
+
+def load_baseline(tenant_type: str, path: Path | None = None) -> dict[str, str]:
+    if path is None:
+        return load_baseline_map(tenant_type)
+    name = Path(path).name
+    if name == "m365.json":
+        return load_baseline_map("m365")
+    if name == "gws.json":
+        return load_baseline_map("gws")
+    if name == "github.json":
+        return load_baseline_map("github")
+    if name == "slack.json":
+        return load_baseline_map("slack")
+    if name == "okta.json":
+        return load_baseline_map("okta")
+    raise ValueError("baseline must be a shipped tenant filename")
 
 
-def diff(
-    tenant: str,
-    baseline_path: str | None = None,
-    current_settings: list[dict[str, Any]] | None = None,
-) -> list[dict[str, Any]]:
-    base_file = Path(baseline_path) if baseline_path else BASELINES
-    baselines = json.loads(base_file.read_text(encoding="utf-8"))
-    baseline_rows = baselines.get(tenant, [])
-    if current_settings is None:
-        current_settings = [dict(r) for r in baseline_rows]
-        if baseline_rows:
-            current_settings[0] = {
-                **current_settings[0],
-                "setting_value": "false" if baseline_rows[0].get("setting_value") == "true" else "true",
-            }
-    conn = duckdb.connect()
-    conn.execute("CREATE TABLE baseline_settings (setting_name VARCHAR, setting_value VARCHAR)")
-    conn.execute("CREATE TABLE findings_settings (setting_name VARCHAR, setting_value VARCHAR)")
-    for row in baseline_rows:
-        conn.execute(
-            "INSERT INTO baseline_settings VALUES (?, ?)",
-            [row["setting_name"], row.get("setting_value", "")],
+def _diff_maps(
+    current: dict[str, str],
+    baseline: dict[str, str],
+    *,
+    tenant_name: str,
+    tenant_type: str,
+    now: str,
+) -> list[DriftFinding]:
+    findings: list[DriftFinding] = []
+    keys = sorted(set(current) | set(baseline))
+    for key in keys:
+        old = baseline.get(key)
+        new = current.get(key)
+        if old == new:
+            continue
+        findings.append(
+            DriftFinding(
+                tenant_name=tenant_name,
+                tenant_type=tenant_type,
+                setting_name=key,
+                old_value=old,
+                new_value=new,
+                first_observed=now,
+                last_observed=now,
+                change_source="unknown",
+            )
         )
-    for row in current_settings:
-        conn.execute(
-            "INSERT INTO findings_settings VALUES (?, ?)",
-            [row["setting_name"], row.get("setting_value", "")],
-        )
-    rows = conn.execute(
+    return findings
+
+
+def diff_tenant(
+    *,
+    tenant: str = "m365",
+    tenant_name: str | None = None,
+    baseline: Path | None = None,
+    current: dict[str, Any] | None = None,
+    store: FindingsStore | None = None,
+) -> list[DriftFinding]:
+    name = tenant_name or f"{tenant}-demo"
+    snap = current or load_fixture(tenant)
+    current_map = {str(s["name"]): str(s.get("value")) for s in snap.get("settings") or []}
+    baseline_map = load_baseline(tenant, baseline)
+    now = utcnow()
+    try:
+        findings = _duckdb_diff(current_map, baseline_map, tenant_name=name, tenant_type=tenant, now=now)
+    except Exception:
+        findings = _diff_maps(current_map, baseline_map, tenant_name=name, tenant_type=tenant, now=now)
+    if store is not None:
+        for item in findings:
+            store.insert("findings_drift", {**item.model_dump(), "extra": {}, "observed_at": now})
+    return findings
+
+
+def _duckdb_diff(
+    current: dict[str, str],
+    baseline: dict[str, str],
+    *,
+    tenant_name: str,
+    tenant_type: str,
+    now: str,
+) -> list[DriftFinding]:
+    import duckdb
+
+    con = duckdb.connect(":memory:")
+    con.execute("CREATE TABLE current_settings (setting_name VARCHAR, setting_value VARCHAR)")
+    con.execute("CREATE TABLE baseline_settings (setting_name VARCHAR, setting_value VARCHAR)")
+    con.executemany("INSERT INTO current_settings VALUES (?, ?)", list(current.items()))
+    con.executemany("INSERT INTO baseline_settings VALUES (?, ?)", list(baseline.items()))
+    rows = con.execute(
         """
         SELECT
-            COALESCE(c.setting_name, b.setting_name) AS setting_name,
-            b.setting_value AS old_value,
-            c.setting_value AS new_value
-        FROM baseline_settings b
-        FULL OUTER JOIN findings_settings c ON b.setting_name = c.setting_name
-        WHERE b.setting_value IS DISTINCT FROM c.setting_value
+          COALESCE(c.setting_name, b.setting_name) AS setting_name,
+          b.setting_value AS old_value,
+          c.setting_value AS new_value
+        FROM current_settings c
+        FULL OUTER JOIN baseline_settings b USING (setting_name)
+        WHERE COALESCE(c.setting_value, '') <> COALESCE(b.setting_value, '')
+        ORDER BY setting_name
         """
     ).fetchall()
-    now = datetime.now(UTC).replace(microsecond=0).isoformat()
-    drift: list[dict[str, Any]] = []
-    for setting_name, old_value, new_value in rows:
-        drift.append(
-            {
-                "tenant_type": tenant,
-                "setting_name": setting_name,
-                "old_value": old_value,
-                "new_value": new_value,
-                "first_observed": now,
-                "last_observed": now,
-                "change_source": "admin portal",
-            }
+    return [
+        DriftFinding(
+            tenant_name=tenant_name,
+            tenant_type=tenant_type,
+            setting_name=row[0],
+            old_value=row[1],
+            new_value=row[2],
+            first_observed=now,
+            last_observed=now,
+            change_source="unknown",
         )
-    conn.close()
-    return drift
+        for row in rows
+    ]

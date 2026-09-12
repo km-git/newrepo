@@ -1,72 +1,71 @@
-"""GitHub org discovery via REST/GraphQL / cnspec."""
+"""GitHub org discovery via REST/GraphQL or cnspec. Third-party apps = count + names."""
 
 from __future__ import annotations
 
-import json
 import os
-import shutil
-import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from sspm.db.store import FindingsStore
+from sspm.discovery import discover as discover_tenant
 
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "github_org.json"
 
-
-def discover(
-    org: str,
-    token: str | None = None,
-    fixture: str | None = None,
+def discover_github(
+    *,
+    org: str | None = None,
+    token_env: str = "GITHUB_TOKEN",
+    tenant_name: str = "github-demo",
+    fixture: Path | None = None,
     store: FindingsStore | None = None,
 ) -> dict[str, Any]:
-    path = Path(fixture) if fixture else FIXTURE
-    api_token = token or os.environ.get("GITHUB_TOKEN")
-    if api_token:
-        try:
-            from github import Github
+    live = None
+    token = os.environ.get(token_env) or os.environ.get("GH_TOKEN")
+    if org and token and os.environ.get("SSPM_LIVE") == "1":
+        live = _live_org(org, token)
+    return discover_tenant(
+        "github",
+        tenant_name=tenant_name or (org or "github-demo"),
+        live=live,
+        fixture=fixture,
+        store=store,
+    )
 
-            gh = Github(api_token)
-            org_obj = gh.get_organization(org)
-            live = {
-                "org": org_obj.login,
-                "display_name": org_obj.name or org_obj.login,
-                "members_count": org_obj.get_members().totalCount,
-                "repos_count": org_obj.get_repos().totalCount,
-                "2fa_required": True,
-                "sso_enabled": False,
-                "installed_apps": [],
-            }
-            data = live
-        except Exception:
-            # Live GitHub API failed: fall back to the checked-in fixture.
-            data = json.loads(path.read_text(encoding="utf-8"))
-    else:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    if shutil.which("cnspec"):
-        try:
-            subprocess.run(
-                ["cnspec", "scan", "github", "org", org],
-                capture_output=True,
-                timeout=120,
-                check=False,
-            )
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass  # cnspec optional; fixture JSON is the source of truth
-    result = {
-        "tenant_type": "github",
-        "tenant_id": org or data.get("org", "unknown"),
-        "display_name": data.get("display_name"),
-        "settings": data,
-        "scanner": "cnspec+github-api" if api_token else "fixture",
-        "discovered_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+
+def _live_org(org: str, token: str) -> dict[str, Any]:
+    try:
+        from github import Github
+    except ImportError:
+        return {"external_id": org, "scanner": "api", "settings": [], "error": "PyGithub missing"}
+    gh = Github(token)
+    organization = gh.get_organization(org)
+    settings = [
+        {
+            "name": "two_factor_requirement.enabled",
+            "value": str(bool(organization.two_factor_requirement_enabled)).lower(),
+            "source": "github.org",
+        },
+        {
+            "name": "default_repository_permission",
+            "value": str(organization.default_repository_permission),
+            "source": "github.org",
+        },
+        {
+            "name": "members_can_create_public_repositories",
+            "value": str(bool(organization.members_can_create_public_repos)).lower(),
+            "source": "github.org",
+        },
+    ]
+    apps = []
+    try:
+        installs = organization.get_installations()
+        apps = [{"name": inst.app.name, "publisher": "github-app"} for inst in list(installs)[:50]]
+    except Exception:
+        apps = [{"name": "(count unavailable)", "publisher": "unknown"}]
+    return {
+        "external_id": org,
+        "display_name": organization.login,
+        "scanner": "api",
+        "honest_gap": "Only first-party org settings; third-party app installations are count + names.",
+        "apps": apps,
+        "settings": settings,
     }
-    if store:
-        store.insert_tenant(
-            "github",
-            result["tenant_id"],
-            result["display_name"] or result["tenant_id"],
-            result["settings"],
-        )
-    return result

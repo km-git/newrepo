@@ -1,0 +1,58 @@
+# {{ title }}
+
+Domain: **{{ domain }}**
+Generated: {{ generated_at }}
+
+This document is an **Email Deliverability & Brand-Protection Review**.
+It is a read-only observation of authentication-related DNS records and DMARC
+reports. It is not an email-security assessment.
+
+## DNS check summary
+
+{{ dns_md }}
+
+## SPF / DKIM / DMARC findings
+
+### SPF
+
+{{ spf_md }}
+
+The SPF RFC 7208 specifies a 10-DNS-lookup budget. Counts above that are
+flagged. `+all` is treated as too permissive. Missing `all` is flagged.
+
+### DKIM
+
+{{ dkim_md }}
+
+RSA keys shorter than 1024 bits are a warning; shorter than 2048 bits are
+advisory.
+
+### DMARC aggregate
+
+{{ dmarc_md }}
+
+Do not move to `p=reject` until the aggregate pass rate is at least 99% for
+30 days. Premature reject drops legitimate mail.
+
+## Aggregate chart
+
+See {{ aggregate_note }}. Geographic labels, when present, are inferred from
+source organisation metadata — this toolkit does not ship a paid GeoIP database.
+
+## Inbox placement trend
+
+{{ inbox_md }}
+
+Inbox placement is heuristic. Run the seed test weekly and watch the trend.
+
+## Forensic (RUF)
+
+{{ forensic_md }}
+
+## Tool inventory
+
+{{ inventory_count }} OSS tools recorded in `dmarc-inventory.json`.
+
+---
+
+{{ disclaimer }}

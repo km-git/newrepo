@@ -1,44 +1,37 @@
-"""JSON / human table output helpers."""
+"""JSON-default CLI output with optional human tables."""
 
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from typing import Any
-
-from rich.console import Console
-from rich.table import Table
 
 
 def emit(payload: Any, *, human: bool = False) -> str:
-    if not human:
-        return json.dumps(payload, indent=2, default=str)
-    if isinstance(payload, dict):
-        return _dict_table(payload)
-    if isinstance(payload, list) and payload and isinstance(payload[0], dict):
-        return _list_table(payload)
-    return json.dumps(payload, indent=2, default=str)
+    if human:
+        return render_human(payload)
+    return json.dumps(payload, indent=2, sort_keys=True, default=str)
 
 
-def _dict_table(data: dict[str, Any]) -> str:
-    table = Table(title="SSPM Result")
-    table.add_column("Key", style="cyan")
-    table.add_column("Value")
-    for key, value in data.items():
-        if isinstance(value, list | dict):
-            value = json.dumps(value, default=str)[:120]
-        table.add_row(str(key), str(value))
-    console = Console(record=True, width=120)
-    console.print(table)
-    return console.export_text()
+def render_human(payload: Any) -> str:
+    if isinstance(payload, Mapping):
+        return _table([dict(payload)])
+    if isinstance(payload, Sequence) and not isinstance(payload, (str, bytes)):
+        rows = [dict(item) if isinstance(item, Mapping) else {"value": item} for item in payload]
+        return _table(rows)
+    return str(payload)
 
 
-def _list_table(rows: list[dict[str, Any]]) -> str:
-    keys = list(rows[0].keys())
-    table = Table(title=f"SSPM Results ({len(rows)} rows)")
-    for key in keys[:8]:
-        table.add_column(str(key))
-    for row in rows[:50]:
-        table.add_row(*[str(row.get(k, ""))[:60] for k in keys[:8]])
-    console = Console(record=True, width=140)
-    console.print(table)
-    return console.export_text()
+def _table(rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return "(empty)"
+    keys: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in keys:
+                keys.append(str(key))
+    widths = {k: max(len(k), *(len(str(r.get(k, ""))[:80]) for r in rows)) for k in keys}
+    header = "  ".join(k.ljust(widths[k]) for k in keys)
+    rule = "  ".join("-" * widths[k] for k in keys)
+    body = "\n".join("  ".join(str(r.get(k, ""))[:80].ljust(widths[k]) for k in keys) for r in rows)
+    return f"{header}\n{rule}\n{body}"
