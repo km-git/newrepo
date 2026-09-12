@@ -3,6 +3,13 @@ name: dmarc-rebase
 on:
   pull_request:
     types: [synchronize, opened]
+    paths:
+      - "dmarc/**"
+      - "tests/dmarc/**"
+      - "scripts/serve_dmarc.py"
+      - ".github/workflows/dmarc-*.yml"
+      - "docker-compose.yml"
+      - "Makefile"
   merge_group:
 
 permissions:
