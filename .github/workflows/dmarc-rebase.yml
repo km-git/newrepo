@@ -20,11 +20,12 @@ jobs:
         if: github.event_name == 'merge_group'
         run: echo "dmarc-rebase merge_group check reported"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         if: github.event_name != 'merge_group'
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Rebase bot PR onto default branch
         if: github.event_name != 'merge_group'

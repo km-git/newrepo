@@ -1,0 +1,23 @@
+{
+  "files": [
+    {
+      "path": "hr/employee_records.csv",
+      "name": "employee_records.csv",
+      "size": 3200,
+      "preview": "employee_id,name,email,tfn\n1,Jane Doe,jane@company.au,123 456 789",
+      "metadata": {"share": "HR", "server": "fileserver01"}
+    },
+    {
+      "path": "finance/payroll_backup.zip",
+      "name": "payroll_backup.zip",
+      "size": 150000,
+      "metadata": {"share": "Finance"}
+    },
+    {
+      "path": "shared/customer_pii.txt",
+      "name": "customer_pii.txt",
+      "size": 512,
+      "preview": "Customer: John Smith, Phone: +61412345678, Email: john.smith@email.com"
+    }
+  ]
+}

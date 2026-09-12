@@ -1,0 +1,48 @@
+policies:
+  - name: c7n-stop-unencrypted-rds
+    resource: aws.rds
+    mode:
+      type: cloudtrail
+      events:
+        - CreateDBInstance
+    filters:
+      - type: value
+        key: StorageEncrypted
+        value: false
+    actions:
+      - type: notify
+    mode_config:
+      dryrun: true
+
+  - name: c7n-tag-untagged-resources
+    resource: aws.ec2
+    filters:
+      - tag:Environment: absent
+    actions:
+      - type: mark-for-op
+        op: notify
+    mode_config:
+      dryrun: true
+
+  - name: c7n-rightsizing-recommendation
+    resource: aws.ec2
+    filters:
+      - type: metrics
+        name: CPUUtilization
+        value: 5
+        op: less-than
+    actions:
+      - type: notify
+    mode_config:
+      dryrun: true
+
+  - name: c7n-cost-anomaly-alert
+    resource: aws.ec2
+    filters:
+      - type: value
+        key: tag:CostCenter
+        value: absent
+    actions:
+      - type: notify
+    mode_config:
+      dryrun: true

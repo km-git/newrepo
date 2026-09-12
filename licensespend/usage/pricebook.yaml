@@ -1,0 +1,26 @@
+currency: AUD
+skus:
+  - id: m365-e3
+    vendor: microsoft365
+    name: Microsoft 365 E3
+    monthly_aud: 36.00
+  - id: m365-e5
+    vendor: microsoft365
+    name: Microsoft 365 E5
+    monthly_aud: 57.00
+  - id: slack-business-plus
+    vendor: slack
+    name: Slack Business+
+    monthly_aud: 15.00
+  - id: slack-guest
+    vendor: slack
+    name: Slack guest (unbilled)
+    monthly_aud: 0.00
+  - id: github-team
+    vendor: github
+    name: GitHub Team
+    monthly_aud: 4.00
+  - id: github-outside
+    vendor: github
+    name: GitHub outside collaborator
+    monthly_aud: 0.00

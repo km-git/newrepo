@@ -1,0 +1,28 @@
+---
+description: SaaS License & Spend — 8-module seat-waste report, Graph+Slack+PyGithub extras, metadata-only, no revoke without dual gates. Apply when working on licensespend/ or licensespend-* workflows.
+globs: licensespend/**,.github/workflows/licensespend-*.yml,examples/m365/**,examples/slack/**,examples/github/**,examples/shadow/**,examples/northwind/**
+alwaysApply: false
+---
+
+# LicenseSpend build rule
+
+8 modules: audit, m365, slack, github, usage, shadow, renewals, report. Loop lives in `licensespend/loop/` (Discover → Evaluate → Integrate → Validate → Compound). This is a **spend report**, not an auto-revoker.
+
+## Hard rules
+
+1. No paid SaaS-management platforms (Zylo, Productiv, Torii).
+2. No GPU/Ollama. No Max Mode.
+3. Metadata only: no mail, calendar bodies, Slack messages, GitHub issue text, or Drive files.
+4. Hash emails with a per-tenant salt (`LICENSESPEND_SALT`) before DuckDB or HTML.
+5. Never revoke a license, Slack seat, or GitHub member unless `--apply` **and** `LICENSESPEND_APPLY=1` **and** the user id is in `allow-reclaim.txt`.
+6. PyGithub (LGPL-3.0) is a leaf pip extra — do not vendor/copy its source.
+7. SHA-pin GitHub Actions. Trivy 0.71.2 / 0.70+ only (never 0.69.4 — CVE-2026-33634).
+8. Keepalive is `licensespend/state/keepalive.txt`. Do not use `gautamkrishnar/keepalive-workflow`.
+9. Do not auto-approve human PRs. Do not auto-fix Graph permission changes or pricebook AUD amounts.
+10. Dedupe Discover by SHA-256 URL. Skip commercial Evaluate hits for Zylo/Productiv/Torii.
+11. Live Graph/Slack/GitHub extras are optional. Fixture path is the product.
+12. Pricebook is operator-edited AUD list prices, not a crawler.
+
+## CLI
+
+JSON default, `--human` for a table. `make licensespend-all` runs audit + unused + renewals + report + Explorer static HTML against `examples/` (Acme + Northwind). `licensespend ui --static` writes `reports/licensespend_explorer.html`. Explorer is part of the report module, not a ninth first-class module.

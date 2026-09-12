@@ -18,11 +18,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
 
@@ -31,7 +31,7 @@ jobs:
 
       - name: Ruff check (new modules)
         run: |
-          RUFF_PATHS="tape_to_cloud/ cost/ dspm/ dmarc sspm engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_report_html.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_layers.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py tests/dmarc scripts/serve_dmarc.py tests/test_sspm_architecture.py tests/test_sspm_core.py tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py tests/test_sspm_cli.py tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py"
+          RUFF_PATHS="tape_to_cloud/ cost/ dspm/ dmarc sspm licensespend/ engine/monetization_strategy.py engine/tape_to_cloud_hub.py engine/tape_to_cloud_report_html.py engine/tape_to_cloud_reports.py tests/test_monetization_strategy.py tests/test_tape_to_cloud_monetize.py tests/test_tape_to_cloud_hub.py tests/test_tape_to_cloud_layers.py tests/test_tape_to_cloud_reports.py tests/test_tape_to_cloud_pipeline.py tests/test_bugbot_replacement.py tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py tests/dmarc scripts/serve_dmarc.py tests/test_sspm_architecture.py tests/test_sspm_core.py tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py tests/test_sspm_cli.py tests/test_cost_architecture.py tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py tests/test_cost_loop.py"
           ruff check --output-format=github --config ruff.toml $RUFF_PATHS
           ruff format --check $RUFF_PATHS
 
@@ -43,11 +43,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
 
@@ -67,7 +67,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -96,7 +96,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -114,7 +114,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -133,11 +133,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
 
@@ -154,11 +154,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: "3.12"
 
@@ -198,7 +198,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -217,11 +217,11 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
 
@@ -288,4 +288,3 @@ jobs:
           echo "::notice::GITHUB_TOKEN could not approve (HTTP 422 if Actions cannot approve PRs)."
           echo "Enable Settings → Actions → General → Allow GitHub Actions to create and approve pull requests."
           exit 0
-

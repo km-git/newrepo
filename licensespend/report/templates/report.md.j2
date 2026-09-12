@@ -1,0 +1,99 @@
+# SaaS License & Spend — {{ client }}
+
+Draft reclaim pack for human review. As of {{ as_of }}. Currency AUD. Do not auto-revoke.
+
+**Reclaim (monthly): A${{ "%.2f"|format(reclaim_monthly_aud) }}** (A${{ "%.2f"|format(reclaim_annual_aud) }}/year) across {{ unused_count }} unused of {{ seats_total }} assigned seats.
+
+## Bought vs used
+
+| SKU | Bought | Used |
+|---|---:|---:|
+{% for sku, bought in seats_bought.items() -%}
+| {{ sku }} | {{ bought }} | {{ seats_used.get(sku, 0) }} |
+{% endfor %}
+
+## Vendor reclaim
+
+| Vendor | Unused seats | AUD / month |
+|---|---:|---:|
+{% for row in vendor_breakdown -%}
+| {{ row.vendor }} | {{ row.unused_seats }} | {{ "%.2f"|format(row.monthly_aud) }} |
+{% endfor %}
+
+## Department reclaim
+
+| Department | Unused seats | AUD / month |
+|---|---:|---:|
+{% for row in department_breakdown -%}
+| {{ row.department }} | {{ row.unused_seats }} | {{ "%.2f"|format(row.monthly_aud) }} |
+{% endfor %}
+
+## Idle buckets
+
+| Bucket | Seats |
+|---|---:|
+{% for bucket, count in idle_buckets.items() -%}
+| {{ bucket }} | {{ count }} |
+{% endfor %}
+
+## SKU economics
+
+| SKU | Bought | Used | Idle | Unit AUD | Idle AUD / mo |
+|---|---:|---:|---:|---:|---:|
+{% for row in sku_economics -%}
+| {{ row.sku }} | {{ row.bought }} | {{ row.used }} | {{ row.idle }} | {{ "%.2f"|format(row.unit_aud) }} | {{ "%.2f"|format(row.idle_monthly_aud) }} |
+{% endfor %}
+
+## Idle sensitivity (30 / 60 / 90)
+
+| Policy | Unused | AUD / month | AUD / year |
+|---|---:|---:|---:|
+{% for row in idle_sensitivity -%}
+| {{ row.idle_days }} days | {{ row.unused_count }} | {{ "%.2f"|format(row.reclaim_monthly_aud) }} | {{ "%.2f"|format(row.reclaim_annual_aud) }} |
+{% endfor %}
+
+## Draft action plan
+
+{% for item in draft_actions -%}
+- **{{ item.priority }}:** {{ item.title }} — {{ item.detail }}
+{% else -%}
+- None.
+{% endfor %}
+
+## Unused seats (hashed ids)
+
+| User id | SKU | Idle days | Monthly AUD |
+|---|---|---:|---:|
+{% for row in unused -%}
+| `{{ row.user_id }}` | {{ row.sku }} | {{ row.idle_days }} | {{ "%.2f"|format(row.monthly_cost) }} |
+{% endfor %}
+
+## Renewals (60 days)
+
+{% for item in renewals -%}
+- {{ item.vendor }} — {{ item.renew_on }} — A${{ item.amount_aud }} (draft nudge)
+{% else -%}
+- None in window.
+{% endfor %}
+
+## Shadow apps
+
+{% for app in shadow_apps -%}
+- {{ app.name }} ({{ app.source }}){% if app.note %} — {{ app.note }}{% endif %}
+{% else -%}
+- None in fixtures.
+{% endfor %}
+
+## Draft QBR talk-track
+
+{% for line in qbr_talk_track -%}
+- {{ line }}
+{% endfor %}
+
+## Honest gaps
+
+{% for line in honest_gaps -%}
+- {{ line }}
+{% endfor %}
+
+Watermark SHA-256: `{{ watermark }}`

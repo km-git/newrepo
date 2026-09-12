@@ -57,7 +57,7 @@ class FindingsStore:
 
 
 def _adapt(value: Any) -> Any:
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return json.dumps(value, sort_keys=True)
     if isinstance(value, bool):
         return int(value)

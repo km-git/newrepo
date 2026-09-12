@@ -1,0 +1,6 @@
+[
+  {"provider": "aws", "service": "AmazonEC2", "region": "ap-southeast-2", "tag_key": "Environment", "tag_value": "production", "amount": 1250.0},
+  {"provider": "aws", "service": "AmazonRDS", "region": "ap-southeast-2", "amount": 430.0},
+  {"provider": "aws", "service": "AmazonS3", "region": "global", "amount": 95.5},
+  {"provider": "aws", "service": "AWSLambda", "region": "ap-southeast-2", "amount": 12.3}
+]

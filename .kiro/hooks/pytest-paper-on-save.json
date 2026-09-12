@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "pytest-paper-simulator",
+      "description": "Fast pytest when paper simulator or forward tracker changes",
+      "trigger": "PostFileSave",
+      "matcher": "engine/(paper_simulator|paper_forward_tracker|paper_policy|continuous_proof)\\.py$",
+      "action": {
+        "type": "command",
+        "command": "bash scripts/hooks/run_proof_gate.sh fast"
+      },
+      "timeout": 120,
+      "enabled": true
+    }
+  ]
+}

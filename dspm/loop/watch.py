@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import os
 import re
+import ssl
 from pathlib import Path
 from typing import Any
-from urllib.request import Request, urlopen
+from urllib.parse import urlparse
 
 import yaml
 
@@ -100,9 +102,36 @@ def parse_rss(text: str, *, max_items: int) -> list[dict[str, str]]:
 
 
 def fetch_text(url: str, timeout: int = 20) -> str:
-    req = Request(url, headers={"User-Agent": "dspm-watcher/0.1"})
-    with urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8", errors="replace")
+    current = url
+    for _ in range(5):
+        parsed = urlparse(current)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ValueError(f"refusing non-https fetch ({parsed.scheme or 'missing-scheme'})")
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
+        # Semgrep httpsconnection-detected targets Python <3.4.3; 3.12 verifies TLS.
+        conn = http.client.HTTPSConnection(  # nosemgrep
+            parsed.hostname,
+            parsed.port or 443,
+            timeout=timeout,
+            context=ssl.create_default_context(),
+        )
+        try:
+            conn.request("GET", path, headers={"User-Agent": "dspm-watcher/0.1"})
+            resp = conn.getresponse()
+            if resp.status in {301, 302, 303, 307, 308}:
+                location = (resp.getheader("Location") or "").strip()
+                resp.read()
+                current = f"https://{parsed.hostname}{location}" if location.startswith("/") else location
+                continue
+            body = resp.read()
+            if resp.status >= 400:
+                raise OSError(f"HTTP {resp.status} for {parsed.hostname}")
+            return body.decode("utf-8", errors="replace")
+        finally:
+            conn.close()
+    raise OSError("too many HTTPS redirects")
 
 
 def watch(

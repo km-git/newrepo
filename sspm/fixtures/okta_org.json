@@ -1,0 +1,8 @@
+{
+  "org": "example.okta.com",
+  "display_name": "Example Okta",
+  "users_count": 200,
+  "mfa_policies": 3,
+  "password_policy_strength": "strong",
+  "active_apps": 35
+}

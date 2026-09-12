@@ -1,0 +1,68 @@
+name: licensespend-ci
+
+on:
+  push:
+    paths: ["licensespend/**", "examples/**", ".github/workflows/licensespend-*.yml"]
+  pull_request:
+    paths: ["licensespend/**", "examples/**", ".github/workflows/licensespend-*.yml"]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LICENSESPEND_INCLUDE_EMAIL: "0"
+      LICENSESPEND_APPLY: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install test deps
+        run: pip install -r licensespend/requirements-ci.txt
+
+      - name: Ruff
+        run: ruff check --output-format=github --config ruff.toml licensespend tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py
+
+      - name: Pytest LicenseSpend
+        run: pytest tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py licensespend -q --tb=short
+
+      - name: Report fixture must not contain raw emails
+        run: |
+          python -m licensespend ui --static --out reports/
+          if grep -R -E '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' reports/licensespend_explorer.html reports/licensespend --include='*.html' --include='*.md' --include='*.json'; then
+            echo "raw email leaked into reports/"
+            exit 1
+          fi
+
+      - name: pip-audit --strict (published deps only)
+        run: pip-audit --strict --desc on -r licensespend/requirements-ci.txt
+
+      - name: Semgrep OSS (Bugbot-alternative SAST, no token)
+        run: |
+          pip install "semgrep>=1.100.0"
+          semgrep scan --config p/python --config p/security-audit --error --metrics=off licensespend tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py
+
+      - name: Setup Trivy (safe post-CVE-2026-33634 pin)
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.71.2
+
+      - name: Trivy filesystem scan
+        run: |
+          trivy fs --severity HIGH,CRITICAL --exit-code 1 licensespend
+          trivy fs --severity HIGH,CRITICAL --exit-code 1 licensespend/requirements-ci.txt
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "resource_id": "i-0abc123",
+      "instance_type": "m5.xlarge",
+      "storage_class": "gp3",
+      "reserved_instance_expiry": "2026-12-01"
+    }
+  ]
+}

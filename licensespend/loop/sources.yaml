@@ -1,0 +1,46 @@
+# licensespend Discover sources (also appended to forum-watcher/sources.yaml)
+- name: r/msp
+  url: https://www.reddit.com/r/msp/.rss
+  kind: rss
+  module_hint: licensespend/report, licensespend/m365
+  max_items: 25
+- name: r/sysadmin licensespend
+  url: https://www.reddit.com/r/sysadmin/.rss
+  kind: rss
+  module_hint: licensespend/usage, licensespend/shadow
+  max_items: 25
+- name: r/PowerShell
+  url: https://www.reddit.com/r/PowerShell/.rss
+  kind: rss
+  module_hint: licensespend/m365
+  max_items: 15
+- name: msgraph-releases
+  url: https://github.com/microsoftgraph/msgraph-sdk-python/releases.atom
+  kind: rss
+  module_hint: licensespend/m365
+  max_items: 10
+- name: slack-sdk-releases
+  url: https://github.com/slackapi/python-slack-sdk/releases.atom
+  kind: rss
+  module_hint: licensespend/slack
+  max_items: 10
+- name: pygithub-releases
+  url: https://github.com/PyGithub/PyGithub/releases.atom
+  kind: rss
+  module_hint: licensespend/github
+  max_items: 10
+- name: HN Algolia saas sprawl
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=saas%20sprawl&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: licensespend/shadow
+  max_items: 15
+- name: HN Algolia m365 unused licenses
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=microsoft%20365%20unused%20licenses&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: licensespend/m365, licensespend/usage
+  max_items: 15
+- name: HN Algolia slack billed seats
+  url: "https://hn.algolia.com/api/v1/search_by_date?query=slack%20billed%20seats&tags=story&hitsPerPage=15"
+  kind: algolia
+  module_hint: licensespend/slack
+  max_items: 15

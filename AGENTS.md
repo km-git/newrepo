@@ -1,5 +1,52 @@
 # AGENTS.md
 
+## Proof-first Spec Kit workflow (Kiro-like on GitHub)
+
+This repo combines **GitHub Spec Kit**, **Cursor skills**, and **LLM-free proof scripts** as hooks —
+a Kiro-style spec → implement → verify loop without Kiro IDE.
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| Constitution | `.specify/memory/constitution.md` | Proof-before-product governance |
+| Spec Kit skills | `.cursor/skills/speckit-*` | `/speckit-specify`, plan, tasks, implement |
+| Proof skill | `.cursor/skills/proof-first-trading` | Fast pytest + continuous proof verdict |
+| Kiro steering | `.kiro/steering/*.md` | Always-on rules (proof-first, execution contract) |
+| Kiro hooks | `.kiro/hooks/*.json` | PostFileSave → `scripts/hooks/run_proof_gate.sh` |
+| Spec Kit hooks | `.specify/extensions.yml` | before/after `speckit-implement` proof gates |
+| Feature specs | `specs/<id>-<name>/` | spec.md, plan.md, tasks.md |
+| Scoreboard | `reports/CONTINUOUS_PROOF.md`, `reports/PAPER_FORWARD.md` | **Not** dense setup tables |
+
+**Typical flow** (see `.cursor/skills/speckit-workflow`):
+
+`/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` →
+`/proof-first-trading`
+
+Aliases: `/speckit.constitution`, `/specify`, `/plan`, `/tasks`, `/spec-to-implementation`.
+
+**One-time bootstrap**:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install specify-cli --from git+https://github.com/github/spec-kit
+bash scripts/setup_spec_kit.sh          # init + verify .specify/
+bash scripts/install_git_hooks.sh       # git config core.hooksPath .githooks
+```
+
+**Optional ECC harness** (278 skills — install locally, not vendored):
+
+```text
+/plugin marketplace add github.com/affaan-m/ecc
+/plugin install ecc@ecc
+cp -R ECC/skills/* ~/.cursor/skills/   # or use Cursor plugin install
+```
+
+Or: `bash scripts/setup_agent_harness.sh` (prints ECC steps + enables git hooks).
+
+**Proof scripts**: `bash scripts/run_continuous_proof_loop.sh`, `bash scripts/run_paper_proof_daily.sh`
+(both `EW_IMPROVEMENT_LLM=0`). Git pre-commit runs `run_proof_gate.sh fast` on staged paper/execution files.
+
+**CI**: `.github/workflows/proof-gate.yml` on PRs; manual dispatch for full proof loop.
+
 ## Cursor Cloud specific instructions
 
 This repo is a single Python CLI product: `ew_tool.py`, an Elliott Wave + harmonic
@@ -12,6 +59,7 @@ and open `reports/dmarc_explorer.html`, or `--dmarc-ui` (binds `0.0.0.0:8765`, p
 CLI: `python3 -m dmarc` / `make dmarc-all`. Cloud Cost explorer: `python3 ew_tool.py --cost-ui --static`
 and open `reports/cost_explorer.html`. SSPM Explorer: `python3 ew_tool.py --sspm-ui --static`
 and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`).
+LicenseSpend Explorer: `python3 -m licensespend ui --static` → open `reports/licensespend_explorer.html`.
 
 ### Environment
 
@@ -31,7 +79,7 @@ and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`
 ### Running / testing
 
 - Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root).
-- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks / zizmor / OSV / pip-audit in `.github/workflows/lint-security.yml`; **zero-key GitHub scanners** in `.github/workflows/bugbot-free.yml` (CodeQL + Semgrep CE + reviewdog PR comments). PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. CodeRabbit Marketplace is optional (~4 PRs/hr) and is not required.
+- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks / zizmor / OSV / pip-audit in `.github/workflows/lint-security.yml`; **zero-key GitHub scanners** in `.github/workflows/bugbot-free.yml` (CodeQL + Semgrep CE + reviewdog PR comments). Local loop: `make scan` / `bash scripts/run_free_scanners.sh`. PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. CodeRabbit Marketplace is optional (~4 PRs/hr) and is not required. Paid AI review (Sourcery, CodeAnt, Bito, Greptile, Macroscope, Qodo) and paid security (Mend SCA, Socket, Aikido) are not used — GitHub stand-ins: Dependabot + `renovate.json` (Mend Renovate free app), `.github/workflows/dependency-review.yml`, `.github/workflows/scorecard.yml`. Security reports: `SECURITY.md` (GitHub Advisories). No Linear/Height/Shortcut; GitHub Issues is the PM. No Sentry/Honeycomb cloud; GlitchTip/SigNoz self-host later.
 - Single symbol (live data fetch): `.venv/bin/python ew_tool.py --symbol BTC/USDT --crypto`
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
@@ -45,6 +93,8 @@ and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`
 - SSPM Explorer (server): `.venv/bin/python ew_tool.py --sspm-ui` or `--monitor` then `http://127.0.0.1:8765/sspm`
 - SSPM CLI: `.venv/bin/python -m sspm demo` or `make sspm-all`
 - DSPM CLI: `.venv/bin/python -m dspm audit inventory` or `make dspm-all`
+- LicenseSpend Explorer (offline): `.venv/bin/python -m licensespend ui --static` → open `reports/licensespend_explorer.html`
+- LicenseSpend Explorer (server): `.venv/bin/python -m licensespend ui` binds `0.0.0.0:8765` (`/licensespend`). On Cloud, use the static file — `127.0.0.1` is the VM.
 - Tape-to-Cloud live ingest (real file bytes, not sample reports):
   `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
   `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.
@@ -126,3 +176,7 @@ and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`
  CLI: `python3 ew_tool.py --monetize-report [--tier free|pro|enterprise] [--monetize-months N]`.
  Outputs: `output/monetize/latest_report.json` + `reports/MONETIZATION_STRATEGY.md`.
  Env: `EW_MONETIZE_JSON`, `EW_MONETIZE_MD` (path overrides for tests).
+- **LicenseSpend (SaaS seat-waste report):** `licensespend/` — 8 modules, fixture-first, AUD pricebook.
+ CLI: `.venv/bin/python -m licensespend ui --static` writes `reports/licensespend_explorer.html` plus
+ sample packs under `reports/licensespend/` (Acme A$127/mo, Northwind A$281/mo). Live:
+ `.venv/bin/python -m licensespend ui` or `--monitor` at `/licensespend`. Draft reclaim only.

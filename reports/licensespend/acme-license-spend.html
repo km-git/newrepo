@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>License spend — acme (draft)</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #111; }
+    h1, h2 { font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
+    .muted { color: #555; font-size: 0.9rem; }
+    .banner { background: #fff6d9; border: 1px solid #e0c36a; padding: 0.6rem 0.8rem; }
+    code { font-size: 0.85rem; }
+    @media print {
+      body { margin: 0.6in; color: #000; }
+      .banner { border: 1px solid #999; background: #fff; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <h1>SaaS License &amp; Spend — acme</h1>
+  <p class="banner">Draft reclaim pack for human review. Not regulated advice. Do not auto-revoke. As of 2026-09-07. Currency AUD.</p>
+  <p><strong>Reclaim (monthly):</strong> A$127.00
+     (A$1524.00/year) across 5 unused of 26 assigned seats.</p>
+  <h2>Bought vs used</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th></tr></thead>
+    <tbody>
+    
+      <tr><td>m365-e3</td><td>12</td><td>9</td></tr>
+    
+      <tr><td>slack-business-plus</td><td>6</td><td>5</td></tr>
+    
+      <tr><td>slack-guest</td><td>2</td><td>2</td></tr>
+    
+      <tr><td>github-team</td><td>5</td><td>4</td></tr>
+    
+      <tr><td>github-outside</td><td>1</td><td>1</td></tr>
+    
+    </tbody>
+  </table>
+  <h2>Vendor reclaim</h2>
+  <table>
+    <thead><tr><th>Vendor</th><th>Unused seats</th><th>AUD / month</th></tr></thead>
+    <tbody>
+    
+      <tr><td>microsoft365</td><td>3</td><td>108.00</td></tr>
+    
+      <tr><td>slack</td><td>1</td><td>15.00</td></tr>
+    
+      <tr><td>github</td><td>1</td><td>4.00</td></tr>
+    
+    </tbody>
+  </table>
+  <h2>Department reclaim</h2>
+  <table>
+    <thead><tr><th>Department</th><th>Unused seats</th><th>AUD / month</th></tr></thead>
+    <tbody>
+    
+      <tr><td>finance</td><td>2</td><td>72.00</td></tr>
+    
+      <tr><td>hr</td><td>1</td><td>36.00</td></tr>
+    
+      <tr><td>ops</td><td>1</td><td>15.00</td></tr>
+    
+      <tr><td>eng</td><td>1</td><td>4.00</td></tr>
+    
+    </tbody>
+  </table>
+  <h2>Idle buckets</h2>
+  <table>
+    <thead><tr><th>Bucket</th><th>Seats</th></tr></thead>
+    <tbody>
+    
+      <tr><td>0-29</td><td>17</td></tr>
+    
+      <tr><td>30-59</td><td>2</td></tr>
+    
+      <tr><td>60-89</td><td>2</td></tr>
+    
+      <tr><td>90+</td><td>5</td></tr>
+    
+      <tr><td>unknown</td><td>0</td></tr>
+    
+    </tbody>
+  </table>
+  <h2>SKU economics</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th><th>Unit AUD</th><th>Idle AUD / mo</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td>github-outside</td><td>1</td><td>1</td><td>0</td>
+        <td>0.00</td><td>0.00</td>
+      </tr>
+    
+      <tr>
+        <td>github-team</td><td>5</td><td>4</td><td>1</td>
+        <td>4.00</td><td>4.00</td>
+      </tr>
+    
+      <tr>
+        <td>m365-e3</td><td>12</td><td>9</td><td>3</td>
+        <td>36.00</td><td>108.00</td>
+      </tr>
+    
+      <tr>
+        <td>slack-business-plus</td><td>6</td><td>5</td><td>1</td>
+        <td>15.00</td><td>15.00</td>
+      </tr>
+    
+      <tr>
+        <td>slack-guest</td><td>2</td><td>2</td><td>0</td>
+        <td>0.00</td><td>0.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Idle sensitivity (30 / 60 / 90)</h2>
+  <table>
+    <thead><tr><th>Policy</th><th>Unused</th><th>AUD / month</th><th>AUD / year</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td>30 days</td><td>9</td>
+        <td>214.00</td>
+        <td>2568.00</td>
+      </tr>
+    
+      <tr>
+        <td>60 days</td><td>7</td>
+        <td>178.00</td>
+        <td>2136.00</td>
+      </tr>
+    
+      <tr>
+        <td>90 days</td><td>5</td>
+        <td>127.00</td>
+        <td>1524.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Draft action plan</h2>
+  <ul>
+    
+      <li><strong>renewal:</strong> Right-size microsoft365 before 2026-10-01 — 24 days to renew · contract A$5184.00. Idle at this policy: A$108.00/mo. Annual terms: savings typically land at renewal.</li>
+    
+      <li><strong>unused:</strong> Review m365-e3 seat u-001 — Idle 249d · A$36.00/mo · finance · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e3 seat u-002 — Idle 204d · A$36.00/mo · finance · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review m365-e3 seat u-003 — Idle 190d · A$36.00/mo · hr · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review slack-business-plus seat S001 — Idle 240d · A$15.00/mo · ops · draft only, do not auto-revoke</li>
+    
+      <li><strong>unused:</strong> Review github-team seat gh-001 — Idle 245d · A$4.00/mo · eng · draft only, do not auto-revoke</li>
+    
+      <li><strong>shadow:</strong> Investigate possible shadow SaaS — Notion, Canva, Notion, Grammarly, _spf.google.com, spf.protection.outlook.com, mail.zendesk.com (not in pricebook; heuristic only).</li>
+    
+  </ul>
+  <h2>Unused seats (hashed ids)</h2>
+  <table>
+    <thead><tr><th>User id</th><th>SKU</th><th>Idle days</th><th>Monthly AUD</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td><code>u-001</code></td>
+        <td>m365-e3</td>
+        <td>249</td>
+        <td>36.00</td>
+      </tr>
+    
+      <tr>
+        <td><code>u-002</code></td>
+        <td>m365-e3</td>
+        <td>204</td>
+        <td>36.00</td>
+      </tr>
+    
+      <tr>
+        <td><code>u-003</code></td>
+        <td>m365-e3</td>
+        <td>190</td>
+        <td>36.00</td>
+      </tr>
+    
+      <tr>
+        <td><code>S001</code></td>
+        <td>slack-business-plus</td>
+        <td>240</td>
+        <td>15.00</td>
+      </tr>
+    
+      <tr>
+        <td><code>gh-001</code></td>
+        <td>github-team</td>
+        <td>245</td>
+        <td>4.00</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  <h2>Renewals (60 days)</h2>
+  <ul>
+    
+      <li>microsoft365 — 2026-10-01 — A$5184.0 (draft nudge)</li>
+    
+  </ul>
+  <h2>Shadow apps</h2>
+  <ul>
+    
+      <li>Microsoft 365 (expense-csv)</li>
+    
+      <li>Slack (expense-csv)</li>
+    
+      <li>Notion (expense-csv) — not in pricebook; possible shadow SaaS</li>
+    
+      <li>Canva (expense-csv) — not in pricebook; possible shadow SaaS</li>
+    
+      <li>Microsoft 365 (sso-catalog)</li>
+    
+      <li>Slack (sso-catalog)</li>
+    
+      <li>Notion (sso-catalog) — unapproved SSO app</li>
+    
+      <li>Grammarly (sso-catalog) — unapproved SSO app</li>
+    
+      <li>_spf.google.com (spf-include) — DNS heuristic only</li>
+    
+      <li>spf.protection.outlook.com (spf-include) — DNS heuristic only</li>
+    
+      <li>mail.zendesk.com (spf-include) — DNS heuristic only</li>
+    
+  </ul>
+  <h2>Draft QBR talk-track</h2>
+  <ul>
+    
+      <li>Draft QBR talk-track for acme as of 2026-09-07: 5 unused seats across github, microsoft365, slack = A$127.00/month (A$1524.00/year at operator list price).</li>
+    
+      <li>This is a spend report for human review. Do not auto-revoke seats.</li>
+    
+      <li>Highest-cost unused seat: m365-e3 (microsoft365) at A$36.00/month, idle 249 days (hashed id u-001).</li>
+    
+      <li>Renewals inside the 60-day window: microsoft365 2026-10-01.</li>
+    
+      <li>Possible shadow SaaS (not in pricebook): Notion, Canva, Notion, Grammarly, _spf.google.com, spf.protection.outlook.com, mail.zendesk.com.</li>
+    
+      <li>Action: walk the draft reclaim appendix with the tenant owner; dual-gate reclaim records intent only.</li>
+    
+  </ul>
+  <h2>Honest gaps</h2>
+  <ul>
+    
+      <li>Graph last-signin lags; idle is unused, not never.</li>
+    
+      <li>Slack guests are unbilled; conversations.history is never called.</li>
+    
+      <li>GitHub last-active uses audit-log events when present; outside collaborators are unbilled.</li>
+    
+      <li>Pricebook is operator-edited AUD list prices, not a crawler.</li>
+    
+      <li>Shadow scan is SSO catalog + SPF includes + expense CSV, not a CASB.</li>
+    
+      <li>Draft reclaim pack only. Dual-gate reclaim records intent; no vendor mutate APIs.</li>
+    
+      <li>Annual seat contracts usually cannot drop quantity mid-term; right-size at the next renewal.</li>
+    
+      <li>Idle 30/60/90 is an operator policy, not a vendor definition of unused.</li>
+    
+  </ul>
+  <p class="muted">Watermark SHA-256: <code>91a1771f8dda1391277de4d00286a25bae813c9959141622199869c068350353</code></p>
+</body>
+</html>

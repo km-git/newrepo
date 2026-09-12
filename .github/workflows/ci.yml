@@ -17,13 +17,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
         run: bash scripts/setup_environment.sh --skip-auth
+
+      - name: Install sibling packages (dspm + cost)
+        run: .venv/bin/pip install -e ".[dev,analytics,cloud,remediation]"
 
       - name: Run pytest
         run: .venv/bin/python -m pytest tests/ -q --tb=short

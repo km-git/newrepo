@@ -1,0 +1,3 @@
+# Allow-list for dual-gated reclaim. One opaque user id per line.
+# Never put emails here. Apply still does not call vendor revoke APIs.
+# u-001

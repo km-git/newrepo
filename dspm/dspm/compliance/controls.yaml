@@ -1,0 +1,19 @@
+gdpr:
+  - control_id: GDPR-32
+    description: Encryption of personal data
+    finding_types: [PII]
+  - control_id: GDPR-25
+    description: Data protection by design
+    finding_types: [PII, PHI]
+hipaa:
+  - control_id: HIPAA-164.312
+    description: PHI access controls
+    finding_types: [PHI]
+pci:
+  - control_id: PCI-3.4
+    description: Render PAN unreadable
+    finding_types: [PCI]
+soc2:
+  - control_id: CC6.1
+    description: Logical access controls
+    finding_types: [PII, secret]

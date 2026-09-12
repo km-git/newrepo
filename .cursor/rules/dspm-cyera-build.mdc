@@ -1,0 +1,18 @@
+---
+description: Build the Cyera-like DSPM tool from OSS components. Route 95% to Gemini Flash; Steampipe CLI-only (AGPL); Trivy v0.70+ only.
+globs:
+alwaysApply: false
+---
+
+# DSPM Build Rule
+
+12-module DSPM at `dspm/`: audit, discovery, classification, risk, access, exposure, encryption_check, shadow, custom_types, compliance, ai_security, remediation, loop.
+
+- **$0/month** — no paid services
+- **Trivy** pinned v0.70+ (never v0.69.4 — CVE-2026-33634)
+- **Presidio** from `data-privacy-stack/presidio`
+- **Steampipe** as CLI subprocess only (AGPL-3.0)
+- **Forum-watcher** Monday 09:00 AEST via `dspm-watch.yml`
+- **Auto-PR** via `hmarr/auto-approve-action@v4` for bot PRs only
+
+Full prompt: `discovery/dspm/final_turn_001.md`
