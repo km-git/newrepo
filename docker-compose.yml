@@ -2,36 +2,85 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: dspm
-      POSTGRES_PASSWORD: dspm
-      POSTGRES_DB: dspm
+      POSTGRES_USER: dmarc
+      POSTGRES_PASSWORD: dmarc
+      POSTGRES_DB: dmarc
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./dmarc/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  parsedmarc:
+    image: patschi/parsedmarc:latest
+    profiles: ["elastic"]
+    volumes:
+      - ./dmarc/parsedmarc.ini:/etc/parsedmarc/config.ini:ro
+      - parsedmarc-data:/var/lib/parsedmarc
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    profiles: ["elastic"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    profiles: ["elastic"]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  postgres-dspm:
+    image: postgres:17-alpine
+    profiles: ["dspm", "catalog"]
+    environment:
+      POSTGRES_USER: dspm
+      POSTGRES_PASSWORD: dspm
+      POSTGRES_DB: dspm
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-dspm-data:/var/lib/postgresql/data
       - ./dspm/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  postgres-licensespend:
+    image: postgres:17-alpine
+    profiles: ["licensespend"]
+    environment:
+      POSTGRES_USER: licensespend
+      POSTGRES_PASSWORD: licensespend
+      POSTGRES_DB: licensespend
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-licensespend-data:/var/lib/postgresql/data
 
   datahub:
     image: acryldata/datahub-actions:v1.2.0.1
     command: ["python", "-m", "datahub_actions.entrypoint"]
     depends_on:
-      - postgres
+      - postgres-dspm
     environment:
       DATAHUB_GMS_HOST: http://datahub-gms:8080
     profiles: ["catalog"]
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: dspm
-      MINIO_ROOT_PASSWORD: dspm-dspm-dspm
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
-
 volumes:
   postgres-data:
-  minio-data:
+  parsedmarc-data:
+  es-data:
+  postgres-dspm-data:
+  postgres-licensespend-data:

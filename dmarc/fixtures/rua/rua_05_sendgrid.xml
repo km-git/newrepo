@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feedback>
+  <report_metadata>
+    <org_name>sendgrid.net</org_name>
+    <email>dmarc@sendgrid.net</email>
+    <report_id>rua-05-example-com-au</report_id>
+    <date_range><begin>1785542400</begin><end>1785628799</end></date_range>
+  </report_metadata>
+  <policy_published>
+    <domain>example.com.au</domain>
+    <adkim>r</adkim>
+    <aspf>r</aspf>
+    <p>none</p>
+    <sp>none</sp>
+    <pct>100</pct>
+  </policy_published>
+  <record>
+    <row>
+      <source_ip>167.89.0.15</source_ip>
+      <count>33</count>
+      <policy_evaluated>
+        <disposition>none</disposition>
+        <dkim>pass</dkim>
+        <spf>pass</spf>
+      </policy_evaluated>
+    </row>
+    <identifiers>
+      <header_from>example.com.au</header_from>
+    </identifiers>
+    <auth_results>
+      <dkim><domain>example.com.au</domain><result>pass</result><selector>google</selector></dkim>
+      <spf><domain>example.com.au</domain><result>pass</result></spf>
+    </auth_results>
+  </record>
+</feedback>

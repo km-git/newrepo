@@ -7,8 +7,12 @@ trading-analysis tool. Local stdlib dashboards (no Flask/FastAPI): `--monitor`
 (binds `0.0.0.0:8765`) and `--monetize-ui` (Monetize Explorer at `/monetize`).
 On Cursor Cloud, `http://127.0.0.1:8765` is the VM, not the user's laptop —
 use `python3 ew_tool.py --monetize-ui --static` and open
-`reports/monetize_explorer.html`. LicenseSpend Explorer:
-`python3 -m licensespend ui --static` → open `reports/licensespend_explorer.html`.
+`reports/monetize_explorer.html`. DMARC deliverability explorer: `python3 ew_tool.py --dmarc-ui --static`
+and open `reports/dmarc_explorer.html`, or `--dmarc-ui` (binds `0.0.0.0:8765`, path `/dmarc`).
+CLI: `python3 -m dmarc` / `make dmarc-all`. Cloud Cost explorer: `python3 ew_tool.py --cost-ui --static`
+and open `reports/cost_explorer.html`. SSPM Explorer: `python3 ew_tool.py --sspm-ui --static`
+and open `reports/sspm_explorer.html` (or `--sspm-ui` / `--monitor` then `/sspm`).
+LicenseSpend Explorer: `python3 -m licensespend ui --static` → open `reports/licensespend_explorer.html`.
 
 ### Environment
 
@@ -33,8 +37,17 @@ use `python3 ew_tool.py --monetize-ui --static` and open
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`
 - Monetize Explorer (server): `.venv/bin/python ew_tool.py --monetize-ui` binds `0.0.0.0:8765` and prints `http://127.0.0.1:8765/monetize` on its own line
-- LicenseSpend Explorer (offline): `uv run python -m licensespend ui --static` → open `reports/licensespend_explorer.html`
-- LicenseSpend Explorer (server): `uv run python -m licensespend ui` binds `0.0.0.0:8765` (`/licensespend`). On Cloud, use the static file — `127.0.0.1` is the VM.
+- DMARC explorer (offline): `.venv/bin/python ew_tool.py --dmarc-ui --static` → open `reports/dmarc_explorer.html`
+- DMARC explorer (server): `.venv/bin/python ew_tool.py --dmarc-ui` prints `http://127.0.0.1:8765/dmarc`
+- DMARC CLI: `.venv/bin/python -m dmarc --help` or `make dmarc-all` (sandbox domain `example.com.au`)
+- Cloud Cost & Configuration Review (offline): `.venv/bin/python ew_tool.py --cost-ui --static` → open `reports/cost_explorer.html`
+- Cloud Cost & Configuration Review (server): `.venv/bin/python -m cost ui` or `--cost-ui` binds `/cost`. End-to-end sandbox: `make cost-all`
+- SSPM Explorer (offline): `.venv/bin/python ew_tool.py --sspm-ui --static` → open `reports/sspm_explorer.html`
+- SSPM Explorer (server): `.venv/bin/python ew_tool.py --sspm-ui` or `--monitor` then `http://127.0.0.1:8765/sspm`
+- SSPM CLI: `.venv/bin/python -m sspm demo` or `make sspm-all`
+- DSPM CLI: `.venv/bin/python -m dspm audit inventory` or `make dspm-all`
+- LicenseSpend Explorer (offline): `.venv/bin/python -m licensespend ui --static` → open `reports/licensespend_explorer.html`
+- LicenseSpend Explorer (server): `.venv/bin/python -m licensespend ui` binds `0.0.0.0:8765` (`/licensespend`). On Cloud, use the static file — `127.0.0.1` is the VM.
 - Tape-to-Cloud live ingest (real file bytes, not sample reports):
   `.venv/bin/python -m tape_to_cloud ingest PATH --matter MATTER` or
   `.venv/bin/python ew_tool.py --tape-ingest PATH --tape-matter MATTER`.
@@ -117,6 +130,6 @@ use `python3 ew_tool.py --monetize-ui --static` and open
  Outputs: `output/monetize/latest_report.json` + `reports/MONETIZATION_STRATEGY.md`.
  Env: `EW_MONETIZE_JSON`, `EW_MONETIZE_MD` (path overrides for tests).
 - **LicenseSpend (SaaS seat-waste report):** `licensespend/` — 8 modules, fixture-first, AUD pricebook.
- CLI: `uv run python -m licensespend ui --static` writes `reports/licensespend_explorer.html` plus
+ CLI: `.venv/bin/python -m licensespend ui --static` writes `reports/licensespend_explorer.html` plus
  sample packs under `reports/licensespend/` (Acme A$127/mo, Northwind A$281/mo). Live:
- `uv run python -m licensespend ui` or `--monitor` at `/licensespend`. Draft reclaim only.
+ `.venv/bin/python -m licensespend ui` or `--monitor` at `/licensespend`. Draft reclaim only.

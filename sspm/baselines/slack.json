@@ -1,0 +1,10 @@
+{
+  "tenant_type": "slack",
+  "settings": {
+    "team.two_factor_required": "true",
+    "team.invites_only_admins": "true",
+    "file_sharing.public_file_urls": "false",
+    "app_dir.approved_apps_only": "true",
+    "session.duration_hours": "24"
+  }
+}

@@ -1,0 +1,8 @@
+# Operator-owned seed mailboxes. Replace addresses locally; never commit passwords.
+seeds:
+  - provider: Gmail
+    address: seed1@gmail.com
+  - provider: Outlook
+    address: seed2@outlook.com
+  - provider: Yahoo
+    address: seed3@yahoo.com

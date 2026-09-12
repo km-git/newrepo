@@ -10,13 +10,14 @@ import io
 import json
 import os
 import sqlite3
-import time
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional, TypeVar
 
 import msgpack
 import pandas as pd
 import zstandard as zstd
+
+from core.market_clock import market_now_utc
 
 T = TypeVar("T")
 
@@ -114,14 +115,14 @@ class _SqliteIndex:
     if row is None:
       return None
     payload, expires = row
-    if expires is not None and float(expires) < time.time():
+    if expires is not None and float(expires) < market_now_utc().timestamp():
       self.delete(key)
       return None
     data = json.loads(payload)
     return data if isinstance(data, dict) else None
 
   def set(self, key: str, value: dict, expire: Optional[int] = None) -> None:
-    expires = (time.time() + expire) if expire else None
+    expires = (market_now_utc().timestamp() + expire) if expire else None
     self._conn.execute(
       "INSERT OR REPLACE INTO kv (k, payload, expires) VALUES (?,?,?)",
       (key, json.dumps(value), expires),
@@ -133,7 +134,7 @@ class _SqliteIndex:
     self._conn.commit()
 
   def __iter__(self) -> Iterator[str]:
-    now = time.time()
+    now = market_now_utc().timestamp()
     rows = self._conn.execute("SELECT k, expires FROM kv").fetchall()
     for key, expires in rows:
       if expires is not None and float(expires) < now:
@@ -141,7 +142,7 @@ class _SqliteIndex:
       yield key
 
   def __len__(self) -> int:
-    now = time.time()
+    now = market_now_utc().timestamp()
     row = self._conn.execute(
       "SELECT COUNT(*) FROM kv WHERE expires IS NULL OR expires >= ?",
       (now,),
