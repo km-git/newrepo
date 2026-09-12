@@ -1,5 +1,52 @@
 # AGENTS.md
 
+## Proof-first Spec Kit workflow (Kiro-like on GitHub)
+
+This repo combines **GitHub Spec Kit**, **Cursor skills**, and **LLM-free proof scripts** as hooks —
+a Kiro-style spec → implement → verify loop without Kiro IDE.
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| Constitution | `.specify/memory/constitution.md` | Proof-before-product governance |
+| Spec Kit skills | `.cursor/skills/speckit-*` | `/speckit-specify`, plan, tasks, implement |
+| Proof skill | `.cursor/skills/proof-first-trading` | Fast pytest + continuous proof verdict |
+| Kiro steering | `.kiro/steering/*.md` | Always-on rules (proof-first, execution contract) |
+| Kiro hooks | `.kiro/hooks/*.json` | PostFileSave → `scripts/hooks/run_proof_gate.sh` |
+| Spec Kit hooks | `.specify/extensions.yml` | before/after `speckit-implement` proof gates |
+| Feature specs | `specs/<id>-<name>/` | spec.md, plan.md, tasks.md |
+| Scoreboard | `reports/CONTINUOUS_PROOF.md`, `reports/PAPER_FORWARD.md` | **Not** dense setup tables |
+
+**Typical flow** (see `.cursor/skills/speckit-workflow`):
+
+`/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` →
+`/proof-first-trading`
+
+Aliases: `/speckit.constitution`, `/specify`, `/plan`, `/tasks`, `/spec-to-implementation`.
+
+**One-time bootstrap**:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install specify-cli --from git+https://github.com/github/spec-kit
+bash scripts/setup_spec_kit.sh          # init + verify .specify/
+bash scripts/install_git_hooks.sh       # git config core.hooksPath .githooks
+```
+
+**Optional ECC harness** (278 skills — install locally, not vendored):
+
+```text
+/plugin marketplace add github.com/affaan-m/ecc
+/plugin install ecc@ecc
+cp -R ECC/skills/* ~/.cursor/skills/   # or use Cursor plugin install
+```
+
+Or: `bash scripts/setup_agent_harness.sh` (prints ECC steps + enables git hooks).
+
+**Proof scripts**: `bash scripts/run_continuous_proof_loop.sh`, `bash scripts/run_paper_proof_daily.sh`
+(both `EW_IMPROVEMENT_LLM=0`). Git pre-commit runs `run_proof_gate.sh fast` on staged paper/execution files.
+
+**CI**: `.github/workflows/proof-gate.yml` on PRs; manual dispatch for full proof loop.
+
 ## Cursor Cloud specific instructions
 
 This repo is a single Python CLI product: `ew_tool.py`, an Elliott Wave + harmonic
@@ -32,7 +79,7 @@ LicenseSpend Explorer: `python3 -m licensespend ui --static` → open `reports/l
 ### Running / testing
 
 - Tests: `.venv/bin/python -m pytest tests/ -v` (run from repo root).
-- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks / zizmor / OSV / pip-audit in `.github/workflows/lint-security.yml`; **zero-key GitHub scanners** in `.github/workflows/bugbot-free.yml` (CodeQL + Semgrep CE + reviewdog PR comments). PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. CodeRabbit Marketplace is optional (~4 PRs/hr) and is not required.
+- **Lint / Bugbot replacement:** `ruff check` (`ruff.toml` + `.pre-commit-config.yaml`, Bandit-equivalent `S`) locally; gitleaks / zizmor / OSV / pip-audit in `.github/workflows/lint-security.yml`; **zero-key GitHub scanners** in `.github/workflows/bugbot-free.yml` (CodeQL + Semgrep CE + reviewdog PR comments). Local loop: `make scan` / `bash scripts/run_free_scanners.sh`. PR-Agent in `.github/workflows/pr-agent.yml` when `OPENAI_KEY` is set. Do not retry Cursor Bugbot after a usage-cap skip. CodeRabbit Marketplace is optional (~4 PRs/hr) and is not required. Paid AI review (Sourcery, CodeAnt, Bito, Greptile, Macroscope, Qodo) and paid security (Mend SCA, Socket, Aikido) are not used — GitHub stand-ins: Dependabot + `renovate.json` (Mend Renovate free app), `.github/workflows/dependency-review.yml`, `.github/workflows/scorecard.yml`. Security reports: `SECURITY.md` (GitHub Advisories). No Linear/Height/Shortcut; GitHub Issues is the PM. No Sentry/Honeycomb cloud; GlitchTip/SigNoz self-host later.
 - Single symbol (live data fetch): `.venv/bin/python ew_tool.py --symbol BTC/USDT --crypto`
 - Batch: `.venv/bin/python ew_tool.py --batch samples/batch_symbols.csv --crypto`
 - Monetize Explorer (offline): `.venv/bin/python ew_tool.py --monetize-ui --static` → open `reports/monetize_explorer.html`

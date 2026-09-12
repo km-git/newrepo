@@ -1,7 +1,7 @@
 .PHONY: dmarc-all dmarc-test dmarc-ui dmarc-inventory \
 	sspm-audit-inventory sspm-all sspm-test sspm-watch sspm-monthly sspm-web-static sspm-demo \
 	dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve \
-	dspm-gap-audit dspm-watch dspm-monthly \
+	dspm-gap-audit dspm-watch dspm-monthly scan \
 	licensespend-all licensespend-test licensespend-ui
 
 PYTHON ?= $(wildcard .venv/bin/python)
@@ -111,6 +111,9 @@ dspm-all: dspm-audit-inventory dspm-discover dspm-classify dspm-risk
 
 dspm-test:
 	$(PYTHON) -m pytest tests/test_dspm_architecture.py tests/test_dspm_core.py tests/test_dspm_loop.py tests/test_dspm_improve.py -q
+
+scan:
+	bash scripts/run_free_scanners.sh
 
 .PHONY: cost-all cost-ui cost-test cost-ruff
 

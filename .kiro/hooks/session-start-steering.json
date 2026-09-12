@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "load-proof-steering",
+      "description": "Load Kiro-style steering at session start",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "agent",
+        "prompt": "This repo uses proof-first Spec Kit workflow. Read .kiro/steering/proof-first.md, execution-contract.md, and .specify/memory/constitution.md before execution changes. Scoreboard = paper-forward proof, not dense tables."
+      },
+      "enabled": true
+    }
+  ]
+}
