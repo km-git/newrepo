@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>License spend — {{ client }} (draft)</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #111; }
+    h1, h2 { font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
+    .muted { color: #555; font-size: 0.9rem; }
+    .banner { background: #fff6d9; border: 1px solid #e0c36a; padding: 0.6rem 0.8rem; }
+    code { font-size: 0.85rem; }
+    @media print {
+      body { margin: 0.6in; color: #000; }
+      .banner { border: 1px solid #999; background: #fff; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <h1>SaaS License &amp; Spend — {{ client }}</h1>
+  <p class="banner">{{ disclaimer }} As of {{ as_of }}. Currency AUD.</p>
+  <p><strong>Reclaim (monthly):</strong> A${{ "%.2f"|format(reclaim_monthly_aud) }}
+     (A${{ "%.2f"|format(reclaim_annual_aud) }}/year) across {{ unused_count }} unused of {{ seats_total }} assigned seats.</p>
+  <h2>Bought vs used</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th></tr></thead>
+    <tbody>
+    {% for sku, bought in seats_bought.items() %}
+      <tr><td>{{ sku }}</td><td>{{ bought }}</td><td>{{ seats_used.get(sku, 0) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Vendor reclaim</h2>
+  <table>
+    <thead><tr><th>Vendor</th><th>Unused seats</th><th>AUD / month</th></tr></thead>
+    <tbody>
+    {% for row in vendor_breakdown %}
+      <tr><td>{{ row.vendor }}</td><td>{{ row.unused_seats }}</td><td>{{ "%.2f"|format(row.monthly_aud) }}</td></tr>
+    {% else %}
+      <tr><td colspan="3">None.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Department reclaim</h2>
+  <table>
+    <thead><tr><th>Department</th><th>Unused seats</th><th>AUD / month</th></tr></thead>
+    <tbody>
+    {% for row in department_breakdown %}
+      <tr><td>{{ row.department }}</td><td>{{ row.unused_seats }}</td><td>{{ "%.2f"|format(row.monthly_aud) }}</td></tr>
+    {% else %}
+      <tr><td colspan="3">None.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Idle buckets</h2>
+  <table>
+    <thead><tr><th>Bucket</th><th>Seats</th></tr></thead>
+    <tbody>
+    {% for bucket, count in idle_buckets.items() %}
+      <tr><td>{{ bucket }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>SKU economics</h2>
+  <table>
+    <thead><tr><th>SKU</th><th>Bought</th><th>Used</th><th>Idle</th><th>Unit AUD</th><th>Idle AUD / mo</th></tr></thead>
+    <tbody>
+    {% for row in sku_economics %}
+      <tr>
+        <td>{{ row.sku }}</td><td>{{ row.bought }}</td><td>{{ row.used }}</td><td>{{ row.idle }}</td>
+        <td>{{ "%.2f"|format(row.unit_aud) }}</td><td>{{ "%.2f"|format(row.idle_monthly_aud) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Idle sensitivity (30 / 60 / 90)</h2>
+  <table>
+    <thead><tr><th>Policy</th><th>Unused</th><th>AUD / month</th><th>AUD / year</th></tr></thead>
+    <tbody>
+    {% for row in idle_sensitivity %}
+      <tr>
+        <td>{{ row.idle_days }} days</td><td>{{ row.unused_count }}</td>
+        <td>{{ "%.2f"|format(row.reclaim_monthly_aud) }}</td>
+        <td>{{ "%.2f"|format(row.reclaim_annual_aud) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Draft action plan</h2>
+  <ul>
+    {% for item in draft_actions %}
+      <li><strong>{{ item.priority }}:</strong> {{ item.title }} — {{ item.detail }}</li>
+    {% else %}
+      <li>None.</li>
+    {% endfor %}
+  </ul>
+  <h2>Unused seats (hashed ids)</h2>
+  <table>
+    <thead><tr><th>User id</th><th>SKU</th><th>Idle days</th><th>Monthly AUD</th></tr></thead>
+    <tbody>
+    {% for row in unused %}
+      <tr>
+        <td><code>{{ row.user_id }}</code></td>
+        <td>{{ row.sku }}</td>
+        <td>{{ row.idle_days }}</td>
+        <td>{{ "%.2f"|format(row.monthly_cost) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Renewals (60 days)</h2>
+  <ul>
+    {% for item in renewals %}
+      <li>{{ item.vendor }} — {{ item.renew_on }} — A${{ item.amount_aud }} (draft nudge)</li>
+    {% else %}
+      <li>None in window.</li>
+    {% endfor %}
+  </ul>
+  <h2>Shadow apps</h2>
+  <ul>
+    {% for app in shadow_apps %}
+      <li>{{ app.name }} ({{ app.source }}){% if app.note %} — {{ app.note }}{% endif %}</li>
+    {% else %}
+      <li>None in fixtures.</li>
+    {% endfor %}
+  </ul>
+  <h2>Draft QBR talk-track</h2>
+  <ul>
+    {% for line in qbr_talk_track %}
+      <li>{{ line }}</li>
+    {% endfor %}
+  </ul>
+  <h2>Honest gaps</h2>
+  <ul>
+    {% for line in honest_gaps %}
+      <li>{{ line }}</li>
+    {% endfor %}
+  </ul>
+  <p class="muted">Watermark SHA-256: <code>{{ watermark }}</code></p>
+</body>
+</html>

@@ -1,7 +1,8 @@
 .PHONY: dmarc-all dmarc-test dmarc-ui dmarc-inventory \
 	sspm-audit-inventory sspm-all sspm-test sspm-watch sspm-monthly sspm-web-static sspm-demo \
 	dspm-audit-inventory dspm-discover dspm-classify dspm-risk dspm-all dspm-test dspm-improve \
-	dspm-gap-audit dspm-watch dspm-monthly scan
+	dspm-gap-audit dspm-watch dspm-monthly scan \
+	licensespend-all licensespend-test licensespend-ui
 
 PYTHON ?= $(wildcard .venv/bin/python)
 ifeq ($(PYTHON),)
@@ -129,3 +130,17 @@ cost-test:
 cost-ruff:
 	ruff check --config ruff.toml cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py
 	ruff format --check cost/ tests/test_cost_pipeline.py tests/test_cost_webui.py tests/test_cost_language.py tests/test_cost_workflows.py
+
+licensespend-all:
+	$(PYTHON) -m licensespend audit inventory
+	$(PYTHON) -m licensespend usage unused --fixture examples/
+	$(PYTHON) -m licensespend renewals upcoming --days 60
+	$(PYTHON) -m licensespend report build --client acme --out reports/licensespend/acme
+	$(PYTHON) -m licensespend report build --client northwind --out reports/licensespend/northwind
+	$(PYTHON) -m licensespend ui --static --out reports/
+
+licensespend-ui:
+	$(PYTHON) -m licensespend ui --bind 0.0.0.0 --port 8765
+
+licensespend-test:
+	$(PYTHON) -m pytest tests/test_licensespend_architecture.py tests/test_licensespend_core.py tests/test_licensespend_ui.py licensespend -q --tb=short

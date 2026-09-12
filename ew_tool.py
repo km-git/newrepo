@@ -457,13 +457,13 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /dmarc, /sspm, /cost, /tape-to-cloud)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /dmarc, /sspm, /cost, /tape-to-cloud, /licensespend)",
   )
   parser.add_argument(
     "--monitor-port",
     type=int,
     default=8765,
-    help="Port for --monitor / --monetize-ui / --dmarc-ui / --sspm-ui / --cost-ui",
+    help="Port for --monitor / --monetize-ui / --dmarc-ui / --sspm-ui / --cost-ui / --licensespend",
   )
   parser.add_argument(
     "--monitor-host",

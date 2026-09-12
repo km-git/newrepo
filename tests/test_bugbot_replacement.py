@@ -166,6 +166,10 @@ def test_ruff_passes_on_replacement_paths() -> None:
         "tests/test_tape_to_cloud_reports.py",
         "tests/test_tape_to_cloud_pipeline.py",
         "tests/test_bugbot_replacement.py",
+        "licensespend/",
+        "tests/test_licensespend_architecture.py",
+        "tests/test_licensespend_core.py",
+        "tests/test_licensespend_ui.py",
         "tests/test_dspm_architecture.py",
         "tests/test_dspm_core.py",
         "tests/test_dspm_loop.py",
@@ -190,6 +194,19 @@ def test_ruff_passes_on_replacement_paths() -> None:
     subprocess.run([binary, "format", "--check", *paths], check=True, cwd=ROOT)
 
 
+def test_licensespend_auto_approve_avoids_zizmor_high_findings() -> None:
+    text = (ROOT / ".github" / "workflows" / "licensespend-auto-approve.yml").read_text(encoding="utf-8")
+    assert "pull_request_target" not in text
+    assert "github.actor ==" not in text
+    assert "github.event.pull_request.user.login" in text
+    lint = LINT_SECURITY.read_text(encoding="utf-8")
+    assert "zizmor --config zizmor.yml" in lint
+    assert "actionlint" in lint
+    assert "google/osv-scanner-action" in lint
+    assert "--output-format=github" in lint
+    assert "licensespend/" in lint
+
+
 def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     text = BUGBOT_FREE.read_text(encoding="utf-8")
     assert "secrets.OPENAI_KEY" not in text
@@ -206,6 +223,8 @@ def test_bugbot_free_workflow_is_sha_pinned_and_zero_key() -> None:
     assert "dmarc/" in text
     assert "merge_group" in text
     assert "pull_request_target" not in text
+    assert "licensespend/" in text
+    assert "merge_group:" in text
     assert f"actions/checkout@{CHECKOUT_SHA}" in text
     assert f"actions/setup-python@{SETUP_PYTHON_SHA}" in text
     for uses in USES_RE.findall(text):

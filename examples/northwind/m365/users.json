@@ -1,0 +1,24 @@
+{
+  "users": [
+    {"user_id": "nw-m01", "sku": "m365-e5", "last_active": "2025-12-01", "department": "finance", "email": "ada@northwind.example"},
+    {"user_id": "nw-m02", "sku": "m365-e5", "last_active": "2026-01-15", "department": "finance", "email": "ben@northwind.example"},
+    {"user_id": "nw-m03", "sku": "m365-e5", "last_active": "2026-02-01", "department": "hr", "email": "cira@northwind.example"},
+    {"user_id": "nw-m04", "sku": "m365-e5", "last_active": "2026-03-15", "department": "sales", "email": "drew@northwind.example"},
+    {"user_id": "nw-m05", "sku": "m365-e5", "last_active": "2026-06-20", "department": "ops", "email": "eden@northwind.example"},
+    {"user_id": "nw-m06", "sku": "m365-e5", "last_active": "2026-07-01", "department": "ops", "email": "fay@northwind.example"},
+    {"user_id": "nw-m07", "sku": "m365-e5", "last_active": "2026-07-15", "department": "sales", "email": "glen@northwind.example"},
+    {"user_id": "nw-m08", "sku": "m365-e5", "last_active": "2026-07-25", "department": "sales", "email": "hana@northwind.example"},
+    {"user_id": "nw-m09", "sku": "m365-e5", "last_active": "2026-08-10", "department": "eng", "email": "iris@northwind.example"},
+    {"user_id": "nw-m10", "sku": "m365-e5", "last_active": "2026-08-20", "department": "eng", "email": "joss@northwind.example"},
+    {"user_id": "nw-m11", "sku": "m365-e5", "last_active": "2026-08-22", "department": "eng", "email": "kit@northwind.example"},
+    {"user_id": "nw-m12", "sku": "m365-e5", "last_active": "2026-08-24", "department": "eng", "email": "lea@northwind.example"},
+    {"user_id": "nw-m13", "sku": "m365-e5", "last_active": "2026-08-26", "department": "ops", "email": "mo@northwind.example"},
+    {"user_id": "nw-m14", "sku": "m365-e5", "last_active": "2026-08-28", "department": "ops", "email": "nik@northwind.example"},
+    {"user_id": "nw-m15", "sku": "m365-e5", "last_active": "2026-08-30", "department": "hr", "email": "ora@northwind.example"},
+    {"user_id": "nw-m16", "sku": "m365-e5", "last_active": "2026-09-01", "department": "sales", "email": "pip@northwind.example"},
+    {"user_id": "nw-m17", "sku": "m365-e5", "last_active": "2026-09-02", "department": "sales", "email": "quin@northwind.example"},
+    {"user_id": "nw-m18", "sku": "m365-e5", "last_active": "2026-09-03", "department": "eng", "email": "remy@northwind.example"},
+    {"user_id": "nw-m19", "sku": "m365-e5", "last_active": "2026-09-04", "department": "finance", "email": "sid@northwind.example"},
+    {"user_id": "nw-m20", "sku": "m365-e5", "last_active": "2026-09-05", "department": "eng", "email": "tess@northwind.example"}
+  ]
+}

@@ -25,6 +25,9 @@ from engine.monetize_ui import (
 from engine.monitor_dashboard import build_dashboard_state, publish_monitor
 from engine.tape_to_cloud_hub import serve_tape_to_cloud_http
 from cost.webui.server import serve_cost_http
+from licensespend.report.explorer import print_launch as print_licensespend_launch
+from licensespend.report.explorer import serve_licensespend_http
+from licensespend.report.explorer import write_static as write_licensespend_static
 from sspm.web.app import serve_sspm_http
 from sspm.web.app import write_static as write_sspm_static
 
@@ -71,6 +74,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
       parse_qs(parsed.query),
       content_type=self.headers.get("Content-Type", ""),
     ):
+      return
+    if serve_licensespend_http(self, "GET", parsed.path, parse_qs(parsed.query)):
       return
     super().do_GET()
 
@@ -142,6 +147,11 @@ def run(
       print(f"[monitor] wrote {spaths['html']}")
     except Exception as exc:
       print(f"[monitor] SSPM static skipped: {exc}")
+    try:
+      lpaths = write_licensespend_static("reports")
+      print(f"[monitor] wrote {lpaths['explorer']}")
+    except Exception as exc:
+      print(f"[monitor] LicenseSpend static skipped: {exc}")
 
   MonitorHandler.output_dir = output_dir
   server = ThreadingHTTPServer((host, port), MonitorHandler)
@@ -174,6 +184,7 @@ def run(
   for url in explorer_launch_urls(host, port, "/dmarc"):
     print(url)
     print()
+  print_licensespend_launch(host, port)
   print(f"[monitor] SSPM API: http://127.0.0.1:{port}/api/sspm")
   print(f"[monitor] Bound to {host}:{port}")
   try:

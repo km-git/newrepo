@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "members": [
+    {"id": "S001", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1735689600, "last_active": "2026-01-10", "profile": {"email": "sam@slack.example", "title": "ops"}},
+    {"id": "S002", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1751328000, "last_active": "2026-06-25", "profile": {"email": "riley@slack.example", "title": "eng"}},
+    {"id": "S003", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757030400, "last_active": "2026-08-22", "profile": {"email": "morgan@slack.example", "title": "eng"}},
+    {"id": "S004", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757289600, "last_active": "2026-09-01", "profile": {"email": "quinn@slack.example", "title": "sales"}},
+    {"id": "S005", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757462400, "last_active": "2026-09-03", "profile": {"email": "parker@slack.example", "title": "sales"}},
+    {"id": "S006", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": false, "updated": 1757635200, "last_active": "2026-09-05", "profile": {"email": "reece@slack.example", "title": "ops"}},
+    {"id": "G001", "deleted": false, "is_bot": false, "is_restricted": true, "is_ultra_restricted": false, "updated": 1756944000, "last_active": "2026-08-20", "role": "guest", "profile": {"email": "guest1@slack.example", "title": "contractor"}},
+    {"id": "G002", "deleted": false, "is_bot": false, "is_restricted": false, "is_ultra_restricted": true, "updated": 1757030400, "last_active": "2026-08-22", "role": "guest", "profile": {"email": "guest2@slack.example", "title": "contractor"}},
+    {"id": "USLACKBOT", "deleted": false, "is_bot": true, "name": "slackbot"}
+  ]
+}

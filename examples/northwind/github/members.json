@@ -1,0 +1,16 @@
+{
+  "org": "northwind",
+  "members": [
+    {"login": "nw-gh01", "role": "member", "last_active": "2026-01-08", "email": "gh1@northwind.example", "department": "eng"},
+    {"login": "nw-gh02", "role": "member", "last_active": "2026-02-20", "email": "gh2@northwind.example", "department": "ops"},
+    {"login": "nw-gh03", "role": "member", "last_active": "2026-08-18", "email": "gh3@northwind.example", "department": "eng"},
+    {"login": "nw-gh04", "role": "member", "last_active": "2026-08-22", "email": "gh4@northwind.example", "department": "eng"},
+    {"login": "nw-gh05", "role": "member", "last_active": "2026-08-26", "email": "gh5@northwind.example", "department": "ops"},
+    {"login": "nw-gh06", "role": "member", "last_active": "2026-08-28", "email": "gh6@northwind.example", "department": "ops"},
+    {"login": "nw-gh07", "role": "member", "last_active": "2026-09-01", "email": "gh7@northwind.example", "department": "eng"},
+    {"login": "nw-gh08", "role": "member", "last_active": "2026-09-02", "email": "gh8@northwind.example", "department": "sales"},
+    {"login": "nw-gh09", "role": "member", "last_active": "2026-09-03", "email": "gh9@northwind.example", "department": "eng"},
+    {"login": "nw-gh10", "role": "member", "last_active": "2026-09-04", "email": "gh10@northwind.example", "department": "eng"},
+    {"login": "nw-gh-out", "role": "outside_collaborator", "last_active": "2026-08-15", "email": "vendor@northwind.example", "department": "vendor"}
+  ]
+}
