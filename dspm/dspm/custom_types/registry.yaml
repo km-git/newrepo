@@ -1,0 +1,19 @@
+au_tfn:
+  pattern: '\b\d{3}\s?\d{3}\s?\d{3}\b'
+  context_words:
+    - tfn
+    - tax file
+    - australian tax
+  score_threshold: 0.7
+au_abn:
+  pattern: '\b\d{2}\s?\d{3}\s?\d{3}\s?\d{3}\b'
+  context_words:
+    - abn
+    - business number
+  score_threshold: 0.75
+nhs_number:
+  pattern: '\b\d{3}\s?\d{3}\s?\d{4}\b'
+  context_words:
+    - nhs
+    - patient id
+  score_threshold: 0.8

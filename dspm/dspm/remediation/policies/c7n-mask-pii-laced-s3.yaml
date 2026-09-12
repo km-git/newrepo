@@ -1,0 +1,9 @@
+policies:
+  - name: mask-pii-laced-s3
+    resource: aws.s3
+    filters:
+      - tag:pii: present
+    actions:
+      - type: tag
+        tags:
+          remediation: mask-required

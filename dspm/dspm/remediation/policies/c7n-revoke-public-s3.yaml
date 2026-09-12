@@ -1,0 +1,11 @@
+policies:
+  - name: revoke-public-s3
+    resource: aws.s3
+    filters:
+      - type: public
+    actions:
+      - type: set-public-block
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true

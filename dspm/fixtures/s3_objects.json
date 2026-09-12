@@ -1,0 +1,19 @@
+{
+  "objects": [
+    {
+      "key": "backups/2026/customers.csv",
+      "size": 4521,
+      "preview": "name,email,ssn\nAlice Smith,alice@corp.com,123-45-6789\nBob Jones,bob@corp.com,987-65-4321"
+    },
+    {
+      "key": "archives/finance/report.json",
+      "size": 890,
+      "preview": "{\"revenue\": 1200000, \"contact\": \"finance@example.com\", \"card\": \"4111111111111111\"}"
+    },
+    {
+      "key": "unstructured/logs/app.log",
+      "size": 2048,
+      "preview": "2026-09-07 ERROR user login failed for admin@company.com from 192.168.1.50"
+    }
+  ]
+}
