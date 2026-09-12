@@ -1,0 +1,19 @@
+{
+  "m365": [
+    {"setting_name": "mfa_enforced", "setting_value": "true"},
+    {"setting_name": "legacy_auth_blocked", "setting_value": "true"},
+    {"setting_name": "guest_access", "setting_value": "restricted"}
+  ],
+  "gws": [
+    {"setting_name": "2sv_enforced", "setting_value": "true"},
+    {"setting_name": "external_sharing", "setting_value": "restricted"}
+  ],
+  "github": [
+    {"setting_name": "2fa_required", "setting_value": "true"},
+    {"setting_name": "sso_enabled", "setting_value": "true"}
+  ],
+  "slack": [
+    {"setting_name": "sso_enabled", "setting_value": "true"},
+    {"setting_name": "message_retention_days", "setting_value": "90"}
+  ]
+}
