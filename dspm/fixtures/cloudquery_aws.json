@@ -1,0 +1,7 @@
+{
+  "stores": [
+    {"source": "aws", "location": "s3://company-data-lake/raw/", "store_type": "s3"},
+    {"source": "aws", "location": "s3://unmanaged-orphan-bucket/", "store_type": "s3"},
+    {"source": "aws", "location": "rds://prod-customers", "store_type": "rds"}
+  ]
+}

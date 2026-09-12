@@ -1,0 +1,28 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "proof-loop-execution-scripts",
+      "description": "Run continuous proof when proof scripts or execution gates change",
+      "trigger": "PostFileSave",
+      "matcher": "(scripts/run_(continuous_proof|paper_proof).*\\.sh|engine/execution_gates\\.py)$",
+      "action": {
+        "type": "command",
+        "command": "bash scripts/hooks/run_proof_gate.sh full"
+      },
+      "timeout": 600,
+      "enabled": true
+    },
+    {
+      "name": "steer-proof-first-after-engine",
+      "description": "Remind agent to report proof verdict after engine edits",
+      "trigger": "PostFileSave",
+      "matcher": "^engine/(paper_|execution_|continuous_proof).*\\.py$",
+      "action": {
+        "type": "agent",
+        "prompt": "You edited execution/paper code. Apply .kiro/steering/proof-first.md: run /proof-first-trading if hooks did not already run, then report only PROOF_GO/PROOF_NO_GO/PROOF_PENDING and cumulative paper P&L from reports/CONTINUOUS_PROOF.md — no table theater."
+      },
+      "enabled": true
+    }
+  ]
+}

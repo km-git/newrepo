@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Proof-first pre-commit: fast pytest when paper/execution paths are staged.
+set -euo pipefail
+
+if [[ "${EW_SKIP_PROOF_HOOKS:-0}" == "1" ]]; then
+  exit 0
+fi
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR || true)"
+if [[ -z "$staged" ]]; then
+  exit 0
+fi
+
+needs_gate=0
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  case "$file" in
+    engine/paper_*|engine/continuous_proof.py|engine/execution_gates.py)
+      needs_gate=1
+      break
+      ;;
+    scripts/run_continuous_proof_loop.sh|scripts/run_paper_proof_daily.sh|scripts/hooks/*)
+      needs_gate=1
+      break
+      ;;
+  esac
+done <<< "$staged"
+
+if [[ "$needs_gate" -eq 0 ]]; then
+  exit 0
+fi
+
+if [[ ! -x "$ROOT/.venv/bin/python" ]]; then
+  echo "[pre-commit] Staged execution/paper changes but .venv missing." >&2
+  echo "  Run: bash scripts/setup_environment.sh" >&2
+  echo "  Skip once: EW_SKIP_PROOF_HOOKS=1 git commit ..." >&2
+  exit 1
+fi
+
+echo "[pre-commit] Running fast proof gate (staged paper/execution paths)..."
+bash "$ROOT/scripts/hooks/run_proof_gate.sh" fast

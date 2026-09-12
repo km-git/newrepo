@@ -1,0 +1,16 @@
+policies:
+  - name: cost-stop-unencrypted-rds-dryrun
+    resource: aws.rds
+    description: >
+      Observation-only. Flags RDS instances without storage encryption.
+      dryrun is true. Do not flip this for production without operator review.
+    comments: Read-only cost and configuration observation.
+    mode:
+      type: periodic
+    filters:
+      - type: kms-alias
+        key: StorageEncrypted
+        value: false
+    actions: []
+    metadata:
+      dryrun: true

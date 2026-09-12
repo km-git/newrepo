@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feedback>
+  <incident>
+    <domain>example.com.au</domain>
+    <source><ip_address>203.0.113.50</ip_address></source>
+    <envelope_from>customer.jane@example.net</envelope_from>
+    <subject>Password reset</subject>
+    <dkim>fail</dkim>
+    <spf>fail</spf>
+  </incident>
+</feedback>

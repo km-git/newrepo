@@ -1,0 +1,20 @@
+# Spec Kit extension hooks — wired to proof scripts (Kiro-like methodology on Cursor)
+version: 1
+
+hooks:
+  before_implement:
+    - extension: proof-first-trading
+      command: proof-first-trading
+      description: Fast pytest gate before speckit-implement
+      prompt: Run proof-first-trading with argument `fast`. Stop if pytest fails.
+      optional: false
+      enabled: true
+
+  after_implement:
+    - extension: proof-first-trading
+      command: proof-first-trading
+      description: Full continuous proof after implementation completes
+      prompt: Run proof-first-trading (full). Report PROOF_GO/NO_GO/PENDING and cumulative P&L only.
+      optional: true
+      enabled: true
+      condition: "feature touches engine/paper_* or engine/execution_* or scripts/run_*proof*"

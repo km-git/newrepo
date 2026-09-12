@@ -1,0 +1,8 @@
+{
+  "workspace": "example-workspace",
+  "display_name": "Example Slack",
+  "members_count": 80,
+  "sso_enabled": true,
+  "message_retention_days": 90,
+  "installed_apps_count": 22
+}

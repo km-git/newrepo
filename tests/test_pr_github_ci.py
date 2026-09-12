@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from engine.pr_executive import pr_draft_executive
-from engine.pr_github import summarize_ci_checks
+from engine.pr_github import pr_file_entries, summarize_ci_checks
 
 
 def _check(name: str, *, conclusion: str | None = "success", status: str = "completed") -> dict:
@@ -18,6 +18,9 @@ def test_pip_audit_and_bugbot_are_optional() -> None:
             _check("pip-audit (requirements.txt)", conclusion="failure"),
             _check("Cursor Bugbot", conclusion="neutral"),
             _check("executive-consensus", conclusion="failure"),
+            _check("pr-agent (AI review)", conclusion="skipped"),
+            _check("approve (zero-key scanners)", conclusion="failure"),
+            _check("resolve-conflicts", conclusion="failure"),
         ]
     )
     assert summary["fail"] is False
@@ -100,6 +103,29 @@ def test_draft_executive_does_not_reject_auto_approve_failure() -> None:
     ci = summarize_ci_checks(
         [
             _check("test"),
+            _check("resolve-conflicts", conclusion="failure"),
+            _check("Cursor Bugbot", conclusion="neutral"),
+        ]
+    )
+    ex = pr_draft_executive(
+        {
+            "number": 78,
+            "title": "DMARC",
+            "body": "deliverability",
+            "draft": False,
+            "additions": 80,
+            "deletions": 10,
+            "changed_files": 4,
+            "ci": ci,
+            "files": [{"path": "tests/test_bugbot_replacement.py"}],
+            "labels": [],
+        }
+    )
+    assert ex["verdict"] != "REJECT"
+    assert "CI checks failed" not in ex["structural_gaps"]
+    ci = summarize_ci_checks(
+        [
+            _check("test"),
             _check("pip-audit (requirements.txt)", conclusion="failure"),
             _check("Cursor Bugbot", conclusion="neutral"),
         ]
@@ -151,3 +177,34 @@ def test_dismiss_stale_change_requests_targets_bot_rejects(monkeypatch) -> None:
     assert "/reviews/1/dismissals" in joined
     assert "/reviews/4/dismissals" in joined
     assert "/reviews/3/dismissals" not in joined
+
+
+def test_pr_file_entries_keeps_paths_beyond_first_page() -> None:
+    files = [{"filename": f"src/mod_{i}.py", "status": "added", "additions": 1, "deletions": 0} for i in range(40)]
+    files.append({"filename": "tests/test_forum_watcher.py", "status": "added", "additions": 20, "deletions": 0})
+    entries = pr_file_entries(files)
+    assert len(entries) == 41
+    assert entries[-1]["path"] == "tests/test_forum_watcher.py"
+
+
+def test_draft_executive_sees_tests_after_workflow_files(monkeypatch) -> None:
+    monkeypatch.setenv("EW_PR_MAX_FILES", "400")
+    monkeypatch.setenv("EW_PR_MAX_LINES", "80000")
+    files = [{"path": f".github/workflows/w{i}.yml"} for i in range(40)]
+    files.append({"path": "tests/test_forum_watcher.py"})
+    ex = pr_draft_executive(
+        {
+            "number": 54,
+            "title": "Vendor-forum watcher",
+            "body": "Adds watcher scripts and tests.",
+            "draft": False,
+            "additions": 6400,
+            "deletions": 200,
+            "changed_files": 85,
+            "ci": {"pass": True, "fail": False, "pending": False},
+            "files": files,
+            "labels": [],
+        }
+    )
+    assert ex["verdict"] == "APPROVE_MERGE"
+    assert "No test files in PR" not in ex["structural_gaps"]

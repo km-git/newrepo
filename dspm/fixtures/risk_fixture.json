@@ -1,0 +1,10 @@
+{
+  "findings": [
+    {"source": "examples/sample.csv", "location": "email", "type": "PII", "confidence": 0.95, "verdict": "PII"},
+    {"source": "examples/sample.csv", "location": "ssn", "type": "PII", "confidence": 0.92, "verdict": "PII"},
+    {"source": "examples/sample.csv", "location": "card_number", "type": "PCI", "confidence": 0.90, "verdict": "sensitive"}
+  ],
+  "exposures": [
+    {"type": "public_s3", "resource": "s3://public-bucket"}
+  ]
+}

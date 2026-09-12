@@ -1,0 +1,53 @@
+name: dmarc-auto-approve
+
+# Dependabot PRs are same-repo, so pull_request is enough (zizmor dangerous-triggers).
+# Check the PR author, not github.actor (zizmor bot-conditions).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  merge_group:
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >
+      github.event_name == 'merge_group' || (
+        github.event.pull_request.user.login == 'dependabot[bot]' &&
+        github.repository == github.event.pull_request.head.repo.full_name
+      )
+    steps:
+      - name: Merge-queue status
+        if: github.event_name == 'merge_group'
+        run: echo "dmarc-auto-approve merge_group check reported"
+
+      - name: Block auto-approve of operator-owned paths
+        if: github.event_name != 'merge_group'
+        id: gate
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            const blocked = files.some(f =>
+              f.filename.startsWith('dmarc/templates/') || f.filename === 'dmarc/parsedmarc.ini'
+            );
+            if (blocked) {
+              core.setOutput('skip', 'true');
+              core.info('Manual review required for templates/parsedmarc.ini');
+            } else {
+              core.setOutput('skip', 'false');
+            }
+
+      - name: Approve bot PR
+        if: github.event_name != 'merge_group' && steps.gate.outputs.skip != 'true'
+        uses: hmarr/auto-approve-action@05a696a09d381a5a0d142c755f7eacbb19eb6525 # v4.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

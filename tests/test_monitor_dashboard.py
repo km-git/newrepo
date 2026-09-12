@@ -47,4 +47,7 @@ def test_write_monitor_html(tmp_path):
   html = path.read_text()
   assert "EW Monitor" in html
   assert "/monetize" in html
+  assert "/dmarc" in html
   assert "/sspm" in html
+  assert "/cost" in html
+  assert "/tape-to-cloud" in html

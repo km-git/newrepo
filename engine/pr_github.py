@@ -71,7 +71,7 @@ def _gh_run(args: List[str]) -> str:
 def _optional_ci_patterns() -> tuple:
   raw = os.environ.get(
     "EW_PR_CI_OPTIONAL",
-    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot,auto-approve",
+    "executive-consensus,Cursor Approval,Approval Agent,pip-audit,bugbot,auto-approve,pr-agent,zero-key,resolve-conflicts,conflict auto",
   )
   return tuple(p.strip().lower() for p in raw.split(",") if p.strip())
 
@@ -173,6 +173,50 @@ def wait_for_required_ci(
   return last
 
 
+def _gh_paged_list(path: str, *, list_key: Optional[str] = None, per_page: int = 100, max_pages: int = 20) -> List[Any]:
+  """Walk a GitHub list API that defaults to 30 items per page."""
+  items: List[Any] = []
+  for page in range(1, max_pages + 1):
+    data = _gh_json(
+      [
+        "api",
+        f"{path}?per_page={per_page}&page={page}",
+        "-H",
+        "Accept: application/vnd.github+json",
+      ]
+    )
+    if list_key:
+      if not isinstance(data, dict):
+        break
+      chunk = data.get(list_key) or []
+    else:
+      chunk = data if isinstance(data, list) else []
+    if not isinstance(chunk, list):
+      break
+    items.extend(chunk)
+    if len(chunk) < per_page:
+      break
+  return items
+
+
+def pr_file_entries(files: List[dict]) -> List[dict]:
+  """Normalize GitHub pull-file payloads for executive review (all pages)."""
+  entries: List[dict] = []
+  for f in files:
+    path = f.get("filename") or f.get("path") or ""
+    if not path:
+      continue
+    entries.append(
+      {
+        "path": path,
+        "status": f.get("status"),
+        "add": f.get("additions") if "additions" in f else f.get("add"),
+        "del": f.get("deletions") if "deletions" in f else f.get("del"),
+      }
+    )
+  return entries
+
+
 def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
   """Load PR metadata, files, checks, and truncated diff for executive review."""
   slug = repo or _repo_slug()
@@ -188,27 +232,16 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
     ]
   )
 
-  files = _gh_json(
-    [
-      "api",
-      f"repos/{slug}/pulls/{pr_number}/files",
-      "-H",
-      "Accept: application/vnd.github+json",
-    ]
-  )
-  if not isinstance(files, list):
+  try:
+    files = _gh_paged_list(f"repos/{slug}/pulls/{pr_number}/files")
+  except RuntimeError:
     files = []
 
   try:
-    checks = _gh_json(
-      [
-        "api",
-        f"repos/{slug}/commits/{pr['head']['sha']}/check-runs",
-        "-H",
-        "Accept: application/vnd.github+json",
-      ]
+    check_runs = _gh_paged_list(
+      f"repos/{slug}/commits/{pr['head']['sha']}/check-runs",
+      list_key="check_runs",
     )
-    check_runs = checks.get("check_runs", [])
   except RuntimeError:
     check_runs = []
 
@@ -238,10 +271,7 @@ def fetch_pr_context(pr_number: int, repo: str = "") -> Dict[str, Any]:
     "base": (pr.get("base") or {}).get("ref", ""),
     "head": (pr.get("head") or {}).get("ref", ""),
     "head_sha": (pr.get("head") or {}).get("sha", ""),
-    "files": [
-      {"path": f.get("filename"), "status": f.get("status"), "add": f.get("additions"), "del": f.get("deletions")}
-      for f in files[:40]
-    ],
+    "files": pr_file_entries(files),
     "ci": {
       "pass": ci["pass"],
       "fail": ci["fail"],

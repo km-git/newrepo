@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSPM Platform — Data Security Posture Management</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo">🛡️</span>
+        <div>
+          <strong>DSPM</strong>
+          <small>Security Platform</small>
+        </div>
+      </div>
+      <nav>
+        <button class="nav active" data-panel="dashboard">Dashboard</button>
+        <button class="nav" data-panel="findings">Findings</button>
+        <button class="nav" data-panel="risks">Risk Scores</button>
+        <button class="nav" data-panel="exposures">Exposure</button>
+        <button class="nav" data-panel="catalog">Catalog & Lineage</button>
+        <button class="nav" data-panel="governance">Governance</button>
+        <button class="nav" data-panel="siem">SIEM</button>
+        <button class="nav" data-panel="warehouse">SQL Warehouse</button>
+        <button class="nav" data-panel="sources">Data Sources</button>
+        <button class="nav" data-panel="remediation">Remediation</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="btn-scan" class="btn primary">Run Full Scan</button>
+        <a href="/api/docs" target="_blank" class="link">API Docs</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <h1 id="page-title">Dashboard</h1>
+        <div class="status" id="health-status">● Loading…</div>
+      </header>
+
+      <section id="panel-dashboard" class="panel active">
+        <div class="metrics" id="metrics-grid"></div>
+        <div class="grid-2">
+          <div class="card"><h3>Recent Findings</h3><div id="recent-findings" class="table-wrap"></div></div>
+          <div class="card"><h3>Active Alerts</h3><div id="active-alerts"></div></div>
+        </div>
+      </section>
+
+      <section id="panel-findings" class="panel">
+        <div class="card"><div id="findings-table" class="table-wrap"></div></div>
+      </section>
+
+      <section id="panel-risks" class="panel">
+        <div class="card"><div id="risks-table" class="table-wrap"></div></div>
+      </section>
+
+      <section id="panel-exposures" class="panel">
+        <div class="card"><div id="exposures-table" class="table-wrap"></div></div>
+      </section>
+
+      <section id="panel-catalog" class="panel">
+        <div class="grid-2">
+          <div class="card"><h3>Catalog Assets</h3><div id="catalog-assets" class="table-wrap"></div></div>
+          <div class="card"><h3>Lineage</h3><pre id="lineage-json" class="code-block"></pre></div>
+        </div>
+      </section>
+
+      <section id="panel-governance" class="panel">
+        <div class="grid-2">
+          <div class="card"><h3>Policies</h3><div id="gov-policies"></div></div>
+          <div class="card">
+            <h3>Mask Preview</h3>
+            <input id="mask-input" placeholder="Enter sensitive value" value="john@example.com">
+            <select id="mask-type"><option>PII</option><option>PCI</option></select>
+            <button id="btn-mask" class="btn">Apply Mask</button>
+            <pre id="mask-result" class="code-block"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-siem" class="panel">
+        <div class="card">
+          <div class="search-bar">
+            <input id="siem-query" placeholder="Search events (regex)…" value="*">
+            <button id="btn-siem-search" class="btn">Search</button>
+          </div>
+          <div id="siem-events" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="panel-warehouse" class="panel">
+        <div class="card">
+          <h3>DuckDB SQL Workspace</h3>
+          <textarea id="sql-input" rows="4">SELECT * FROM findings WHERE type = 'PII' LIMIT 10</textarea>
+          <button id="btn-sql" class="btn primary">Run Query</button>
+          <div id="sql-result" class="table-wrap"></div>
+          <h4>Query History</h4>
+          <div id="query-history" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="panel-sources" class="panel">
+        <div class="card">
+          <h3>Unified Data Sources</h3>
+          <p class="muted">Scan backup, NFS, SMB, S3, M365, SaaS unstructured data</p>
+          <div class="search-bar">
+            <select id="source-scheme">
+              <option value="file://">file:// (local/NFS mount)</option>
+              <option value="nfs://">nfs:// (mounted share)</option>
+              <option value="backup://">backup:// (archives)</option>
+              <option value="s3://">s3:// (object storage)</option>
+              <option value="smb://">smb:// (CIFS share)</option>
+              <option value="m365://sharepoint">m365://sharepoint</option>
+              <option value="m365://onedrive">m365://onedrive</option>
+              <option value="m365://exchange">m365://exchange</option>
+              <option value="saas://gdrive">saas://gdrive</option>
+            </select>
+            <input id="source-path" placeholder="path e.g. bucket/ or //server/share or examples/archives" value="examples/archives">
+          </div>
+          <button id="btn-source-discover" class="btn">Discover</button>
+          <button id="btn-source-scan" class="btn primary">Discover + Classify</button>
+          <div id="source-results" class="table-wrap" style="margin-top:1rem"></div>
+          <h4 style="margin-top:1rem">Recent Source Objects</h4>
+          <div id="source-objects-table" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="panel-remediation" class="panel">
+        <div class="card"><div id="remediation-plan" class="table-wrap"></div></div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

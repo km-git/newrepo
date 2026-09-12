@@ -1,0 +1,10 @@
+{
+  "Results": [
+    {
+      "Target": "terraform/main.tf",
+      "Misconfigurations": [
+        {"ID": "AWS-S3-Encryption", "Status": "PASS", "Severity": "HIGH"}
+      ]
+    }
+  ]
+}

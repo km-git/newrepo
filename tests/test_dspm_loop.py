@@ -4,14 +4,31 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from dspm.loop.monthly import generate_monthly
-from dspm.loop.watch import parse_rss, url_digest, watch
+from dspm.loop.watch import fetch_text, parse_rss, url_digest, watch
 
 
 def test_url_digest_dedupes_fragments_and_trailing_slash() -> None:
     a = "https://github.com/cohesity/dataprotect-mock-cookies/"
     b = "https://github.com/cohesity/dataprotect-mock-cookies#readme"
     assert url_digest(a) == url_digest(b)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "file:///etc/passwd",
+        "http://example.com/rss.xml",
+        "ftp://example.com/rss.xml",
+        "https://",
+        "not-a-url",
+    ],
+)
+def test_fetch_text_refuses_non_https(url: str) -> None:
+    with pytest.raises(ValueError, match="https"):
+        fetch_text(url)
 
 
 def test_parse_rss_items() -> None:

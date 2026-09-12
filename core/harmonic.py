@@ -10,6 +10,7 @@ from pyharmonics.technicals import OHLCTechnicals
 
 from cache.dedup import dedup_harmonics
 from cache.disk_cache import get_cache
+from core.market_clock import series_fingerprint
 
 XABCD_PATTERNS = {"GARTLEY", "BAT", "BUTTERFLY", "CRAB", "CYPHER", "SHARK", "XABCD"}
 
@@ -85,7 +86,7 @@ def scan_harmonics(
     round(kz[0], 2),
     round(kz[1], 2),
     len(df),
-    round(current_price, 2),
+    series_fingerprint(df),
   )
   if hit:
     print(f"[cache] HIT harmonics_v2 {symbol} {tf}")

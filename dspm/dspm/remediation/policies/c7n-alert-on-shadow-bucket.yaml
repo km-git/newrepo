@@ -1,0 +1,12 @@
+policies:
+  - name: alert-on-shadow-bucket
+    resource: aws.s3
+    filters:
+      - tag:managed: absent
+    actions:
+      - type: notify
+        to:
+          - operator@example.com
+        transport:
+          type: sns
+          topic: arn:aws:sns:us-east-1:123456789012:dspm-alerts

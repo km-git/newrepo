@@ -1,0 +1,46 @@
+name: dmarc-rebase
+
+on:
+  pull_request:
+    types: [synchronize, opened]
+  merge_group:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'merge_group' ||
+      contains(fromJSON('["dependabot[bot]","github-actions[bot]"]'), github.actor)
+    steps:
+      - name: Merge-queue status
+        if: github.event_name == 'merge_group'
+        run: echo "dmarc-rebase merge_group check reported"
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: github.event_name != 'merge_group'
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Rebase bot PR onto default branch
+        if: github.event_name != 'merge_group'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$BASE_REF"
+          git checkout "$HEAD_REF"
+          if git rebase "origin/$BASE_REF"; then
+            git push --force-with-lease origin "$HEAD_REF"
+          else
+            echo "rebase conflict — leaving for operator"
+            git rebase --abort || true
+          fi

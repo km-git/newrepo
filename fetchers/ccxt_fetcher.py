@@ -10,6 +10,7 @@ import ccxt
 import pandas as pd
 
 from cache.disk_cache import get_cache
+from core.market_clock import drop_forming_bars
 from gateway.market_gateway import MarketDataGateway, get_gateway
 
 
@@ -59,7 +60,7 @@ def fetch_ohlcv_crypto(
   if use_gateway:
     gw = get_gateway()
     resp = gw.fetch_ohlcv(symbol, timeframes, limit=limit, exchange_preference=exchange_preference)
-    return resp.data
+    return drop_forming_bars(resp.data)
 
   cache = get_cache()
   chain = MarketDataGateway.chain_for_preference(exchange_preference)
@@ -101,7 +102,7 @@ def _fetch_ohlcv_crypto_uncached(
           df = pd.DataFrame(bars, columns=["timestamp", "Open", "High", "Low", "Close", "Volume"])
           df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
           df = df.set_index("timestamp")
-          out[tf] = df
+          out[tf] = drop_forming_bars({tf: df})[tf]
           if not _fetch_quiet():
             print(f"[fetch] {ex_name} {ex_sym} {tf}: {len(df)} bars, last={df['Close'].iloc[-1]:.4f}")
           time.sleep(ex.rateLimit / 1000 if ex.rateLimit else 0.2)
