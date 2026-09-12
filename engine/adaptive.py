@@ -277,7 +277,10 @@ def adaptive_pipeline(
     print(f"[mc] empirical_probability={mc_result['empirical_probability']}")
 
   # STEP 6: Multi-engine EW consensus (GitHub tools + internal)
-  consensus = build_consensus(data, adaptive, symbol, timeframes=["1d", "4h", "15m"])
+  consensus = build_consensus(
+    data, adaptive, symbol, timeframes=["1d", "4h", "15m"],
+    skip_external_votes=synthetic_data,
+  )
   stages.append(("wave_consensus", {"symbol": symbol}, compact_summary(consensus)))
 
   # STEP 6b: Hurst cycles + dominant-cycle phase
