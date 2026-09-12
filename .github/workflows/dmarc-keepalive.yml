@@ -1,30 +1,28 @@
 name: dmarc-keepalive
 
-# Weekly commit so scheduled workflows are not paused after 60 days of inactivity.
-# gautamkrishnar/keepalive-workflow is disabled on GitHub (403); this is the in-repo equivalent.
 on:
   schedule:
     - cron: "0 0 * * 0"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  actions: write
+  contents: read
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Touch keepalive timestamp
+      # First-party only. The previous third-party keepalive action is TOS-blocked
+      # on GitHub, and CodeQL flags unpinned third-party tags.
+      - name: Re-enable workflows disabled for inactivity
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p state
-          date -u +%Y-%m-%dT%H:%M:%SZ > state/dmarc-keepalive.txt
-          git config user.name "dmarc-keepalive"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state/dmarc-keepalive.txt
-          git diff --cached --quiet || git commit -m "chore: weekly dmarc keepalive to prevent Actions 60-day pause"
-          git push
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows" \
+            --jq '.workflows[] | select(.state=="disabled_inactivity") | [.id,.path] | @tsv' \
+            | while IFS=$'\t' read -r id path; do
+                echo "enabling ${path} (${id})"
+                gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${id}/enable"
+              done
+          echo "dmarc-keepalive $(date -u +%FT%TZ)"

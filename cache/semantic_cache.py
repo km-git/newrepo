@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-import time
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
 from cache.disk_cache import CompressedCache, get_cache
+from core.market_clock import last_candle_ts_utc, market_now_utc
 
 # TTL seconds per timeframe — aligned to candle cadence
 TF_TTL_SECONDS: Dict[str, int] = {
@@ -57,8 +58,15 @@ class SemanticCacheEntry:
   df: pd.DataFrame
 
   def is_fresh(self, timeframe: str) -> bool:
-    ttl = TF_TTL_SECONDS.get(timeframe, 300)
-    return (time.time() - self.fetched_at) < ttl
+    """Fresh until next candle close (live) or recent fetch (tests / backfill)."""
+    bar_s = TF_TTL_SECONDS.get(timeframe, 300)
+    last_ts = last_candle_ts_utc(self.df)
+    if last_ts is not None and market_now_utc() < (last_ts + timedelta(seconds=bar_s)):
+      return True
+    if self.fetched_at:
+      age = max(0.0, market_now_utc().timestamp() - self.fetched_at)
+      return age < bar_s
+    return False
 
   def can_serve(self, requested_limit: int) -> bool:
     # Exchanges may return fewer bars than requested (e.g. 1d cap 300); serve if fresh.
@@ -163,7 +171,7 @@ class SemanticOHLCVCache:
       timeframe=timeframe,
       exchange=exchange,
       limit_fetched=len(df),
-      fetched_at=time.time(),
+      fetched_at=market_now_utc().timestamp(),
       df=df,
     )
     self._index[sem] = entry

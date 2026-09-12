@@ -8,7 +8,6 @@ import json
 import os
 import sys
 import time
-from pathlib import Path
 
 from engine.llm_backend import bootstrap_llm_env
 
@@ -458,13 +457,18 @@ def main() -> None:
   parser.add_argument(
     "--monitor",
     action="store_true",
-    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /tape-to-cloud, /dmarc)",
+    help="Serve browser monitor dashboard (http://127.0.0.1:8765 — /monitor, /monetize, /dmarc, /sspm, /cost, /tape-to-cloud)",
   )
-  parser.add_argument("--monitor-port", type=int, default=8765, help="Port for --monitor / --monetize-ui / --dmarc-ui")
+  parser.add_argument(
+    "--monitor-port",
+    type=int,
+    default=8765,
+    help="Port for --monitor / --monetize-ui / --dmarc-ui / --sspm-ui / --cost-ui",
+  )
   parser.add_argument(
     "--monitor-host",
     default="0.0.0.0",
-    help="Bind address for --monitor / --monetize-ui / --dmarc-ui (default 0.0.0.0)",
+    help="Bind address for --monitor / --monetize-ui (default 0.0.0.0)",
   )
   parser.add_argument(
     "--monetize-ui",
@@ -472,20 +476,29 @@ def main() -> None:
     help="Serve Monetize Explorer UI, or with --static write a file:// HTML copy",
   )
   parser.add_argument(
-    "--dmarc-ui",
-    action="store_true",
-    help="Serve DMARC Deliverability web dashboard (default port 8767)",
-  )
-  parser.add_argument(
-    "--dmarc-ui-port",
-    type=int,
-    default=8767,
-    help="Port for --dmarc-ui (default 8767)",
-  )
-  parser.add_argument(
     "--static",
     action="store_true",
-    help="With --monetize-ui: write self-contained HTML and print a file:// path (no server)",
+    help="With --monetize-ui, --dmarc-ui, --sspm-ui, or --cost-ui: write self-contained HTML and print a file:// path (no server)",
+  )
+  parser.add_argument(
+    "--dmarc-ui",
+    action="store_true",
+    help="Serve Email Deliverability explorer at /dmarc, or with --static write reports/dmarc_explorer.html",
+  )
+  parser.add_argument(
+    "--sspm-ui",
+    action="store_true",
+    help="Serve SSPM Configuration & Inventory Explorer, or with --static write reports/sspm_explorer.html",
+  )
+  parser.add_argument(
+    "--cost-ui",
+    action="store_true",
+    help="Serve Cloud Cost & Configuration Review UI, or with --static write reports/cost_explorer.html",
+  )
+  parser.add_argument(
+    "--sspm-report",
+    action="store_true",
+    help="Generate fixture-backed SSPM reports for all tenant types and exit",
   )
   parser.add_argument(
     "--tape-ingest",
@@ -515,29 +528,60 @@ def main() -> None:
   args = parser.parse_args()
   _warn_invalid_license_tier()
 
-  if args.monitor or args.monetize_ui or args.dmarc_ui:
+  if args.dmarc_ui:
+    if args.static:
+      from dmarc.webui import publish_static as publish_dmarc_static
+
+      paths = publish_dmarc_static()
+      print(paths["static"])
+      return
+    from scripts.serve_dmarc import run as run_dmarc
+
+    run_dmarc(host=args.monitor_host, port=args.monitor_port)
+    return
+
+  if args.sspm_report:
+    from sspm.cli import main as sspm_main
+
+    raise SystemExit(sspm_main(["--persist", "demo"]))
+
+  if args.sspm_ui and args.static:
+    from pathlib import Path as _Path
+
+    from sspm.web.app import write_static as write_sspm_static
+
+    paths = write_sspm_static("reports")
+    print(f"file://{_Path(paths['html']).resolve()}")
+    print(f"[sspm-ui] wrote {paths['html']}")
+    return
+
+  if args.sspm_ui and not args.monitor:
+    from sspm.web.app import run as run_sspm
+
+    run_sspm(host=args.monitor_host, port=args.monitor_port)
+    return
+
+  if args.cost_ui and args.static:
+    from cost.pipeline import run_all
+    from cost.webui.server import write_static_html
+
+    run_all(sandbox=True)
+    path = write_static_html()
+    print(path.resolve().as_uri())
+    print(str(path.resolve()))
+    return
+
+  if args.cost_ui and not args.monitor:
+    from cost.webui.server import run_ui
+
+    run_ui(host=args.monitor_host, port=args.monitor_port, static=False, sandbox=True)
+    return
+
+  if args.monitor or args.monetize_ui:
     if args.monetize_ui and args.static:
       from scripts.serve_monetize import write_static as write_monetize_static
 
       write_monetize_static(args.output_dir)
-      return
-    if args.dmarc_ui:
-      import subprocess
-
-      host = args.monitor_host or "127.0.0.1"
-      if host not in {"127.0.0.1", "localhost", "::1", "0.0.0.0"}:
-        raise SystemExit("dmarc UI host must be a local bind address")
-      try:
-        port = int(args.dmarc_ui_port)
-      except (TypeError, ValueError) as exc:
-        raise SystemExit("dmarc UI port must be an integer") from exc
-      if not 1 <= port <= 65535:
-        raise SystemExit("dmarc UI port out of range")
-      subprocess.run(
-        [sys.executable, "-m", "dmarc", "web", "serve", "--host", host, "--port", str(port)],
-        cwd=str(Path(__file__).resolve().parent / "dmarc"),
-        check=False,
-      )
       return
     if args.monitor:
       from scripts.serve_monitor import run as run_monitor
@@ -725,12 +769,20 @@ def main() -> None:
     result = execute_from_csv(dry_run=not args.execute_live)
     submitted = result.get("submitted") or []
     signals = []
-    tickers = [row.get("symbol") or "" for row in export_rows]
+    tickers: list[str] = []
+    seen_tickers: set[str] = set()
+    for row in export_rows:
+      sym = row.get("symbol") or ""
+      if sym and sym not in seen_tickers:
+        seen_tickers.add(sym)
+        tickers.append(sym)
     for item in submitted:
       order = item.get("order") or {}
       symbol = order.get("symbol") or ""
-      if symbol:
+      if symbol and symbol not in seen_tickers:
+        seen_tickers.add(symbol)
         tickers.append(symbol)
+      if symbol:
         signals.append((symbol, order.get("side") or ""))
     _record_usage(signals=signals, tickers=tickers)
     print(json.dumps(result, indent=2, default=str))

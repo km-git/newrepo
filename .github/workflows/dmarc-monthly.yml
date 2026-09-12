@@ -1,7 +1,8 @@
 name: dmarc-monthly
+
 on:
   schedule:
-    - cron: "0 23 1-7 * 1"
+    - cron: "0 9 * * 1"
       timezone: "Australia/Sydney"
   workflow_dispatch:
 
@@ -12,24 +13,47 @@ permissions:
 jobs:
   rollup:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dmarc
+    # Compound slot: first Monday of the month only.
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule != ''
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - run: pip install -e .
-      - name: Generate monthly rollup
-        run: python -c "from dmarc.loop.watch import monthly_rollup; monthly_rollup()"
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+
+      - name: Install
+        run: pip install pydantic pyyaml httpx && pip install -r dmarc/requirements.txt || true
+
+      - name: Skip unless first Monday (schedule)
+        id: gate
+        run: |
+          day=$(date +%d)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$day" -le 7 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write monthly artifacts
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          python -m dmarc ingest pull --fixtures --output-dir output/dmarc
+          python -m dmarc monthly --output-dir output/dmarc --monthly-dir monthly
+
+      - name: Create Pull Request
+        if: steps.gate.outputs.run == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          commit-message: "monthly: dmarc deliverability rollup"
-          title: "Monthly DMARC deliverability rollup"
-          body: "[auto-approved] Auto-generated monthly rollup. Review and merge."
+          commit-message: "monthly: deliverability trend rollup"
+          title: Monthly deliverability trend rollup
+          body: |
+            First-Monday 09:00 AEST compound slot.
+            Artifacts: monthly/YYYY-MM.md and monthly/deliverability-trend.md
+            [auto-approved]
           branch: monthly/dmarc-rollup
           delete-branch: true
           add-paths: |
-            dmarc/monthly/*.md
-            dmarc/state/seen.json
+            monthly/*.md

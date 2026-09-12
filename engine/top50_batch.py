@@ -16,8 +16,25 @@ from engine.outcome_report import save_outcomes_csv
 from engine.full_report import export_all_reports
 from engine.autodream import build_monitor_queue, save_monitor_queue
 from engine.limit_orders_export import export_limit_orders
+from engine.paper_trading import (
+  append_paper_ledger,
+  apply_honesty_adjustments,
+  apply_paper_to_results,
+  run_paper_batch,
+  save_paper_csv,
+  save_paper_metrics,
+)
+from engine.trade_learning import apply_learning_to_outcomes, run_loss_learning_cycle
+from engine.indicator_calibration import (
+  accumulation_status,
+  merge_setup_metadata_into_trades,
+  run_calibration_accumulation_cycle,
+  run_indicator_calibration,
+)
+from engine.system_audit import run_system_audit, apply_audit_demotions
 from fetchers.pairs import fetch_top_pairs, write_pairs_csv
 
+from core.market_clock import data_as_of_from_frames, market_now_utc
 from engine.timeframes import DEFAULT_TFS  # re-export for CLI scripts
 
 _REPORTS_DIR = Path("reports")
@@ -108,7 +125,7 @@ def run_top_crypto_batch(
   out = Path(output_dir)
   out.mkdir(parents=True, exist_ok=True)
 
-  ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+  ts = market_now_utc().strftime("%Y%m%d_%H%M%S")
   pairs_csv = out / f"top{n}_{quote.lower()}_{ts}.csv"
   json_path = out / f"top{n}_analysis_{ts}.json"
   summary_path = out / f"top{n}_summary_{ts}.csv"
@@ -121,6 +138,27 @@ def run_top_crypto_batch(
   write_pairs_csv(pairs, str(pairs_csv))
 
   print(f"\n[batch] Running {len(pairs)} pairs × timeframes {tfs}")
+  print("\n[batch] Indicator recalibration from paper ledger...")
+  acc = accumulation_status()
+  use_clean = acc.get("ready_for_clean_reestimate", False)
+  calibration = run_indicator_calibration(calibrated_only=use_clean)
+  if calibration.get("available"):
+    kept = len(calibration.get("kept_signals", {}))
+    removed = len(calibration.get("removed_signals", {}))
+    src = calibration.get("source", "all_ledger")
+    gen = calibration.get("calibration_generation", 0)
+    print(
+      f"  Calibrated from {calibration.get('closed_trades')} closed trades "
+      f"(baseline WR {calibration.get('baseline_win_rate', 0):.0%}, source={src}, gen={gen}) — "
+      f"kept {kept} signals, removed {removed}"
+    )
+    print(
+      f"  Accumulation: {acc.get('calibrated_closed', 0)}/{acc.get('target_closed')} "
+      f"calibrated-era closed ({acc.get('remaining_to_target')} to clean re-estimate)"
+    )
+  else:
+    print(f"  Calibration skipped: {calibration.get('reason', 'unknown')}")
+
   results = run_batch(
     str(pairs_csv), tfs, is_crypto=True,
     llm_advisory=llm_advisory,
@@ -132,6 +170,97 @@ def run_top_crypto_batch(
   save_detailed_markdown(results, str(markdown_path), title=f"Top {n} Crypto EW Analysis")
   save_outcomes_csv(results, str(outcomes_path))
   full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
+
+  print("\n[batch] Running paper trading + historical analysis on all setups...")
+  paper_report = run_paper_batch(results, fetch_missing=True)
+  results = apply_paper_to_results(results, paper_report)
+  for r in results:
+    if r.get("status") != "incomplete" and r.get("step8_outcomes"):
+      r["step8_outcomes"] = apply_honesty_adjustments(r["step8_outcomes"])
+
+  print("\n[batch] Loss learning from failed paper trades...")
+  learning = run_loss_learning_cycle()
+  if learning.get("available"):
+    from fetchers import fetch
+
+    for r in results:
+      if r.get("status") == "incomplete":
+        continue
+      try:
+        data = fetch(r["symbol"], tfs, is_crypto=True)
+        r["step8_outcomes"] = apply_learning_to_outcomes(
+          r["step8_outcomes"], r["symbol"], data, learning
+        )
+      except Exception as e:
+        print(f"[learning] skip {r['symbol']}: {e}")
+
+  setup_rows = []
+  from engine.outcome_report import build_outcome_row
+  for r in results:
+    setup_rows.extend(build_outcome_row(r))
+  audit = run_system_audit(paper_report.get("trades", []), setup_rows)
+  print(f"\n[audit] STATUS={audit['verdict']['status']}: {audit['verdict']['shame_note']}")
+  for f in audit["verdict"].get("failures", []):
+    print(f"  FAIL: {f}")
+  for w in audit["verdict"].get("warnings", []):
+    print(f"  WARN: {w}")
+  if audit["verdict"]["status"] == "FAIL":
+    for r in results:
+      if r.get("status") != "incomplete" and r.get("step8_outcomes"):
+        r["step8_outcomes"] = apply_audit_demotions(r["step8_outcomes"], audit)
+
+  save_batch_json(results, str(json_path))
+  enriched_trades = merge_setup_metadata_into_trades(
+    paper_report.get("trades", []), results, calibration
+  )
+  append_paper_ledger(enriched_trades)
+  acc_after = run_calibration_accumulation_cycle(
+    results=results,
+    trades=enriched_trades,
+  )
+  if acc_after.get("reestimated"):
+    print(
+      f"\n[calibration] Clean re-estimate applied (gen {acc_after.get('calibration', {}).get('generation')}, "
+      f"source={acc_after.get('calibration', {}).get('source')})"
+    )
+  elif acc_after.get("remaining_to_target", 0) > 0:
+    print(
+      f"\n[calibration] Accumulating clean data: "
+      f"{acc_after.get('calibrated_closed')}/{acc_after.get('target_closed')} "
+      f"({acc_after.get('remaining_to_target')} remaining)"
+    )
+  paper_metrics_path = save_paper_metrics(paper_report)
+  paper_csv_path = save_paper_csv(paper_report)
+  save_outcomes_csv(results, str(outcomes_path))
+  full_exports = export_all_reports(results, str(full_path), title=f"Top {n} Crypto — Full Analysis")
+
+  from engine.accurate_setups import (
+    extract_accurate_setups,
+    extract_research_setups,
+    save_accurate_setups_csv,
+    save_research_setups_csv,
+    summarize_accurate,
+    summarize_research,
+  )
+  accurate_rows = extract_accurate_setups(results, min_tier="C")
+  accurate_csv = out / "latest_accurate_setups.csv"
+  save_accurate_setups_csv(accurate_rows, accurate_csv)
+  accurate_summary = summarize_accurate(accurate_rows)
+  research_rows = extract_research_setups(results)
+  research_csv = out / "latest_research_setups.csv"
+  save_research_setups_csv(research_rows, research_csv)
+  research_summary = summarize_research(research_rows)
+
+  from engine.executive_board import apply_board_to_results, build_executive_board, save_executive_board
+  executive_board = build_executive_board(results, picks_per_tf=5, max_total=0)
+  results = apply_board_to_results(results, executive_board)
+  board_paths = save_executive_board(executive_board)
+  save_batch_json(results, str(json_path))
+  print(
+    f"\n[executive] Board: {executive_board['board_picks']} picks — "
+    f"{executive_board.get('by_action')} — {board_paths['csv']}"
+  )
+
   monitor_q = build_monitor_queue(results)
   save_monitor_queue(monitor_q, str(out / "autodream" / "monitor_queue.json"))
 
@@ -184,7 +313,10 @@ def run_top_crypto_batch(
       by_verdict[v] = by_verdict.get(v, 0) + 1
 
   meta = {
-    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    "timestamp_utc": data_as_of_from_frames(
+      (results[-1].get("_data_frames") or {}) if results else {},
+      prefer_tf="1h",
+    ) or market_now_utc().isoformat(),
     "pairs_count": len(pairs),
     "timeframes": tfs,
     "pairs": pairs,
@@ -200,10 +332,29 @@ def run_top_crypto_batch(
     "full_html": full_exports["full_html"],
     "report_md": str(markdown_path),
     "monitor_queue": str(out / "autodream" / "monitor_queue.json"),
+    "paper_metrics": paper_metrics_path,
+    "paper_csv": paper_csv_path,
+    "paper_setups": paper_report.get("setups_papered"),
+    "paper_win_rate": paper_report.get("win_rate"),
+    "loss_lessons": learning.get("lessons", []) if learning.get("available") else [],
+    "losses_analyzed": learning.get("losses_analyzed", 0),
+    "indicator_calibration": str(out / "autodream" / "indicator_calibration.json")
+    if calibration.get("available")
+    else None,
+    "calibration_kept_signals": len(calibration.get("kept_signals", {}))
+    if calibration.get("available")
+    else 0,
+    "calibration_accumulation": acc_after,
+    "accurate_setups_csv": str(accurate_csv),
+    "accurate_setups": accurate_summary["by_tier"],
+    "research_setups_csv": str(research_csv),
+    "research_setups": research_summary["by_research_tier"],
     "limit_orders_csv": limit_meta["latest_csv"],
     "limit_orders_matrix_html": limit_meta.get("matrix_html"),
     "limit_orders_meta": str(out / "autodream" / "latest_limit_orders.json"),
     "executive_board_csv": board_paths.get("csv"),
+    "executive_board": executive_board.get("by_action"),
+    "executive_board_picks": executive_board.get("board_picks"),
     "sqs_ranked_csv": limit_meta.get("sqs_ranked_csv"),
     "sqs": limit_meta.get("sqs"),
     "paper_pnl": paper_summary,
@@ -241,6 +392,11 @@ def run_top_crypto_batch(
   print(f"  Setups MD:{full_exports.get('setups_md', 'reports/TRADE_SETUPS.md')}")
   print(f"  Report:   {markdown_path}")
   print(f"  Monitor:  {out / 'autodream' / 'monitor_queue.json'}")
+  print(f"  Paper:    {paper_csv_path} ({paper_report.get('setups_papered')} setups, "
+        f"win_rate={paper_report.get('win_rate')})")
+  if learning.get("available"):
+    print(f"  Learning: {learning.get('losses_analyzed')} losses → {len(learning.get('lessons', []))} lessons")
+    print(f"  Lessons:  {out / 'autodream' / 'loss_lessons.json'}")
   print(f"  Limits:   {limit_meta['latest_csv']} ({limit_meta['row_count']} rows, tiers {limit_meta['tier_counts']})")
   if limit_meta.get("matrix_html"):
     print(f"  Matrix:   {limit_meta['matrix_html']}")

@@ -1,0 +1,39 @@
+name: cost-rebase
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to rebase
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(fromJSON('["dependabot[bot]","github-actions[bot]","renovate[bot]"]'), github.actor)
+    steps:
+      - name: Update branch (rebase onto default)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PR_NUM:-}" ]]; then
+            echo "no PR number"
+            exit 0
+          fi
+          files=$(gh pr diff "$PR_NUM" --name-only --repo "$GITHUB_REPOSITORY" || true)
+          if echo "$files" | grep -q '^cost/remediation/'; then
+            echo "skip auto-rebase for remediation policies"
+            exit 0
+          fi
+          gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUM}/update-branch" || true
