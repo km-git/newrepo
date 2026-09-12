@@ -39,6 +39,8 @@ def _flip(d: str) -> str:
 
 
 def audit_symbol(sym: str) -> dict:
+  from cache.disk_cache import get_cache
+
   os.environ.setdefault("EW_FETCH_QUIET", "1")
   os.environ.setdefault("EW_GATEWAY_QUIET", "1")
   data = fetch(sym, TFS, True)
@@ -47,6 +49,13 @@ def audit_symbol(sym: str) -> dict:
   pivot = float(data["1d"]["Close"].iloc[-1])
   r1 = adaptive_pipeline(sym, TFS, True, data_override=data)
   d1 = (r1.get("step8_outcomes") or {}).get("setups", {}).get("swing", {}).get("direction")
+
+  cache = get_cache()
+  for ns in (
+    "harmonics_v2", "monowaves", "ewa_consensus", "hurst_cycles",
+    "sentinel_analysis", "monte_carlo",
+  ):
+    cache.invalidate_namespace(ns)
 
   data_m = {tf: _mirror_df(data[tf], pivot) for tf in data}
   r2 = adaptive_pipeline(sym, TFS, True, data_override=data_m)
@@ -78,6 +87,9 @@ def main() -> int:
     "asymmetry_pct": round(100 * len(asym) / max(1, len(results)), 1),
     "failures": asym[:20],
   }
+  out_path = ROOT / "output" / "sign_symmetry_audit.json"
+  out_path.parent.mkdir(parents=True, exist_ok=True)
+  out_path.write_text(json.dumps(out, indent=2))
   print(json.dumps(out, indent=2))
   return 0 if not asym else 1
 

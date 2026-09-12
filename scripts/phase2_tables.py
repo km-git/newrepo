@@ -64,7 +64,10 @@ def main() -> int:
   analysis_path = sorted(ROOT.glob("output/top50_analysis_*.json"))[-1]
   board = json.loads((ROOT / "output/autodream/executive_board.json").read_text())
   limits = list(csv.DictReader((ROOT / "output/latest_limit_orders_all_tf.csv").open()))
-  log = (ROOT / "output/top50_batch_run.log").read_text()
+  log_path = ROOT / "output/top50_batch_run_v2.log"
+  if not log_path.exists():
+    log_path = ROOT / "output/top50_batch_run.log"
+  log = log_path.read_text()
 
   results = json.loads(analysis_path.read_text())
   symbols = sorted({r["symbol"] for r in results if r.get("symbol")})

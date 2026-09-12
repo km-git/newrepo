@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from cache.disk_cache import get_cache
+from core.market_clock import frames_fingerprint
 from core.ehlers import ehlers_cycle_bias, ehlers_instantaneous_phase
 from core.market_tools import vwap_distance_pct
 from core.wave_alpha_adapter import scan_wave_alpha
@@ -116,6 +117,8 @@ def build_sentinel_analysis(
   cycle_confluence: dict,
   market_tools: Optional[dict] = None,
   consensus: Optional[dict] = None,
+  *,
+  skip_external_votes: bool = False,
 ) -> dict:
   """
   Sentinel Trader-style processor fusion → single directional vote.
@@ -147,7 +150,7 @@ def build_sentinel_analysis(
         "detail": f"RSI stack {rsi['bias']}",
       }
 
-    wa = _try_wave_alpha(symbol)
+    wa = None if skip_external_votes else _try_wave_alpha(symbol)
     if wa and wa.get("available"):
       processors["wave_alpha"] = {
         "available": True,
@@ -208,7 +211,8 @@ def build_sentinel_analysis(
     _compute,
     symbol,
     tfs,
-    *(len(data[k]) for k in data),
+    skip_external_votes,
+    frames_fingerprint(data),
   )
   result["cache_hit"] = hit
   return result

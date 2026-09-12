@@ -29,7 +29,7 @@ from core.monowaves import adaptive_skip_for_df, extract_monowaves_cached
 from engine.autodream import enrich_outcomes_with_autodream, record_outcome
 from engine.ew_matrix import DEFAULT_EW_TFS, build_ew_matrix, ew_coverage_summary
 from engine.executive import executive_decide
-from core.market_clock import data_as_of_from_frames, data_as_of_meta
+from core.market_clock import data_as_of_from_frames, data_as_of_meta, series_fingerprint
 from engine.outcomes import build_outcomes
 from fetchers import fetch
 
@@ -160,7 +160,8 @@ def adaptive_pipeline(
   tfs = list(dict.fromkeys(tfs or DEFAULT_EW_TFS))
 
   # Fetch — always attempt all timeframes (partial OK)
-  data = data_override if data_override is not None else fetch(
+  synthetic_data = data_override is not None
+  data = data_override if synthetic_data else fetch(
     symbol, tfs, is_crypto, exchange_preference=exchange_preference,
   )
   stages.append(("fetch", {"symbol": symbol, "tfs": tfs, "crypto": is_crypto,
@@ -269,6 +270,7 @@ def adaptive_pipeline(
       symbol,
       tuple(ref_types),
       len(data["15m"]),
+      series_fingerprint(data["15m"]),
     )
     if mc_hit:
       print("[cache] HIT monte_carlo")
@@ -288,13 +290,13 @@ def adaptive_pipeline(
 
   # STEP 6c: Market tools + free data (TV OSS, WS, web intel) — before executive
   btc_1d = None
-  if is_crypto and not symbol.upper().startswith("BTC"):
+  if not synthetic_data and is_crypto and not symbol.upper().startswith("BTC"):
     try:
       btc_1d = fetch("BTC/USDT", ["1d"], True).get("1d")
     except Exception:
       pass
   exchange = None
-  if is_crypto and os.environ.get("EW_ORDERBOOK_ENABLED", "1").lower() not in ("0", "false", "no"):
+  if not synthetic_data and is_crypto and os.environ.get("EW_ORDERBOOK_ENABLED", "1").lower() not in ("0", "false", "no"):
     try:
       from fetchers.pairs import _make_exchange
 
@@ -305,30 +307,31 @@ def adaptive_pipeline(
   market_tools = build_market_confluence(
     symbol, data, tfs, btc_1d=btc_1d, exchange=exchange, direction=exec_direction,
   )
-  try:
-    from gateway.data_hub import enrich_market_tools
+  if not synthetic_data:
+    try:
+      from gateway.data_hub import enrich_market_tools
 
-    market_tools = enrich_market_tools(symbol, data, market_tools)
-  except Exception:
-    pass
-  try:
-    from engine.deep_research import load_deep_research
+      market_tools = enrich_market_tools(symbol, data, market_tools)
+    except Exception:
+      pass
+    try:
+      from engine.deep_research import load_deep_research
 
-    dr = load_deep_research()
-    if dr:
-      market_tools["deep_research"] = {
-        "fg": ((dr.get("intel") or {}).get("macro") or {}).get("fear_greed", {}).get("value"),
-        "ai_stance": (dr.get("ai_synthesis") or {}).get("stance"),
-        "tv_oss_stance": (dr.get("tv_oss") or {}).get("consensus_stance"),
-      }
-  except Exception:
-    pass
-  try:
-    from engine.executive_tv_oss import ensure_tv_oss_consensus
+      dr = load_deep_research()
+      if dr:
+        market_tools["deep_research"] = {
+          "fg": ((dr.get("intel") or {}).get("macro") or {}).get("fear_greed", {}).get("value"),
+          "ai_stance": (dr.get("ai_synthesis") or {}).get("stance"),
+          "tv_oss_stance": (dr.get("tv_oss") or {}).get("consensus_stance"),
+        }
+    except Exception:
+      pass
+    try:
+      from engine.executive_tv_oss import ensure_tv_oss_consensus
 
-    ensure_tv_oss_consensus(use_llm=False)
-  except Exception:
-    pass
+      ensure_tv_oss_consensus(use_llm=False)
+    except Exception:
+      pass
   stages.append(("market_confluence", {"symbol": symbol},
                  {"boost": market_tools.get("confluence_boost"),
                   "tv_score": (market_tools.get("tv_confluence") or {}).get("score"),
@@ -337,6 +340,7 @@ def adaptive_pipeline(
   # STEP 6d: Sentinel Trader fusion (structure + momentum + Ehlers cycle + VWAP)
   sentinel_analysis = build_sentinel_analysis(
     symbol, data, wave_structure, cycle_confluence, market_tools, consensus,
+    skip_external_votes=synthetic_data,
   )
   stages.append(("sentinel_analysis", {"symbol": symbol}, {
     "direction": sentinel_analysis.get("direction"),

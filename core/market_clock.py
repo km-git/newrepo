@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Mapping, Optional, Union
+from typing import Any, Dict, Iterable, Mapping, Optional, Union
 
 import pandas as pd
 
@@ -120,6 +120,17 @@ def series_fingerprint(df: FrameLike, n: int = 20) -> tuple:
     return ()
   tail = df["Close"].iloc[-n:].astype(float).values if hasattr(df, "columns") else df.iloc[-n:]
   return tuple(round(float(x), 6) for x in tail)
+
+
+def frames_fingerprint(frames: Mapping[str, FrameLike], tfs: Optional[Iterable[str]] = None) -> tuple:
+  """Multi-TF fingerprint for cache keys (mirror-symmetric)."""
+  keys = sorted(tfs or frames.keys())
+  out: list = []
+  for tf in keys:
+    df = (frames or {}).get(tf)
+    if df is not None and len(df) > 0:
+      out.append((tf, series_fingerprint(df)))
+  return tuple(out)
 
 
 def data_as_of_meta(frames: Mapping[str, FrameLike]) -> Dict[str, Any]:
