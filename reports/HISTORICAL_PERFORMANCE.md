@@ -1,12 +1,12 @@
 # Historical Setup Performance
 
-Updated: **2026-09-11T22:11:39.591594+00:00**
+Updated: **2026-09-12T02:23:07.757305+00:00**
 
 ## Overall
 
 | Wins | Losses | Decided | Win rate | Open |
 |------|--------|---------|----------|------|
-| 1 | 0 | 1 | 100.0% | 4 |
+| 0 | 0 | 0 | — | 0 |
 
 ## By timeframe
 
@@ -17,13 +17,7 @@ Updated: **2026-09-11T22:11:39.591594+00:00**
 | 12h | 0 | 0 | — | 0 |
 | 4h | 0 | 0 | — | 0 |
 | 1h | 0 | 0 | — | 0 |
-| 15m | 1 | 0 | 100.0% | 1 |
-
-## By pair × TF (decided ≥ 1)
-
-| Key | Wins | Losses | Win rate | n |
-|-----|------|--------|----------|---|
-| BTC/USDT|15m|LONG | 1 | 0 | 100.0% | 1 |
+| 15m | 0 | 0 | — | 0 |
 
 > Source: `output/autodream/tracked_setups.json` · Metrics: `output/autodream/metrics.json`
 

@@ -13,3 +13,7 @@ paths = ['''(^|/)engine/tape_to_cloud_reports\.py$''']
 [[allowlists]]
 description = "Commit that first added SAMPLE key_uuid in demo reports"
 commits = ["bb00f4049343f5e9b7636fb1f841a88af26daa1f"]
+
+[[allowlists]]
+description = "DSPM AI-security fixture prompts (synthetic PII/credential labels for offline tests)"
+paths = ['''(^|/)dspm/fixtures/ai_prompts\.json$''']

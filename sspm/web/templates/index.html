@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSPM — Configuration & Inventory Report</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>SSPM Configuration & Inventory Report</h1>
+    <p class="subtitle">Read-only SaaS posture observations — not a security assessment</p>
+  </header>
+
+  <main>
+    <section class="cards" id="stats">
+      <div class="card"><h3>Tenants</h3><p id="tenant-count">—</p></div>
+      <div class="card"><h3>OAuth Grants</h3><p id="oauth-count">—</p></div>
+      <div class="card"><h3>OSS Tools</h3><p id="tool-count">—</p></div>
+    </section>
+
+    <section class="actions">
+      <h2>Run Discovery Scan</h2>
+      <div class="btn-row">
+        <button onclick="runScan('m365')">Microsoft 365</button>
+        <button onclick="runScan('gws')">Google Workspace</button>
+        <button onclick="runScan('github')">GitHub</button>
+        <button onclick="runScan('slack')">Slack</button>
+        <button onclick="runScan('okta')">Okta</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Latest Report</h2>
+      <pre id="report-output">Click a scan button to generate a demo report.</pre>
+    </section>
+
+    <section>
+      <h2>OAuth Grants</h2>
+      <table id="oauth-table">
+        <thead><tr><th>App</th><th>Publisher</th><th>Scopes</th><th>Risk</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p>Configuration & Inventory Report — liability disclaimer appended to every report.</p>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

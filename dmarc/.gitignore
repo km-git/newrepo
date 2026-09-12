@@ -1,0 +1,8 @@
+output/
+reports/
+dmarc-inventory.json
+*.duckdb
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

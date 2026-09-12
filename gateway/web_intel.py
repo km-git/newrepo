@@ -248,7 +248,9 @@ def binance_long_short_ratio(symbol: str = "BTC/USDT", period: str = "1h") -> Di
     f"?symbol={sym}&period={period}&limit=1"
   )
   data = _fetch_json(url, host="fapi.binance.com")
-  if not data or data.get("error") or not isinstance(data, list) or not data:
+  if isinstance(data, dict) and data.get("error"):
+    return {"available": False}
+  if not isinstance(data, list) or not data:
     return {"available": False}
   row = data[-1]
   ratio = float(row.get("longShortRatio") or 1)
@@ -272,7 +274,9 @@ def binance_taker_ratio(symbol: str = "BTC/USDT", period: str = "1h") -> Dict[st
     f"?symbol={sym}&period={period}&limit=1"
   )
   data = _fetch_json(url, host="fapi.binance.com")
-  if not data or data.get("error") or not isinstance(data, list) or not data:
+  if isinstance(data, dict) and data.get("error"):
+    return {"available": False}
+  if not isinstance(data, list) or not data:
     return {"available": False}
   row = data[-1]
   ratio = float(row.get("buySellRatio") or 1)
@@ -361,7 +365,9 @@ def binance_recent_liquidations(symbol: str = "BTC/USDT", limit: int = 20) -> Di
   sym = _sym_usdt(symbol)
   url = f"https://fapi.binance.com/fapi/v1/allForceOrders?symbol={sym}&limit={limit}"
   data = _fetch_json(url, host="fapi.binance.com")
-  if not data or data.get("error") or not isinstance(data, list):
+  if isinstance(data, dict) and data.get("error"):
+    return {"available": False}
+  if not isinstance(data, list):
     return {"available": False}
   long_liq = sum(1 for o in data if o.get("side") == "SELL")
   short_liq = sum(1 for o in data if o.get("side") == "BUY")

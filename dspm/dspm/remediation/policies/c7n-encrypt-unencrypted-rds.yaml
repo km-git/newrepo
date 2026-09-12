@@ -1,0 +1,9 @@
+policies:
+  - name: encrypt-unencrypted-rds
+    resource: aws.rds
+    filters:
+      - StorageEncrypted: false
+    actions:
+      - type: modify-db
+        update:
+          StorageEncrypted: true

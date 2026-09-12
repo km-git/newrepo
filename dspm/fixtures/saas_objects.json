@@ -1,0 +1,29 @@
+{
+  "gdrive": [
+    {
+      "path": "1abc-shared-doc",
+      "name": "Customer_List_2026.csv",
+      "store_type": "text/csv",
+      "size": 5600,
+      "preview": "customer_id,email,phone\n1001,sarah@client.com,+61400111222"
+    }
+  ],
+  "dropbox": [
+    {
+      "path": "/Team/Backups/db_dump.sql",
+      "name": "db_dump.sql",
+      "store_type": "application/sql",
+      "size": 250000,
+      "preview": "INSERT INTO users VALUES (1, 'admin@corp.com', 'AKIAIOSFODNN7EXAMPLE');"
+    }
+  ],
+  "box": [
+    {
+      "path": "box-file-99",
+      "name": "legal_hold_archive.zip",
+      "store_type": "application/zip",
+      "size": 50000000,
+      "metadata": {"retention": "7years"}
+    }
+  ]
+}

@@ -639,7 +639,6 @@ def run_paper_simulation(
     record_paper_trades(summary)
   except Exception:
     pass
-
   return summary
 
 

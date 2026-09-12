@@ -58,7 +58,7 @@ def render_table(rows: list[dict[str, Any]], caption: str = "") -> str:
 
 def _render_scalar_map(data: dict[str, Any]) -> str:
     rows = "".join(
-        f"<tr><th>{_esc(k)}</th><td>{_esc(v)}</td></tr>" for k, v in data.items() if not isinstance(v, (dict, list))
+        f"<tr><th>{_esc(k)}</th><td>{_esc(v)}</td></tr>" for k, v in data.items() if not isinstance(v, dict | list)
     )
     nested = []
     for key, value in data.items():

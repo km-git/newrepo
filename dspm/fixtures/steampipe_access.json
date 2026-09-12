@@ -1,0 +1,6 @@
+{
+  "rows": [
+    {"principal": "arn:aws:iam::123456789012:role/DataReader", "store_id": 42, "permission": "s3:GetObject"},
+    {"principal": "arn:aws:iam::123456789012:role/Admin", "store_id": 42, "permission": "s3:*"}
+  ]
+}

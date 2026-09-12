@@ -33,6 +33,14 @@ venv/
 .pytest_cache/
 .mypy_cache/
 *.log
+
+# Cursor — commit team skills/rules; ignore local secrets and caches
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
+!.cursor/rules/
+!.cursor/rules/**
+
 state/accept-reject.jsonl
 state/discover_queue.json
 state/gap_audit.json

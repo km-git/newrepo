@@ -1,0 +1,8 @@
+[
+  {
+    "resource": "s3://unmanaged-orphan-bucket/",
+    "shadow_type": "unmanaged_bucket",
+    "confidence": 0.75,
+    "details": {"note": "no tags, no lifecycle policy"}
+  }
+]

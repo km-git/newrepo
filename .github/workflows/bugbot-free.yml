@@ -1,6 +1,6 @@
 # Zero-key Bugbot replacement: GitHub-native + OSS scanners (no Cursor Bugbot, no LLM API secrets).
 # Public repo: CodeQL + Semgrep SARIF are free. reviewdog posts inline PR comments via GITHUB_TOKEN.
-# SHA-pin third-party actions (TeamPCP / mutable-tag lesson). First-party actions/checkout stays ref-pinned.
+# SHA-pin third-party and first-party scanner actions (TeamPCP / mutable-tag lesson).
 name: Bugbot-free scanners
 
 on:
@@ -34,7 +34,7 @@ jobs:
           - language: actions
             build-mode: none
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -59,11 +59,11 @@ jobs:
       pull-requests: write
       security-events: write
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: "3.12"
 
@@ -78,7 +78,7 @@ jobs:
             --metrics off \
             --sarif \
             --output semgrep.sarif \
-            tape_to_cloud/ dspm/ dmarc/ sspm/ cost/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
+            tape_to_cloud/ dspm/ dmarc/ sspm/ cost/ licensespend/ engine/tape_to_cloud_hub.py engine/tape_to_cloud_reports.py \
             ew_tool.py tests/test_sspm_architecture.py tests/test_sspm_core.py \
             tests/test_sspm_loop.py tests/test_sspm_web.py tests/test_sspm_report.py \
             tests/test_sspm_cli.py tests/dmarc scripts/serve_dmarc.py \

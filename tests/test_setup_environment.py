@@ -27,6 +27,7 @@ def test_setup_environment_structure(monkeypatch):
   monkeypatch.setattr(se, "install_requirements", lambda: {"ok": True})
   monkeypatch.setattr(se, "install_outcome_requirements", lambda: {"ok": True})
   monkeypatch.setattr(se, "install_editable_libs", lambda: {"ok": True})
+  monkeypatch.setattr(se, "install_sspm", lambda: {"ok": True, "skipped": False})
   monkeypatch.setattr(se, "install_runtime_extras", lambda: {"ok": True})
   monkeypatch.setattr(se, "install_token_savers", lambda: {"install": {}})
   monkeypatch.setattr(se, "install_gh_cli", lambda: {"installed": True, "path": "/usr/bin/gh"})

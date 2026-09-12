@@ -1,0 +1,45 @@
+{
+  "sharepoint": [
+    {
+      "path": "/sites/HR/Shared Documents/policies.docx",
+      "name": "policies.docx",
+      "store_type": "sharepoint_file",
+      "size": 45000,
+      "preview": "Employee handbook. Contact HR at hr@company.com for TFN verification."
+    },
+    {
+      "path": "/sites/Finance/Reports/Q3_revenue.xlsx",
+      "name": "Q3_revenue.xlsx",
+      "store_type": "sharepoint_file",
+      "size": 89000,
+      "metadata": {"site": "Finance"}
+    }
+  ],
+  "onedrive": [
+    {
+      "path": "/Documents/backup_notes.txt",
+      "name": "backup_notes.txt",
+      "store_type": "onedrive_file",
+      "size": 1024,
+      "preview": "Backup schedule: nightly tape rotation. Admin contact: admin@tenant.onmicrosoft.com"
+    }
+  ],
+  "exchange": [
+    {
+      "path": "msg-001",
+      "name": "FW: Customer data export",
+      "store_type": "mailbox_message",
+      "metadata": {
+        "user": "analyst@company.com",
+        "preview": "Please review the attached customer export containing SSN 456-78-9012 and card 5500 0000 0000 0004"
+      },
+      "preview": "Please review the attached customer export containing SSN 456-78-9012"
+    },
+    {
+      "path": "msg-002",
+      "name": "Meeting notes - PHI discussion",
+      "store_type": "mailbox_message",
+      "preview": "Patient records migration to cloud. Prescription data for ward 3."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+- name: parsedmarc releases
+  url: https://github.com/domainaware/parsedmarc/releases.atom
+  kind: rss
+  module_hint: dmarc_ingest
+  max_items: 10
+- name: dnspython releases
+  url: https://github.com/rthalley/dnspython/releases.atom
+  kind: rss
+  module_hint: dns_check
+  max_items: 10
+- name: r/sysadmin
+  url: https://www.reddit.com/r/sysadmin/.rss
+  kind: rss
+  module_hint: spf_parser, dkim_check
+  max_items: 15
+- name: r/email
+  url: https://www.reddit.com/r/email/.rss
+  kind: rss
+  module_hint: inbox_placement
+  max_items: 15

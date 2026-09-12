@@ -1,0 +1,19 @@
+contracts:
+  - vendor: microsoft365
+    seats: 20
+    renew_on: 2026-10-22
+    notice_days: 30
+    amount_aud: 13680.00
+    sku: m365-e5
+  - vendor: github
+    seats: 10
+    renew_on: 2026-09-27
+    notice_days: 14
+    amount_aud: 480.00
+    sku: github-team
+  - vendor: slack
+    seats: 12
+    renew_on: 2026-12-01
+    notice_days: 45
+    amount_aud: 2160.00
+    sku: slack-business-plus
