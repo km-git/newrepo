@@ -1,1 +1,154 @@
-[]
+{
+  "items": [
+    {
+      "url": "https://github.com/tokern/piicatcher",
+      "title": "tokern/piicatcher",
+      "summary": "A data catalog for PII and PHI. Scan databases and files for sensitive columns.",
+      "source": "github-search:topic:dspm OR pii-detection",
+      "module_hint": "dspm/classification",
+      "license": "Apache-2.0",
+      "category": "github_tool",
+      "stars": 420,
+      "sha256": "47a6d37b00aecf68c437a80960a9da94d14596ad6d0496383dcb9394d6a6ce1e",
+      "verdict": "discover",
+      "score": 11,
+      "axes": {
+        "module_fit": 4,
+        "signal": 3,
+        "license": 2,
+        "actionability": 2
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    },
+    {
+      "url": "https://github.com/lyft/cartography",
+      "title": "lyft/cartography",
+      "summary": "Cartography is a Python tool that consolidates infrastructure assets and the relationships between them in a Neo4j graph.",
+      "source": "github-search:topic:dspm OR pii-detection",
+      "module_hint": "dspm/access",
+      "license": "Apache-2.0",
+      "category": "github_tool",
+      "stars": 3400,
+      "sha256": "20ce3effb2cdff45ef7918ad3d65f812ba137c58603eed0a10690a76f75b1cb8",
+      "verdict": "discover",
+      "score": 11,
+      "axes": {
+        "module_fit": 4,
+        "signal": 3,
+        "license": 2,
+        "actionability": 2
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    },
+    {
+      "url": "https://github.com/capitalone/DataProfiler",
+      "title": "capitalone/DataProfiler",
+      "summary": "What's in your data? Detect schema, statistics, and PII entities in CSV/JSON/Parquet.",
+      "source": "github-search:topic:dspm OR pii-detection",
+      "module_hint": "dspm/classification",
+      "license": "Apache-2.0",
+      "category": "github_tool",
+      "stars": 1800,
+      "sha256": "c5b46ca6159c281c4bc2c4d0226b330eb2caff4cd0f3ed55f88ec71ac206b956",
+      "verdict": "discover",
+      "score": 11,
+      "axes": {
+        "module_fit": 4,
+        "signal": 3,
+        "license": 2,
+        "actionability": 2
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    },
+    {
+      "url": "https://pypi.org/project/DataProfiler/",
+      "title": "DataProfiler 0.13.4 on PyPI",
+      "summary": "DataProfiler \u2014 detect schema, stats, and PII in tabular data",
+      "source": "pypi",
+      "module_hint": "dspm/classification",
+      "license": "Apache-2.0",
+      "category": "python_lib",
+      "pypi": "DataProfiler",
+      "version": "0.13.4",
+      "sha256": "00aa468dc6c1142780b64cefe0c62ae56742e7b9e9206f77d3de1ee9d615d20c",
+      "verdict": "discover",
+      "score": 11,
+      "axes": {
+        "module_fit": 4,
+        "signal": 3,
+        "license": 2,
+        "actionability": 2
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    },
+    {
+      "url": "https://github.com/salesforce/cloudsplaining",
+      "title": "salesforce/cloudsplaining",
+      "summary": "AWS IAM Security Assessment tool that identifies violations of least privilege.",
+      "source": "github-search:topic:dspm OR pii-detection",
+      "module_hint": "dspm/access",
+      "license": "BSD-3-Clause",
+      "category": "github_tool",
+      "stars": 2100,
+      "sha256": "57da9fbc728240d507b7ae77968aff9b0af8a8fcc02bc88dbc728a9b95fbfee2",
+      "verdict": "discover",
+      "score": 10,
+      "axes": {
+        "module_fit": 4,
+        "signal": 3,
+        "license": 2,
+        "actionability": 1
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    },
+    {
+      "url": "https://pypi.org/project/policyuniverse/",
+      "title": "policyuniverse 1.5.1.20240125 on PyPI",
+      "summary": "Parse and Expand AWS Least Privilege Policies",
+      "source": "pypi",
+      "module_hint": "dspm/access",
+      "license": "Apache-2.0",
+      "category": "python_lib",
+      "pypi": "policyuniverse",
+      "version": "1.5.1.20240125",
+      "sha256": "1a4d9b05c2fed07841c19a6132d4c823bbe323998dd2142b84ab26f1dc828691",
+      "verdict": "discover",
+      "score": 10,
+      "axes": {
+        "module_fit": 4,
+        "signal": 2,
+        "license": 2,
+        "actionability": 2
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    },
+    {
+      "url": "https://pypi.org/project/detect-secrets/",
+      "title": "detect-secrets 1.5.0 on PyPI",
+      "summary": "An enterprise friendly way of detecting and preventing secrets in code.",
+      "source": "pypi",
+      "module_hint": "dspm/encryption_check",
+      "license": "Apache-2.0",
+      "category": "python_lib",
+      "pypi": "detect-secrets",
+      "version": "1.5.0",
+      "sha256": "e73699e65c0070a69b418b7322a24846a2ecacd62b1d09a4421a80a6f3717431",
+      "verdict": "discover",
+      "score": 10,
+      "axes": {
+        "module_fit": 4,
+        "signal": 2,
+        "license": 2,
+        "actionability": 2
+      },
+      "threshold": 7,
+      "engine": "rubric-4axis"
+    }
+  ]
+}

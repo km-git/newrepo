@@ -1,0 +1,822 @@
+{
+  "timestamp_utc": "2026-09-14T00:42:21+00:00",
+  "summary": {
+    "total_watchlist": 33,
+    "gaps": 25,
+    "critical_gaps": 2,
+    "high_gaps": 14,
+    "by_category": {
+      "forum": {
+        "integrated": 5,
+        "partial": 0,
+        "missing": 0,
+        "candidate": 0
+      },
+      "github_tool": {
+        "integrated": 0,
+        "partial": 9,
+        "missing": 4,
+        "candidate": 0
+      },
+      "other_tool": {
+        "integrated": 2,
+        "partial": 0,
+        "missing": 3,
+        "candidate": 0
+      },
+      "python_lib": {
+        "integrated": 1,
+        "partial": 7,
+        "missing": 2,
+        "candidate": 0
+      }
+    }
+  },
+  "top_gaps": [
+    {
+      "id": "gh_presidio",
+      "name": "data-privacy-stack/presidio",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "MIT",
+      "url": "https://github.com/data-privacy-stack/presidio",
+      "integrated_in": "dspm/classification/recognizers.py",
+      "impact": "critical",
+      "challenge": "Is Presidio installed in CI, or only the stdlib PatternRecognizer fallback?",
+      "status": "partial"
+    },
+    {
+      "id": "lib_presidio",
+      "name": "presidio-analyzer",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "MIT",
+      "url": "https://pypi.org/project/presidio-analyzer/",
+      "pypi": "presidio-analyzer",
+      "integrated_in": "dspm/classification/recognizers.py",
+      "impact": "critical",
+      "challenge": "Optional extra \u2014 default path is stdlib recognizers. Should CI install the pii extra on a weekly job?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_piicatcher",
+      "name": "tokern/piicatcher",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://github.com/tokern/piicatcher",
+      "integrated_in": "dspm/classification/column_heuristics.py",
+      "impact": "high",
+      "challenge": "Column-name heuristics ported \u2014 should we add table-level DB crawling next?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_dataprofiler",
+      "name": "capitalone/DataProfiler",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://github.com/capitalone/DataProfiler",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "DataProfiler stats + PII labels would lift long-tail columns \u2014 candidate for Stage 2.5?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_cartography",
+      "name": "lyft/cartography",
+      "category": "github_tool",
+      "module": "dspm/access",
+      "license": "Apache-2.0",
+      "url": "https://github.com/lyft/cartography",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "No asset/identity graph \u2014 Steampipe edges are flat. Cartography Neo4j would close the Cyera identity-gap.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_checkov",
+      "name": "bridgecrewio/checkov",
+      "category": "github_tool",
+      "module": "dspm/encryption_check",
+      "license": "Apache-2.0",
+      "url": "https://github.com/bridgecrewio/checkov",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Trivy covers IaC; Checkov CIS policies overlap \u2014 parse Checkov JSON as a second exposure feed?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_gitleaks",
+      "name": "gitleaks/gitleaks",
+      "category": "github_tool",
+      "module": "dspm/encryption_check",
+      "license": "MIT",
+      "url": "https://github.com/gitleaks/gitleaks",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Secret scanning is Trivy-only. Gitleaks CLI would catch git-history secrets Trivy fs misses.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_cloudsplaining",
+      "name": "salesforce/cloudsplaining",
+      "category": "github_tool",
+      "module": "dspm/access",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/salesforce/cloudsplaining",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Over-privileged IAM scoring is a stub. Cloudsplaining HTML/JSON is the OSS IAM Privilege Escalation map.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_osv_scanner",
+      "name": "google/osv-scanner",
+      "category": "github_tool",
+      "module": "dspm/audit",
+      "license": "Apache-2.0",
+      "url": "https://github.com/google/osv-scanner",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "pip-audit is in dspm-ci; OSV-Scanner SARIF would cover Go CLIs (Trivy, CloudQuery) pip-audit cannot see.",
+      "status": "partial"
+    },
+    {
+      "id": "tool_osv_dev",
+      "name": "OSV.dev API",
+      "category": "other_tool",
+      "module": "dspm/audit",
+      "license": "public",
+      "url": "https://api.osv.dev/v1/query",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Key-less CVE query for Trivy/CloudQuery/Steampipe versions \u2014 not yet called from dspm audit.",
+      "status": "missing"
+    },
+    {
+      "id": "tool_zizmor",
+      "name": "zizmor",
+      "category": "other_tool",
+      "module": "dspm/loop",
+      "license": "Apache-2.0",
+      "url": "https://github.com/zizmorcore/zizmor",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "dspm-auto-approve uses pull_request_target. zizmor would fail the workflow until persist-credentials is locked down.",
+      "status": "missing"
+    },
+    {
+      "id": "lib_duckdb",
+      "name": "duckdb",
+      "category": "python_lib",
+      "module": "dspm/risk",
+      "license": "MIT",
+      "url": "https://pypi.org/project/duckdb/",
+      "pypi": "duckdb",
+      "integrated_in": "dspm/risk/service.py",
+      "impact": "high",
+      "challenge": "SQL formula is in Python; DuckDB path is optional. Install duckdb in dspm-ci to lock parity?",
+      "status": "partial"
+    },
+    {
+      "id": "lib_piicatcher",
+      "name": "piicatcher",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/piicatcher/",
+      "pypi": "piicatcher",
+      "integrated_in": "dspm/classification/column_heuristics.py",
+      "impact": "high",
+      "challenge": "Heuristics ported; full piicatcher catalog detector still missing.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_dataprofiler",
+      "name": "DataProfiler",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/DataProfiler/",
+      "pypi": "DataProfiler",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Capital One DataProfiler is Apache-2.0 and does column stats + PII \u2014 strongest OSS lift vs Cyera long-tail.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_detect_secrets",
+      "name": "detect-secrets",
+      "category": "python_lib",
+      "module": "dspm/encryption_check",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/detect-secrets/",
+      "pypi": "detect-secrets",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Yelp detect-secrets is Python-native (no Go CLI). Baseline file would catch AKIA in customer dumps.",
+      "status": "partial"
+    }
+  ],
+  "next_integrations": [
+    {
+      "id": "gh_presidio",
+      "name": "data-privacy-stack/presidio",
+      "module": "dspm/classification",
+      "url": "https://github.com/data-privacy-stack/presidio",
+      "license": "MIT",
+      "impact": "critical",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/classification parsing data-privacy-stack/presidio JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "lib_presidio",
+      "name": "presidio-analyzer",
+      "module": "dspm/classification",
+      "url": "https://pypi.org/project/presidio-analyzer/",
+      "license": "MIT",
+      "impact": "critical",
+      "status": "partial",
+      "first_commit": "Add optional extra + adapter in dspm/classification wrapping presidio-analyzer (CLI or import with fallback).",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "gh_piicatcher",
+      "name": "tokern/piicatcher",
+      "module": "dspm/classification",
+      "url": "https://github.com/tokern/piicatcher",
+      "license": "Apache-2.0",
+      "impact": "high",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/classification parsing tokern/piicatcher JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "gh_dataprofiler",
+      "name": "capitalone/DataProfiler",
+      "module": "dspm/classification",
+      "url": "https://github.com/capitalone/DataProfiler",
+      "license": "Apache-2.0",
+      "impact": "high",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/classification parsing capitalone/DataProfiler JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "gh_cartography",
+      "name": "lyft/cartography",
+      "module": "dspm/access",
+      "url": "https://github.com/lyft/cartography",
+      "license": "Apache-2.0",
+      "impact": "high",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/access parsing lyft/cartography JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "gh_checkov",
+      "name": "bridgecrewio/checkov",
+      "module": "dspm/encryption_check",
+      "url": "https://github.com/bridgecrewio/checkov",
+      "license": "Apache-2.0",
+      "impact": "high",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/encryption_check parsing bridgecrewio/checkov JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "gh_gitleaks",
+      "name": "gitleaks/gitleaks",
+      "module": "dspm/encryption_check",
+      "url": "https://github.com/gitleaks/gitleaks",
+      "license": "MIT",
+      "impact": "high",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/encryption_check parsing gitleaks/gitleaks JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 11,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 2
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    },
+    {
+      "id": "gh_cloudsplaining",
+      "name": "salesforce/cloudsplaining",
+      "module": "dspm/access",
+      "url": "https://github.com/salesforce/cloudsplaining",
+      "license": "BSD-3-Clause",
+      "impact": "high",
+      "status": "partial",
+      "first_commit": "Add subprocess wrapper in dspm/access parsing salesforce/cloudsplaining JSON; fixture in examples/.",
+      "rubric": {
+        "verdict": "discover",
+        "score": 10,
+        "axes": {
+          "module_fit": 4,
+          "signal": 3,
+          "license": 2,
+          "actionability": 1
+        },
+        "threshold": 7,
+        "engine": "rubric-4axis"
+      }
+    }
+  ],
+  "challenge_questions": [
+    "Is Presidio installed in CI, or only the stdlib PatternRecognizer fallback?",
+    "Optional extra \u2014 default path is stdlib recognizers. Should CI install the pii extra on a weekly job?",
+    "Column-name heuristics ported \u2014 should we add table-level DB crawling next?",
+    "DataProfiler stats + PII labels would lift long-tail columns \u2014 candidate for Stage 2.5?",
+    "No asset/identity graph \u2014 Steampipe edges are flat. Cartography Neo4j would close the Cyera identity-gap.",
+    "Trivy covers IaC; Checkov CIS policies overlap \u2014 parse Checkov JSON as a second exposure feed?",
+    "Secret scanning is Trivy-only. Gitleaks CLI would catch git-history secrets Trivy fs misses.",
+    "Over-privileged IAM scoring is a stub. Cloudsplaining HTML/JSON is the OSS IAM Privilege Escalation map.",
+    "pip-audit is in dspm-ci; OSV-Scanner SARIF would cover Go CLIs (Trivy, CloudQuery) pip-audit cannot see.",
+    "Key-less CVE query for Trivy/CloudQuery/Steampipe versions \u2014 not yet called from dspm audit.",
+    "dspm-auto-approve uses pull_request_target. zizmor would fail the workflow until persist-credentials is locked down.",
+    "SQL formula is in Python; DuckDB path is optional. Install duckdb in dspm-ci to lock parity?"
+  ],
+  "items": [
+    {
+      "id": "forum_reddit_cybersecurity",
+      "name": "r/cybersecurity",
+      "category": "forum",
+      "module": "dspm/classification",
+      "license": "public",
+      "url": "https://www.reddit.com/r/cybersecurity/.rss",
+      "integrated_in": "dspm/loop/sources.yaml",
+      "impact": "high",
+      "challenge": "Are DSPM vendor threads converted into module-fit Discover items or only counted?",
+      "status": "integrated"
+    },
+    {
+      "id": "forum_reddit_netsec",
+      "name": "r/netsec",
+      "category": "forum",
+      "module": "dspm/exposure",
+      "license": "public",
+      "url": "https://www.reddit.com/r/netsec/.rss",
+      "integrated_in": "dspm/loop/sources.yaml",
+      "impact": "high",
+      "challenge": "Do CVE threads for Trivy/Prowler bump pins the same week?",
+      "status": "integrated"
+    },
+    {
+      "id": "forum_lobsters_security",
+      "name": "Lobsters tag security",
+      "category": "forum",
+      "module": "dspm/risk",
+      "license": "public",
+      "url": "https://lobste.rs/t/security.rss",
+      "integrated_in": "dspm/loop/sources.yaml",
+      "impact": "medium",
+      "challenge": "Is Lobsters in the watcher, or Reddit-only?",
+      "status": "integrated"
+    },
+    {
+      "id": "forum_hn_dspm",
+      "name": "Hacker News dspm/pii",
+      "category": "forum",
+      "module": "dspm/risk",
+      "license": "public",
+      "url": "https://hn.algolia.com/api/v1/search_by_date?query=dspm%20OR%20presidio%20OR%20%22data%20classification%22&tags=story",
+      "integrated_in": "dspm/loop/sources.yaml",
+      "impact": "high",
+      "challenge": "Are Show HN DSPM tools evaluated against the catalog before skip?",
+      "status": "integrated"
+    },
+    {
+      "id": "forum_trackawesomelist",
+      "name": "Track Awesome List",
+      "category": "forum",
+      "module": "dspm/audit",
+      "license": "public",
+      "url": "https://www.trackawesomelist.com/rss.xml",
+      "integrated_in": "dspm/loop/sources.yaml",
+      "impact": "high",
+      "challenge": "Are awesome-security / awesome-privacy diffs queued as GitHub-tool candidates?",
+      "status": "integrated"
+    },
+    {
+      "id": "gh_presidio",
+      "name": "data-privacy-stack/presidio",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "MIT",
+      "url": "https://github.com/data-privacy-stack/presidio",
+      "integrated_in": "dspm/classification/recognizers.py",
+      "impact": "critical",
+      "challenge": "Is Presidio installed in CI, or only the stdlib PatternRecognizer fallback?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_piicatcher",
+      "name": "tokern/piicatcher",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://github.com/tokern/piicatcher",
+      "integrated_in": "dspm/classification/column_heuristics.py",
+      "impact": "high",
+      "challenge": "Column-name heuristics ported \u2014 should we add table-level DB crawling next?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_dataprofiler",
+      "name": "capitalone/DataProfiler",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://github.com/capitalone/DataProfiler",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "DataProfiler stats + PII labels would lift long-tail columns \u2014 candidate for Stage 2.5?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_cartography",
+      "name": "lyft/cartography",
+      "category": "github_tool",
+      "module": "dspm/access",
+      "license": "Apache-2.0",
+      "url": "https://github.com/lyft/cartography",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "No asset/identity graph \u2014 Steampipe edges are flat. Cartography Neo4j would close the Cyera identity-gap.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_scoutsuite",
+      "name": "nccgroup/ScoutSuite",
+      "category": "github_tool",
+      "module": "dspm/exposure",
+      "license": "GPL-2.0",
+      "url": "https://github.com/nccgroup/ScoutSuite",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "GPL-2.0 \u2014 CLI subprocess only, same AGPL discipline as Steampipe?",
+      "status": "missing"
+    },
+    {
+      "id": "gh_checkov",
+      "name": "bridgecrewio/checkov",
+      "category": "github_tool",
+      "module": "dspm/encryption_check",
+      "license": "Apache-2.0",
+      "url": "https://github.com/bridgecrewio/checkov",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Trivy covers IaC; Checkov CIS policies overlap \u2014 parse Checkov JSON as a second exposure feed?",
+      "status": "partial"
+    },
+    {
+      "id": "gh_gitleaks",
+      "name": "gitleaks/gitleaks",
+      "category": "github_tool",
+      "module": "dspm/encryption_check",
+      "license": "MIT",
+      "url": "https://github.com/gitleaks/gitleaks",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Secret scanning is Trivy-only. Gitleaks CLI would catch git-history secrets Trivy fs misses.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_cloudsplaining",
+      "name": "salesforce/cloudsplaining",
+      "category": "github_tool",
+      "module": "dspm/access",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/salesforce/cloudsplaining",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Over-privileged IAM scoring is a stub. Cloudsplaining HTML/JSON is the OSS IAM Privilege Escalation map.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_pmapper",
+      "name": "nccgroup/PMapper",
+      "category": "github_tool",
+      "module": "dspm/access",
+      "license": "MIT",
+      "url": "https://github.com/nccgroup/PMapper",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "Principal graph for AWS IAM \u2014 complements Steampipe; still CLI-only.",
+      "status": "missing"
+    },
+    {
+      "id": "gh_osv_scanner",
+      "name": "google/osv-scanner",
+      "category": "github_tool",
+      "module": "dspm/audit",
+      "license": "Apache-2.0",
+      "url": "https://github.com/google/osv-scanner",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "pip-audit is in dspm-ci; OSV-Scanner SARIF would cover Go CLIs (Trivy, CloudQuery) pip-audit cannot see.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_syft",
+      "name": "anchore/syft",
+      "category": "github_tool",
+      "module": "dspm/audit",
+      "license": "Apache-2.0",
+      "url": "https://github.com/anchore/syft",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "No SBOM of the DSPM image itself \u2014 Syft CycloneDX is free and matches the tape-to-cloud loop.",
+      "status": "partial"
+    },
+    {
+      "id": "gh_postgres_anonymizer",
+      "name": "dalibo/postgresql_anonymizer",
+      "category": "github_tool",
+      "module": "dspm/remediation",
+      "license": "PostgreSQL",
+      "url": "https://gitlab.com/dalibo/postgresql_anonymizer",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "Masking is Presidio-anonymizer stub. postgres_anonymizer is the on-prem dump-masking engine AU SMBs actually run.",
+      "status": "missing"
+    },
+    {
+      "id": "gh_great_expectations",
+      "name": "great-expectations/great_expectations",
+      "category": "github_tool",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://github.com/great-expectations/great_expectations",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "Expect suites on classified columns would catch schema drift that Presidio regex misses.",
+      "status": "missing"
+    },
+    {
+      "id": "tool_osv_dev",
+      "name": "OSV.dev API",
+      "category": "other_tool",
+      "module": "dspm/audit",
+      "license": "public",
+      "url": "https://api.osv.dev/v1/query",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Key-less CVE query for Trivy/CloudQuery/Steampipe versions \u2014 not yet called from dspm audit.",
+      "status": "missing"
+    },
+    {
+      "id": "tool_mend_bolt",
+      "name": "Mend Bolt for GitHub",
+      "category": "other_tool",
+      "module": "dspm/audit",
+      "license": "free-app",
+      "url": "https://github.com/marketplace/whitesource-bolt",
+      "integrated_in": ".github/dependabot.yml",
+      "impact": "medium",
+      "challenge": "Dependabot is wired; Mend Bolt GitHub App still needs operator install (5 scans/day, $0).",
+      "status": "integrated"
+    },
+    {
+      "id": "tool_renovate",
+      "name": "Renovate",
+      "category": "other_tool",
+      "module": "dspm/loop",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/renovatebot/renovate",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "Dependabot only. Renovate groups SHA-pins for Actions \u2014 self-host if Mend-hosted concurrency hits the free cap.",
+      "status": "missing"
+    },
+    {
+      "id": "tool_zizmor",
+      "name": "zizmor",
+      "category": "other_tool",
+      "module": "dspm/loop",
+      "license": "Apache-2.0",
+      "url": "https://github.com/zizmorcore/zizmor",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "dspm-auto-approve uses pull_request_target. zizmor would fail the workflow until persist-credentials is locked down.",
+      "status": "missing"
+    },
+    {
+      "id": "tool_actionlint",
+      "name": "actionlint",
+      "category": "other_tool",
+      "module": "dspm/loop",
+      "license": "MIT",
+      "url": "https://github.com/rhysd/actionlint",
+      "integrated_in": ".github/workflows/lint-security.yml",
+      "impact": "medium",
+      "challenge": "Existing lint-security job covers workflows; confirm new dspm-*.yml stay actionlint-clean.",
+      "status": "integrated"
+    },
+    {
+      "id": "lib_presidio",
+      "name": "presidio-analyzer",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "MIT",
+      "url": "https://pypi.org/project/presidio-analyzer/",
+      "pypi": "presidio-analyzer",
+      "integrated_in": "dspm/classification/recognizers.py",
+      "impact": "critical",
+      "challenge": "Optional extra \u2014 default path is stdlib recognizers. Should CI install the pii extra on a weekly job?",
+      "status": "partial"
+    },
+    {
+      "id": "lib_duckdb",
+      "name": "duckdb",
+      "category": "python_lib",
+      "module": "dspm/risk",
+      "license": "MIT",
+      "url": "https://pypi.org/project/duckdb/",
+      "pypi": "duckdb",
+      "integrated_in": "dspm/risk/service.py",
+      "impact": "high",
+      "challenge": "SQL formula is in Python; DuckDB path is optional. Install duckdb in dspm-ci to lock parity?",
+      "status": "partial"
+    },
+    {
+      "id": "lib_piicatcher",
+      "name": "piicatcher",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/piicatcher/",
+      "pypi": "piicatcher",
+      "integrated_in": "dspm/classification/column_heuristics.py",
+      "impact": "high",
+      "challenge": "Heuristics ported; full piicatcher catalog detector still missing.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_dataprofiler",
+      "name": "DataProfiler",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/DataProfiler/",
+      "pypi": "DataProfiler",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Capital One DataProfiler is Apache-2.0 and does column stats + PII \u2014 strongest OSS lift vs Cyera long-tail.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_scrubadub",
+      "name": "scrubadub",
+      "category": "python_lib",
+      "module": "dspm/classification",
+      "license": "MIT",
+      "url": "https://pypi.org/project/scrubadub/",
+      "pypi": "scrubadub",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "Filth detectors overlap Presidio. Use as a second voter, not a replacement.",
+      "status": "missing"
+    },
+    {
+      "id": "lib_detect_secrets",
+      "name": "detect-secrets",
+      "category": "python_lib",
+      "module": "dspm/encryption_check",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/detect-secrets/",
+      "pypi": "detect-secrets",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Yelp detect-secrets is Python-native (no Go CLI). Baseline file would catch AKIA in customer dumps.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_policyuniverse",
+      "name": "policyuniverse",
+      "category": "python_lib",
+      "module": "dspm/access",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/policyuniverse/",
+      "pypi": "policyuniverse",
+      "integrated_in": null,
+      "impact": "high",
+      "challenge": "Salesforce PolicyUniverse expands IAM documents to actions \u2014 the missing piece of findings_access.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_sqlglot",
+      "name": "sqlglot",
+      "category": "python_lib",
+      "module": "dspm/discovery",
+      "license": "MIT",
+      "url": "https://pypi.org/project/sqlglot/",
+      "pypi": "sqlglot",
+      "integrated_in": null,
+      "impact": "medium",
+      "challenge": "Parse warehouse SQL for CREATE TABLE + PII column names without a live DB.",
+      "status": "missing"
+    },
+    {
+      "id": "lib_chromadb",
+      "name": "chromadb",
+      "category": "python_lib",
+      "module": "dspm/ai_security",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/chromadb/",
+      "pypi": "chromadb",
+      "integrated_in": "dspm/ai_security/service.py",
+      "impact": "medium",
+      "challenge": "AI scanner is JSONL-only. chromadb get() export would make scan-vectorstore real.",
+      "status": "partial"
+    },
+    {
+      "id": "lib_pip_audit",
+      "name": "pip-audit",
+      "category": "python_lib",
+      "module": "dspm/audit",
+      "license": "Apache-2.0",
+      "url": "https://pypi.org/project/pip-audit/",
+      "pypi": "pip-audit",
+      "integrated_in": ".github/workflows/dspm-ci.yml",
+      "impact": "high",
+      "challenge": "dspm-ci runs pip-audit; does it fail the job on --strict for optional extras we do not install?",
+      "status": "integrated"
+    }
+  ]
+}
