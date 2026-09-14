@@ -13,7 +13,7 @@ analytics = ["duckdb==1.5.5", "pyarrow>=17.0.0"]
 cloud = [
   "boto3>=1.38.25",
   "azure-mgmt-resource==26.0.0",
-  "azure-mgmt-costmanagement==4.0.1",
+  "azure-mgmt-costmanagement==5.0.0",
   "google-cloud-resource-manager==1.18.0",
   "google-cloud-billing==1.15.0",
   "httpx==0.28.1",
