@@ -17,7 +17,7 @@ cloud = [
   "google-cloud-resource-manager==1.14.0",
   "google-cloud-billing==1.15.0",
   "httpx==0.28.1",
-  "typer==0.16.0",
+  "typer==0.27.2",
   "feedparser==6.0.11",
   "rich==14.0.0",
   "jinja2==3.1.5",
