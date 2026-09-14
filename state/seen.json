@@ -1,13 +1,331 @@
 {
   "items": {
+    "04a2a6cec371ae299e19e4f9b1065f431ef9ce0d31ab14b8b75fde0529a4af30": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.5",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.5",
+      "verdict": "discover"
+    },
+    "0abd000206056b2a442b962c229b86cf0bfe0a1018f005bc0288368d8fe53ab2": {
+      "source": "sspm",
+      "title": "Patch Tuesday Megathread - (September 08, 2026)",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wap96b/patch_tuesday_megathread_september_08_2026/",
+      "verdict": "discover"
+    },
+    "2407c8e7280c71fb5e25602fe63c17a7a16d78487ba318cf9559b89eef7d92da": {
+      "source": "sspm",
+      "title": "printing problem (Remote Site Printing Problem)",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wf4i7y/printing_problem_remote_site_printing_problem/",
+      "verdict": "discover"
+    },
+    "27ce64beaea5a6c14dcc6ee642753ae2280f7328894f4ec5386abfef578078a2": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.3",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.3",
+      "verdict": "discover"
+    },
+    "39ae5df72e8cc7c9ae01e8645a8af6d560c9ddd27c13b465914160635b115441": {
+      "source": "sspm",
+      "title": "Seeking recommendations for a low-cost conference room camera and microphone setup",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wf727d/seeking_recommendations_for_a_lowcost_conference/",
+      "verdict": "discover"
+    },
+    "404f60fb955f0d8c0d33fdd0f217219e554f701f5cb7674cca5741a99e22631f": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.6",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.6",
+      "verdict": "discover"
+    },
+    "41d206fddb40937477ad48df08bf75889a7e8c0cc9ee1e051f405d576bfea3bb": {
+      "source": "sspm",
+      "title": "v14.0.0-pre.1",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-pre.1",
+      "verdict": "discover"
+    },
+    "42bb619a9edeec1b2849923e5ec65478f5e09b569119e1b51e03929fec78b7c4": {
+      "source": "sspm",
+      "title": "Question about a specific SysAdmin process and scaling the corporate ladder from an L1",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wff6xy/question_about_a_specific_sysadmin_process_and/",
+      "verdict": "discover"
+    },
+    "45a3c5575a7399f11449e9531bf5ee721420f63fa63491d0800fc21bf14bc924": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.3",
+      "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.3",
+      "verdict": "discover"
+    },
+    "46ef230083f52af6f48282a9f2a3ca222772dae79badb880172acdbc00495d05": {
+      "source": "sspm",
+      "title": "First day at my new job tomorrow",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfkp8v/first_day_at_my_new_job_tomorrow/",
+      "verdict": "discover"
+    },
+    "4abdedc0d451e1fb9c591dafb599567a4b7ab58f997db1f490f7c746aee8fd7c": {
+      "source": "sspm",
+      "title": "Where can I rent a dedicated server with 64 cores \u00d7 2 CPUs or 128 cores for a few days?",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfmjmy/where_can_i_rent_a_dedicated_server_with_64_cores/",
+      "verdict": "discover"
+    },
+    "50144490e81097a4bb4f4f69706797eb70de81b815b85d895ba4263b7352c14f": {
+      "source": "sspm",
+      "title": "Hard lesson learned: what happens when patch automation runs without proper scoping",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfhrc6/hard_lesson_learned_what_happens_when_patch/",
+      "verdict": "discover"
+    },
+    "597990926e9149e3d010938127418b636a80a10d983c891d625aa19e4c121c58": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.4",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.4",
+      "verdict": "discover"
+    },
+    "5d737e36ad0d11c3081236b2a35005e2d5506d4e9e98c3cdee279567ce1b1573": {
+      "source": "sspm",
+      "title": "v3.42.0",
+      "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.42.0",
+      "verdict": "discover"
+    },
+    "5e923a2201f066c5255280687aea426b4c90eb6c43b281d14851e8939219ec2c": {
+      "source": "sspm",
+      "title": "v3.44.0",
+      "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.44.0",
+      "verdict": "discover"
+    },
+    "6058d08637f13001363e25d33ac66fb2b865047bd1ee9e4a6fee20b11b716cf4": {
+      "source": "sspm",
+      "title": "v13.38.0",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v13.38.0",
+      "verdict": "discover"
+    },
+    "674dd1e08fdddeeedae7729d9b0e324ae4d27c66f94ec5e7a145bacbdbf708c9": {
+      "source": "sspm",
+      "title": "Question For External IT People",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfblox/question_for_external_it_people/",
+      "verdict": "discover"
+    },
+    "6d98ef628b2867762d9876eb476f1c0eb1e46611710010df9ee434ec786f333a": {
+      "source": "sspm",
+      "title": "DuckDB v1.5.3 Bugfix Release",
+      "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.3",
+      "verdict": "discover"
+    },
     "6e479d7653f7d33aa6079da4641e5427b9bb998bbdb95399735868f2ff8ca2fb": {
       "source": "sspm",
       "title": "Mondoo cnspec 13.37.0 SSPM policy pack for Microsoft 365 and Google Workspace",
       "url": "https://github.com/mondoohq/cnspec/releases/tag/v13.37.0"
     },
+    "6f89d0e77dedf372e8b5f0357105b7a0e03e5507554964bde674a6401b3ca5f9": {
+      "source": "sspm",
+      "title": "Release 2.2.364",
+      "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.364",
+      "verdict": "discover"
+    },
+    "70ced5cf8a5960a67085077cef420ff178f65c748c5a63e623bd8a93ed23ceee": {
+      "source": "sspm",
+      "title": "For those without domain controllers: what do you do for internal DNS?",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1weqxgc/for_those_without_domain_controllers_what_do_you/",
+      "verdict": "discover"
+    },
     "71425e9b65a72ca0ded985dd68e826dc701f555c236bfb03a3bffe472606b541": {
       "title": "Presidio 2.2.360 released (data-privacy-stack)",
       "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.360",
+      "verdict": "discover"
+    },
+    "78878ed592111af9908f1c1e3dd3f22f872c2867f146b3cbfc88ededd10312e6": {
+      "source": "sspm",
+      "title": "DuckDB v1.5.5 Bugfix Release",
+      "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.5",
+      "verdict": "discover"
+    },
+    "7bc437ddcc83939792e746c2f9bcafa7fc651c390bf33610d4ed46dda2798c58": {
+      "source": "sspm",
+      "title": "Looking for HPE 3PAR 8400 OS / Recovery Media",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wf4kmv/looking_for_hpe_3par_8400_os_recovery_media/",
+      "verdict": "discover"
+    },
+    "7d8207ecd4565830c3c3bca501c239d5a42ac291a8199c277c46b15c416caa68": {
+      "source": "sspm",
+      "title": "v13.38.1",
+      "url": "https://github.com/mondoohq/mql/releases/tag/v13.38.1",
+      "verdict": "discover"
+    },
+    "7e9c7b22969de35a6a1e7e103c979ab3267ed0add2cb128a84cc562de51858e6": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.6",
+      "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.6",
+      "verdict": "discover"
+    },
+    "84826a2d2e07e42a50d94401c20e1a9350c8aa4d3c01f9cb50ec899cacb9da55": {
+      "source": "sspm",
+      "title": "Solo dev looking for the most boring, painful B2B workflows that companies still solve with Excel and emails",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfhfbo/solo_dev_looking_for_the_most_boring_painful_b2b/",
+      "verdict": "discover"
+    },
+    "85262727c94431050fa01d77a5bff1ed72a7bea0aa59041e82036e5522fc2c51": {
+      "source": "sspm",
+      "title": "Update 2: Hospitality Guy in IT",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1weju1i/update_2_hospitality_guy_in_it/",
+      "verdict": "discover"
+    },
+    "8b4b65e7936b69259942479574ca22142c4d08c17caeb6d633045ff28fa5581d": {
+      "source": "sspm",
+      "title": "v2.9.1",
+      "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.9.1",
+      "verdict": "discover"
+    },
+    "8f4678a505d6f9de986dcefa737de0c8561771bef8eb239a1e3392d925e77621": {
+      "source": "sspm",
+      "title": "Can't seem to figure out missing glue record - dcdiag /test:dns",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfja51/cant_seem_to_figure_out_missing_glue_record/",
+      "verdict": "discover"
+    },
+    "9570c2445260c8f1bbf810efc4e3d99641633f9522f3d4c9cb57b9534726605b": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.4",
+      "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.4",
+      "verdict": "discover"
+    },
+    "98933660ff13882649efe07c3a6d90b51ddb962e7eb549e57351743c6baccd46": {
+      "source": "sspm",
+      "title": "v3.43.0",
+      "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.43.0",
+      "verdict": "discover"
+    },
+    "a123d6f8fd7f051b16dcf3fc54f6d7fc611a28ba918fd232bc9215da75ea2f83": {
+      "source": "sspm",
+      "title": "v2.9.0",
+      "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.9.0",
+      "verdict": "discover"
+    },
+    "a39656490331e4b72c55a8c5254632c23825ab2549545c953588880dfd63ec88": {
+      "source": "sspm",
+      "title": "v2.8.1",
+      "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.8.1",
+      "verdict": "discover"
+    },
+    "b19cbda88bc05420e3b2218ebf2b040583cf34c2e7c8a9d369509b570667a38c": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.1",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.1",
+      "verdict": "discover"
+    },
+    "b2ac3c2433bace2124c2d4b24a122dbda362b5c089bb3e4b10d804597bb14651": {
+      "source": "sspm",
+      "title": "Need Advice",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfjewe/need_advice/",
+      "verdict": "discover"
+    },
+    "b59a141a37cd9bdd5e24813b441a784d269f7101e56cecd1081d497dd5ed88ef": {
+      "source": "sspm",
+      "title": "Release 2.2.361",
+      "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.361",
+      "verdict": "discover"
+    },
+    "b8b4f40a5d884d8e94ea7c148b6e594ba2b0f6faa7e97ff3ce3ebf85ac134b82": {
+      "source": "sspm",
+      "title": "DuckDB v1.4.5 Bugfix Release",
+      "url": "https://github.com/duckdb/duckdb/releases/tag/v1.4.5",
+      "verdict": "discover"
+    },
+    "ba8207c1398c86b7cd3d0c62964c77a52befe93119c5ade3aa26b9f84904188a": {
+      "source": "sspm",
+      "title": "Organizational Failure",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wegty4/organizational_failure/",
+      "verdict": "discover"
+    },
+    "bbba42e82f23b930fe2977a5216f02df654713cdc82595b6fbe5fd2e224989c2": {
+      "source": "sspm",
+      "title": "v3.41.0",
+      "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.41.0",
+      "verdict": "discover"
+    },
+    "c0026a742d241ee46460c22b37c9b951375870953a39a64183a1ca7793f4d953": {
+      "source": "sspm",
+      "title": "Release 2.2.363",
+      "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.363",
+      "verdict": "discover"
+    },
+    "c481bbb8aee14e77d0b61c7733ad854cc1cc507496f42b064327d87a63292a14": {
+      "source": "sspm",
+      "title": "2.10.0",
+      "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.10.0",
+      "verdict": "discover"
+    },
+    "c8411ee39f3d1e7c8818d9c8ea162f328fd157ab18bac1a6bb3c1860b5d7e2bd": {
+      "source": "sspm",
+      "title": "DuckDB v1.5.2 Bugfix Release",
+      "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.2",
+      "verdict": "discover"
+    },
+    "ca80b5fc66ee2d022fa158a5107471c764e57e1263ab03d02e949552617053b8": {
+      "source": "sspm",
+      "title": "v13.38.1",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v13.38.1",
+      "verdict": "discover"
+    },
+    "cc21a4eb250ceec816ed3bdbffb32f4d572fe48da766d90e78dad7fe1d43f271": {
+      "source": "sspm",
+      "title": "After 14 years in IT, I feel like I can\u2019t keep up anymore",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wf6iv2/after_14_years_in_it_i_feel_like_i_cant_keep_up/",
+      "verdict": "discover"
+    },
+    "ce0403e5e33a28d7534421f614526aff78f73b8d14e455eb42fad11b049f7681": {
+      "source": "sspm",
+      "title": "DuckDB v1.5.4 Bugfix Release",
+      "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.4",
+      "verdict": "discover"
+    },
+    "ce7a47d916974193a1894c535ee3ad4fb096b09021d6abe6d5516c8ca2a33649": {
+      "source": "sspm",
+      "title": "Release 2.2.362",
+      "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.362",
+      "verdict": "discover"
+    },
+    "d254845ddc5bd8eec2d42e80d2642174ed2af6c9498ecd5660da9f8cbb08f57e": {
+      "source": "sspm",
+      "title": "Weekly 'I made a useful thing' Thread - September 11, 2026",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wd9sc1/weekly_i_made_a_useful_thing_thread_september_11/",
+      "verdict": "discover"
+    },
+    "d8a61f26ca381012ee71ff68e8f8f75cb6b193d8ee72cce20fe63acad0f1eb2a": {
+      "source": "sspm",
+      "title": "OpManager NPM vs NCM for identifying outdated IOS and End-of-Support",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wf1e4e/opmanager_npm_vs_ncm_for_identifying_outdated_ios/",
+      "verdict": "discover"
+    },
+    "dbb27eb2ec7828b2e86c2e7f025f6bdc4989ab631c415d28e47b916007a647cf": {
+      "source": "sspm",
+      "title": "v3.44.1",
+      "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.44.1",
+      "verdict": "discover"
+    },
+    "e0ae5d3002157018aab2e7b69aa7004746d3e68c7e99f49c7d661689d45205f3": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.2",
+      "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.2",
+      "verdict": "discover"
+    },
+    "e43f37da7bc8f55db8bc66ed027d5a90587d493d05e8455f72ba6a0fbe667c9c": {
+      "source": "sspm",
+      "title": "How do you manage DCIM/IPAM as code?",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wfi0ya/how_do_you_manage_dcimipam_as_code/",
+      "verdict": "discover"
+    },
+    "e6e9338823cd4f3ad0ed452fca4f270987d623e964abdedb2271c76bf18732e4": {
+      "source": "sspm",
+      "title": "v14.0.0-rc.5",
+      "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.5",
+      "verdict": "discover"
+    },
+    "ecab478a3540d8c903a5f4f9fa0bac5e65ebabaf17282f260be9b10c49e268a0": {
+      "source": "sspm",
+      "title": "v2.8.0",
+      "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.8.0",
+      "verdict": "discover"
+    },
+    "efac576681da6aa4c1ec412dd160f880e7fc06dc281054f68496ea68668ee6e9": {
+      "source": "sspm",
+      "title": "Christmas came(kinda) early.",
+      "url": "https://www.reddit.com/r/sysadmin/comments/1wefy19/christmas_camekinda_early/",
       "verdict": "discover"
     }
   }

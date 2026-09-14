@@ -1,1 +1,1096 @@
-[]
+[
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Weekly 'I made a useful thing' Thread - September 11, 2026",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wd9sc1/weekly_i_made_a_useful_thing_thread_september_11/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>There is a great deal of user-generated content out there, from scripts and software to tutorials and videos, but we've generally tried to keep that off of the front page due to the volume and as a result of community feedback. There's also a great deal of content out there that violates our advertising/promotion rule, from scripts and software to tutorials and videos.</p> <p>We have received a number of requests for exemptions to the rule, and rather than allowing the front page to get consumed, we thought we'd try a weekly thread that allows for that kind of",
+    "published": "2026-09-11T08:00:31+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "d254845ddc5bd8eec2d42e80d2642174ed2af6c9498ecd5660da9f8cbb08f57e",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Patch Tuesday Megathread - (September 08, 2026)",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wap96b/patch_tuesday_megathread_september_08_2026/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hello <a href=\"https://www.reddit.com/r/sysadmin\">r/sysadmin</a>, I'm <a href=\"/u/AutoModerator\">u/AutoModerator</a>, and welcome to this month's <strong>Patch Megathread!</strong></p> <p>This is the (<em>mostly</em>) safe location to talk about the latest patches, updates, and releases. We put this thread into place to help gather all the information about this month's updates: What is fixed, what broke, what got released and should have been caught in QA, etc. We do this both to keep clutter out of the subreddit, and provide you, the dear reader, a singular ",
+    "published": "2026-09-08T14:01:18+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "0abd000206056b2a442b962c229b86cf0bfe0a1018f005bc0288368d8fe53ab2",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "After 14 years in IT, I feel like I can\u2019t keep up anymore",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wf6iv2/after_14_years_in_it_i_feel_like_i_cant_keep_up/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>I've been working in IT for around 14 years, and I think this is the first time in my career where I genuinely don't know what comes next.</p> <p>The company I was working for shut down at the end of last year. Normally, my immediate reaction would have been to start applying everywhere and focus completely on finding the next job.</p> <p>But life had other plans.</p> <p>Not long after that, both of my parents started having serious health problems. My father went through heart procedures, and my mother's condition also became worse. I made the decision to put",
+    "published": "2026-09-13T12:35:42+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "cc21a4eb250ceec816ed3bdbffb32f4d572fe48da766d90e78dad7fe1d43f271",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Hard lesson learned: what happens when patch automation runs without proper scoping",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfhrc6/hard_lesson_learned_what_happens_when_patch/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>I work at a small MSP and we use an all-in-one RMM platform for monitoring, ticketing, automation, and patching. I was really proud of a new remote patching policy I built to finally clean up our Windows endpoints without babysitting every job.</p> <p>For context, I intended to target only our internal test group and one chill client who agreed to be guinea pigs. Somewhere in the policy cloning and scoping process, I accidentally selected the global folder and enabled auto-approve and auto-deploy. No maintenance window, no stagger, just push when ready. It ran",
+    "published": "2026-09-13T19:50:33+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "50144490e81097a4bb4f4f69706797eb70de81b815b85d895ba4263b7352c14f",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "First day at my new job tomorrow",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfkp8v/first_day_at_my_new_job_tomorrow/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Tomorrow, I kick off my new job in New York City, and honestly, I\u2019m feeling pretty nervous. I can\u2019t shake the feeling that maybe I should have stuck with my fully remote Desktop Architect role. With over 15 years in IT, I know the ropes inside out, so why am I feeling this way?</p> <p>My IT journey kicked off in 2012 as a help desk technician. I climbed the ladder, eventually becoming a senior desktop engineer, then a desktop architect, and finally, a senior desktop architect. I held that title for over ten years.</p> <p>When a big chunk of the IT department w",
+    "published": "2026-09-13T21:45:23+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "46ef230083f52af6f48282a9f2a3ca222772dae79badb880172acdbc00495d05",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Need Advice",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfjewe/need_advice/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hey all, have a stressful situation that may occur tomorrow.</p> <p>New Sys admin for a company of around 200 people, only onsite IT person. We have an external consultant that does most of the network administration and has been doing so for a few years. I have about 3 years of desktop support experience, more experience with endpoints but my networking knowledge is a bit of a gap.</p> <p>On my third week we did a switch refresh from Cisco to Aruba that was planned and paid for way before I started. Ended up being a shitshow, I did the racking and endpoint te",
+    "published": "2026-09-13T20:53:49+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "b2ac3c2433bace2124c2d4b24a122dbda362b5c089bb3e4b10d804597bb14651",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Question about a specific SysAdmin process and scaling the corporate ladder from an L1",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wff6xy/question_about_a_specific_sysadmin_process_and/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hey everyone, I hope this is okay to post. Looking for some advice on a situation at work and how to proceed. </p> <p>I\u2019m currently a Level 1 Help Desk technician at a corporate company and have been for a little over 3 years. Lately, I\u2019ve been trying to branch out a bit and show my worth and ability to higher-ups. Recently, we got a new director of IT and she's been pretty open to me wanting to move out of help desk but made it clear that due to budget constraints, the chances of it happening are pretty slim until next year. She recently asked me to investiga",
+    "published": "2026-09-13T18:15:44+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "42bb619a9edeec1b2849923e5ec65478f5e09b569119e1b51e03929fec78b7c4",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Looking for HPE 3PAR 8400 OS / Recovery Media",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wf4kmv/looking_for_hpe_3par_8400_os_recovery_media/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hi everyone,</p> <p>I recently purchased a used HPE 3PAR StoreServ 8400, but unfortunately the M.2 boot drives were removed from all of the controller nodes before I received it.</p> <p>The hardware itself appears complete, but without the boot drives/OS I can't bring the system back online.</p> <p>Does anyone here have experience recovering a 3PAR 8400 or know how I can legitimately obtain the correct 3PAR OS/recovery media?</p> <p>I\u2019ve already contacted a few vendors, but finding the recovery media for these older systems has been surprisingly difficult.</p>",
+    "published": "2026-09-13T10:57:46+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "7bc437ddcc83939792e746c2f9bcafa7fc651c390bf33610d4ed46dda2798c58",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "How do you manage DCIM/IPAM as code?",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfi0ya/how_do_you_manage_dcimipam_as_code/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>How do you manage DCIM/IPAM data in an IaC/GitOps-style workflow?</p> <p>I've looked into NetBox/Nautobot with Terraform/OpenTofu and Git as the source of truth. Do you keep prefixes, VLANs, IPs, devices, etc. declaratively in Git, or treat the DCIM/IPAM system itself as the source of truth? How do you use this information (wherever stored) later?</p> <p>I'm especially interested in handling manual changes and drift, like when I introduce a new machine or change IP of existing machine - what happens next.</p> </div><!-- SC_ON --> &#32; submitted by &#32; <a hr",
+    "published": "2026-09-13T20:00:38+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "e43f37da7bc8f55db8bc66ed027d5a90587d493d05e8455f72ba6a0fbe667c9c",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Can't seem to figure out missing glue record - dcdiag /test:dns",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfja51/cant_seem_to_figure_out_missing_glue_record/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hello,</p> <p>I'm in the process of decommissioning an old Windows Domain Controller.</p> <p>On the new server which is at <a href=\"http://192.168.214.15\">192.168.214.15</a> I run dcdiag /test:dns</p> <p>I get the following</p> <p>TEST: Delegations (Del)</p> <p>Delegation information for the zone: ourdomain.lan.</p> <p>Delegated domain name: _msdcs.ourdomain.lan.</p> <p>Error: DNS server: 192.168.214.15. IP:&lt;Unavailable&gt;</p> <p>[Missing glue A record]</p> <p>[Error details: 9714 (Type: Win32 - Description: DNS name does not exist.)]</p> <p>I substituted ",
+    "published": "2026-09-13T20:48:30+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "8f4678a505d6f9de986dcefa737de0c8561771bef8eb239a1e3392d925e77621",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "For those without domain controllers: what do you do for internal DNS?",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1weqxgc/for_those_without_domain_controllers_what_do_you/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>These days, we don't have domain controllers because everything is managed with Entra/Intune, Arc, etc.</p> <p>We have external, hosted DNS that serves our public DNS records. It works fine.</p> <p>But we still have a need for internal DNS because we have a lot of on-prem stuff that may never go away, and the domain controllers were also serving as internal DNS servers. So right now, we use BIND9 on a Linux virtual machine as internal DNS. I'd love for BIND9 to go away, too.</p> <p>Are there any better (and cheap) solutions for this that I haven't thought of?<",
+    "published": "2026-09-12T22:58:36+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "70ced5cf8a5960a67085077cef420ff178f65c748c5a63e623bd8a93ed23ceee",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Question For External IT People",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfblox/question_for_external_it_people/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>I used to work for a CPA firm that had an internal IT department and I pretty much had free reign of downloading stuff like logitech software for my keyboard and mouse.</p> <p>Recently I moved to a smaller firm that has an External IT company that takes care of stuff.</p> <p>I now have to wait to update software, download things like Adobe PDF (they forgot to load it on my computer), my mouse and elgato software, etc. It gets frustrating on weekends when I am working and something needs an update to work and I am stuck. Is this a normal level of how things wor",
+    "published": "2026-09-13T16:01:54+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "674dd1e08fdddeeedae7729d9b0e324ae4d27c66f94ec5e7a145bacbdbf708c9",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Seeking recommendations for a low-cost conference room camera and microphone setup",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wf727d/seeking_recommendations_for_a_lowcost_conference/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hello everyone,</p> <p>Do you have a suggestion or experience what camera and microphone setup for conference/meeting room? </p> <p>For context, management does not want to spend large amount of money, because we are on tight budget right now given the situation in our place (Middle East). We have a meeting room that has a Samsung 98 inch smart TV. The room dimension is 7x5 meters. </p> <p>During meetings, we use long HDMI cable connected from TV to laptop. We use the speaker of the TV for the audio output, while we use cheap microphone for input that is conne",
+    "published": "2026-09-13T13:00:15+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "39ae5df72e8cc7c9ae01e8645a8af6d560c9ddd27c13b465914160635b115441",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Organizational Failure",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wegty4/organizational_failure/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Came back from a 10 day pto and the VP (my direct boss) wanted to do his weekly one on one meeting. We are a team of 4 (myself Sr. Infra Engineer and 3 mid level security guys). He wanted to state how we need to have more crosstraining in particular with infra side of things as he stated &quot;we are dead in the water&quot; when you go out on pto.</p> <p>He mentioned there will be no additional headcount added in Infra and will have to make do with what we have internally plus the msp firm</p> <p>I for the past couple of years both verbally and via email state",
+    "published": "2026-09-12T16:20:00+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "ba8207c1398c86b7cd3d0c62964c77a52befe93119c5ade3aa26b9f84904188a",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "printing problem (Remote Site Printing Problem)",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wf4i7y/printing_problem_remote_site_printing_problem/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>hi gus i have this problem</p> <p>We have an existing company network and a central system/server used by the organization. There is also a remote site located a significant distance away from the main network, making it impractical to run a physical network cable between the two locations.</p> <p>To connect the remote site to the main network, two wireless antennas are being used to establish a network connection between the remote location and the main site.</p> <p>The computers at the remote site receive IP addresses and have network connectivity. However, ",
+    "published": "2026-09-13T10:54:01+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "2407c8e7280c71fb5e25602fe63c17a7a16d78487ba318cf9559b89eef7d92da",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "OpManager NPM vs NCM for identifying outdated IOS and End-of-Support",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wf1e4e/opmanager_npm_vs_ncm_for_identifying_outdated_ios/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>We\u2019re looking at using ManageEngine OpManager to manage and monitor our Cisco switch fabric.</p> <p>One of our requirements is to identify:</p> <ul> <li>Switches running outdated IOS versions</li> <li>IOS versions that are approaching or past End of Support (EoS)</li> <li>Devices that need IOS upgrades</li> </ul> <p>Can OpManager <strong>NPM</strong> handle this, or would we need <strong>NCM</strong> for these features?</p> <p>If anyone is using OpManager for Cisco IOS lifecycle/version management, I\u2019d appreciate some real-world feedback on which module you us",
+    "published": "2026-09-13T07:51:26+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "d8a61f26ca381012ee71ff68e8f8f75cb6b193d8ee72cce20fe63acad0f1eb2a",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Christmas came(kinda) early.",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wefy19/christmas_camekinda_early/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>So, we were decomming some old ibm flashsystem 5 series arrays. Full of ssds. Plopped one onto a dell server just for fun to see if they could be used and they're just bog standard 512 sector samsung pm1643 drives with a sticker.</p> <p>So now I have bout a hundred 3.84 and 1.92(and some 7.68) drives waiting to go into new servers.</p> <p>Enterprise storage drives are usually locked so I though I'd have to chuck them to the shredder.</p> <p>Just wanted to share.</p> </div><!-- SC_ON --> &#32; submitted by &#32; <a href=\"https://www.reddit.com/user/roiki11\"> /u",
+    "published": "2026-09-12T15:44:51+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "efac576681da6aa4c1ec412dd160f880e7fc06dc281054f68496ea68668ee6e9",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Solo dev looking for the most boring, painful B2B workflows that companies still solve with Excel and emails",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfhfbo/solo_dev_looking_for_the_most_boring_painful_b2b/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>Hi everyone,</p> <p>I\u2019m a software engineer looking to build a micro-SaaS. I have zero interest in &quot;cool AI wrappers&quot; or flashy consumer apps. I want to build something boring that solves a real, painful, and expensive problem for businesses.</p> <p>Since I\u2019m a solo founder building with AI assistance, I have a few strict constraints for the problem I'm looking to solve:</p> <p><strong>Low Risk:</strong> If the software bugs out or the AI makes a mistake, nobody gets sued, loses money, or breaks their core operations. It should assist/analyze/alert, ",
+    "published": "2026-09-13T19:37:50+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "84826a2d2e07e42a50d94401c20e1a9350c8aa4d3c01f9cb50ec899cacb9da55",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Update 2: Hospitality Guy in IT",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1weju1i/update_2_hospitality_guy_in_it/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p><a href=\"https://www.reddit.com/r/sysadmin/comments/1w4jucs/update_hospitality_guy_in_it/\">Link to the previous post</a></p> <p>So, 2 weeks in, the picture is a bit more clearer</p> <p>The old IT guy left, so its just me now </p> <p>I did rattle up a report and sent it to my manager, who said that I'll have to contact with the head office and get their approval as well </p> <p>I contacted the head office, they loped me into something else, a new dealership is opening in the next town to ours and they need me to support it, they're already put in the purchase i",
+    "published": "2026-09-12T18:14:57+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "85262727c94431050fa01d77a5bff1ed72a7bea0aa59041e82036e5522fc2c51",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "r/sysadmin-sspm",
+    "title": "Where can I rent a dedicated server with 64 cores \u00d7 2 CPUs or 128 cores for a few days?",
+    "url": "https://www.reddit.com/r/sysadmin/comments/1wfmjmy/where_can_i_rent_a_dedicated_server_with_64_cores/",
+    "summary": "<!-- SC_OFF --><div class=\"md\"><p>I\u2019ve found some rental options, but they require a minimum rental period of one month, and I haven\u2019t been able to find anything with 64+ cores.</p> <p>I\u2019m looking for a <strong>dedicated server with either 2\u00d764-core CPUs or a single 128-core CPU</strong>, ideally available for just a few days.</p> <p>Any recommendations for providers that offer this kind of hardware with <strong>hourly or daily billing</strong>?</p> </div><!-- SC_ON --> &#32; submitted by &#32; <a href=\"https://www.reddit.com/user/DeVil66688\"> /u/DeVil66688 </a> <br /> <span><a href=\"https://w",
+    "published": "2026-09-13T23:03:43+00:00",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "4abdedc0d451e1fb9c591dafb599567a4b7ab58f997db1f490f7c746aee8fd7c",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-rc.6",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.6",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83d\udc1b aws: stop the static-credentials Terraform check failing providers with no keys by <a class=\"user-mention notranslate\" href=\"https://github.com/tas50\">@tas50</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3666\">#3666</a></li>\n<li>\ud83d\udc1b oci: fix remediation steps that would not close their checks by <a class=\"user-mention notranslate\" href=\"https://github.com/tas50\">@tas50</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3674\">#3674</a></li>\n<li>\ud83d\udc1b kubernetes: fix remediation steps th",
+    "published": "2026-09-13T14:58:51Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "404f60fb955f0d8c0d33fdd0f217219e554f701f5cb7674cca5741a99e22631f",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-rc.5",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.5",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\u2728 ci: report the release outcome to Slack by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3645\">#3645</a></li>\n<li>\ud83d\udc77 ci: do not hand a pre-release the GitHub 'latest' pointer by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3646\">#3646</a></li>\n<li>\ud83e\uddf9 content: fix link rot across every shipped policy by <a cla",
+    "published": "2026-09-13T00:00:50Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "04a2a6cec371ae299e19e4f9b1065f431ef9ce0d31ab14b8b75fde0529a4af30",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-rc.4",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.4",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83e\uddf9 deps: bump mql to v14.0.0-rc.4 by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3644\">#3644</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/mondoohq/cnspec/compare/v14.0.0-rc.3...v14.0.0-rc.4\"><tt>v14.0.0-rc.3...v14.0.0-rc.4</tt></a></p>",
+    "published": "2026-09-12T17:08:29Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "597990926e9149e3d010938127418b636a80a10d983c891d625aa19e4c121c58",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-rc.3",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.3",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83d\udcdd skills: use absolute links so they resolve in an installed plugin by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3612\">#3612</a></li>\n<li>\ud83e\uddf9 skills: bump plugin versions so installed users get the updates by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3613\">#3613</a></li>\n<li>Bump the gomodupdates group w",
+    "published": "2026-09-11T22:06:16Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "27ce64beaea5a6c14dcc6ee642753ae2280f7328894f4ec5386abfef578078a2",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v13.38.1",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v13.38.1",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83e\uddf9 Bump mql to v13.38.1 by @mondoo-mergebot[bot] in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3631\">#3631</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/mondoohq/cnspec/compare/v13.38.0...v13.38.1\"><tt>v13.38.0...v13.38.1</tt></a></p>",
+    "published": "2026-09-08T09:28:00Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "ca80b5fc66ee2d022fa158a5107471c764e57e1263ab03d02e949552617053b8",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v13.38.0",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v13.38.0",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83e\uddf9 Bump mql to v13.38.0 by @mondoo-mergebot[bot] in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3630\">#3630</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/mondoohq/cnspec/compare/v13.37.0...v13.38.0\"><tt>v13.37.0...v13.38.0</tt></a></p>",
+    "published": "2026-09-08T07:55:21Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "6058d08637f13001363e25d33ac66fb2b865047bd1ee9e4a6fee20b11b716cf4",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-rc.2",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.2",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\u2b50 UploadResourcesData: resource recording rides the scan upload only by <a class=\"user-mention notranslate\" href=\"https://github.com/preslavgerchev\">@preslavgerchev</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3574\">#3574</a></li>\n<li>http-security: show the Server header value in the obfuscate-server evidence by <a class=\"user-mention notranslate\" href=\"https://github.com/4ndr3-mondoo\">@4ndr3-mondoo</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3565\">#3565</a></li>\n<li>\ud83d\uded1 rep",
+    "published": "2026-09-05T03:28:00Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "e0ae5d3002157018aab2e7b69aa7004746d3e68c7e99f49c7d661689d45205f3",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-rc.1",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-rc.1",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83d\udc77 ci: route mql bumps when main is on the unversioned module path by <a class=\"user-mention notranslate\" href=\"https://github.com/czunker\">@czunker</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3567\">#3567</a></li>\n<li>\ud83d\udc77 ci: check the bump scripts out beside the workspace, not into it by <a class=\"user-mention notranslate\" href=\"https://github.com/czunker\">@czunker</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3568\">#3568</a></li>\n<li>\ud83e\uddf9 Bump mql to v14.0.0-rc.1 by <a class=\"us",
+    "published": "2026-08-25T12:40:51Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "b19cbda88bc05420e3b2218ebf2b040583cf34c2e7c8a9d369509b570667a38c",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnspec-releases",
+    "title": "v14.0.0-pre.1",
+    "url": "https://github.com/mondoohq/cnspec/releases/tag/v14.0.0-pre.1",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83d\udc1b give every asset its own copy of the policy bundle by <a class=\"user-mention notranslate\" href=\"https://github.com/imilchev\">@imilchev</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3538\">#3538</a></li>\n<li>use latest mql version by <a class=\"user-mention notranslate\" href=\"https://github.com/imilchev\">@imilchev</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/cnspec/pull/3540\">#3540</a></li>\n<li>\u26a1 scan assets in parallel by default, using the provider's declared value by <a class=\"user-men",
+    "published": "2026-08-25T07:28:19Z",
+    "module_hint": "sspm/m365_discovery",
+    "url_sha256": "41d206fddb40937477ad48df08bf75889a7e8c0cc9ee1e051f405d576bfea3bb",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "m365_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnquery-releases",
+    "title": "v14.0.0-rc.6",
+    "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.6",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83d\udc1b k8s: match ALL case-insensitively in dropsAllCapabilities by <a class=\"user-mention notranslate\" href=\"https://github.com/tas50\">@tas50</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10769\">#10769</a></li>\n<li>\u2728 selfupdate: report the updated version to Windows after an in-place swap by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10778\">#10778</a></li>\n<li>\ud83d\udc1b status: always show the update channel",
+    "published": "2026-09-13T14:46:27Z",
+    "module_hint": "sspm/audit",
+    "url_sha256": "7e9c7b22969de35a6a1e7e103c979ab3267ed0add2cb128a84cc562de51858e6",
+    "classification": {
+      "verdict": "discover",
+      "score": 10,
+      "hits": [
+        "sspm",
+        "mondoo"
+      ],
+      "module": "audit",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnquery-releases",
+    "title": "v14.0.0-rc.5",
+    "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.5",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\u2728 ci: report the release outcome to Slack by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10767\">#10767</a></li>\n<li>\ud83d\udc77 ci: escape the tag for both parsers it reaches by <a class=\"user-mention notranslate\" href=\"https://github.com/chris-rock\">@chris-rock</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10768\">#10768</a></li>\n<li>\ud83d\udc1b dispatch cnspec bump on pre-release tags too by <a class=\"user-mention n",
+    "published": "2026-09-12T23:38:20Z",
+    "module_hint": "sspm/audit",
+    "url_sha256": "e6e9338823cd4f3ad0ed452fca4f270987d623e964abdedb2271c76bf18732e4",
+    "classification": {
+      "verdict": "discover",
+      "score": 12,
+      "hits": [
+        "sspm",
+        "cnspec",
+        "mondoo"
+      ],
+      "module": "audit",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnquery-releases",
+    "title": "v14.0.0-rc.4",
+    "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.4",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83d\udc1b os: report services on systemd targets that ship no /sbin/init by <a class=\"user-mention notranslate\" href=\"https://github.com/tas50\">@tas50</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10457\">#10457</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/mondoohq/mql/compare/v14.0.0-rc.3...v14.0.0-rc.4\"><tt>v14.0.0-rc.3...v14.0.0-rc.4</tt></a></p>",
+    "published": "2026-09-12T16:54:05Z",
+    "module_hint": "sspm/audit",
+    "url_sha256": "9570c2445260c8f1bbf810efc4e3d99641633f9522f3d4c9cb57b9534726605b",
+    "classification": {
+      "verdict": "discover",
+      "score": 10,
+      "hits": [
+        "sspm",
+        "mondoo"
+      ],
+      "module": "audit",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnquery-releases",
+    "title": "v14.0.0-rc.3",
+    "url": "https://github.com/mondoohq/mql/releases/tag/v14.0.0-rc.3",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>\ud83c\udf1f ADR-031 Typed Asset Roots by <a class=\"user-mention notranslate\" href=\"https://github.com/arlimus\">@arlimus</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10675\">#10675</a></li>\n<li>\u2728 auto-complete for root-resource (ADR31) by <a class=\"user-mention notranslate\" href=\"https://github.com/arlimus\">@arlimus</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/mondoohq/mql/pull/10676\">#10676</a></li>\n<li>\u2728 root narrowing (ADR-031, rooted resource) by <a class=\"user-mention notranslate\" href=\"https://github.com",
+    "published": "2026-09-11T21:56:29Z",
+    "module_hint": "sspm/audit",
+    "url_sha256": "45a3c5575a7399f11449e9531bf5ee721420f63fa63491d0800fc21bf14bc924",
+    "classification": {
+      "verdict": "discover",
+      "score": 10,
+      "hits": [
+        "sspm",
+        "mondoo"
+      ],
+      "module": "audit",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "cnquery-releases",
+    "title": "v13.38.1",
+    "url": "https://github.com/mondoohq/mql/releases/tag/v13.38.1",
+    "summary": "<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/mondoohq/mql/compare/v13.38.0...v13.38.1\"><tt>v13.38.0...v13.38.1</tt></a></p>",
+    "published": "2026-09-08T08:50:59Z",
+    "module_hint": "sspm/audit",
+    "url_sha256": "7d8207ecd4565830c3c3bca501c239d5a42ac291a8199c277c46b15c416caa68",
+    "classification": {
+      "verdict": "discover",
+      "score": 10,
+      "hits": [
+        "sspm",
+        "mondoo"
+      ],
+      "module": "audit",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "presidio-releases",
+    "title": "Release 2.2.364",
+    "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.364",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>Fix CI and release container publishing by <a class=\"user-mention notranslate\" href=\"https://github.com/SharonHart\">@SharonHart</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/2127\">#2127</a></li>\n<li>docs: show compact mascot on mobile homepage by <a class=\"user-mention notranslate\" href=\"https://github.com/SharonHart\">@SharonHart</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/2130\">#2130</a></li>\n<li>Run documentation release on ubuntu-latest by <a class",
+    "published": "2026-07-22T08:30:12Z",
+    "module_hint": "sspm/report_writer",
+    "url_sha256": "6f89d0e77dedf372e8b5f0357105b7a0e03e5507554964bde674a6401b3ca5f9",
+    "classification": {
+      "verdict": "discover",
+      "score": 9,
+      "hits": [
+        "sspm",
+        "presidio"
+      ],
+      "module": "report_writer",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "presidio-releases",
+    "title": "Release 2.2.363",
+    "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.363",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>feat(analyzer): add German PII recognizers (DE_*) by <a class=\"user-mention notranslate\" href=\"https://github.com/MvdB\">@MvdB</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/1909\">#1909</a></li>\n<li>build(deps): bump azure/login from 2.3.0 to 3.0.0 by <a class=\"user-mention notranslate\" href=\"https://github.com/dependabot\">@dependabot</a>[bot] in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/1915\">#1915</a></li>\n<li>build(deps): bump github/codeql-action from 4.",
+    "published": "2026-06-28T16:21:00Z",
+    "module_hint": "sspm/report_writer",
+    "url_sha256": "c0026a742d241ee46460c22b37c9b951375870953a39a64183a1ca7793f4d953",
+    "classification": {
+      "verdict": "discover",
+      "score": 9,
+      "hits": [
+        "sspm",
+        "presidio"
+      ],
+      "module": "report_writer",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "presidio-releases",
+    "title": "Release 2.2.362",
+    "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.362",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>Feature - GPU Device Control via Environment Variable by <a class=\"user-mention notranslate\" href=\"https://github.com/RonShakutai\">@RonShakutai</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/1844\">#1844</a></li>\n<li>feat: Add HuggingFaceNerRecognizer for direct NER model inference by <a class=\"user-mention notranslate\" href=\"https://github.com/ultramancode\">@ultramancode</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/1834\">#1834</a></li>\n<li>Fix Broken Li",
+    "published": "2026-03-18T05:32:57Z",
+    "module_hint": "sspm/report_writer",
+    "url_sha256": "ce7a47d916974193a1894c535ee3ad4fb096b09021d6abe6d5516c8ca2a33649",
+    "classification": {
+      "verdict": "discover",
+      "score": 9,
+      "hits": [
+        "sspm",
+        "presidio"
+      ],
+      "module": "report_writer",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "presidio-releases",
+    "title": "Release 2.2.361",
+    "url": "https://github.com/data-privacy-stack/presidio/releases/tag/2.2.361",
+    "summary": "<h2>What's Changed</h2>\n<ul>\n<li>Fix CI for PR flow by <a class=\"user-mention notranslate\" href=\"https://github.com/tamirkamara\">@tamirkamara</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/1718\">#1718</a></li>\n<li>Bump actions/setup-python from 5 to 6 by <a class=\"user-mention notranslate\" href=\"https://github.com/dependabot\">@dependabot</a>[bot] in <a class=\"issue-link js-issue-link\" href=\"https://github.com/data-privacy-stack/presidio/pull/1714\">#1714</a></li>\n<li>Bump pypa/gh-action-pypi-publish from 1.12.4 to 1.13.0 by <a class=\"user-me",
+    "published": "2026-02-12T09:58:33Z",
+    "module_hint": "sspm/report_writer",
+    "url_sha256": "b59a141a37cd9bdd5e24813b441a784d269f7101e56cecd1081d497dd5ed88ef",
+    "classification": {
+      "verdict": "discover",
+      "score": 9,
+      "hits": [
+        "sspm",
+        "presidio"
+      ],
+      "module": "report_writer",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "duckdb-releases",
+    "title": "DuckDB v1.5.5 Bugfix Release",
+    "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.5",
+    "summary": "<p>This is a bug fix release for various issues discovered after we released v1.5.4.</p>\n<h2>What's Changed</h2>\n<ul>\n<li>backport the out-of-bounds security fixes made in <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/pull/23100\">#23100</a> by <a class=\"user-mention notranslate\" href=\"https://github.com/Tishj\">@Tishj</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/pull/23197\">#23197</a></li>\n<li>Remove checked_array_iterator from fmt dep (1.4) by <a class=\"user-mention notranslate\" href=\"https://github.com/carlopi\">@carlopi</a> in ",
+    "published": "2026-07-22T10:53:24Z",
+    "module_hint": "sspm/config_drift",
+    "url_sha256": "78878ed592111af9908f1c1e3dd3f22f872c2867f146b3cbfc88ededd10312e6",
+    "classification": {
+      "verdict": "discover",
+      "score": 8,
+      "hits": [
+        "sspm",
+        "duckdb"
+      ],
+      "module": "config_drift",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "duckdb-releases",
+    "title": "DuckDB v1.5.4 Bugfix Release",
+    "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.4",
+    "summary": "<p>This is a bug fix release for various issues discovered after we released v1.5.3.</p>\n<p>Please also refer to the announcement blog post: <a href=\"https://duckdb.org/2026/06/17/announcing-duckdb-154.html\" rel=\"nofollow\">https://duckdb.org/2026/06/17/announcing-duckdb-154.html</a></p>\n<h2>What's Changed</h2>\n<ul>\n<li>backport 22094 by <a class=\"user-mention notranslate\" href=\"https://github.com/artjomPlaunov\">@artjomPlaunov</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/pull/22136\">#22136</a></li>\n<li>backport 21815 &amp; 21427 by <a class=\"user-mention not",
+    "published": "2026-06-17T10:56:36Z",
+    "module_hint": "sspm/config_drift",
+    "url_sha256": "ce0403e5e33a28d7534421f614526aff78f73b8d14e455eb42fad11b049f7681",
+    "classification": {
+      "verdict": "discover",
+      "score": 8,
+      "hits": [
+        "sspm",
+        "duckdb"
+      ],
+      "module": "config_drift",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "duckdb-releases",
+    "title": "DuckDB v1.4.5 Bugfix Release",
+    "url": "https://github.com/duckdb/duckdb/releases/tag/v1.4.5",
+    "summary": "<p>This is a bug fix release for various issues discovered after we released v1.4.4.</p>\n<p>Please also refer to the announcement blog post: <a href=\"https://duckdb.org/2026/06/17/announcing-duckdb-145.html\" rel=\"nofollow\">https://duckdb.org/2026/06/17/announcing-duckdb-145.html</a></p>\n<h2>What's Changed</h2>\n<ul>\n<li>Internal <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/issues/7212\">#7212</a>: FILL Empty Chunk by <a class=\"user-mention notranslate\" href=\"https://github.com/hawkfish\">@hawkfish</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/du",
+    "published": "2026-06-17T10:55:56Z",
+    "module_hint": "sspm/config_drift",
+    "url_sha256": "b8b4f40a5d884d8e94ea7c148b6e594ba2b0f6faa7e97ff3ce3ebf85ac134b82",
+    "classification": {
+      "verdict": "discover",
+      "score": 8,
+      "hits": [
+        "sspm",
+        "duckdb"
+      ],
+      "module": "config_drift",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "duckdb-releases",
+    "title": "DuckDB v1.5.3 Bugfix Release",
+    "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.3",
+    "summary": "<p>This is a bugfix release for various issues discovered after we released v1.5.2.</p>\n<p>Please also refer to the announcement blog post: <a href=\"https://duckdb.org/2026/05/20/announcing-duckdb-153\" rel=\"nofollow\">https://duckdb.org/2026/05/20/announcing-duckdb-153</a></p>\n<h2>What's Changed</h2>\n<ul>\n<li>Use DB serialization compatibility for json_serialize_sql by <a class=\"user-mention notranslate\" href=\"https://github.com/kryonix\">@kryonix</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/pull/22004\">#22004</a></li>\n<li>DuckLake Bump by <a class=\"user-ment",
+    "published": "2026-05-20T11:52:36Z",
+    "module_hint": "sspm/config_drift",
+    "url_sha256": "6d98ef628b2867762d9876eb476f1c0eb1e46611710010df9ee434ec786f333a",
+    "classification": {
+      "verdict": "discover",
+      "score": 8,
+      "hits": [
+        "sspm",
+        "duckdb"
+      ],
+      "module": "config_drift",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "duckdb-releases",
+    "title": "DuckDB v1.5.2 Bugfix Release",
+    "url": "https://github.com/duckdb/duckdb/releases/tag/v1.5.2",
+    "summary": "<p>This is a bug fix release for various issues discovered after we released v1.5.1</p>\n<h2>What's Changed</h2>\n<ul>\n<li>Backport various race condition fixes to v1.4 by <a class=\"user-mention notranslate\" href=\"https://github.com/Mytherin\">@Mytherin</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/pull/20804\">#20804</a></li>\n<li>bump ref to azure for v1.4.4 (rebuild) by <a class=\"user-mention notranslate\" href=\"https://github.com/benfleis\">@benfleis</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/duckdb/duckdb/pull/20888\">#20888</a></li>\n<l",
+    "published": "2026-04-13T10:48:32Z",
+    "module_hint": "sspm/config_drift",
+    "url_sha256": "c8411ee39f3d1e7c8818d9c8ea162f328fd157ab18bac1a6bb3c1860b5d7e2bd",
+    "classification": {
+      "verdict": "discover",
+      "score": 8,
+      "hits": [
+        "sspm",
+        "duckdb"
+      ],
+      "module": "config_drift",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "PyGithub-releases",
+    "title": "2.10.0",
+    "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.10.0",
+    "summary": "<h3>Notable changes</h3>\n<h4>Drop Python 3.9 support due to End-of-Life</h4>\n<p>Python 3.9 reached its end-of-life October 31, 2025. Support has been removed with this release.</p>\n<h3>New Features</h3>\n<ul>\n<li>Allow to specify the Github API version by <a class=\"user-mention notranslate\" href=\"https://github.com/EnricoMi\">@EnricoMi</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/PyGithub/PyGithub/pull/3480\">#3480</a></li>\n<li>Add issue dependency endpoints by <a class=\"user-mention notranslate\" href=\"https://github.com/james-geiger\">@james-geiger</a> in <a class=\"issue-li",
+    "published": "2026-08-20T10:04:20Z",
+    "module_hint": "sspm/github_discovery",
+    "url_sha256": "c481bbb8aee14e77d0b61c7733ad854cc1cc507496f42b064327d87a63292a14",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "github_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "PyGithub-releases",
+    "title": "v2.9.1",
+    "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.9.1",
+    "summary": "<h3>Bug Fixes</h3>\n<ul>\n<li>Fix getting release by tag in lazy mode by <a class=\"user-mention notranslate\" href=\"https://github.com/EnricoMi\">@EnricoMi</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/PyGithub/PyGithub/pull/3469\">#3469</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/PyGithub/PyGithub/compare/v2.9.0...v2.9.1\"><tt>v2.9.0...v2.9.1</tt></a></p>",
+    "published": "2026-04-14T07:25:38Z",
+    "module_hint": "sspm/github_discovery",
+    "url_sha256": "8b4b65e7936b69259942479574ca22142c4d08c17caeb6d633045ff28fa5581d",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "github_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "PyGithub-releases",
+    "title": "v2.9.0",
+    "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.9.0",
+    "summary": "<h3>Notable changes</h3>\n<h4>Lazy PyGithub objects</h4>\n<p>The notion of lazy objects has been added to some PyGithub classes in version 2.6.0. This release now makes all <code>CompletableGithubObject</code>s optionally lazy (if useful). See <a class=\"issue-link js-issue-link\" href=\"https://github.com/PyGithub/PyGithub/pull/3403\">#3403</a> for a complete list.</p>\n<p>In lazy mode, getting a PyGithub object does not send a request to the GitHub API. Only accessing methods and properties sends the necessary requests to the GitHub API:</p>\n<div class=\"highlight highlight-source-python notranslate",
+    "published": "2026-03-22T21:13:57Z",
+    "module_hint": "sspm/github_discovery",
+    "url_sha256": "a123d6f8fd7f051b16dcf3fc54f6d7fc611a28ba918fd232bc9215da75ea2f83",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "github_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "PyGithub-releases",
+    "title": "v2.8.1",
+    "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.8.1",
+    "summary": "<h2>What's Changed</h2>\n<h3>Bug Fixes</h3>\n<ul>\n<li>Use default type if known type is not supported by <a class=\"user-mention notranslate\" href=\"https://github.com/EnricoMi\">@EnricoMi</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/PyGithub/PyGithub/pull/3365\">#3365</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/PyGithub/PyGithub/compare/v2.8.0...v2.8.1\"><tt>v2.8.0...v2.8.1</tt></a></p>",
+    "published": "2025-09-02T17:41:17Z",
+    "module_hint": "sspm/github_discovery",
+    "url_sha256": "a39656490331e4b72c55a8c5254632c23825ab2549545c953588880dfd63ec88",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "github_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "PyGithub-releases",
+    "title": "v2.8.0",
+    "url": "https://github.com/PyGithub/PyGithub/releases/tag/v2.8.0",
+    "summary": "<h2>What's Changed</h2>\n<h3>New Features</h3>\n<ul>\n<li>Add self hosted runner management to Organization by <a class=\"user-mention notranslate\" href=\"https://github.com/billnapier\">@billnapier</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/PyGithub/PyGithub/pull/3203\">#3203</a></li>\n<li>Add support to generate release notes by <a class=\"user-mention notranslate\" href=\"https://github.com/mball-agathos\">@mball-agathos</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/PyGithub/PyGithub/pull/3022\">#3022</a></li>\n</ul>\n<h3>Improvements</h3>\n<ul>\n<li>Fix connec",
+    "published": "2025-09-02T09:24:17Z",
+    "module_hint": "sspm/github_discovery",
+    "url_sha256": "ecab478a3540d8c903a5f4f9fa0bac5e65ebabaf17282f260be9b10c49e268a0",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "github_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "slack-sdk-releases",
+    "title": "v3.44.1",
+    "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.44.1",
+    "summary": "<h2>What's Changed</h2>\n<h3>\ud83d\udc1b Bug Fixes</h3>\n<ul>\n<li>fix: stop aiohttp Socket Mode connect() retrying forever after close by <a class=\"user-mention notranslate\" href=\"https://github.com/WilliamBergamin\">@WilliamBergamin</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/pull/1956\">#1956</a></li>\n</ul>\n<h3>\ud83d\udce6 Other changes</h3>\n<ul>\n<li>chore(deps): bump click from 8.4.2 to 8.5.0 by <a class=\"user-mention notranslate\" href=\"https://github.com/dependabot\">@dependabot</a>[bot] in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/pytho",
+    "published": "2026-09-03T14:19:15Z",
+    "module_hint": "sspm/slack_discovery",
+    "url_sha256": "dbb27eb2ec7828b2e86c2e7f025f6bdc4989ab631c415d28e47b916007a647cf",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "slack_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "slack-sdk-releases",
+    "title": "v3.44.0",
+    "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.44.0",
+    "summary": "<h2>What's Changed</h2>\n<h3>\ud83d\ude80 Enhancements</h3>\n<ul>\n<li>feat(oauth): add StatelessOAuthStateStore using JWT by <a class=\"user-mention notranslate\" href=\"https://github.com/muskaannnr\">@muskaannnr</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/pull/1916\">#1916</a></li>\n<li>feat(blocks): add min_lines/max_lines to RichTextInputElement by <a class=\"user-mention notranslate\" href=\"https://github.com/srtaalej\">@srtaalej</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/pull/1925\">#1925</a></li>\n<li>feat(mode",
+    "published": "2026-08-27T07:07:40Z",
+    "module_hint": "sspm/slack_discovery",
+    "url_sha256": "5e923a2201f066c5255280687aea426b4c90eb6c43b281d14851e8939219ec2c",
+    "classification": {
+      "verdict": "discover",
+      "score": 10,
+      "hits": [
+        "sspm",
+        "oauth"
+      ],
+      "module": "slack_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "slack-sdk-releases",
+    "title": "v3.43.0",
+    "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.43.0",
+    "summary": "<h2>What's Changed</h2>\n<blockquote>\n<p>\u26a0\ufe0f Warning: A signing secret is now required to exist when validating requests. Apps that receive events with Socket Mode should update to Bolt for Python <code>1.29.0</code> to avoid errors at initialization. Please refer to this issue: <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/issues/1903\">#1903</a></p>\n</blockquote>\n<h3>\ud83d\ude80 Enhancements</h3>\n<ul>\n<li>feat(web): expose public ts property on ChatStream by <a class=\"user-mention notranslate\" href=\"https://github.com/srtaalej\">@srtaalej</a> in <a class=\"issue-lin",
+    "published": "2026-07-01T18:29:14Z",
+    "module_hint": "sspm/slack_discovery",
+    "url_sha256": "98933660ff13882649efe07c3a6d90b51ddb962e7eb549e57351743c6baccd46",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "slack_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "slack-sdk-releases",
+    "title": "v3.42.0",
+    "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.42.0",
+    "summary": "<h2>What's Changed</h2>\n<h3>\ud83d\ude80 Enhancements</h3>\n<ul>\n<li>feat: add authorship arguments to assistant threads and chat stream by <a class=\"user-mention notranslate\" href=\"https://github.com/zimeg\">@zimeg</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/pull/1862\">#1862</a></li>\n<li>feat(blocks): add Card, Carousel, and Alert block types by <a class=\"user-mention notranslate\" href=\"https://github.com/srtaalej\">@srtaalej</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/pull/1865\">#1865</a></li>\n<li>feat(mode",
+    "published": "2026-05-18T17:25:14Z",
+    "module_hint": "sspm/slack_discovery",
+    "url_sha256": "5d737e36ad0d11c3081236b2a35005e2d5506d4e9e98c3cdee279567ce1b1573",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "slack_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  },
+  {
+    "source": "slack-sdk-releases",
+    "title": "v3.41.0",
+    "url": "https://github.com/slackapi/python-slack-sdk/releases/tag/v3.41.0",
+    "summary": "<h2>What's Changed</h2>\n<h3>\ud83d\ude80 Enhancements</h3>\n<ul>\n<li>feat: add support for apps.user.connection.update by <a class=\"user-mention notranslate\" href=\"https://github.com/WilliamBergamin\">@WilliamBergamin</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/python-slack-sdk/pull/1835\">#1835</a></li>\n</ul>\n<h3>\ud83d\udce6 Other changes</h3>\n<ul>\n<li>chore: add AGENTS.md and consolidate development scripts by <a class=\"user-mention notranslate\" href=\"https://github.com/WilliamBergamin\">@WilliamBergamin</a> in <a class=\"issue-link js-issue-link\" href=\"https://github.com/slackapi/pyt",
+    "published": "2026-03-12T16:09:09Z",
+    "module_hint": "sspm/slack_discovery",
+    "url_sha256": "bbba42e82f23b930fe2977a5216f02df654713cdc82595b6fbe5fd2e224989c2",
+    "classification": {
+      "verdict": "discover",
+      "score": 7,
+      "hits": [
+        "sspm"
+      ],
+      "module": "slack_discovery",
+      "engine": "heuristic",
+      "context_attached": true,
+      "sspm_context": "SSPM context (for vendor and OSS-tool sources only):\n- SSPM = SaaS Security Posture Management (AppOmni, Adaptive Shield/CrowdStrike, Obsidian, DoControl, Valence)\n- DSPM = Data Security Posture Manag"
+    }
+  }
+]
